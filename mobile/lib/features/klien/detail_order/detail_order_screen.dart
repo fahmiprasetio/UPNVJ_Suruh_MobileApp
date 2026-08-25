@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/format/formatters.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/enums.dart';
 import '../../../domain/models/order.dart';
@@ -184,11 +186,7 @@ class _BilahTindakan extends StatelessWidget {
         padding: const EdgeInsets.all(AppTheme.spasiSedang),
         child: label != null
             ? FilledButton(
-                onPressed: () => ScaffoldMessenger.of(context)
-                  ..hideCurrentSnackBar()
-                  ..showSnackBar(
-                    SnackBar(content: Text('$label belum dibuat — menyusul.')),
-                  ),
+                onPressed: () => _jalankan(context, label),
                 child: Text(label),
               )
             : Text(
@@ -200,5 +198,15 @@ class _BilahTindakan extends StatelessWidget {
               ),
       ),
     );
+  }
+
+  void _jalankan(BuildContext context, String label) {
+    if (order.status == OrderStatus.menungguPembayaran) {
+      context.push(Rute.bayar(order.id));
+      return;
+    }
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text('$label belum dibuat — menyusul.')));
   }
 }

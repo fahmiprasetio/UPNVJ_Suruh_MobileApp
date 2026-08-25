@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/klien/beranda/beranda_klien_screen.dart';
 import '../../features/klien/detail_order/detail_order_screen.dart';
 import '../../features/klien/order_jalur_a/form_anter_jemput_screen.dart';
+import '../../features/klien/pembayaran/pembayaran_screen.dart';
 import '../../features/klien/riwayat/riwayat_order_screen.dart';
 
 /// Nama rute ditulis sebagai konstanta supaya tidak ada string jalur yang
@@ -14,9 +15,11 @@ class Rute {
   static const String beranda = '/';
   static const String riwayat = '/order';
   static const String detailOrderPola = '/order/:orderId';
+  static const String bayarPola = '/order/:orderId/bayar';
   static const String formAnterJemput = '/buat/anter-jemput';
 
   static String detailOrder(String orderId) => '/order/$orderId';
+  static String bayar(String orderId) => '/order/$orderId/bayar';
 }
 
 /// Router dibuat lewat provider, bukan variabel global.
@@ -41,6 +44,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: Rute.detailOrderPola,
         builder: (context, state) =>
             DetailOrderScreen(orderId: state.pathParameters['orderId']!),
+      ),
+      GoRoute(
+        path: Rute.bayarPola,
+        builder: (context, state) =>
+            PembayaranScreen(orderId: state.pathParameters['orderId']!),
       ),
       GoRoute(
         path: Rute.formAnterJemput,
