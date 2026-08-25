@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/config/tarif_config.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/format/formatters.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/enums.dart';
@@ -175,33 +177,15 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
     }
 
     if (!mounted) return;
-    // Spinner dimatikan sebelum dialog dibuka. Kalau tidak, tombol di
-    // belakang dialog terus berputar seolah masih ada pekerjaan berjalan.
     setState(() => _sedangMengirim = false);
 
-    await _tampilkanOrderDibuat(order);
-    if (!mounted) return;
-    Navigator.of(context).pop();
-  }
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text('Order ${order.kodeOrder} dibuat')));
 
-  Future<void> _tampilkanOrderDibuat(Order order) {
-    return showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        icon: const Icon(Icons.check_circle_outline, size: 36),
-        title: Text('Order ${order.kodeOrder} dibuat'),
-        content: Text(
-          'Totalnya ${formatRupiah(order.harga)}. Langkah berikutnya adalah '
-          'pembayaran — layarnya belum dibuat, menyusul.',
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Mengerti'),
-          ),
-        ],
-      ),
-    );
+    // Form diganti, bukan ditumpuk: menekan kembali dari detail order
+    // sebaiknya pulang ke beranda, bukan balik ke form yang sudah terkirim.
+    context.pushReplacement(Rute.detailOrder(order.id));
   }
 
   static String? _wajibAlamat(String? nilai, String jenis) {

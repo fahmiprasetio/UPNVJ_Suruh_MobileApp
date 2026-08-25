@@ -13,6 +13,7 @@ Yang sudah ada:
 - Fondasi Flutter: model domain, kontrak repository, repository palsu, tema, routing, pemformatan rupiah/tanggal
 - Beranda Klien: 6 layanan berkatalog (Jalur A/B) + pintu "Permintaan Lain"
 - Form Jalur A — Anter Jemput: kalkulator harga otomatis dengan rincian, validasi, pembuatan order
+- Order Saya: daftar order berjalan/selesai, dan detail order dengan linimasa tahapan per jalur
 - Kerangka backend .NET: domain model + EF Core migration awal (**dibekukan** sampai pilihan stack diputuskan)
 
 ## Struktur

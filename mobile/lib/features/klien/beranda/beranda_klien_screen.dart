@@ -34,6 +34,11 @@ class BerandaKlienScreen extends ConsumerWidget {
         title: const Text('UPNVJ Suruh'),
         actions: [
           IconButton(
+            onPressed: () => context.push(Rute.riwayat),
+            icon: const Icon(Icons.receipt_long_outlined),
+            tooltip: 'Order Saya',
+          ),
+          IconButton(
             onPressed: () => _belumTersedia(context, 'Profil'),
             icon: const Icon(Icons.person_outline),
             tooltip: 'Profil',

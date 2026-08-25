@@ -82,7 +82,7 @@ void main() {
     expect(find.text('Alamat tujuan wajib diisi'), findsOneWidget);
   });
 
-  testWidgets('form lengkap membuat order dan menampilkan kodenya', (
+  testWidgets('form lengkap membuat order lalu membuka detailnya', (
     tester,
   ) async {
     await bukaForm(tester);
@@ -95,16 +95,16 @@ void main() {
     await tester.tap(find.text('Buat Order'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining(RegExp(r'^Order SRH-\d+ dibuat$')), findsOneWidget);
-    expect(find.textContaining('Totalnya Rp 11.000'), findsOneWidget);
+    expect(
+      find.textContaining(RegExp(r'^Order SRH-\d+ dibuat$')),
+      findsOneWidget,
+    );
 
-    // Pekerjaannya sudah selesai — tombol di belakang dialog tidak boleh
-    // masih berputar.
+    // Order baru Jalur A langsung berstatus menunggu pembayaran.
+    expect(find.text('Bayar Sekarang'), findsOneWidget);
+    expect(find.text('Rp 11.000'), findsOneWidget);
+
+    // Pekerjaannya sudah selesai — tidak boleh ada yang masih berputar.
     expect(find.byType(CircularProgressIndicator), findsNothing);
-
-    // Menutup dialog mengembalikan klien ke beranda.
-    await tester.tap(find.text('Mengerti'));
-    await tester.pumpAndSettle();
-    expect(find.text('Mau disuruh apa hari ini?'), findsOneWidget);
   });
 }
