@@ -11,6 +11,7 @@ Satu aplikasi Flutter untuk Klien dan Runner (tampilan berganti sesuai peran), p
 Yang sudah ada:
 
 - Fondasi Flutter: model domain, kontrak repository, repository palsu, tema, routing, pemformatan rupiah/tanggal
+- Beranda Klien: 6 layanan berkatalog (Jalur A/B) + pintu "Permintaan Lain"
 - Kerangka backend .NET: domain model + EF Core migration awal (**dibekukan** sampai pilihan stack diputuskan)
 
 ## Struktur

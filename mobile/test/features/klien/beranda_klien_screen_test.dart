@@ -1,0 +1,59 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:upnvj_suruh/app.dart';
+import 'package:upnvj_suruh/domain/enums.dart';
+import 'package:upnvj_suruh/domain/service_catalog.dart';
+
+void main() {
+  setUpAll(() async {
+    await initializeDateFormatting('id_ID');
+  });
+
+  Future<void> bukaBeranda(WidgetTester tester) async {
+    await tester.pumpWidget(const ProviderScope(child: UpnvjSuruhApp()));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('menyapa klien dengan nama depannya', (tester) async {
+    await bukaBeranda(tester);
+
+    expect(find.text('Halo, Dina'), findsOneWidget);
+  });
+
+  testWidgets('menampilkan seluruh layanan di katalog', (tester) async {
+    await bukaBeranda(tester);
+
+    for (final layanan in serviceCatalog) {
+      expect(
+        find.text(layanan.nama),
+        findsOneWidget,
+        reason: 'Layanan ${layanan.nama} tidak muncul di beranda',
+      );
+    }
+  });
+
+  testWidgets('permintaan bebas dipisahkan sebagai pintu kedua', (
+    tester,
+  ) async {
+    await bukaBeranda(tester);
+
+    // Pemisah "atau" menandai batas antara Jalur A dan Jalur B.
+    expect(find.text('atau'), findsOneWidget);
+
+    final permintaanLain = serviceInfoOf(ServiceType.permintaanLain);
+    expect(permintaanLain.track, OrderTrack.jalurB);
+    expect(find.text(permintaanLain.deskripsi), findsOneWidget);
+  });
+
+  testWidgets('menekan layanan memberi tahu bahwa layarnya belum ada', (
+    tester,
+  ) async {
+    await bukaBeranda(tester);
+
+    await tester.tap(find.text('Anter Jemput'));
+    await tester.pump();
+
+    expect(find.text('Anter Jemput belum dibuat — menyusul.'), findsOneWidget);
+  });
+}

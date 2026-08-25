@@ -1,6 +1,6 @@
 import 'package:go_router/go_router.dart';
 
-import '../../features/shared/fondasi_screen.dart';
+import '../../features/klien/beranda/beranda_klien_screen.dart';
 
 /// Nama rute ditulis sebagai konstanta supaya tidak ada string jalur yang
 /// tersebar di dalam layar.
@@ -15,7 +15,7 @@ final GoRouter appRouter = GoRouter(
   routes: [
     GoRoute(
       path: Rute.beranda,
-      builder: (context, state) => const FondasiScreen(),
+      builder: (context, state) => const BerandaKlienScreen(),
     ),
   ],
 );
