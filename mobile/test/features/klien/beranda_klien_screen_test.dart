@@ -46,14 +46,17 @@ void main() {
     expect(find.text(permintaanLain.deskripsi), findsOneWidget);
   });
 
-  testWidgets('menekan layanan memberi tahu bahwa layarnya belum ada', (
+  testWidgets('layanan yang layarnya belum ada memberi tahu apa adanya', (
     tester,
   ) async {
     await bukaBeranda(tester);
 
-    await tester.tap(find.text('Anter Jemput'));
+    await tester.tap(find.text('Bersih-Bersih Kos'));
     await tester.pump();
 
-    expect(find.text('Anter Jemput belum dibuat — menyusul.'), findsOneWidget);
+    expect(
+      find.text('Bersih-Bersih Kos belum dibuat — menyusul.'),
+      findsOneWidget,
+    );
   });
 }

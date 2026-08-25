@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/enums.dart';
 import '../../../domain/service_catalog.dart';
@@ -63,7 +65,7 @@ class BerandaKlienScreen extends ConsumerWidget {
                 final layanan = layananKatalog[indeks];
                 return KartuLayanan(
                   layanan: layanan,
-                  onTap: () => _belumTersedia(context, layanan.nama),
+                  onTap: () => _bukaLayanan(context, layanan),
                 );
               },
             ),
@@ -78,6 +80,15 @@ class BerandaKlienScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  void _bukaLayanan(BuildContext context, ServiceInfo layanan) {
+    switch (layanan.type) {
+      case ServiceType.anterJemput:
+        context.push(Rute.formAnterJemput);
+      case _:
+        _belumTersedia(context, layanan.nama);
+    }
   }
 
   /// Sementara, sampai layar form dibuat di langkah berikutnya.

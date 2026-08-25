@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 
-class UpnvjSuruhApp extends StatelessWidget {
+class UpnvjSuruhApp extends ConsumerWidget {
   const UpnvjSuruhApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
       title: 'UPNVJ Suruh',
       debugShowCheckedModeBanner: false,
@@ -21,7 +22,7 @@ class UpnvjSuruhApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      routerConfig: appRouter,
+      routerConfig: ref.watch(routerProvider),
     );
   }
 }
