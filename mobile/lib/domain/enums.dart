@@ -74,4 +74,17 @@ enum OfferStatus { pending, disetujui, ditolak, dinegoUlang }
 enum PaymentStatus { pending, berhasil, gagal, kedaluwarsa }
 
 /// Siapa penulis satu pesan di dalam ruang chat sebuah order.
-enum MessageSender { klien, admin, runner }
+///
+/// Yang dicatat perannya, bukan orangnya, karena satu order bisa dibaca
+/// beberapa runner dan beberapa admin sekaligus.
+enum MessageSender {
+  klien,
+  admin,
+  runner;
+
+  String get label => switch (this) {
+    MessageSender.klien => 'Kamu',
+    MessageSender.admin => 'Admin',
+    MessageSender.runner => 'Runner',
+  };
+}

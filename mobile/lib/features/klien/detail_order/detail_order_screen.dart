@@ -24,7 +24,12 @@ class DetailOrderScreen extends ConsumerWidget {
     final order = ref.watch(orderProvider(orderId));
 
     return Scaffold(
-      appBar: AppBar(title: Text(order.value?.kodeOrder ?? 'Detail Order')),
+      appBar: AppBar(
+        title: Text(order.value?.kodeOrder ?? 'Detail Order'),
+        actions: [
+          if (order.value != null) _TombolChat(order: order.value!),
+        ],
+      ),
       body: order.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (galat, _) => Center(child: Text('Order gagal dimuat: $galat')),
@@ -35,6 +40,32 @@ class DetailOrderScreen extends ConsumerWidget {
       bottomNavigationBar: order.value == null
           ? null
           : _BilahTindakan(order: order.value!),
+    );
+  }
+}
+
+/// Pintu masuk ke ruang chat order, lengkap dengan jumlah pesannya.
+///
+/// Ditaruh di bilah judul, bukan sebagai tombol mengambang, supaya tidak
+/// bersaing dengan tindakan utama di bilah bawah. Angkanya penting: tanpa itu,
+/// klien tidak punya alasan membuka chat dan pertanyaan admin bisa terlewat
+/// berhari-hari.
+class _TombolChat extends StatelessWidget {
+  const _TombolChat({required this.order});
+
+  final Order order;
+
+  @override
+  Widget build(BuildContext context) {
+    final jumlah = order.messages.length;
+    return IconButton(
+      onPressed: () => context.push(Rute.chatOrder(order.id)),
+      tooltip: 'Chat Order',
+      icon: Badge.count(
+        count: jumlah,
+        isLabelVisible: jumlah > 0,
+        child: const Icon(Icons.forum_outlined),
+      ),
     );
   }
 }

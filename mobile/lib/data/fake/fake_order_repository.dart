@@ -3,6 +3,7 @@ import 'dart:math';
 
 import '../../domain/enums.dart';
 import '../../domain/models/order.dart';
+import '../../domain/models/order_message.dart';
 import '../../domain/repositories/order_repository.dart';
 import 'seed_data.dart';
 
@@ -230,6 +231,42 @@ class FakeOrderRepository implements OrderRepository {
       throw StateError('Order ${order.kodeOrder} sudah ${order.status.label}');
     }
     final diperbarui = order.copyWith(status: OrderStatus.batal);
+    _ganti(diperbarui);
+    return diperbarui;
+  }
+
+  @override
+  Future<Order> kirimPesan({
+    required String orderId,
+    required MessageSender pengirim,
+    required String isi,
+  }) async {
+    await Future<void>.delayed(_jedaJaringan);
+    final order = _wajibAda(orderId);
+
+    final bersih = isi.trim();
+    if (bersih.isEmpty) {
+      throw StateError('Pesan kosong tidak bisa dikirim');
+    }
+    // Order yang sudah selesai atau batal tidak boleh dihidupkan lagi lewat
+    // chat. Kalau masih ada urusan, urusan itu butuh order baru atau campur
+    // tangan admin, bukan percakapan yang menempel pada pekerjaan yang sudah
+    // ditutup.
+    if (!order.status.isAktif) {
+      throw StateError(
+        'Order ${order.kodeOrder} sudah ${order.status.label}, '
+        'chatnya ikut ditutup',
+      );
+    }
+
+    final pesan = OrderMessage(
+      id: 'm-${DateTime.now().microsecondsSinceEpoch}-${_random.nextInt(999)}',
+      orderId: orderId,
+      pengirim: pengirim,
+      isi: bersih,
+      dikirimPada: DateTime.now(),
+    );
+    final diperbarui = order.copyWith(messages: [...order.messages, pesan]);
     _ganti(diperbarui);
     return diperbarui;
   }

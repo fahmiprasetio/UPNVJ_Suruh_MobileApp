@@ -1,6 +1,7 @@
 import '../../domain/enums.dart';
 import '../../domain/models/app_user.dart';
 import '../../domain/models/order.dart';
+import '../../domain/models/order_message.dart';
 
 /// Data contoh untuk pengembangan antarmuka.
 ///
@@ -79,6 +80,26 @@ class SeedData {
             'Barang: 1 lemari plastik, 2 koper, kasur lipat, sekardus buku.',
         alamatTujuan: 'Kos Anggrek, Jl. RS Fatmawati',
         jumlahRunnerDibutuhkan: 3,
+        // Percakapan contoh untuk order Jalur B: admin bertanya dulu sebelum
+        // bisa memberi harga, persis alur di bagian 3.
+        messages: [
+          OrderMessage(
+            id: 'm-1',
+            orderId: 'o-3',
+            pengirim: MessageSender.admin,
+            isi:
+                'Halo, kosnya di lantai berapa ya? Ada lift atau tangga saja? '
+                'Ini yang paling menentukan berapa orang yang kami kirim.',
+            dikirimPada: sekarang.subtract(const Duration(hours: 2, minutes: 40)),
+          ),
+          OrderMessage(
+            id: 'm-2',
+            orderId: 'o-3',
+            pengirim: MessageSender.klien,
+            isi: 'Kos lama lantai 2, tangga. Kos baru lantai 1.',
+            dikirimPada: sekarang.subtract(const Duration(hours: 2, minutes: 30)),
+          ),
+        ],
       ),
       Order(
         id: 'o-4',

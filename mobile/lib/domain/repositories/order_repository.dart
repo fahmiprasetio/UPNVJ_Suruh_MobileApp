@@ -71,4 +71,20 @@ abstract interface class OrderRepository {
   });
 
   Future<Order> batalkanOrder(String orderId);
+
+  /// Mengirim satu pesan ke ruang chat sebuah order.
+  ///
+  /// Tidak ada chat yang berdiri sendiri: setiap pesan wajib menempel pada
+  /// satu order (bagian 4, "Prinsip inti"). Karena itu kontraknya menuntut
+  /// [orderId], bukan lawan bicara. Tanpa aturan ini, ruang chat pelan-pelan
+  /// berubah jadi WhatsApp versi lebih jelek, persis masalah yang mau
+  /// ditinggalkan mitra.
+  ///
+  /// [pengirim] menentukan peran penulisnya, bukan identitas orangnya, karena
+  /// satu order bisa dibaca beberapa runner sekaligus.
+  Future<Order> kirimPesan({
+    required String orderId,
+    required MessageSender pengirim,
+    required String isi,
+  });
 }
