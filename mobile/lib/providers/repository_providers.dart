@@ -1,10 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/fake/fake_auth_repository.dart';
+import '../data/fake/fake_foto_bukti_repository.dart';
 import '../data/fake/fake_order_repository.dart';
 import '../data/fake/seed_data.dart';
 import '../domain/models/app_user.dart';
 import '../domain/repositories/auth_repository.dart';
+import '../domain/repositories/foto_bukti_repository.dart';
 import '../domain/repositories/order_repository.dart';
 
 /// Titik tukar backend.
@@ -23,6 +25,17 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final repo = FakeAuthRepository();
   ref.onDispose(repo.dispose);
   return repo;
+});
+
+/// Kamera + penyimpanan foto bukti. Ikut menunggu pilihan stack (bagian 14.4).
+final fotoBuktiRepositoryProvider = Provider<FotoBuktiRepository>((ref) {
+  return FakeFotoBuktiRepository();
+});
+
+/// Penanda bahwa foto bukti masih tiruan, dipakai layar untuk mengaku terus
+/// terang. Ikut hilang begitu kamera dan penyimpanan sungguhan dipasang.
+final fotoBuktiTiruanProvider = Provider<bool>((ref) {
+  return ref.watch(fotoBuktiRepositoryProvider) is FakeFotoBuktiRepository;
 });
 
 /// User yang sedang masuk, `null` kalau belum.

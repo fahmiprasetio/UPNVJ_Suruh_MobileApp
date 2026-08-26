@@ -55,8 +55,17 @@ abstract interface class OrderRepository {
   /// tampilan (bagian 14.5).
   Future<bool> terimaOrder({required String orderId, required String runnerId});
 
+  /// Runner menandai pekerjaannya selesai.
+  ///
+  /// [runnerId] wajib karena yang berhak menutup order hanya runner yang
+  /// memegangnya. Pemeriksaan itu tempatnya di sini, bukan di layar: tombol
+  /// yang disembunyikan tidak menghentikan siapa pun yang memanggil langsung.
+  ///
+  /// Foto bukti wajib ada — itu yang membedakan pekerjaan selesai dari
+  /// pengakuan selesai.
   Future<Order> selesaikanOrder({
     required String orderId,
+    required String runnerId,
     required String fotoBuktiUrl,
     String? catatanSerahTerima,
   });

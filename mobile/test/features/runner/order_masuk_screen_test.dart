@@ -119,7 +119,9 @@ void main() {
   ) async {
     await bukaSebagaiRunner(tester);
 
-    expect(find.text('Order Masuk'), findsOneWidget);
+    // 'Order Masuk' kini muncul dua kali: judul layar dan label tab.
+    expect(find.widgetWithText(AppBar, 'Order Masuk'), findsOneWidget);
+    expect(find.widgetWithText(NavigationBar, 'Order Masuk'), findsOneWidget);
     expect(find.text('Mau disuruh apa hari ini?'), findsNothing);
   });
 
@@ -210,6 +212,10 @@ void main() {
     // Kuotanya masih terbuka, tapi bukan untuk runner ini.
     expect(find.text('TERIMA'), findsNothing);
     expect(find.text('Belum ada order masuk'), findsOneWidget);
-    expect(find.text('Kamu sedang memegang 1 order'), findsOneWidget);
+    // Pekerjaan yang belum kelar ditandai lencana di tab Order Saya.
+    expect(
+      find.descendant(of: find.byType(NavigationBar), matching: find.text('1')),
+      findsOneWidget,
+    );
   });
 }

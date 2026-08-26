@@ -192,6 +192,7 @@ class FakeOrderRepository implements OrderRepository {
   @override
   Future<Order> selesaikanOrder({
     required String orderId,
+    required String runnerId,
     required String fotoBuktiUrl,
     String? catatanSerahTerima,
   }) async {
@@ -202,6 +203,15 @@ class FakeOrderRepository implements OrderRepository {
         'Order ${order.kodeOrder} belum dikerjakan, tidak bisa diselesaikan',
       );
     }
+    if (!order.runnerIds.contains(runnerId)) {
+      throw StateError(
+        'Runner $runnerId tidak memegang order ${order.kodeOrder}',
+      );
+    }
+    // Pada order multi-runner, runner mana pun yang ditugaskan boleh menutup
+    // order. Ini keputusan sementara: siapa yang berhak menekan selesai kalau
+    // pekerjaannya dibagi tiga orang masih menunggu jawaban mitra (bagian
+    // 14.7d).
     final diperbarui = order.copyWith(
       status: OrderStatus.selesai,
       fotoBuktiUrl: fotoBuktiUrl,

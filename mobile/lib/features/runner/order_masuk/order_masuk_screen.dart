@@ -30,8 +30,6 @@ class _OrderMasukScreenState extends ConsumerState<OrderMasukScreen> {
   @override
   Widget build(BuildContext context) {
     final tersiar = ref.watch(orderTersiarProvider);
-    final dipegang = ref.watch(orderRunnerProvider).value ?? const <Order>[];
-    final jumlahAktif = dipegang.where((o) => o.status.isAktif).length;
 
     return Scaffold(
       appBar: AppBar(
@@ -39,45 +37,38 @@ class _OrderMasukScreenState extends ConsumerState<OrderMasukScreen> {
         actions: const [PengalihAkun()],
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            if (jumlahAktif > 0) _PitaOrderDipegang(jumlah: jumlahAktif),
-            Expanded(
-              child: tersiar.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (galat, _) => _PesanKosong(
-                  ikon: Icons.error_outline,
-                  judul: 'Order gagal dimuat',
-                  keterangan: '$galat',
-                ),
-                data: (orders) {
-                  if (orders.isEmpty) {
-                    return const _PesanKosong(
-                      ikon: Icons.inbox_outlined,
-                      judul: 'Belum ada order masuk',
-                      keterangan:
-                          'Order yang sudah dibayar klien akan muncul di sini. '
-                          'Siapa cepat, dia dapat.',
-                    );
-                  }
-                  return ListView.separated(
-                    padding: const EdgeInsets.all(AppTheme.spasiSedang),
-                    itemCount: orders.length,
-                    separatorBuilder: (_, _) =>
-                        const SizedBox(height: AppTheme.spasiKecil),
-                    itemBuilder: (context, indeks) {
-                      final order = orders[indeks];
-                      return KartuOrderSiaran(
-                        order: order,
-                        sedangDiproses: _sedangDiproses.contains(order.id),
-                        onTerima: () => _terima(order),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
+        child: tersiar.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (galat, _) => _PesanKosong(
+            ikon: Icons.error_outline,
+            judul: 'Order gagal dimuat',
+            keterangan: '$galat',
+          ),
+          data: (orders) {
+            if (orders.isEmpty) {
+              return const _PesanKosong(
+                ikon: Icons.inbox_outlined,
+                judul: 'Belum ada order masuk',
+                keterangan:
+                    'Order yang sudah dibayar klien akan muncul di sini. '
+                    'Siapa cepat, dia dapat.',
+              );
+            }
+            return ListView.separated(
+              padding: const EdgeInsets.all(AppTheme.spasiSedang),
+              itemCount: orders.length,
+              separatorBuilder: (_, _) =>
+                  const SizedBox(height: AppTheme.spasiKecil),
+              itemBuilder: (context, indeks) {
+                final order = orders[indeks];
+                return KartuOrderSiaran(
+                  order: order,
+                  sedangDiproses: _sedangDiproses.contains(order.id),
+                  onTerima: () => _terima(order),
+                );
+              },
+            );
+          },
         ),
       ),
     );
@@ -118,49 +109,6 @@ class _OrderMasukScreenState extends ConsumerState<OrderMasukScreen> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(pesan)));
-  }
-}
-
-/// Pengingat bahwa runner masih punya pekerjaan yang belum kelar.
-///
-/// Layar "Order Saya" sisi runner belum dibuat (langkah berikutnya), jadi pita
-/// ini sementara menjadi satu-satunya tanda bahwa order yang sudah diterima
-/// tidak menguap begitu saja.
-class _PitaOrderDipegang extends StatelessWidget {
-  const _PitaOrderDipegang({required this.jumlah});
-
-  final int jumlah;
-
-  @override
-  Widget build(BuildContext context) {
-    final skema = Theme.of(context).colorScheme;
-    return Container(
-      width: double.infinity,
-      color: skema.primaryContainer,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spasiSedang,
-        vertical: AppTheme.spasiKecil + 2,
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.assignment_turned_in_outlined,
-            size: 18,
-            color: skema.onPrimaryContainer,
-          ),
-          const SizedBox(width: AppTheme.spasiKecil),
-          Expanded(
-            child: Text(
-              'Kamu sedang memegang $jumlah order',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: skema.onPrimaryContainer,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 

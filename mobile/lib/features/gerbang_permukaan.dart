@@ -5,7 +5,7 @@ import '../core/theme/app_theme.dart';
 import '../providers/repository_providers.dart';
 import 'dev/pengalih_akun.dart';
 import 'klien/beranda/beranda_klien_screen.dart';
-import 'runner/order_masuk/order_masuk_screen.dart';
+import 'runner/beranda_runner_screen.dart';
 
 /// Penentu permukaan mana yang terbuka setelah masuk.
 ///
@@ -36,7 +36,7 @@ class GerbangPermukaan extends ConsumerWidget {
           );
         }
         if (user.isKlien) return const BerandaKlienScreen();
-        if (user.isRunner) return const OrderMasukScreen();
+        if (user.isRunner) return const BerandaRunnerScreen();
         return const _PermukaanKosong(
           pesan:
               'Akun ini hanya punya peran admin. Pekerjaan admin dilakukan '
