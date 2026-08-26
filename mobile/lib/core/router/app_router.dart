@@ -5,8 +5,10 @@ import '../../features/gerbang_permukaan.dart';
 import '../../features/klien/detail_order/detail_order_screen.dart';
 import '../../features/klien/order_jalur_a/form_anter_jemput_screen.dart';
 import '../../features/klien/order_jalur_a/form_jastip_barang_screen.dart';
+import '../../features/klien/order_jalur_b/form_permintaan_screen.dart';
 import '../../features/klien/pembayaran/pembayaran_screen.dart';
 import '../../features/klien/riwayat/riwayat_order_screen.dart';
+import '../../domain/enums.dart';
 
 /// Nama rute ditulis sebagai konstanta supaya tidak ada string jalur yang
 /// tersebar di dalam layar.
@@ -19,9 +21,14 @@ class Rute {
   static const String bayarPola = '/order/:orderId/bayar';
   static const String formAnterJemput = '/buat/anter-jemput';
   static const String formJastipBarang = '/buat/jastip-barang';
+  static const String formPermintaanPola = '/buat/permintaan/:layanan';
 
   static String detailOrder(String orderId) => '/order/$orderId';
   static String bayar(String orderId) => '/order/$orderId/bayar';
+
+  /// Satu rute untuk seluruh layanan Jalur B, jenis layanannya ikut di jalur.
+  static String formPermintaan(ServiceType layanan) =>
+      '/buat/permintaan/${layanan.name}';
 }
 
 /// Router dibuat lewat provider, bukan variabel global.
@@ -61,6 +68,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Rute.formJastipBarang,
         builder: (context, state) => const FormJastipBarangScreen(),
+      ),
+      GoRoute(
+        path: Rute.formPermintaanPola,
+        builder: (context, state) {
+          final nama = state.pathParameters['layanan'];
+          // Jalur yang dikarang tangan tidak boleh menjatuhkan aplikasi, dan
+          // tidak boleh diam-diam berubah jadi layanan lain. Pintu permintaan
+          // bebas adalah tempat yang paling jujur untuk menampungnya.
+          final layanan = ServiceType.values.firstWhere(
+            (s) => s.name == nama && s.track == OrderTrack.jalurB,
+            orElse: () => ServiceType.permintaanLain,
+          );
+          return FormPermintaanScreen(serviceType: layanan);
+        },
       ),
     ],
   );

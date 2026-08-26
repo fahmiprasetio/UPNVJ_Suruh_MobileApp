@@ -81,7 +81,8 @@ class BerandaKlienScreen extends ConsumerWidget {
             const SizedBox(height: AppTheme.spasiSedang),
             KartuPermintaanLain(
               layanan: permintaanLain,
-              onTap: () => _belumTersedia(context, permintaanLain.nama),
+              onTap: () =>
+                  context.push(Rute.formPermintaan(permintaanLain.type)),
             ),
           ],
         ),
@@ -90,6 +91,13 @@ class BerandaKlienScreen extends ConsumerWidget {
   }
 
   void _bukaLayanan(BuildContext context, ServiceInfo layanan) {
+    // Seluruh layanan Jalur B bermuara ke satu form permintaan, karena yang
+    // dibutuhkan sama: cerita kebutuhan, tempat, dan berapa orang.
+    if (layanan.track == OrderTrack.jalurB) {
+      context.push(Rute.formPermintaan(layanan.type));
+      return;
+    }
+
     switch (layanan.type) {
       case ServiceType.anterJemput:
         context.push(Rute.formAnterJemput);

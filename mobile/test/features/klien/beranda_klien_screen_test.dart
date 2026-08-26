@@ -51,11 +51,13 @@ void main() {
   ) async {
     await bukaBeranda(tester);
 
-    await tester.tap(find.text('Bersih-Bersih Kos'));
+    // Tinggal Jastip Makanan yang belum punya layar, karena bentuk formnya
+    // menunggu keputusan mitra soal harga barang (bagian 14.7a).
+    await tester.tap(find.text('Jastip Makanan'));
     await tester.pump();
 
     expect(
-      find.text('Bersih-Bersih Kos belum dibuat, menyusul.'),
+      find.text('Jastip Makanan belum dibuat, menyusul.'),
       findsOneWidget,
     );
   });
