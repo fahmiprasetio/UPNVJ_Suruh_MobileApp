@@ -27,7 +27,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         modelBuilder.Entity<OrderRunnerAssignment>(entity =>
         {
-            // A runner can only accept the same order once — the DB, not just the UI, enforces this.
+            // A runner can only accept the same order once, the DB, not just the UI, enforces this.
             entity.HasIndex(a => new { a.OrderId, a.RunnerId }).IsUnique();
 
             entity.HasOne(a => a.Order)

@@ -64,7 +64,7 @@ void main() {
   /// Menekan TERIMA lalu menunggu jawabannya.
   ///
   /// Tidak boleh langsung `pumpAndSettle`: selama permintaan di jalan tombol
-  /// menampilkan spinner, dan spinner berputar selamanya — `pumpAndSettle`
+  /// menampilkan spinner, dan spinner berputar selamanya, `pumpAndSettle`
   /// akan menunggu sampai kehabisan waktu. Jeda dilewati dengan `pump`
   /// bertempo, sekalian membuktikan tombolnya memang terkunci.
   Future<void> tekanTerima(WidgetTester tester) async {
@@ -86,7 +86,7 @@ void main() {
   /// Membaca keadaan order tanpa memanggil [FakeOrderRepository.getOrder].
   ///
   /// Di tes widget waktu hanya berjalan saat layar dipompa, sedangkan
-  /// `getOrder` menunggu jeda jaringan palsu — menantinya langsung membuat tes
+  /// `getOrder` menunggu jeda jaringan palsu, menantinya langsung membuat tes
   /// berhenti selamanya. Aliran `watchOrder` memancarkan keadaan sekarang
   /// tanpa jeda, jadi aman ditunggu dari dalam tes.
   Future<Order> bacaOrder(FakeOrderRepository repo, String orderId) async =>

@@ -12,7 +12,7 @@ import 'widgets/kartu_order_siaran.dart';
 ///
 /// Semua runner melihat daftar yang sama pada saat yang sama, jadi dua orang
 /// bisa menekan TERIMA untuk order yang sama dalam hitungan detik. Yang
-/// menentukan siapa dapat bukan layar ini, melainkan repository — layar hanya
+/// menentukan siapa dapat bukan layar ini, melainkan repository, layar hanya
 /// menyampaikan jawabannya (rencana capstone bagian 14.5).
 class OrderMasukScreen extends ConsumerStatefulWidget {
   const OrderMasukScreen({super.key});
@@ -97,7 +97,7 @@ class _OrderMasukScreenState extends ConsumerState<OrderMasukScreen> {
 
     // Kalah cepat bukan kegagalan sistem, jadi tidak ditampilkan sebagai
     // galat. Ordernya juga hilang sendiri dari daftar karena siarannya sudah
-    // ditutup — runner tidak perlu menyegarkan apa pun.
+    // ditutup, runner tidak perlu menyegarkan apa pun.
     _kabari(
       dapat
           ? 'Order ${order.kodeOrder} jadi milikmu. Segera kerjakan, ya.'

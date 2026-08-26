@@ -9,7 +9,7 @@ import '../../../../providers/repository_providers.dart';
 /// Lembar penyelesaian order: foto bukti dulu, baru boleh ditandai selesai.
 ///
 /// Foto bukti dibuat wajib, bukan disarankan. Tanpa foto, "selesai" cuma
-/// pengakuan runner — dan pengakuan tidak bisa ditunjukkan ke klien yang
+/// pengakuan runner, dan pengakuan tidak bisa ditunjukkan ke klien yang
 /// protes maupun dipakai admin saat menengahi. Urutannya juga disengaja:
 /// tombol selesai baru hidup setelah fotonya ada, jadi tidak ada jalan untuk
 /// menutup order lebih dulu dan menyusulkan fotonya nanti.
@@ -148,7 +148,7 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
     if (!mounted) return;
     setState(() {
       _sedangAmbilFoto = false;
-      // `null` berarti runner menutup kamera tanpa memotret — tidak ada yang
+      // `null` berarti runner menutup kamera tanpa memotret, tidak ada yang
       // perlu dikabarkan, keadaannya cuma kembali seperti semula.
       if (url != null) _fotoBuktiUrl = url;
     });
@@ -230,7 +230,7 @@ class _CatatanAlatPenguji extends StatelessWidget {
         const SizedBox(width: AppTheme.spasiKecil),
         Expanded(
           child: Text(
-            'ALAT PENGUJI — kamera dan penyimpanan foto belum terpasang. '
+            'ALAT PENGUJI: kamera dan penyimpanan foto belum terpasang. '
             'Tombol ini menghasilkan tautan tiruan, bukan foto sungguhan.',
             style: Theme.of(
               context,

@@ -3,7 +3,7 @@ import 'package:upnvj_suruh/data/fake/fake_order_repository.dart';
 import 'package:upnvj_suruh/domain/enums.dart';
 import 'package:upnvj_suruh/domain/models/order.dart';
 
-/// Tes anti-rebutan runner — inti teknis proyek (rencana capstone bagian 14.5).
+/// Tes anti-rebutan runner, inti teknis proyek (rencana capstone bagian 14.5).
 ///
 /// Yang diuji di sini bukan tampilan, melainkan aturannya: satu slot hanya
 /// boleh jatuh ke satu runner, walau dua orang menekan TERIMA pada detik yang

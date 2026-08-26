@@ -61,7 +61,7 @@ class KartuLayanan extends StatelessWidget {
 /// Pintu kedua di beranda: permintaan bebas di luar katalog.
 ///
 /// Sengaja dibuat melebar dan berbeda bentuk dari petak layanan, karena ini
-/// pintu yang berbeda sifatnya — masuk lewat sini berarti harga belum
+/// pintu yang berbeda sifatnya, masuk lewat sini berarti harga belum
 /// diketahui dan harus lewat penawaran admin (Jalur B).
 class KartuPermintaanLain extends StatelessWidget {
   const KartuPermintaanLain({

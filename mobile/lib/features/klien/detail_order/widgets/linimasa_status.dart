@@ -7,7 +7,7 @@ import '../../../../domain/order_flow.dart';
 
 /// Tahapan order digambar sebagai garis menurun.
 ///
-/// Tahap yang ditampilkan mengikuti jalur ordernya — Jalur A hanya punya empat
+/// Tahap yang ditampilkan mengikuti jalur ordernya, Jalur A hanya punya empat
 /// tahap karena harganya sudah pasti sejak awal (rencana capstone bagian 4).
 class LinimasaStatus extends StatelessWidget {
   const LinimasaStatus({super.key, required this.order});

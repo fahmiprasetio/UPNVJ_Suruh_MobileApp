@@ -13,7 +13,7 @@ import '../domain/repositories/order_repository.dart';
 ///
 /// Seluruh aplikasi mengambil repository lewat provider ini. Ketika kelompok
 /// mengunci pilihan stack (rencana capstone bagian 14.4), yang berubah cuma
-/// baris `return` di bawah — atau, di test, cukup `overrideWith`. Tidak ada
+/// baris `return` di bawah, atau di test cukup `overrideWith`. Tidak ada
 /// layar yang perlu disentuh.
 final orderRepositoryProvider = Provider<OrderRepository>((ref) {
   final repo = FakeOrderRepository();
@@ -56,7 +56,7 @@ final userWajibProvider = Provider<AppUser>((ref) {
 /// Daftar akun contoh untuk alat penguji ganti akun.
 ///
 /// Mengembalikan `null` begitu autentikasi sungguhan dipasang, sehingga tombol
-/// ganti akun hilang sendiri — alat penguji tidak ikut terbawa ke tangan
+/// ganti akun hilang sendiri, alat penguji tidak ikut terbawa ke tangan
 /// pengguna. Pola yang sama dipakai panel simulator pembayaran.
 final akunUjiProvider = Provider<List<AppUser>?>((ref) {
   final repo = ref.watch(authRepositoryProvider);

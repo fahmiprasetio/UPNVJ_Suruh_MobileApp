@@ -8,7 +8,7 @@ import '../../domain/repositories/foto_bukti_repository.dart';
 /// kamera lebih dulu berarti punya berkas yang tidak bisa dikirim ke mana pun.
 ///
 /// URL yang dikembalikan sengaja berskema `fake://` supaya tidak pernah bisa
-/// disangka tautan sungguhan — sama alasannya dengan payload QR palsu di layar
+/// disangka tautan sungguhan, sama alasannya dengan payload QR palsu di layar
 /// pembayaran yang sengaja dibuat gagal dipindai.
 class FakeFotoBuktiRepository implements FotoBuktiRepository {
   /// Sepadan dengan waktu membuka kamera, memotret, lalu mengunggah.

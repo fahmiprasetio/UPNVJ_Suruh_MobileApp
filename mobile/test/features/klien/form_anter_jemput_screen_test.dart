@@ -104,7 +104,7 @@ void main() {
     expect(find.text('Bayar Sekarang'), findsOneWidget);
     expect(find.text('Rp 11.000'), findsOneWidget);
 
-    // Pekerjaannya sudah selesai — tidak boleh ada yang masih berputar.
+    // Pekerjaannya sudah selesai, tidak boleh ada yang masih berputar.
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 }

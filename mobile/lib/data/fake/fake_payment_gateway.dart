@@ -19,7 +19,7 @@ import '../../domain/repositories/payment_gateway.dart';
 ///     bagi klien untuk menyatakan dirinya sudah membayar.
 ///
 /// [simulasikanPembayaranMasuk] adalah padanan halaman simulator di sandbox
-/// Midtrans — alat penguji, bukan bagian dari aplikasi klien.
+/// Midtrans, alat penguji, bukan bagian dari aplikasi klien.
 class FakePaymentGateway implements PaymentGateway {
   FakePaymentGateway();
 
@@ -90,7 +90,7 @@ class FakePaymentGateway implements PaymentGateway {
 
   void _ubahStatus(String transaksiId, PaymentStatus status) {
     final transaksi = _transaksi[transaksiId];
-    // Status akhir tidak boleh dianulir — pembayaran yang sudah berhasil tetap
+    // Status akhir tidak boleh dianulir, pembayaran yang sudah berhasil tetap
     // berhasil walau pewaktu kedaluwarsa ikut berbunyi setelahnya.
     if (transaksi == null || !transaksi.menunggu) return;
 

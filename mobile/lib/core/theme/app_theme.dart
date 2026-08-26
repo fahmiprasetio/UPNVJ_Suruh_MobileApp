@@ -4,7 +4,7 @@ import '../../domain/enums.dart';
 
 /// Tema tunggal aplikasi.
 ///
-/// Semua warna dan jarak diambil dari sini — tidak boleh ada `Color(0xFF...)`
+/// Semua warna dan jarak diambil dari sini, tidak boleh ada `Color(0xFF...)`
 /// yang ditulis langsung di dalam layar. Kalau nanti mitra memberi panduan
 /// warna resmi, satu file ini saja yang berubah.
 class AppTheme {

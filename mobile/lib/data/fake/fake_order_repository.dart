@@ -10,7 +10,7 @@ import 'seed_data.dart';
 ///
 /// Dipakai supaya seluruh antarmuka bisa dibangun dan diuji sebelum pilihan
 /// stack backend dikunci. Setiap operasi diberi jeda kecil agar layar
-/// benar-benar melewati keadaan memuat — bug "lupa menangani loading" jadi
+/// benar-benar melewati keadaan memuat, bug "lupa menangani loading" jadi
 /// ketahuan sekarang, bukan nanti saat server asli dipasang.
 class FakeOrderRepository implements OrderRepository {
   FakeOrderRepository({List<Order>? orderAwal})
@@ -107,7 +107,7 @@ class FakeOrderRepository implements OrderRepository {
       klienId: klienId,
       namaKlien: _namaKlien(klienId),
       serviceType: serviceType,
-      // Jalur A melewati dua status pertama — harga sudah pasti sejak awal.
+      // Jalur A melewati dua status pertama, harga sudah pasti sejak awal.
       status: OrderStatus.menungguPembayaran,
       dibuatPada: DateTime.now(),
       deskripsi: deskripsi,

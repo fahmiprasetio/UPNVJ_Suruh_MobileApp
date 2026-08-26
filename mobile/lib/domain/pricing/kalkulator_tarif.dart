@@ -6,7 +6,7 @@ import '../../core/config/tarif_config.dart';
 ///
 /// Harga Jalur A ditampilkan terurai, bukan sebagai satu angka gelap. Klien
 /// yang bisa melihat "tarif dasar sekian, jarak sekian" tidak perlu bertanya
-/// ke admin — dan itulah gunanya kalkulator harga otomatis.
+/// ke admin, dan itulah gunanya kalkulator harga otomatis.
 @immutable
 class RincianTarif {
   const RincianTarif({required this.label, required this.nominal});
@@ -27,7 +27,7 @@ class HasilTarif {
 ///
 /// Fungsi murni tanpa ketergantungan ke Flutter maupun jaringan, supaya bisa
 /// diuji langsung dan dipindahkan ke backend apa adanya nanti. Semua angkanya
-/// datang dari [TarifConfig] — jangan pernah menulis angka tarif di layar.
+/// datang dari [TarifConfig], jangan pernah menulis angka tarif di layar.
 class KalkulatorTarif {
   const KalkulatorTarif._();
 
@@ -35,7 +35,7 @@ class KalkulatorTarif {
   ///
   /// [jarakKm] diisi sendiri oleh klien sebagai perkiraan. Ini konsekuensi dari
   /// keputusan memakai alamat teks bebas, bukan pin peta (rencana capstone
-  /// bagian 14.8) — tanpa peta, sistem tidak punya cara menghitung jarak
+  /// bagian 14.8), tanpa peta, sistem tidak punya cara menghitung jarak
   /// sendiri. Selisih kecil diselesaikan runner dan klien di lapangan.
   static HasilTarif anterJemput({required double jarakKm}) {
     final jarakDipakai = jarakKm.clamp(

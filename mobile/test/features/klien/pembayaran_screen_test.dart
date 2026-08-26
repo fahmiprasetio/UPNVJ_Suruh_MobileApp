@@ -92,7 +92,7 @@ void main() {
     await tester.tap(find.text('Lihat Order'));
     await tester.pumpAndSettle();
 
-    // Order tidak lagi menunggu pembayaran — sudah disiarkan ke runner.
+    // Order tidak lagi menunggu pembayaran, sudah disiarkan ke runner.
     expect(
       find.text('Ordermu sedang disiarkan ke runner yang tersedia.'),
       findsOneWidget,
@@ -106,7 +106,7 @@ void main() {
     await bukaPembayaran(tester);
 
     // Key QR mengikuti id transaksi, jadi key yang sama berarti transaksi
-    // yang sama — bukan QR baru.
+    // yang sama, bukan QR baru.
     final qrPertama = tester.widget<QrImageView>(find.byType(QrImageView)).key;
 
     // pageBack() mencari tooltip berbahasa Inggris; aplikasi ini locale id_ID.

@@ -43,7 +43,7 @@ class PengalihAkun extends ConsumerWidget {
           children: [
             const SizedBox(height: AppTheme.spasiSedang),
             Text(
-              'ALAT PENGUJI — GANTI AKUN',
+              'ALAT PENGUJI: GANTI AKUN',
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 color: Theme.of(context).colorScheme.error,
                 fontWeight: FontWeight.w700,

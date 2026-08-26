@@ -9,7 +9,7 @@ import '../enums.dart';
 /// digambar, batas waktu, dan status yang berubah sendiri di sisi gateway.
 ///
 /// Klien tidak pernah menentukan [status]. Yang boleh mengubahnya cuma
-/// gateway — di produksi lewat webhook ke server, dan itulah alasan integrasi
+/// gateway, di produksi lewat webhook ke server, dan itulah alasan integrasi
 /// sungguhan tidak bisa hidup di dalam aplikasi saja.
 @immutable
 class TransaksiPembayaran {
@@ -33,7 +33,7 @@ class TransaksiPembayaran {
   /// Isi mentah kode QR, digambar apa adanya oleh aplikasi.
   ///
   /// Di produksi ini adalah string QRIS resmi dari gateway. Aplikasi tidak
-  /// pernah menyusunnya sendiri — hanya menggambar apa yang diberikan.
+  /// pernah menyusunnya sendiri, hanya menggambar apa yang diberikan.
   final String qrisPayload;
 
   final DateTime dibuatPada;

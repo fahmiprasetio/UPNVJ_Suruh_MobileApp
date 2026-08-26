@@ -12,7 +12,7 @@ import 'widgets/panel_simulator.dart';
 
 /// Layar pembayaran QRIS.
 ///
-/// Klien tidak punya cara apa pun untuk menyatakan dirinya sudah membayar —
+/// Klien tidak punya cara apa pun untuk menyatakan dirinya sudah membayar,
 /// tidak ada tombol "saya sudah transfer", tidak ada unggah bukti. Tangkapan
 /// layar bukan bukti yang sah (rencana capstone bagian 6); satu-satunya yang
 /// boleh mengubah status adalah kabar dari gateway.

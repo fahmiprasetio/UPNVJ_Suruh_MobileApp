@@ -6,8 +6,8 @@ import '../models/order.dart';
 /// Seluruh UI bicara ke antarmuka ini, tidak pernah langsung ke server. Selama
 /// pilihan stack backend belum dikunci (rencana capstone bagian 14.4),
 /// implementasinya adalah data palsu di memori. Ketika stack dipilih, cukup
-/// tulis satu implementasi baru — `ApiOrderRepository` untuk .NET atau
-/// `SupabaseOrderRepository` — dan tukar di provider. Tidak ada layar yang
+/// tulis satu implementasi baru, `ApiOrderRepository` untuk .NET atau
+/// `SupabaseOrderRepository`, dan tukar di provider. Tidak ada layar yang
 /// perlu diubah.
 abstract interface class OrderRepository {
   /// Order milik satu klien, terbaru di atas.
@@ -50,7 +50,7 @@ abstract interface class OrderRepository {
   /// Runner menekan TERIMA.
   ///
   /// Mengembalikan `true` kalau runner ini berhasil mendapat slot, `false`
-  /// kalau kuota sudah keburu penuh diambil runner lain. Inti teknis proyek —
+  /// kalau kuota sudah keburu penuh diambil runner lain. Inti teknis proyek,
   /// implementasi sesungguhnya harus atomik di level basis data, bukan cuma di
   /// tampilan (bagian 14.5).
   Future<bool> terimaOrder({required String orderId, required String runnerId});
@@ -61,7 +61,7 @@ abstract interface class OrderRepository {
   /// memegangnya. Pemeriksaan itu tempatnya di sini, bukan di layar: tombol
   /// yang disembunyikan tidak menghentikan siapa pun yang memanggil langsung.
   ///
-  /// Foto bukti wajib ada — itu yang membedakan pekerjaan selesai dari
+  /// Foto bukti wajib ada, itu yang membedakan pekerjaan selesai dari
   /// pengakuan selesai.
   Future<Order> selesaikanOrder({
     required String orderId,

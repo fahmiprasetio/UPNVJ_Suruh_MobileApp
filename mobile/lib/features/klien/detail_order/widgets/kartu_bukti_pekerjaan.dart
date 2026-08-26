@@ -18,7 +18,7 @@ class KartuBuktiPekerjaan extends StatelessWidget {
   ///
   /// Selama penyimpanan foto belum diputuskan (rencana capstone bagian 14.4),
   /// yang tersimpan adalah tautan tiruan berskema `fake://`. Memaksa
-  /// menggambarnya cuma menghasilkan kotak gagal muat tanpa keterangan —
+  /// menggambarnya cuma menghasilkan kotak gagal muat tanpa keterangan,
   /// lebih jujur mengatakan kenapa.
   static bool bisaDigambar(String url) =>
       url.startsWith('http://') || url.startsWith('https://');
@@ -60,7 +60,7 @@ class KartuBuktiPekerjaan extends StatelessWidget {
                     : const _FotoBelumBisaDilihat(
                         pesan:
                             'Foto bukti sudah dikirim runner, tapi belum bisa '
-                            'ditampilkan — penyimpanan foto belum terpasang.',
+                            'ditampilkan, penyimpanan foto belum terpasang.',
                       ),
               ),
             ],

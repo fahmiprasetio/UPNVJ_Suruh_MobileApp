@@ -8,7 +8,7 @@ import '../../dev/pengalih_akun.dart';
 import 'widgets/kartu_order_runner.dart';
 import 'widgets/lembar_selesaikan_order.dart';
 
-/// Order yang dipegang runner — yang sedang dikerjakan dan yang sudah kelar.
+/// Order yang dipegang runner, yang sedang dikerjakan dan yang sudah kelar.
 ///
 /// Sebelum layar ini ada, order yang sudah diterima runner tidak punya
 /// kelanjutan sama sekali: statusnya "Dikerjakan" selamanya karena tidak ada

@@ -14,13 +14,13 @@ import '../models/transaksi_pembayaran.dart';
 /// tidak boleh ada di dalam aplikasi, dan langkah 3 datang sebagai webhook
 /// yang harus ada alamatnya. Karena backend UPNVJ Suruh belum diputuskan
 /// (.NET atau Supabase, rencana capstone bagian 14.4), implementasi yang hidup
-/// sekarang adalah tiruan. Yang ditiru cuma pengirim konfirmasinya — bentuk
+/// sekarang adalah tiruan. Yang ditiru cuma pengirim konfirmasinya, bentuk
 /// alurnya sudah yang sebenarnya.
 abstract interface class PaymentGateway {
   /// Membuat transaksi baru untuk sebuah order.
   ///
   /// Kalau order itu sudah punya transaksi yang masih menunggu, transaksi lama
-  /// yang dikembalikan — bukan bikin QR baru tiap layar dibuka.
+  /// yang dikembalikan, bukan bikin QR baru tiap layar dibuka.
   Future<TransaksiPembayaran> buatTransaksi({
     required String orderId,
     required int jumlah,

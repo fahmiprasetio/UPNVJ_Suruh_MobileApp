@@ -55,7 +55,7 @@ void main() {
     await tester.pump();
 
     expect(
-      find.text('Bersih-Bersih Kos belum dibuat — menyusul.'),
+      find.text('Bersih-Bersih Kos belum dibuat, menyusul.'),
       findsOneWidget,
     );
   });

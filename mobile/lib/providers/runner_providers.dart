@@ -8,7 +8,7 @@ import 'repository_providers.dart';
 /// Order yang sudah diambil runner ini sengaja dibuang dari daftar. Pada order
 /// multi-runner (pindah kos butuh 3 orang) kuotanya bisa saja masih terbuka,
 /// tapi menawarkan tombol TERIMA untuk order yang sudah dipegang sendiri cuma
-/// mengundang salah tekan — dan repository memang akan menolaknya.
+/// mengundang salah tekan, dan repository memang akan menolaknya.
 final orderTersiarProvider = StreamProvider<List<Order>>((ref) {
   final user = ref.watch(userAktifProvider).value;
   if (user == null) return Stream.value(const <Order>[]);
@@ -23,7 +23,7 @@ final orderTersiarProvider = StreamProvider<List<Order>>((ref) {
 
 /// Order yang sedang dipegang runner yang masuk.
 ///
-/// Belum punya layar sendiri — "Order Saya" sisi runner adalah langkah
+/// Belum punya layar sendiri, "Order Saya" sisi runner adalah langkah
 /// berikutnya (rencana capstone bagian 15.9). Untuk sekarang dipakai layar
 /// Order Masuk sebagai penanda berapa order yang sedang dipegang.
 final orderRunnerProvider = StreamProvider<List<Order>>((ref) {

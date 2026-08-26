@@ -18,7 +18,7 @@ final paymentGatewayProvider = Provider<PaymentGateway>((ref) {
 /// Tombol simulator, hanya ada selama gateway-nya masih tiruan.
 ///
 /// Mengembalikan `null` begitu gateway sungguhan dipasang, sehingga panel
-/// simulator di layar pembayaran hilang dengan sendirinya — tidak ada risiko
+/// simulator di layar pembayaran hilang dengan sendirinya, tidak ada risiko
 /// alat penguji ikut terbawa ke tangan pengguna.
 final simulatorPembayaranProvider = Provider<void Function(String)?>((ref) {
   final gateway = ref.watch(paymentGatewayProvider);
@@ -31,7 +31,7 @@ final simulatorPembayaranProvider = Provider<void Function(String)?>((ref) {
 ///
 /// Perhatikan siapa yang memajukan order: bukan layar, bukan klien, tapi kabar
 /// dari gateway. Di produksi langkah ini pindah ke server yang menerima
-/// webhook — aplikasi cuma ikut membaca hasilnya.
+/// webhook, aplikasi cuma ikut membaca hasilnya.
 final transaksiOrderProvider =
     StreamProvider.family<TransaksiPembayaran, String>((ref, orderId) async* {
       final orderRepo = ref.watch(orderRepositoryProvider);

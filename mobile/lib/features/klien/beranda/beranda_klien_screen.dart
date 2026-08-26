@@ -10,11 +10,11 @@ import '../../../providers/repository_providers.dart';
 import '../../dev/pengalih_akun.dart';
 import 'widgets/kartu_layanan.dart';
 
-/// Beranda klien — layar pertama, dua pintu.
+/// Beranda klien, layar pertama, dua pintu.
 ///
 /// Enam layanan berkatalog di petak atas; permintaan bebas di pintu bawah.
 /// Pembagian ini bukan sekadar tata letak: pintu atas menuju Jalur A (harga
-/// langsung ketahuan), pintu bawah menuju Jalur B (harga lewat penawaran) —
+/// langsung ketahuan), pintu bawah menuju Jalur B (harga lewat penawaran),
 /// rencana capstone bagian 4.
 class BerandaKlienScreen extends ConsumerWidget {
   const BerandaKlienScreen({super.key});
@@ -103,7 +103,7 @@ class BerandaKlienScreen extends ConsumerWidget {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        SnackBar(content: Text('$namaLayar belum dibuat — menyusul.')),
+        SnackBar(content: Text('$namaLayar belum dibuat, menyusul.')),
       );
   }
 }

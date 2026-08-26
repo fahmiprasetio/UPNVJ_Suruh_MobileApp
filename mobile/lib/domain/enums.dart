@@ -5,7 +5,7 @@
 /// tabel pemetaan.
 library;
 
-/// Peran melekat pada pekerjaan, bukan pada orang — satu user boleh punya
+/// Peran melekat pada pekerjaan, bukan pada orang, satu user boleh punya
 /// lebih dari satu peran (lihat rencana capstone bagian 14.2).
 enum UserRole {
   klien,
@@ -21,10 +21,10 @@ enum UserRole {
 
 /// Dua jalur layanan dengan sifat operasi yang berbeda (bagian 3).
 enum OrderTrack {
-  /// Cepat dan terkatalogkan — harga dihitung otomatis dari isian form.
+  /// Cepat dan terkatalogkan, harga dihitung otomatis dari isian form.
   jalurA,
 
-  /// Terjadwal dan lewat penawaran — harga ditentukan admin.
+  /// Terjadwal dan lewat penawaran, harga ditentukan admin.
   jalurB,
 }
 

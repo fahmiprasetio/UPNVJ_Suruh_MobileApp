@@ -220,6 +220,6 @@ class _BilahTindakan extends StatelessWidget {
     }
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('$label belum dibuat — menyusul.')));
+      ..showSnackBar(SnackBar(content: Text('$label belum dibuat, menyusul.')));
   }
 }

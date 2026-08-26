@@ -7,7 +7,7 @@ import 'payment.dart';
 
 /// Satu order, dari permintaan sampai selesai.
 ///
-/// Harga disimpan sebagai [int] rupiah penuh — tidak ada sen di rupiah, dan
+/// Harga disimpan sebagai [int] rupiah penuh, tidak ada sen di rupiah, dan
 /// `double` untuk uang adalah sumber galat pembulatan.
 @immutable
 class Order {

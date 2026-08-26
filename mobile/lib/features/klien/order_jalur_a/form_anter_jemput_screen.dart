@@ -16,7 +16,7 @@ import 'widgets/ringkasan_harga.dart';
 /// Form Jalur A untuk Anter Jemput.
 ///
 /// Ciri Jalur A: harga sudah pasti sebelum order dibuat, jadi klien melihat
-/// totalnya berubah langsung sambil mengisi — tidak ada fase menunggu
+/// totalnya berubah langsung sambil mengisi, tidak ada fase menunggu
 /// penawaran (rencana capstone bagian 3).
 class FormAnterJemputScreen extends ConsumerStatefulWidget {
   const FormAnterJemputScreen({super.key});
@@ -44,7 +44,7 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
     super.dispose();
   }
 
-  /// `null` selama jarak belum diisi dengan angka yang masuk akal — harga
+  /// `null` selama jarak belum diisi dengan angka yang masuk akal, harga
   /// memang belum bisa dihitung, dan menampilkan Rp 0 akan menyesatkan.
   HasilTarif? get _hasilTarif {
     final jarak = _bacaJarak(_jarakController.text);
@@ -109,7 +109,7 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
               ),
               const SizedBox(height: AppTheme.spasiKecil),
               Text(
-                'Perkiraan saja — runner dan kamu bisa sesuaikan di lapangan '
+                'Perkiraan saja, runner dan kamu bisa sesuaikan di lapangan '
                 'kalau meleset jauh.',
                 style: Theme.of(
                   context,
@@ -202,7 +202,7 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
     if (jarak == null) return 'Isi dengan angka, misalnya 2,5';
     if (jarak > TarifConfig.anjemJarakMaksimalKm) {
       return 'Di atas ${TarifConfig.anjemJarakMaksimalKm.round()} km belum '
-          'dilayani — pakai Permintaan Lain';
+          'dilayani, pakai Permintaan Lain';
     }
     return null;
   }

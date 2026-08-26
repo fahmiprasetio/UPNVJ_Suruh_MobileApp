@@ -4,7 +4,7 @@ import '../enums.dart';
 
 /// Pesan di dalam ruang chat sebuah order.
 ///
-/// Chat tidak pernah berdiri sendiri — selalu menempel pada satu order
+/// Chat tidak pernah berdiri sendiri, selalu menempel pada satu order
 /// (bagian 4, "Prinsip inti").
 @immutable
 class OrderMessage {

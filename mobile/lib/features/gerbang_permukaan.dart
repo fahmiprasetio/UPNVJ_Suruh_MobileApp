@@ -11,7 +11,7 @@ import 'runner/beranda_runner_screen.dart';
 ///
 /// Klien dan runner tinggal di satu aplikasi; yang membedakan bukan aplikasi
 /// yang dipasang, melainkan peran akunnya (rencana capstone bagian 14.1).
-/// Admin tidak punya permukaan mobile sama sekali — pekerjaannya adalah
+/// Admin tidak punya permukaan mobile sama sekali, pekerjaannya adalah
 /// pekerjaan tabel dan angka yang tempatnya di dashboard web (bagian 14.2).
 ///
 /// Akun yang memegang peran klien sekaligus runner untuk sementara dibuka

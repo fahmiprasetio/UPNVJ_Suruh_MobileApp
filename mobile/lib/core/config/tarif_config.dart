@@ -8,7 +8,7 @@
 ///   - Jastip: fee tetap atau persentase nilai belanja?
 ///
 /// Begitu mitra menjawab, cukup ubah angka (atau bentuk rumusnya) di file ini
-/// saja — tidak ada harga yang boleh ditulis tersebar di layar mana pun.
+/// saja, tidak ada harga yang boleh ditulis tersebar di layar mana pun.
 library;
 
 class TarifConfig {

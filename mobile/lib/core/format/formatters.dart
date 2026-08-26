@@ -11,7 +11,7 @@ final DateFormat _jam = DateFormat('HH:mm', 'id_ID');
 
 /// `30000` -> `Rp 30.000`. Nilai `null` ditampilkan sebagai tanda hubung
 /// karena harga Jalur B memang belum ada sebelum penawaran disepakati.
-String formatRupiah(int? nilai) => nilai == null ? '—' : _rupiah.format(nilai);
+String formatRupiah(int? nilai) => nilai == null ? '-' : _rupiah.format(nilai);
 
 String formatTanggalJam(DateTime waktu) => _tanggalJam.format(waktu.toLocal());
 

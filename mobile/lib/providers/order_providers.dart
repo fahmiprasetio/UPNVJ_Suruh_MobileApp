@@ -12,7 +12,7 @@ final orderKlienProvider = StreamProvider<List<Order>>((ref) {
 
 /// Satu order yang diamati terus-menerus.
 ///
-/// Mengembalikan `null` kalau ordernya tidak ada — layar detail memakai ini
+/// Mengembalikan `null` kalau ordernya tidak ada, layar detail memakai ini
 /// untuk membedakan "sedang dimuat" dari "memang tidak ada".
 final orderProvider = StreamProvider.family<Order?, String>((ref, orderId) {
   return ref.watch(orderRepositoryProvider).watchOrder(orderId);

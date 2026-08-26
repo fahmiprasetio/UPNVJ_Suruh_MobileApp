@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../enums.dart';
 
-/// Pengguna aplikasi. Satu orang boleh memegang beberapa peran sekaligus —
+/// Pengguna aplikasi. Satu orang boleh memegang beberapa peran sekaligus,
 /// karena itu [roles] adalah himpunan, bukan satu nilai (bagian 14.2).
 @immutable
 class AppUser {

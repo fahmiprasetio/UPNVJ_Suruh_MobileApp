@@ -8,8 +8,8 @@ import '../../../../domain/service_catalog.dart';
 /// Satu order yang sedang disiarkan, dilihat dari sisi runner.
 ///
 /// Isinya berbeda dari kartu order milik klien: runner butuh tahu apakah
-/// pekerjaan ini layak diambil sekarang — jenis layanan, ke mana, dan berapa
-/// nilainya — bukan sejauh mana ordernya sudah berjalan.
+/// pekerjaan ini layak diambil sekarang, jenis layanan, ke mana, dan berapa
+/// nilainya, bukan sejauh mana ordernya sudah berjalan.
 class KartuOrderSiaran extends StatelessWidget {
   const KartuOrderSiaran({
     super.key,

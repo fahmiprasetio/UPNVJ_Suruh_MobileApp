@@ -19,7 +19,7 @@ class KartuOrderRunner extends StatelessWidget {
 
   final Order order;
 
-  /// `null` untuk order yang sudah selesai — tidak ada lagi yang bisa
+  /// `null` untuk order yang sudah selesai, tidak ada lagi yang bisa
   /// dilakukan runner terhadapnya.
   final VoidCallback? onSelesaikan;
 

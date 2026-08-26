@@ -137,7 +137,7 @@ void main() {
       fotoBuktiUrl: 'fake://bukti/o-uji.jpg',
     );
 
-    // Tetap terdaftar sebagai order runner — riwayatnya tidak hilang — tapi
+    // Tetap terdaftar sebagai order runner, riwayatnya tidak hilang, tapi
     // tidak lagi terhitung sebagai pekerjaan berjalan.
     final punyaRunner = await repo.watchOrderRunner('u-runner-1').first;
     expect(punyaRunner, hasLength(1));

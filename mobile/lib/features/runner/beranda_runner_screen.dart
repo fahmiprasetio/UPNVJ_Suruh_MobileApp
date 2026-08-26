@@ -10,7 +10,7 @@ import 'order_saya/order_saya_runner_screen.dart';
 ///
 /// Order Masuk dibuka untuk mencari pekerjaan, Order Saya dibuka untuk
 /// menyelesaikannya. Keduanya dipasang di [IndexedStack] supaya berpindah tab
-/// tidak membuang keadaan layar — daftar tidak dimuat ulang dari awal setiap
+/// tidak membuang keadaan layar, daftar tidak dimuat ulang dari awal setiap
 /// kali runner mengintip tab sebelah.
 class BerandaRunnerScreen extends ConsumerStatefulWidget {
   const BerandaRunnerScreen({super.key});
@@ -44,7 +44,7 @@ class _BerandaRunnerScreenState extends ConsumerState<BerandaRunnerScreen> {
           ),
           NavigationDestination(
             // Pekerjaan yang belum kelar tidak boleh cuma diingat runner
-            // sendiri — angkanya menempel di tab sampai ordernya ditutup.
+            // sendiri, angkanya menempel di tab sampai ordernya ditutup.
             icon: Badge.count(
               count: jumlahAktif,
               isLabelVisible: jumlahAktif > 0,

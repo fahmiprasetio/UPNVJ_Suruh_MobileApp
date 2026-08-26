@@ -5,7 +5,7 @@ import '../../domain/models/order.dart';
 /// Data contoh untuk pengembangan antarmuka.
 ///
 /// Semua isinya karangan dan hanya hidup di memori. Data ini hilang setiap kali
-/// aplikasi ditutup — memang begitu maksudnya, supaya tidak ada yang tergoda
+/// aplikasi ditutup, memang begitu maksudnya, supaya tidak ada yang tergoda
 /// memperlakukannya sebagai basis data.
 class SeedData {
   const SeedData._();
@@ -25,7 +25,7 @@ class SeedData {
     roles: {UserRole.runner},
   );
 
-  /// Founder memantau dashboard tapi tetap ambil order — dua peran sekaligus
+  /// Founder memantau dashboard tapi tetap ambil order, dua peran sekaligus
   /// (bagian 14.2).
   static const adminRunner = AppUser(
     id: 'u-admin-1',

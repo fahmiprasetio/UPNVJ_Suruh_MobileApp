@@ -26,7 +26,7 @@ class Rute {
 ///
 /// GoRouter menyimpan riwayat navigasi di dalam dirinya. Sebagai variabel
 /// global, satu instance itu hidup selama proses berjalan dan posisinya
-/// terbawa ke mana-mana — antar tes, dan nanti antar sesi login. Lewat
+/// terbawa ke mana-mana, antar tes, dan nanti antar sesi login. Lewat
 /// provider, setiap [ProviderScope] mendapat router bersih sendiri.
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
