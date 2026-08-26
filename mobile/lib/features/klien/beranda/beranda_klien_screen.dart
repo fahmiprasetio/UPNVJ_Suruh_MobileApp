@@ -93,6 +93,8 @@ class BerandaKlienScreen extends ConsumerWidget {
     switch (layanan.type) {
       case ServiceType.anterJemput:
         context.push(Rute.formAnterJemput);
+      case ServiceType.jastipBarang:
+        context.push(Rute.formJastipBarang);
       case _:
         _belumTersedia(context, layanan.nama);
     }

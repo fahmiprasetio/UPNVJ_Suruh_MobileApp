@@ -59,6 +59,39 @@ class KalkulatorTarif {
     );
   }
 
+  /// Jastip Barang: ongkos jasa titip + ongkos jarak.
+  ///
+  /// Harga barangnya sendiri TIDAK dihitung di sini. Berapa harga barang baru
+  /// diketahui setelah runner sampai di tempat, sementara sistem menuntut
+  /// pembayaran di depan. Bentrokan itu belum diputuskan mitra (rencana
+  /// capstone bagian 14.7a), jadi yang ditagih aplikasi untuk sekarang hanya
+  /// jasanya. Begitu mitra menjawab, rumus ini yang berubah, bukan layarnya.
+  ///
+  /// Batas jarak untuk sementara memakai batas anter jemput, karena mitra
+  /// belum memberi angka sendiri untuk jastip.
+  static HasilTarif jastipBarang({required double jarakKm}) {
+    final jarakDipakai = jarakKm.clamp(
+      TarifConfig.anjemJarakMinimalKm,
+      TarifConfig.anjemJarakMaksimalKm,
+    );
+    final ongkosJarak = (jarakDipakai * TarifConfig.jastipBarangTarifPerKm)
+        .round();
+
+    return HasilTarif(
+      rincian: [
+        const RincianTarif(
+          label: 'Ongkos jasa titip',
+          nominal: TarifConfig.jastipBarangFee,
+        ),
+        RincianTarif(
+          label: 'Jarak ${_formatJarak(jarakDipakai)} km',
+          nominal: ongkosJarak,
+        ),
+      ],
+      total: TarifConfig.jastipBarangFee + ongkosJarak,
+    );
+  }
+
   static String _formatJarak(double jarak) =>
       jarak == jarak.roundToDouble()
       ? jarak.toStringAsFixed(0)

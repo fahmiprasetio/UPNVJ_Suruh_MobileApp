@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/gerbang_permukaan.dart';
 import '../../features/klien/detail_order/detail_order_screen.dart';
 import '../../features/klien/order_jalur_a/form_anter_jemput_screen.dart';
+import '../../features/klien/order_jalur_a/form_jastip_barang_screen.dart';
 import '../../features/klien/pembayaran/pembayaran_screen.dart';
 import '../../features/klien/riwayat/riwayat_order_screen.dart';
 
@@ -17,6 +18,7 @@ class Rute {
   static const String detailOrderPola = '/order/:orderId';
   static const String bayarPola = '/order/:orderId/bayar';
   static const String formAnterJemput = '/buat/anter-jemput';
+  static const String formJastipBarang = '/buat/jastip-barang';
 
   static String detailOrder(String orderId) => '/order/$orderId';
   static String bayar(String orderId) => '/order/$orderId/bayar';
@@ -55,6 +57,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Rute.formAnterJemput,
         builder: (context, state) => const FormAnterJemputScreen(),
+      ),
+      GoRoute(
+        path: Rute.formJastipBarang,
+        builder: (context, state) => const FormJastipBarangScreen(),
       ),
     ],
   );
