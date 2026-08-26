@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../features/klien/beranda/beranda_klien_screen.dart';
+import '../../features/gerbang_permukaan.dart';
 import '../../features/klien/detail_order/detail_order_screen.dart';
 import '../../features/klien/order_jalur_a/form_anter_jemput_screen.dart';
 import '../../features/klien/pembayaran/pembayaran_screen.dart';
@@ -34,7 +34,9 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: Rute.beranda,
-        builder: (context, state) => const BerandaKlienScreen(),
+        // Bukan langsung beranda klien: permukaan yang terbuka ditentukan
+        // peran akun yang masuk (bagian 14.1).
+        builder: (context, state) => const GerbangPermukaan(),
       ),
       GoRoute(
         path: Rute.riwayat,

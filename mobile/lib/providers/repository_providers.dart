@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/fake/fake_auth_repository.dart';
 import '../data/fake/fake_order_repository.dart';
+import '../data/fake/seed_data.dart';
 import '../domain/models/app_user.dart';
 import '../domain/repositories/auth_repository.dart';
 import '../domain/repositories/order_repository.dart';
@@ -37,4 +38,14 @@ final userWajibProvider = Provider<AppUser>((ref) {
     throw StateError('Layar ini butuh user yang sudah masuk');
   }
   return user;
+});
+
+/// Daftar akun contoh untuk alat penguji ganti akun.
+///
+/// Mengembalikan `null` begitu autentikasi sungguhan dipasang, sehingga tombol
+/// ganti akun hilang sendiri — alat penguji tidak ikut terbawa ke tangan
+/// pengguna. Pola yang sama dipakai panel simulator pembayaran.
+final akunUjiProvider = Provider<List<AppUser>?>((ref) {
+  final repo = ref.watch(authRepositoryProvider);
+  return repo is FakeAuthRepository ? SeedData.semuaUser : null;
 });
