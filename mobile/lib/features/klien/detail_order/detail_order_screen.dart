@@ -10,6 +10,7 @@ import '../../../domain/models/order.dart';
 import '../../../domain/service_catalog.dart';
 import '../../../providers/order_providers.dart';
 import '../widgets/lencana_status.dart';
+import 'widgets/kartu_bukti_pekerjaan.dart';
 import 'widgets/linimasa_status.dart';
 
 /// Detail satu order: status, tahapan, dan rinciannya.
@@ -77,6 +78,18 @@ class _Isi extends StatelessWidget {
             child: LinimasaStatus(order: order),
           ),
         ),
+        // Hasil pekerjaan ditaruh di atas rincian order: begitu order selesai,
+        // yang pertama dicari klien adalah buktinya, bukan lagi alamat yang
+        // ia sendiri yang menulis.
+        if (order.fotoBuktiUrl != null || order.catatanSerahTerima != null) ...[
+          const SizedBox(height: AppTheme.spasiBesar),
+          Text(
+            'Hasil pekerjaan',
+            style: teks.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: AppTheme.spasiKecil),
+          KartuBuktiPekerjaan(order: order),
+        ],
         const SizedBox(height: AppTheme.spasiBesar),
         Text(
           'Rincian',

@@ -97,6 +97,7 @@ class SeedData {
           const Duration(days: 2, hours: -1),
         ),
         fotoBuktiUrl: 'fake://bukti/o-4.jpg',
+        catatanSerahTerima: 'Paket dititipkan ke penjaga kos, sudah difoto.',
       ),
     ];
   }
