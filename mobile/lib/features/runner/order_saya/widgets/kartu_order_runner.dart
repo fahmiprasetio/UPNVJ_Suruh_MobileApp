@@ -15,6 +15,7 @@ class KartuOrderRunner extends StatelessWidget {
     super.key,
     required this.order,
     this.onSelesaikan,
+    this.onChat,
   });
 
   final Order order;
@@ -22,6 +23,10 @@ class KartuOrderRunner extends StatelessWidget {
   /// `null` untuk order yang sudah selesai, tidak ada lagi yang bisa
   /// dilakukan runner terhadapnya.
   final VoidCallback? onSelesaikan;
+
+  /// Pintu ke ruang chat order. Tetap tersedia untuk order yang sudah selesai
+  /// karena percakapannya masih boleh dibaca, cuma tidak bisa dibalas.
+  final VoidCallback? onChat;
 
   @override
   Widget build(BuildContext context) {
@@ -94,6 +99,21 @@ class KartuOrderRunner extends StatelessWidget {
               )
             else
               _RingkasanPenyelesaian(order: order),
+            if (onChat != null) ...[
+              const SizedBox(height: AppTheme.spasiKecil),
+              OutlinedButton.icon(
+                onPressed: onChat,
+                icon: const Icon(Icons.forum_outlined),
+                label: Text(
+                  order.messages.isEmpty
+                      ? 'Chat Klien'
+                      : 'Chat Klien (${order.messages.length})',
+                ),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(46),
+                ),
+              ),
+            ],
           ],
         ),
       ),

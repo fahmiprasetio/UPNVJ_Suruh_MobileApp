@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/models/order.dart';
 import '../../../providers/runner_providers.dart';
@@ -91,6 +93,7 @@ class OrderSayaRunnerScreen extends ConsumerWidget {
             onSelesaikan: onSelesaikan == null
                 ? null
                 : () => onSelesaikan(order),
+            onChat: () => context.push(Rute.chatOrderRunner(order.id)),
           ),
         ),
       const SizedBox(height: AppTheme.spasiSedang),

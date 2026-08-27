@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/format/formatters.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../domain/enums.dart';
-import '../../../domain/models/order.dart';
-import '../../../domain/models/order_message.dart';
-import '../../../domain/service_catalog.dart';
-import '../../../providers/order_providers.dart';
-import '../../../providers/repository_providers.dart';
+import '../../core/format/formatters.dart';
+import '../../core/theme/app_theme.dart';
+import '../../domain/enums.dart';
+import '../../domain/models/order.dart';
+import '../../domain/models/order_message.dart';
+import '../../domain/service_catalog.dart';
+import '../../providers/order_providers.dart';
+import '../../providers/repository_providers.dart';
 
 /// Ruang chat yang menempel pada satu order.
 ///
@@ -17,10 +17,23 @@ import '../../../providers/repository_providers.dart';
 /// Itu keputusan desain, bukan kekurangan: chat bebas konteks adalah jalan
 /// pintas menuju WhatsApp versi lebih jelek, persis keadaan yang mau
 /// ditinggalkan mitra (rencana capstone bagian 4).
+///
+/// Satu layar ini dipakai semua permukaan. Yang membedakan klien, runner, dan
+/// nanti admin cuma [pengirim]: siapa yang menulis, sisi mana gelembung
+/// pesannya berdiri, dan kalimat apa yang muncul saat percakapannya masih
+/// kosong. Menyalin layar ini per peran cuma akan membuat tiga ruang chat yang
+/// pelan-pelan berbeda perilaku.
 class ChatOrderScreen extends ConsumerStatefulWidget {
-  const ChatOrderScreen({super.key, required this.orderId});
+  const ChatOrderScreen({
+    super.key,
+    required this.orderId,
+    this.pengirim = MessageSender.klien,
+  });
 
   final String orderId;
+
+  /// Peran yang sedang membuka layar, dipakai sebagai penulis pesan baru.
+  final MessageSender pengirim;
 
   @override
   ConsumerState<ChatOrderScreen> createState() => _ChatOrderScreenState();
@@ -63,7 +76,13 @@ class _ChatOrderScreenState extends ConsumerState<ChatOrderScreen> {
             }
             return Column(
               children: [
-                Expanded(child: _DaftarPesan(order: order, scroll: _scrollController)),
+                Expanded(
+                  child: _DaftarPesan(
+                    order: order,
+                    scroll: _scrollController,
+                    pengirim: widget.pengirim,
+                  ),
+                ),
                 _KotakKirim(
                   controller: _pesanController,
                   aktif: order.status.isAktif,
@@ -88,9 +107,7 @@ class _ChatOrderScreenState extends ConsumerState<ChatOrderScreen> {
           .read(orderRepositoryProvider)
           .kirimPesan(
             orderId: order.id,
-            // Layar ini dibuka klien. Ketika permukaan admin dibuat, layar
-            // yang sama dipakai dengan pengirim yang berbeda.
-            pengirim: MessageSender.klien,
+            pengirim: widget.pengirim,
             isi: isi,
           );
     } catch (galat) {
@@ -148,46 +165,57 @@ class _JudulOrder extends StatelessWidget {
 }
 
 class _DaftarPesan extends StatelessWidget {
-  const _DaftarPesan({required this.order, required this.scroll});
+  const _DaftarPesan({
+    required this.order,
+    required this.scroll,
+    required this.pengirim,
+  });
 
   final Order order;
   final ScrollController scroll;
+  final MessageSender pengirim;
 
   @override
   Widget build(BuildContext context) {
     if (order.messages.isEmpty) {
-      return _ChatKosong(order: order);
+      return _ChatKosong(order: order, pengirim: pengirim);
     }
 
     return ListView.builder(
       controller: scroll,
       padding: const EdgeInsets.all(AppTheme.spasiSedang),
       itemCount: order.messages.length,
-      itemBuilder: (context, indeks) =>
-          _GelembungPesan(pesan: order.messages[indeks]),
+      itemBuilder: (context, indeks) => _GelembungPesan(
+        pesan: order.messages[indeks],
+        pembaca: pengirim,
+      ),
     );
   }
 }
 
 class _GelembungPesan extends StatelessWidget {
-  const _GelembungPesan({required this.pesan});
+  const _GelembungPesan({required this.pesan, required this.pembaca});
 
   final OrderMessage pesan;
+
+  /// Peran yang sedang membaca. Pesannya sendiri berdiri di kanan, pesan orang
+  /// lain di kiri lengkap dengan nama perannya.
+  final MessageSender pembaca;
 
   @override
   Widget build(BuildContext context) {
     final skema = Theme.of(context).colorScheme;
     final teks = Theme.of(context).textTheme;
-    final dariKlien = pesan.pengirim == MessageSender.klien;
+    final milikSendiri = pesan.pengirim == pembaca;
 
     return Align(
-      alignment: dariKlien ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: milikSendiri ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: AppTheme.spasiKecil),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         constraints: const BoxConstraints(maxWidth: 320),
         decoration: BoxDecoration(
-          color: dariKlien
+          color: milikSendiri
               ? skema.primaryContainer
               : skema.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(14),
@@ -195,7 +223,7 @@ class _GelembungPesan extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (!dariKlien)
+            if (!milikSendiri)
               Text(
                 pesan.pengirim.label,
                 style: teks.labelSmall?.copyWith(
@@ -206,7 +234,9 @@ class _GelembungPesan extends StatelessWidget {
             Text(
               pesan.isi,
               style: teks.bodyMedium?.copyWith(
-                color: dariKlien ? skema.onPrimaryContainer : skema.onSurface,
+                color: milikSendiri
+                    ? skema.onPrimaryContainer
+                    : skema.onSurface,
               ),
             ),
             const SizedBox(height: 2),
@@ -223,23 +253,33 @@ class _GelembungPesan extends StatelessWidget {
 
 /// Keadaan kosong yang menjelaskan gunanya, bukan sekadar layar putih.
 class _ChatKosong extends StatelessWidget {
-  const _ChatKosong({required this.order});
+  const _ChatKosong({required this.order, required this.pengirim});
 
   final Order order;
+  final MessageSender pengirim;
 
   @override
   Widget build(BuildContext context) {
     final skema = Theme.of(context).colorScheme;
     final teks = Theme.of(context).textTheme;
 
-    // Jalur B memang menunggu admin membaca dan bertanya, Jalur A biasanya
-    // tidak perlu percakapan sama sekali. Dua keadaan itu pantas dijelaskan
-    // dengan kalimat yang berbeda.
-    final keterangan = order.track == OrderTrack.jalurB
-        ? 'Tanyakan apa saja soal permintaanmu di sini. Admin juga akan '
-              'bertanya lewat ruang ini sebelum mengirim penawaran harga.'
-        : 'Kalau ada yang perlu disampaikan soal order ini, tulis di sini. '
-              'Percakapannya menempel pada order, jadi tidak tercecer.';
+    // Runner dan klien membuka ruang yang sama untuk urusan yang berbeda:
+    // runner mengabari, klien bertanya. Di sisi klien, Jalur B memang menunggu
+    // admin membaca dan bertanya, sedangkan Jalur A biasanya tidak perlu
+    // percakapan sama sekali. Tiga keadaan itu pantas dijelaskan dengan
+    // kalimat yang berbeda.
+    final keterangan = switch (pengirim) {
+      MessageSender.runner =>
+        'Kabari klien dari sini kalau ada yang perlu dipastikan atau kamu '
+            'terlambat. Percakapannya menempel pada order, jadi tidak perlu '
+            'minta nomor WhatsApp.',
+      _ when order.track == OrderTrack.jalurB =>
+        'Tanyakan apa saja soal permintaanmu di sini. Admin juga akan '
+            'bertanya lewat ruang ini sebelum mengirim penawaran harga.',
+      _ =>
+        'Kalau ada yang perlu disampaikan soal order ini, tulis di sini. '
+            'Percakapannya menempel pada order, jadi tidak tercecer.',
+    };
 
     return Center(
       child: Padding(

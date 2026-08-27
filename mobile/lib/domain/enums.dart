@@ -82,8 +82,11 @@ enum MessageSender {
   admin,
   runner;
 
+  /// Nama peran apa adanya. Dipakai untuk menamai pesan orang lain, jadi
+  /// tidak boleh berisi kata "Kamu": siapa "kamu" berbeda-beda menurut
+  /// permukaan yang sedang membaca percakapan.
   String get label => switch (this) {
-    MessageSender.klien => 'Kamu',
+    MessageSender.klien => 'Klien',
     MessageSender.admin => 'Admin',
     MessageSender.runner => 'Runner',
   };
