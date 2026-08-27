@@ -35,7 +35,18 @@ class SeedData {
     roles: {UserRole.admin, UserRole.runner},
   );
 
-  static const semuaUser = [klien, runner, adminRunner];
+  /// Mahasiswa yang mengambil order tapi juga memesan untuk keperluannya
+  /// sendiri. Contoh akun yang butuh tombol ganti mode (bagian 14.3), dan
+  /// menurut mitra justru bentuk yang paling umum di tim mereka.
+  static const klienRunner = AppUser(
+    id: 'u-klien-runner-1',
+    nama: 'Rangga Saputra',
+    noHp: '081234567893',
+    roles: {UserRole.klien, UserRole.runner},
+    alamat: 'Kos Cempaka, Jl. Pondok Labu Raya No. 30',
+  );
+
+  static const semuaUser = [klien, runner, klienRunner, adminRunner];
 
   static List<Order> orderAwal() {
     final sekarang = DateTime.now();

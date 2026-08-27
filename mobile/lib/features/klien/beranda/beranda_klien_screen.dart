@@ -8,6 +8,7 @@ import '../../../domain/enums.dart';
 import '../../../domain/service_catalog.dart';
 import '../../../providers/repository_providers.dart';
 import '../../dev/pengalih_akun.dart';
+import '../../peran/tombol_ganti_mode.dart';
 import 'widgets/kartu_layanan.dart';
 
 /// Beranda klien, layar pertama, dua pintu.
@@ -39,6 +40,7 @@ class BerandaKlienScreen extends ConsumerWidget {
             icon: const Icon(Icons.receipt_long_outlined),
             tooltip: 'Order Saya',
           ),
+          const TombolGantiMode(),
           const PengalihAkun(),
           IconButton(
             onPressed: () => _belumTersedia(context, 'Profil'),

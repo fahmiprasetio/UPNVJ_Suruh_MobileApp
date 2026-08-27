@@ -24,8 +24,33 @@ class AppUser {
   bool get isRunner => roles.contains(UserRole.runner);
   bool get isAdmin => roles.contains(UserRole.admin);
 
-  /// Akun yang merangkap dua peran butuh tombol ganti mode (bagian 14.3).
-  bool get bisaGantiMode => roles.length > 1;
+  /// Peran yang benar-benar punya permukaan di aplikasi ini.
+  ///
+  /// Admin sengaja tidak ikut: pekerjaannya pekerjaan tabel dan angka yang
+  /// tempatnya dashboard web (bagian 14.1), jadi peran admin tidak menambah
+  /// satu pun tampilan yang bisa dibuka di HP.
+  Set<UserRole> get peranMobile =>
+      roles.where((r) => r != UserRole.admin).toSet();
+
+  /// Akun yang merangkap dua permukaan butuh tombol ganti mode (bagian 14.3).
+  ///
+  /// Yang dihitung permukaannya, bukan jumlah perannya. Akun `[admin, runner]`
+  /// memang punya dua peran, tapi di aplikasi ini cuma punya satu tampilan,
+  /// dan tombol ganti mode yang tidak menuju ke mana-mana lebih membingungkan
+  /// daripada tidak ada tombol sama sekali.
+  bool get bisaGantiMode => peranMobile.length > 1;
+
+  /// Permukaan yang dibuka pertama kali.
+  ///
+  /// Klien didahulukan karena memesan adalah pintu utama aplikasi, sedangkan
+  /// runner yang mau bekerja cukup menekan satu tombol. Mengingat pilihan
+  /// terakhir pengguna butuh penyimpanan lokal, dan itu ikut menunggu
+  /// keputusan stack (bagian 14.4).
+  UserRole? get peranBawaan {
+    if (isKlien) return UserRole.klien;
+    if (isRunner) return UserRole.runner;
+    return null;
+  }
 
   AppUser copyWith({
     String? nama,

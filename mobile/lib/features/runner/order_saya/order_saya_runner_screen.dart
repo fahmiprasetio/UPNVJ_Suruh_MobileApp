@@ -7,6 +7,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../domain/models/order.dart';
 import '../../../providers/runner_providers.dart';
 import '../../dev/pengalih_akun.dart';
+import '../../peran/tombol_ganti_mode.dart';
 import 'widgets/kartu_order_runner.dart';
 import 'widgets/lembar_selesaikan_order.dart';
 
@@ -25,7 +26,7 @@ class OrderSayaRunnerScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Order Saya'),
-        actions: const [PengalihAkun()],
+        actions: const [TombolGantiMode(), PengalihAkun()],
       ),
       body: SafeArea(
         child: orders.when(

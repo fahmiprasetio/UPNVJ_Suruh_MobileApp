@@ -2,7 +2,7 @@
 
 Aplikasi mobile untuk UPNVJ Suruh, jasa serabutan mahasiswa di lingkungan UPN Veteran Jakarta. Klien memesan bantuan lewat aplikasi, sistem menyiarkan pekerjaannya ke para runner, dan runner pertama yang menerima langsung mengerjakannya. Semua percakapan, pembayaran, dan bukti pekerjaan tersimpan menempel pada ordernya masing-masing.
 
-Klien dan runner memakai satu aplikasi yang sama. Tampilan yang terbuka ditentukan peran akun yang masuk.
+Klien dan runner memakai satu aplikasi yang sama. Tampilan yang terbuka ditentukan peran yang sedang dipakai, dan satu akun boleh memegang keduanya sekaligus.
 
 ## Layanan
 
@@ -53,6 +53,8 @@ flutter test
 ```
 
 Untuk berpindah antara tampilan klien dan runner, pakai tombol berikon tabung uji di bilah judul, lalu pilih akun dengan peran yang diinginkan.
+
+Akun contoh Rangga Saputra memegang peran klien sekaligus runner. Akun seperti itu punya tombol ganti mode berikon panah bolak-balik di bilah judul, dan itu fitur sungguhan, bukan alat penguji: satu orang bisa memesan bantuan untuk keperluannya sendiri sekaligus mengambil order orang lain, tanpa perlu dua akun.
 
 Admin bekerja lewat dashboard web, bukan aplikasi ini, jadi penawaran Jalur B datang dari luar aplikasi. Selama dashboard itu belum ada, panel bertanda ALAT PENGUJI di halaman detail permintaan menggantikannya: isi harga, pilih perkiraan durasi, lalu tekan tombolnya untuk memunculkan penawaran seolah admin baru saja mengirimnya.
 

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/theme/app_theme.dart';
+import '../domain/enums.dart';
+import '../providers/peran_providers.dart';
 import '../providers/repository_providers.dart';
 import 'dev/pengalih_akun.dart';
 import 'klien/beranda/beranda_klien_screen.dart';
@@ -14,10 +16,10 @@ import 'runner/beranda_runner_screen.dart';
 /// Admin tidak punya permukaan mobile sama sekali, pekerjaannya adalah
 /// pekerjaan tabel dan angka yang tempatnya di dashboard web (bagian 14.2).
 ///
-/// Akun yang memegang peran klien sekaligus runner untuk sementara dibuka
-/// sebagai klien. Tombol ganti mode yang sebenarnya (bagian 14.3) menyusul
-/// bersama layar login, karena keduanya menyentuh persoalan yang sama: cara
-/// aplikasi tahu sedang melayani siapa.
+/// Akun yang memegang peran klien sekaligus runner dibuka sebagai klien, lalu
+/// bisa berpindah lewat tombol ganti mode (bagian 14.3). Yang menentukan
+/// permukaan bukan lagi daftar perannya, melainkan peran mana yang sedang
+/// dipakai, satu nilai yang disimpan di `peranAktifProvider`.
 class GerbangPermukaan extends ConsumerWidget {
   const GerbangPermukaan({super.key});
 
@@ -35,13 +37,17 @@ class GerbangPermukaan extends ConsumerWidget {
             pesan: 'Belum masuk. Layar login menyusul.',
           );
         }
-        if (user.isKlien) return const BerandaKlienScreen();
-        if (user.isRunner) return const BerandaRunnerScreen();
-        return const _PermukaanKosong(
-          pesan:
-              'Akun ini hanya punya peran admin. Pekerjaan admin dilakukan '
-              'lewat dashboard web, bukan aplikasi ini.',
-        );
+        return switch (ref.watch(peranAktifProvider)) {
+          UserRole.klien => const BerandaKlienScreen(),
+          UserRole.runner => const BerandaRunnerScreen(),
+          // Peran admin tidak punya permukaan mobile, dan akun yang cuma
+          // memegang admin tidak punya peran bawaan sama sekali.
+          _ => const _PermukaanKosong(
+            pesan:
+                'Akun ini hanya punya peran admin. Pekerjaan admin dilakukan '
+                'lewat dashboard web, bukan aplikasi ini.',
+          ),
+        };
       },
     );
   }
