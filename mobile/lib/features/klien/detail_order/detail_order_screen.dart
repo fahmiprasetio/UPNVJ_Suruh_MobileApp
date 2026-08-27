@@ -9,8 +9,11 @@ import '../../../domain/enums.dart';
 import '../../../domain/models/order.dart';
 import '../../../domain/service_catalog.dart';
 import '../../../providers/order_providers.dart';
+import '../../../providers/repository_providers.dart';
+import '../../dev/panel_penawaran_admin.dart';
 import '../widgets/lencana_status.dart';
 import 'widgets/kartu_bukti_pekerjaan.dart';
+import 'widgets/kartu_penawaran.dart';
 import 'widgets/linimasa_status.dart';
 
 /// Detail satu order: status, tahapan, dan rinciannya.
@@ -70,16 +73,21 @@ class _TombolChat extends StatelessWidget {
   }
 }
 
-class _Isi extends StatelessWidget {
+class _Isi extends ConsumerWidget {
   const _Isi({required this.order});
 
   final Order order;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final layanan = serviceInfoOf(order.serviceType);
     final teks = Theme.of(context).textTheme;
     final skema = Theme.of(context).colorScheme;
+    final penawaran = order.penawaranTerakhir;
+    final simulatorAdmin =
+        ref.watch(simulatorPenawaranProvider) &&
+        order.track == OrderTrack.jalurB &&
+        order.status == OrderStatus.permintaan;
 
     return ListView(
       padding: const EdgeInsets.all(AppTheme.spasiSedang),
@@ -109,6 +117,17 @@ class _Isi extends StatelessWidget {
             child: LinimasaStatus(order: order),
           ),
         ),
+        // Penawaran ditaruh persis di bawah linimasa, di atas segalanya yang
+        // lain: selama admin sudah mengirim harga, itulah satu-satunya hal
+        // yang sedang ditunggu klien.
+        if (penawaran != null) ...[
+          const SizedBox(height: AppTheme.spasiBesar),
+          KartuPenawaran(order: order, penawaran: penawaran),
+        ],
+        if (simulatorAdmin) ...[
+          const SizedBox(height: AppTheme.spasiBesar),
+          PanelPenawaranAdmin(order: order),
+        ],
         // Hasil pekerjaan ditaruh di atas rincian order: begitu order selesai,
         // yang pertama dicari klien adalah buktinya, bukan lagi alamat yang
         // ia sendiri yang menulis.
@@ -136,6 +155,13 @@ class _Isi extends StatelessWidget {
                   _Baris(label: 'Dijemput di', nilai: order.alamatJemput!),
                 if (order.alamatTujuan != null)
                   _Baris(label: 'Diantar ke', nilai: order.alamatTujuan!),
+                if (order.jadwalMulai != null)
+                  _Baris(
+                    label: order.status == OrderStatus.permintaan
+                        ? 'Waktu diminta'
+                        : 'Dikerjakan',
+                    nilai: formatJadwal(order.jadwalMulai!),
+                  ),
                 if (order.deskripsi != null)
                   _Baris(label: 'Catatan', nilai: order.deskripsi!),
                 if (order.jumlahRunnerDibutuhkan > 1)
@@ -207,13 +233,22 @@ class _BilahTindakan extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Penawaran yang menunggu jawaban adalah satu-satunya keadaan dengan lebih
+    // dari satu tindakan, jadi ia punya bilahnya sendiri.
+    if (order.penawaranMenunggu != null) {
+      return _BilahPenawaran(order: order);
+    }
+
     final (label, keterangan) = switch (order.status) {
       OrderStatus.menungguPembayaran => ('Bayar Sekarang', null),
       OrderStatus.permintaan => (
         null,
         'Admin sedang membaca permintaanmu. Penawaran harga menyusul.',
       ),
-      OrderStatus.menungguPersetujuanKlien => ('Lihat Penawaran', null),
+      OrderStatus.menungguPersetujuanKlien => (
+        null,
+        'Penawaran ini sudah kamu jawab.',
+      ),
       OrderStatus.mencariRunner => (
         null,
         'Ordermu sedang disiarkan ke runner yang tersedia.',
@@ -230,7 +265,7 @@ class _BilahTindakan extends StatelessWidget {
         padding: const EdgeInsets.all(AppTheme.spasiSedang),
         child: label != null
             ? FilledButton(
-                onPressed: () => _jalankan(context, label),
+                onPressed: () => context.push(Rute.bayar(order.id)),
                 child: Text(label),
               )
             : Text(
@@ -243,14 +278,211 @@ class _BilahTindakan extends StatelessWidget {
       ),
     );
   }
+}
 
-  void _jalankan(BuildContext context, String label) {
-    if (order.status == OrderStatus.menungguPembayaran) {
-      context.push(Rute.bayar(order.id));
-      return;
+/// Tiga jalan keluar dari sebuah penawaran: setuju, minta ditinjau ulang, atau
+/// tolak.
+///
+/// Ketiganya sengaja tampil sekaligus. Kalau nego disembunyikan di balik menu,
+/// klien yang merasa harganya kemahalan akan menekan tolak, dan order yang
+/// sebenarnya masih bisa jadi hilang begitu saja.
+class _BilahPenawaran extends ConsumerStatefulWidget {
+  const _BilahPenawaran({required this.order});
+
+  final Order order;
+
+  @override
+  ConsumerState<_BilahPenawaran> createState() => _BilahPenawaranState();
+}
+
+class _BilahPenawaranState extends ConsumerState<_BilahPenawaran> {
+  bool _sedangMengirim = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(AppTheme.spasiSedang),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FilledButton(
+              onPressed: _sedangMengirim ? null : _setuju,
+              child: _sedangMengirim
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Setuju & Bayar'),
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: _sedangMengirim ? null : _nego,
+                    child: const Text('Minta Ditinjau Ulang'),
+                  ),
+                ),
+                Expanded(
+                  child: TextButton(
+                    onPressed: _sedangMengirim ? null : _tolak,
+                    style: TextButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.error,
+                    ),
+                    child: const Text('Tolak'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _setuju() async {
+    final berhasil = await _jalankan(
+      () => ref.read(orderRepositoryProvider).setujuiPenawaran(widget.order.id),
+    );
+    if (!berhasil || !mounted) return;
+    // Setuju berarti ordernya sudah punya harga dan tinggal dibayar, jadi
+    // klien langsung diantar ke layar pembayaran, bukan disuruh mencari
+    // tombolnya sendiri.
+    context.push(Rute.bayar(widget.order.id));
+  }
+
+  Future<void> _tolak() async {
+    final yakin = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Tolak penawaran ini?'),
+        content: const Text(
+          'Ordermu akan dibatalkan. Kalau yang keberatan cuma harganya, '
+          'pilih Minta Ditinjau Ulang supaya admin bisa menghitung ulang.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Tolak & Batalkan'),
+          ),
+        ],
+      ),
+    );
+    if (yakin != true) return;
+
+    await _jalankan(
+      () => ref.read(orderRepositoryProvider).tolakPenawaran(widget.order.id),
+      pesanBerhasil: 'Penawaran ditolak, ordermu dibatalkan.',
+    );
+  }
+
+  Future<void> _nego() async {
+    final alasan = await showDialog<String>(
+      context: context,
+      builder: (context) => const _DialogNego(),
+    );
+    if (alasan == null) return;
+
+    await _jalankan(
+      () => ref
+          .read(orderRepositoryProvider)
+          .ajukanNego(orderId: widget.order.id, alasan: alasan),
+      pesanBerhasil:
+          'Alasanmu terkirim ke chat order. Admin akan menghitung ulang.',
+    );
+  }
+
+  Future<bool> _jalankan(
+    Future<Order> Function() tindakan, {
+    String? pesanBerhasil,
+  }) async {
+    setState(() => _sedangMengirim = true);
+    try {
+      await tindakan();
+    } catch (galat) {
+      if (!mounted) return false;
+      setState(() => _sedangMengirim = false);
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text('Gagal: $galat')));
+      return false;
     }
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('$label belum dibuat, menyusul.')));
+
+    if (!mounted) return false;
+    setState(() => _sedangMengirim = false);
+    if (pesanBerhasil != null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(pesanBerhasil)));
+    }
+    return true;
+  }
+}
+
+/// Nego menuntut alasan, bukan cuma tombol.
+///
+/// Admin tidak bisa menghitung ulang dari kata "kemahalan" saja, dan tanpa
+/// isian ini permintaan tinjau ulang akan berputar-putar lewat chat sebelum
+/// sampai ke angka baru.
+class _DialogNego extends StatefulWidget {
+  const _DialogNego();
+
+  @override
+  State<_DialogNego> createState() => _DialogNegoState();
+}
+
+class _DialogNegoState extends State<_DialogNego> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Minta ditinjau ulang'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Tulis apa yang membuatmu belum setuju. Alasannya masuk ke chat '
+            'ordermu supaya admin bisa langsung menjawab.',
+          ),
+          const SizedBox(height: AppTheme.spasiSedang),
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            maxLines: 3,
+            minLines: 2,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(
+              hintText: 'Barangnya ternyata lebih sedikit, cuma 2 koper.',
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Batal'),
+        ),
+        TextButton(
+          onPressed: _controller.text.trim().isEmpty
+              ? null
+              : () => Navigator.of(context).pop(_controller.text.trim()),
+          child: const Text('Kirim'),
+        ),
+      ],
+    );
   }
 }

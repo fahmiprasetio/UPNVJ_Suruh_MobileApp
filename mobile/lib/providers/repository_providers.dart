@@ -38,6 +38,16 @@ final fotoBuktiTiruanProvider = Provider<bool>((ref) {
   return ref.watch(fotoBuktiRepositoryProvider) is FakeFotoBuktiRepository;
 });
 
+/// Penanda bahwa penawaran admin masih datang dari alat penguji.
+///
+/// Dashboard admin sungguhan tinggal di web (bagian 14.2), jadi bagi aplikasi
+/// ini penawaran adalah kabar dari luar. Selama repository masih tiruan, panel
+/// alat penguji berdiri di tempat dashboard itu; begitu backend sungguhan
+/// dipasang, panelnya hilang sendiri tanpa ada layar yang perlu diubah.
+final simulatorPenawaranProvider = Provider<bool>((ref) {
+  return ref.watch(orderRepositoryProvider) is FakeOrderRepository;
+});
+
 /// User yang sedang masuk, `null` kalau belum.
 final userAktifProvider = StreamProvider<AppUser?>((ref) {
   return ref.watch(authRepositoryProvider).watchUserAktif();

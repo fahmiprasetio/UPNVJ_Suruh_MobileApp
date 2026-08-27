@@ -40,9 +40,50 @@ abstract interface class OrderRepository {
     required String klienId,
     required ServiceType serviceType,
     required String deskripsi,
+    required DateTime jadwalMulai,
     String? alamatTujuan,
     int jumlahRunnerDibutuhkan = 1,
   });
+
+  /// Admin mengirim penawaran harga untuk satu permintaan Jalur B.
+  ///
+  /// Hanya Jalur B yang punya penawaran. Harga Jalur A dihitung dari isian
+  /// form sejak awal, jadi tidak ada yang perlu ditawarkan di sana, dan
+  /// mengizinkannya berarti membuka jalan mengubah harga yang sudah tertulis
+  /// di layar klien.
+  ///
+  /// Penawaran yang baru dibuat tidak mengisi harga ordernya. Harga baru
+  /// pindah ke order ketika klien menyetujuinya, karena sebelum itu angka
+  /// tersebut cuma usulan, dan order yang memajang harga yang belum disepakati
+  /// akan terbaca sebagai tagihan.
+  Future<Order> buatPenawaran({
+    required String orderId,
+    required int harga,
+    required Duration estimasiDurasi,
+    required DateTime jadwalMulai,
+    String? catatan,
+  });
+
+  /// Klien menyetujui penawaran yang sedang menunggu.
+  ///
+  /// Di sinilah harga, estimasi durasi, dan jadwal penawaran pindah menjadi
+  /// milik ordernya, lalu order lanjut ke [OrderStatus.menungguPembayaran].
+  Future<Order> setujuiPenawaran(String orderId);
+
+  /// Klien menolak penawaran.
+  ///
+  /// Penolakan mengakhiri ordernya, bukan mengembalikannya ke antrean admin.
+  /// Klien yang masih berminat dengan harga lain memakai [ajukanNego]; yang
+  /// menekan tolak memang sudah tidak berminat.
+  Future<Order> tolakPenawaran(String orderId);
+
+  /// Klien meminta penawaran ditinjau ulang, disertai alasannya.
+  ///
+  /// Ordernya kembali ke [OrderStatus.permintaan] supaya masuk lagi ke antrean
+  /// admin, dan [alasan] ditulis sebagai pesan di chat ordernya. Alasan itu
+  /// tidak disimpan di dalam penawaran karena tempat menjawabnya memang chat:
+  /// admin membaca, bertanya kalau perlu, lalu mengirim penawaran baru.
+  Future<Order> ajukanNego({required String orderId, required String alasan});
 
   /// Menandai pembayaran berhasil dan menyiarkan order ke runner.
   Future<Order> tandaiSudahDibayar(String orderId);

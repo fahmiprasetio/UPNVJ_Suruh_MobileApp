@@ -79,6 +79,12 @@ class SeedData {
             'Pindah dari kos lama ke kos baru, jaraknya sekitar 2 km. '
             'Barang: 1 lemari plastik, 2 koper, kasur lipat, sekardus buku.',
         alamatTujuan: 'Kos Anggrek, Jl. RS Fatmawati',
+        jadwalMulai: DateTime(
+          sekarang.year,
+          sekarang.month,
+          sekarang.day,
+          9,
+        ).add(const Duration(days: 2)),
         jumlahRunnerDibutuhkan: 3,
         // Percakapan contoh untuk order Jalur B: admin bertanya dulu sebelum
         // bisa memberi harga, persis alur di bagian 3.

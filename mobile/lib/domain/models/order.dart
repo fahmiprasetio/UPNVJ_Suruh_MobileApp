@@ -24,6 +24,7 @@ class Order {
     this.alamatTujuan,
     this.harga,
     this.estimasiDurasi,
+    this.jadwalMulai,
     this.jumlahRunnerDibutuhkan = 1,
     this.runnerIds = const [],
     this.fotoBuktiUrl,
@@ -53,6 +54,14 @@ class Order {
   final int? harga;
   final Duration? estimasiDurasi;
 
+  /// Kapan pekerjaannya dijadwalkan mulai.
+  ///
+  /// Jalur A tidak memakainya, ordernya dikerjakan sekarang juga. Jalur B
+  /// mengisinya dua kali: waktu yang diminta klien ketika menulis
+  /// permintaan, lalu waktu yang disepakati begitu penawaran admin
+  /// disetujui.
+  final DateTime? jadwalMulai;
+
   /// Pindah kos bisa butuh 2-3 runner sekaligus (bagian 5).
   final int jumlahRunnerDibutuhkan;
   final List<String> runnerIds;
@@ -77,6 +86,15 @@ class Order {
   /// Penawaran terbaru dari admin, kalau ada.
   OrderOffer? get penawaranTerakhir => offers.isEmpty ? null : offers.last;
 
+  /// Penawaran yang sedang menunggu jawaban klien, kalau ada.
+  ///
+  /// Hanya penawaran terakhir yang boleh menunggu jawaban: penawaran lama
+  /// sudah pasti sudah disetujui, ditolak, atau diminta ditinjau ulang.
+  OrderOffer? get penawaranMenunggu {
+    final terakhir = penawaranTerakhir;
+    return terakhir?.status == OfferStatus.pending ? terakhir : null;
+  }
+
   Order copyWith({
     OrderStatus? status,
     String? deskripsi,
@@ -84,6 +102,7 @@ class Order {
     String? alamatTujuan,
     int? harga,
     Duration? estimasiDurasi,
+    DateTime? jadwalMulai,
     int? jumlahRunnerDibutuhkan,
     List<String>? runnerIds,
     String? fotoBuktiUrl,
@@ -107,6 +126,7 @@ class Order {
       alamatTujuan: alamatTujuan ?? this.alamatTujuan,
       harga: harga ?? this.harga,
       estimasiDurasi: estimasiDurasi ?? this.estimasiDurasi,
+      jadwalMulai: jadwalMulai ?? this.jadwalMulai,
       jumlahRunnerDibutuhkan:
           jumlahRunnerDibutuhkan ?? this.jumlahRunnerDibutuhkan,
       runnerIds: runnerIds ?? this.runnerIds,

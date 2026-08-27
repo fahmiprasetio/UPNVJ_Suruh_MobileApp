@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/format/formatters.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/enums.dart';
@@ -37,6 +38,19 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
 
   int _jumlahRunner = 1;
   bool _sedangMengirim = false;
+
+  /// Jadwal diisi di muka dengan besok pagi, bukan dibiarkan kosong.
+  ///
+  /// Jam sembilan besok adalah tebakan yang paling sering benar untuk
+  /// pekerjaan terjadwal, dan isian yang sudah terisi lebih mudah dikoreksi
+  /// daripada isian kosong yang harus diisi dari nol. Nilainya tetap tampil
+  /// terang-terangan di layar, jadi tidak ada jadwal yang terkirim diam-diam.
+  DateTime _jadwal = _besokPagi();
+
+  static DateTime _besokPagi() {
+    final besok = DateTime.now().add(const Duration(days: 1));
+    return DateTime(besok.year, besok.month, besok.day, 9);
+  }
 
   @override
   void dispose() {
@@ -76,7 +90,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
               const SizedBox(height: AppTheme.spasiKecil),
               Text(
                 'Semakin jelas ceritanya, semakin cepat admin bisa memberi '
-                'harga. Sebutkan juga kapan kamu membutuhkannya.',
+                'harga.',
                 style: teks.bodySmall?.copyWith(color: skema.onSurfaceVariant),
               ),
               const SizedBox(height: AppTheme.spasiSedang),
@@ -91,6 +105,23 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
                   prefixIcon: Icon(Icons.place_outlined),
                 ),
                 validator: _validasiAlamat,
+              ),
+              const SizedBox(height: AppTheme.spasiBesar),
+              Text(
+                'Kapan dikerjakan?',
+                style: teks.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Jadwal ini yang dibaca admin saat menghitung harga. Kalau '
+                'timnya penuh di jam itu, admin akan mengusulkan waktu lain '
+                'lewat penawarannya.',
+                style: teks.bodySmall?.copyWith(color: skema.onSurfaceVariant),
+              ),
+              const SizedBox(height: AppTheme.spasiKecil),
+              _PemilihJadwal(
+                nilai: _jadwal,
+                onUbah: _sedangMengirim ? null : _pilihJadwal,
               ),
               const SizedBox(height: AppTheme.spasiBesar),
               Text(
@@ -148,6 +179,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
             klienId: user.id,
             serviceType: widget.serviceType,
             deskripsi: _kebutuhanController.text.trim(),
+            jadwalMulai: _jadwal,
             alamatTujuan: _alamatController.text.trim(),
             jumlahRunnerDibutuhkan: _jumlahRunner,
           );
@@ -178,6 +210,35 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
     context.pushReplacement(Rute.detailOrder(order.id));
   }
 
+  Future<void> _pilihJadwal() async {
+    final sekarang = DateTime.now();
+    final tanggal = await showDatePicker(
+      context: context,
+      initialDate: _jadwal,
+      // Permintaan untuk waktu yang sudah lewat tidak masuk akal, dan lebih
+      // baik dicegah di pemilihnya daripada ditolak setelah dikirim.
+      firstDate: DateTime(sekarang.year, sekarang.month, sekarang.day),
+      lastDate: sekarang.add(const Duration(days: 90)),
+    );
+    if (tanggal == null || !mounted) return;
+
+    final jam = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_jadwal),
+    );
+    if (jam == null || !mounted) return;
+
+    setState(() {
+      _jadwal = DateTime(
+        tanggal.year,
+        tanggal.month,
+        tanggal.day,
+        jam.hour,
+        jam.minute,
+      );
+    });
+  }
+
   static String? _validasiKebutuhan(String? nilai) {
     final bersih = nilai?.trim() ?? '';
     if (bersih.isEmpty) return 'Ceritakan dulu apa yang kamu butuhkan';
@@ -198,16 +259,17 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
   static String _contohUntuk(ServiceType type) => switch (type) {
     ServiceType.bantuPindahKos =>
       'Pindah dari Kos Melati ke Kos Anggrek, sekitar 2 km. Barang: lemari '
-          'plastik, 2 koper, kasur lipat, sekardus buku. Maunya Sabtu pagi.',
+          'plastik, 2 koper, kasur lipat, sekardus buku. Kos lama lantai 2, '
+          'tangganya sempit.',
     ServiceType.bersihKos =>
       'Kamar kos 3x4 meter, sudah lama tidak dibersihkan. Perlu sapu, pel, '
-          'dan beres-beres meja. Maunya Minggu siang.',
+          'dan beres-beres meja. Alat pel belum ada.',
     ServiceType.bersihKamarMandi =>
       'Kamar mandi kos, kloset dan bak mandi berkerak. Alat dan sabun sudah '
-          'ada di tempat. Maunya besok sore.',
+          'ada di tempat.',
     _ =>
-      'Ceritakan apa yang kamu butuhkan, kapan, dan di mana. Apa pun boleh '
-          'selama masuk akal dan aman dikerjakan.',
+      'Ceritakan apa yang kamu butuhkan dan di mana. Apa pun boleh selama '
+          'masuk akal dan aman dikerjakan.',
   };
 }
 
@@ -246,6 +308,39 @@ class _PitaCaraKerja extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Pemilih tanggal dan jam pekerjaan.
+///
+/// Sebelum ada isian ini, klien diminta menyebut waktunya di dalam ceritanya,
+/// dan admin harus menebaknya dari kalimat bebas. Jadwal yang terstruktur bisa
+/// dibandingkan dengan jadwal penawaran, diurutkan, dan nanti dipakai
+/// mengingatkan runner.
+class _PemilihJadwal extends StatelessWidget {
+  const _PemilihJadwal({required this.nilai, required this.onUbah});
+
+  final DateTime nilai;
+  final VoidCallback? onUbah;
+
+  @override
+  Widget build(BuildContext context) {
+    final skema = Theme.of(context).colorScheme;
+
+    return OutlinedButton.icon(
+      onPressed: onUbah,
+      icon: const Icon(Icons.event_outlined),
+      label: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(formatJadwal(nilai)),
+      ),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size.fromHeight(52),
+        alignment: Alignment.centerLeft,
+        foregroundColor: skema.onSurface,
+        side: BorderSide(color: skema.outline),
       ),
     );
   }

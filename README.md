@@ -18,6 +18,8 @@ Layanan terbagi dua jalur dengan cara kerja yang berbeda.
 
 Memesan lewat form yang harganya terurai baris per baris, atau menulis permintaan bebas untuk pekerjaan yang butuh penawaran. Order yang butuh lebih dari satu orang, misalnya pindah kos, bisa meminta sampai tiga runner sekaligus.
 
+Permintaan Jalur B menyertakan tanggal dan jam yang diinginkan, dan admin menjawabnya dengan penawaran berisi harga, perkiraan lama pekerjaan, serta jadwal yang disanggupi. Klien punya tiga jalan keluar: setuju lalu membayar, minta ditinjau ulang dengan menuliskan alasannya, atau menolak sekaligus membatalkan order. Alasan tinjau ulang masuk ke chat ordernya supaya admin menjawab di tempat yang sama, dan jadwal yang digeser admin disebutkan terang-terangan sebelum klien menyetujui.
+
 Pembayaran memakai QRIS. Kode QR punya batas waktu dan hangus sendiri kalau lewat. Status pembayaran hanya berubah dari sisi gateway, jadi tidak ada tombol "saya sudah bayar" maupun unggah bukti transfer.
 
 Setiap order punya halaman detail berisi linimasa tahapan yang mengikuti jalurnya, ruang chat yang menempel pada order itu, dan setelah pekerjaan selesai, foto bukti beserta catatan serah terima dari runner.
@@ -51,6 +53,8 @@ flutter test
 ```
 
 Untuk berpindah antara tampilan klien dan runner, pakai tombol berikon tabung uji di bilah judul, lalu pilih akun dengan peran yang diinginkan.
+
+Admin bekerja lewat dashboard web, bukan aplikasi ini, jadi penawaran Jalur B datang dari luar aplikasi. Selama dashboard itu belum ada, panel bertanda ALAT PENGUJI di halaman detail permintaan menggantikannya: isi harga, pilih perkiraan durasi, lalu tekan tombolnya untuk memunculkan penawaran seolah admin baru saja mengirimnya.
 
 ## Struktur proyek
 

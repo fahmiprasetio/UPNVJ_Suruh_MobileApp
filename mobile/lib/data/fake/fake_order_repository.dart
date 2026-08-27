@@ -4,6 +4,7 @@ import 'dart:math';
 import '../../domain/enums.dart';
 import '../../domain/models/order.dart';
 import '../../domain/models/order_message.dart';
+import '../../domain/models/order_offer.dart';
 import '../../domain/repositories/order_repository.dart';
 import 'seed_data.dart';
 
@@ -126,6 +127,7 @@ class FakeOrderRepository implements OrderRepository {
     required String klienId,
     required ServiceType serviceType,
     required String deskripsi,
+    required DateTime jadwalMulai,
     String? alamatTujuan,
     int jumlahRunnerDibutuhkan = 1,
   }) async {
@@ -140,11 +142,155 @@ class FakeOrderRepository implements OrderRepository {
       dibuatPada: DateTime.now(),
       deskripsi: deskripsi,
       alamatTujuan: alamatTujuan,
+      jadwalMulai: jadwalMulai,
       jumlahRunnerDibutuhkan: jumlahRunnerDibutuhkan,
     );
     _orders.add(order);
     _pancarkan();
     return order;
+  }
+
+  @override
+  Future<Order> buatPenawaran({
+    required String orderId,
+    required int harga,
+    required Duration estimasiDurasi,
+    required DateTime jadwalMulai,
+    String? catatan,
+  }) async {
+    await Future<void>.delayed(_jedaJaringan);
+    final order = _wajibAda(orderId);
+
+    if (order.track != OrderTrack.jalurB) {
+      throw StateError(
+        'Order ${order.kodeOrder} bukan Jalur B, harganya sudah pasti sejak '
+        'order dibuat',
+      );
+    }
+    // Hanya permintaan yang belum punya penawaran menunggu yang boleh
+    // ditawari. Tanpa syarat ini, penawaran kedua akan diam-diam menimpa
+    // penawaran yang sedang dibaca klien, dan klien menekan setuju untuk harga
+    // yang berbeda dari yang tampil di layarnya.
+    if (order.status != OrderStatus.permintaan) {
+      throw StateError(
+        'Order ${order.kodeOrder} sedang ${order.status.label}, '
+        'bukan permintaan yang menunggu penawaran',
+      );
+    }
+    if (harga <= 0) {
+      throw StateError('Harga penawaran harus lebih dari nol');
+    }
+
+    final penawaran = OrderOffer(
+      id: 'p-${DateTime.now().microsecondsSinceEpoch}-${_random.nextInt(999)}',
+      orderId: orderId,
+      harga: harga,
+      estimasiDurasi: estimasiDurasi,
+      jadwalMulai: jadwalMulai,
+      dibuatPada: DateTime.now(),
+      status: OfferStatus.pending,
+      catatan: catatan,
+    );
+    // Harga ordernya sengaja tidak diisi di sini, lihat alasannya di kontrak.
+    final diperbarui = order.copyWith(
+      status: OrderStatus.menungguPersetujuanKlien,
+      offers: [...order.offers, penawaran],
+    );
+    _ganti(diperbarui);
+    return diperbarui;
+  }
+
+  @override
+  Future<Order> setujuiPenawaran(String orderId) async {
+    await Future<void>.delayed(_jedaJaringan);
+    final order = _wajibAda(orderId);
+    final penawaran = _penawaranMenunggu(order);
+
+    final diperbarui = order.copyWith(
+      status: OrderStatus.menungguPembayaran,
+      harga: penawaran.harga,
+      estimasiDurasi: penawaran.estimasiDurasi,
+      jadwalMulai: penawaran.jadwalMulai,
+      offers: _gantiPenawaran(order, penawaran, OfferStatus.disetujui),
+    );
+    _ganti(diperbarui);
+    return diperbarui;
+  }
+
+  @override
+  Future<Order> tolakPenawaran(String orderId) async {
+    await Future<void>.delayed(_jedaJaringan);
+    final order = _wajibAda(orderId);
+    final penawaran = _penawaranMenunggu(order);
+
+    final diperbarui = order.copyWith(
+      status: OrderStatus.batal,
+      offers: _gantiPenawaran(order, penawaran, OfferStatus.ditolak),
+    );
+    _ganti(diperbarui);
+    return diperbarui;
+  }
+
+  @override
+  Future<Order> ajukanNego({
+    required String orderId,
+    required String alasan,
+  }) async {
+    await Future<void>.delayed(_jedaJaringan);
+    final order = _wajibAda(orderId);
+    final penawaran = _penawaranMenunggu(order);
+
+    final bersih = alasan.trim();
+    if (bersih.isEmpty) {
+      throw StateError(
+        'Nego tanpa alasan tidak bisa dikirim, admin tidak punya bahan untuk '
+        'menghitung ulang',
+      );
+    }
+
+    // Alasannya masuk ke chat ordernya, bukan ke kolom tersembunyi di
+    // penawaran, supaya admin menjawabnya di tempat yang sama dengan
+    // pertanyaan lain tentang order ini.
+    final pesan = OrderMessage(
+      id: 'm-${DateTime.now().microsecondsSinceEpoch}-${_random.nextInt(999)}',
+      orderId: orderId,
+      pengirim: MessageSender.klien,
+      isi: bersih,
+      dikirimPada: DateTime.now(),
+    );
+    final diperbarui = order.copyWith(
+      // Kembali ke antrean admin, bukan batal: klien masih berminat.
+      status: OrderStatus.permintaan,
+      offers: _gantiPenawaran(order, penawaran, OfferStatus.dinegoUlang),
+      messages: [...order.messages, pesan],
+    );
+    _ganti(diperbarui);
+    return diperbarui;
+  }
+
+  /// Penawaran yang sedang menunggu jawaban, atau galat kalau tidak ada.
+  ///
+  /// Pemeriksaannya di sini, bukan di layar, karena tombol yang disembunyikan
+  /// tidak menghentikan siapa pun yang memanggil langsung.
+  OrderOffer _penawaranMenunggu(Order order) {
+    final penawaran = order.penawaranMenunggu;
+    if (penawaran == null) {
+      throw StateError(
+        'Order ${order.kodeOrder} tidak punya penawaran yang menunggu jawaban',
+      );
+    }
+    return penawaran;
+  }
+
+  static List<OrderOffer> _gantiPenawaran(
+    Order order,
+    OrderOffer penawaran,
+    OfferStatus status,
+  ) {
+    return [
+      for (final o in order.offers)
+        if (o.id == penawaran.id) o.copyWith(status: status) else o,
+    ];
   }
 
   @override

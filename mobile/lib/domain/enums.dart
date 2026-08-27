@@ -69,7 +69,19 @@ enum OrderStatus {
       this != OrderStatus.selesai && this != OrderStatus.batal;
 }
 
-enum OfferStatus { pending, disetujui, ditolak, dinegoUlang }
+enum OfferStatus {
+  pending,
+  disetujui,
+  ditolak,
+  dinegoUlang;
+
+  String get label => switch (this) {
+    OfferStatus.pending => 'Menunggu jawabanmu',
+    OfferStatus.disetujui => 'Disetujui',
+    OfferStatus.ditolak => 'Ditolak',
+    OfferStatus.dinegoUlang => 'Diminta ditinjau ulang',
+  };
+}
 
 enum PaymentStatus { pending, berhasil, gagal, kedaluwarsa }
 
