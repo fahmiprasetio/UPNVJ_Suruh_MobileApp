@@ -28,4 +28,9 @@ class BatasMasukan {
 
   /// Nama pada pendaftaran akun.
   static const int nama = 100;
+
+  /// Nomor HP. Cukup untuk nomor Indonesia terpanjang beserta ruang lebihnya,
+  /// dan sengaja tidak longgar: kolom nomor yang menerima ratusan karakter cuma
+  /// mengundang isian yang bukan nomor.
+  static const int nomorHp = 20;
 }

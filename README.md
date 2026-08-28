@@ -52,6 +52,8 @@ flutter analyze
 flutter test
 ```
 
+Aplikasi terbuka langsung sebagai klien contoh, supaya mengembangkan layar tidak dimulai dengan mengetik nomor dan kode setiap kali. Layar masuknya tetap ada dan bisa dicoba dengan keluar dari akun, atau lewat `FakeAuthRepository.belumMasuk()` di tes.
+
 Untuk berpindah antara tampilan klien dan runner, pakai tombol berikon tabung uji di bilah judul, lalu pilih akun dengan peran yang diinginkan.
 
 Akun contoh Rangga Saputra memegang peran klien sekaligus runner. Akun seperti itu punya tombol ganti mode berikon panah bolak-balik di bilah judul, dan itu fitur sungguhan, bukan alat penguji: satu orang bisa memesan bantuan untuk keperluannya sendiri sekaligus mengambil order orang lain, tanpa perlu dua akun.
@@ -141,7 +143,7 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:5059
 
 `10.0.2.2` adalah cara emulator Android menyebut localhost mesin induknya, dan itu juga nilai bawaannya. Di perangkat fisik, ganti dengan alamat IP mesin kamu di jaringan yang sama.
 
-Aplikasi belum benar-benar memakai backend ini: providernya masih mengembalikan repository tiruan. Lapisan API dan `ApiAuthRepository` sudah ada dan sudah teruji, tapi menukarnya sekarang akan membuat aplikasi tidak bisa dimasuki sama sekali, karena layar login belum ada dan alat penguji ganti akun ikut hilang begitu repositorynya bukan tiruan lagi. Layar login dulu, baru penukarannya.
+Aplikasi belum benar-benar memakai backend ini: providernya masih mengembalikan repository tiruan. Lapisan API, `ApiAuthRepository`, dan layar masuknya sudah ada dan sudah teruji. Yang belum adalah `ApiOrderRepository`, dan keduanya harus ditukar bersamaan: autentikasi sungguhan dengan order tiruan menghasilkan akun yang id-nya tidak dikenal satu pun order contoh, jadi setiap layar akan tampak kosong tanpa ada yang salah.
 
 ## Struktur proyek
 

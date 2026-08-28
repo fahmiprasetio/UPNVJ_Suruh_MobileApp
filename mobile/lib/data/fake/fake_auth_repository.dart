@@ -8,10 +8,15 @@ import 'seed_data.dart';
 
 /// Autentikasi palsu: mencocokkan nomor HP ke daftar user contoh.
 ///
-/// Sengaja dibuat sudah "masuk" sebagai klien sejak awal supaya pengembangan layar
-/// tidak terhalang layar login yang bentuk aslinya belum diputuskan (bagian 14.8).
+/// Bawaannya sudah "masuk" sebagai klien, supaya menjalankan aplikasi saat
+/// mengembangkan layar tidak dimulai dengan mengetik nomor dan kode setiap kali.
+/// Itu kemudahan, bukan keharusan: layar masuknya sudah ada, dan
+/// [FakeAuthRepository.belumMasuk] memulai dari sana.
 class FakeAuthRepository implements AuthRepository {
   FakeAuthRepository({AppUser? userAwal}) : _userAktif = userAwal ?? SeedData.klien;
+
+  /// Mulai dalam keadaan belum masuk, sehingga aplikasi terbuka di layar masuk.
+  FakeAuthRepository.belumMasuk() : _userAktif = null;
 
   static const Duration _jedaJaringan = Duration(milliseconds: 300);
 

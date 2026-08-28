@@ -1,6 +1,10 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/auth/masuk_screen.dart';
 import '../../features/gerbang_permukaan.dart';
 import '../../features/chat/chat_order_screen.dart';
 import '../../features/klien/detail_order/detail_order_screen.dart';
@@ -10,12 +14,16 @@ import '../../features/klien/order_jalur_b/form_permintaan_screen.dart';
 import '../../features/klien/pembayaran/pembayaran_screen.dart';
 import '../../features/klien/riwayat/riwayat_order_screen.dart';
 import '../../domain/enums.dart';
+import '../../domain/models/app_user.dart';
+import '../../domain/repositories/auth_repository.dart';
+import '../../providers/repository_providers.dart';
 
 /// Nama rute ditulis sebagai konstanta supaya tidak ada string jalur yang
 /// tersebar di dalam layar.
 class Rute {
   const Rute._();
 
+  static const String masuk = '/masuk';
   static const String beranda = '/';
   static const String riwayat = '/order';
   static const String detailOrderPola = '/order/:orderId';
@@ -47,9 +55,33 @@ class Rute {
 /// terbawa ke mana-mana, antar tes, dan nanti antar sesi login. Lewat
 /// provider, setiap [ProviderScope] mendapat router bersih sendiri.
 final routerProvider = Provider<GoRouter>((ref) {
+  final repo = ref.watch(authRepositoryProvider);
+  final pendengar = _PendengarSesi(repo);
+  ref.onDispose(pendengar.dispose);
+
   return GoRouter(
     initialLocation: Rute.beranda,
+    // Router ikut menyimak sesi. Tanpa ini, pengalihan di bawah cuma dihitung
+    // saat ada perpindahan halaman, sehingga layar masuk tetap terpampang setelah
+    // kode diterima, dan layar dalam tetap terbuka setelah pengguna keluar.
+    refreshListenable: pendengar,
+    redirect: (context, state) {
+      // Sesinya dibaca dari pendengar, bukan dari `userAktifProvider`. Provider itu
+      // beraliran dan otomatis dibuang saat tidak ada yang mengawasinya, jadi
+      // membacanya di sini selalu menghasilkan keadaan "sedang memuat" dan
+      // pengalihannya tidak pernah terjadi.
+      final sudahMasuk = pendengar.user != null;
+      final diLayarMasuk = state.matchedLocation == Rute.masuk;
+
+      if (!sudahMasuk && !diLayarMasuk) return Rute.masuk;
+      if (sudahMasuk && diLayarMasuk) return Rute.beranda;
+      return null;
+    },
     routes: [
+      GoRoute(
+        path: Rute.masuk,
+        builder: (context, state) => const MasukScreen(),
+      ),
       GoRoute(
         path: Rute.beranda,
         // Bukan langsung beranda klien: permukaan yang terbuka ditentukan
@@ -107,3 +139,36 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+/// Menjembatani sesi ke GoRouter, sekaligus memegang nilai terakhirnya.
+///
+/// GoRouter menerima [Listenable], sementara sesi datang sebagai [Stream]. Nilainya
+/// ikut disimpan di sini, bukan dibaca ulang dari provider saat `redirect` dipanggil,
+/// karena provider sesi beraliran dan otomatis dibuang begitu tidak ada yang
+/// mengawasinya; membacanya dari dalam `redirect` selalu menghasilkan keadaan
+/// "sedang memuat", dan pengalihannya tidak pernah terjadi.
+///
+/// Nilai awalnya diambil serentak dari [AuthRepository.userAktif], supaya keputusan
+/// pengalihan pertama sudah benar di frame pertama. Tanpa itu, pengguna yang belum
+/// masuk sempat melihat layar dalam berkedip sebelum dilempar ke layar masuk.
+class _PendengarSesi extends ChangeNotifier {
+  _PendengarSesi(AuthRepository repo) : _user = repo.userAktif {
+    _langganan = repo.watchUserAktif().listen((user) {
+      if (user == _user) return;
+      _user = user;
+      notifyListeners();
+    });
+  }
+
+  AppUser? _user;
+
+  AppUser? get user => _user;
+
+  late final StreamSubscription<AppUser?> _langganan;
+
+  @override
+  void dispose() {
+    _langganan.cancel();
+    super.dispose();
+  }
+}
