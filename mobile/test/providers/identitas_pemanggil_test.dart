@@ -5,6 +5,8 @@ import 'package:upnvj_suruh/data/fake/seed_data.dart';
 import 'package:upnvj_suruh/domain/enums.dart';
 import 'package:upnvj_suruh/providers/repository_providers.dart';
 
+import '../support/tiruan.dart';
+
 /// Kontrak `OrderRepository` tidak lagi menerima identitas pemanggil, jadi
 /// tiruannya mendapatkannya dari luar. Sambungan itu ada di satu baris di
 /// `orderRepositoryProvider`, dan kalau baris itu salah, tidak ada yang meledak:
@@ -12,7 +14,10 @@ import 'package:upnvj_suruh/providers/repository_providers.dart';
 void main() {
   ProviderContainer wadah(FakeAuthRepository auth) {
     final container = ProviderContainer(
-      overrides: [authRepositoryProvider.overrideWith((ref) => auth)],
+      overrides: [
+          sumberTiruan,
+        authRepositoryProvider.overrideWith((ref) => auth),
+      ],
     );
     addTearDown(container.dispose);
     return container;

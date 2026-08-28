@@ -5,6 +5,8 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:upnvj_suruh/app.dart';
 
+import '../../support/tiruan.dart';
+
 void main() {
   setUpAll(() async {
     await initializeDateFormatting('id_ID');
@@ -33,7 +35,10 @@ void main() {
   /// Menempuh alur sungguhan sampai layar bayar: buat order anter jemput,
   /// mendarat di detailnya, lalu tekan Bayar Sekarang.
   Future<void> bukaPembayaran(WidgetTester tester) async {
-    await tester.pumpWidget(const ProviderScope(child: UpnvjSuruhApp()));
+    await tester.pumpWidget(ProviderScope(
+        overrides: [sumberTiruan],
+        child: const UpnvjSuruhApp(),
+      ));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Anter Jemput'));

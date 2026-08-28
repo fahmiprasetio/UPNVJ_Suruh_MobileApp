@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:upnvj_suruh/app.dart';
+
+import '../../support/tiruan.dart';
 import 'package:upnvj_suruh/domain/enums.dart';
 import 'package:upnvj_suruh/domain/service_catalog.dart';
 
@@ -11,7 +13,10 @@ void main() {
   });
 
   Future<void> bukaBeranda(WidgetTester tester) async {
-    await tester.pumpWidget(const ProviderScope(child: UpnvjSuruhApp()));
+    await tester.pumpWidget(ProviderScope(
+        overrides: [sumberTiruan],
+        child: const UpnvjSuruhApp(),
+      ));
     await tester.pumpAndSettle();
   }
 

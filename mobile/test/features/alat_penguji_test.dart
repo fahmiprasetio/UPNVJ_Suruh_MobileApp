@@ -1,24 +1,32 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:upnvj_suruh/core/config/sumber_data.dart';
 import 'package:upnvj_suruh/providers/payment_providers.dart';
 import 'package:upnvj_suruh/providers/repository_providers.dart';
 
-/// Alat penguji tidak boleh ikut terbawa ke build rilis.
+/// Alat penguji tidak boleh ikut terbawa ke tangan pengguna.
 ///
-/// Penjagaannya dua lapis: tipe repository (tiruan atau sungguhan) dan mode
-/// build. Lapis pertama saja tidak cukup, karena selama backend belum
-/// tersambung repositorynya memang masih tiruan, jadi build rilis hari ini
-/// akan membawa serta pengalih akun, simulator pembayaran, dan panel penawaran
-/// admin. Ketiganya cukup untuk menjadi siapa saja dan menandai order mana pun
-/// lunas.
+/// Penjagaannya dua lapis, dan sejak backend sungguhan terpasang keduanya
+/// benar-benar bekerja sendiri-sendiri:
 ///
-/// [modeDebugProvider] ada supaya lapis kedua itu bisa dibuktikan di tes.
-/// Membaca `kDebugMode` langsung di tiap tempat membuat perilaku rilisnya
-/// mustahil diuji, karena tes selalu berjalan di mode debug.
+///   - **Mode build.** Di rilis, ketiganya hilang apa pun sumber datanya.
+///   - **Sumber data.** Di jalur API, pengalih akun dan panel penawaran hilang
+///     walau buildnya debug, karena keduanya memang tidak punya arti di sana:
+///     berpindah akun menuntut kode masuk sungguhan, dan penawaran datang dari
+///     admin lewat endpointnya.
+///
+/// Sebelum penukaran ini, lapis kedua belum punya gigi: repositorynya selalu
+/// tiruan, jadi yang benar-benar menjaga cuma mode build.
 void main() {
-  ProviderContainer wadah({required bool debug}) {
+  ProviderContainer wadah({
+    required bool debug,
+    SumberData sumber = SumberData.tiruan,
+  }) {
     final container = ProviderContainer(
-      overrides: [modeDebugProvider.overrideWithValue(debug)],
+      overrides: [
+        modeDebugProvider.overrideWithValue(debug),
+        sumberDataProvider.overrideWithValue(sumber),
+      ],
     );
     addTearDown(container.dispose);
     return container;
@@ -26,25 +34,79 @@ void main() {
 
   group('build rilis', () {
     test('tidak ada daftar akun uji untuk pengalih akun', () {
-      expect(wadah(debug: false).read(akunUjiProvider), isNull);
+      expect(
+        wadah(debug: false, sumber: SumberData.api).read(akunUjiProvider),
+        isNull,
+      );
     });
 
     test('tidak ada tombol simulasi pembayaran', () {
-      expect(wadah(debug: false).read(simulatorPembayaranProvider), isNull);
+      expect(
+        wadah(
+          debug: false,
+          sumber: SumberData.api,
+        ).read(simulatorPembayaranProvider),
+        isNull,
+      );
     });
 
     test('tidak ada panel penawaran admin', () {
-      expect(wadah(debug: false).read(simulatorPenawaranProvider), isNull);
+      expect(
+        wadah(
+          debug: false,
+          sumber: SumberData.api,
+        ).read(simulatorPenawaranProvider),
+        isNull,
+      );
     });
   });
 
-  group('build debug', () {
-    test('ketiga alat penguji tersedia selama repositorynya masih tiruan', () {
+  group('build debug di atas tiruan', () {
+    test('ketiga alat penguji tersedia', () {
       final container = wadah(debug: true);
 
       expect(container.read(akunUjiProvider), isNotNull);
       expect(container.read(simulatorPembayaranProvider), isNotNull);
       expect(container.read(simulatorPenawaranProvider), isNotNull);
+    });
+  });
+
+  group('build debug di atas API', () {
+    test('pengalih akun hilang walau buildnya debug', () {
+      expect(
+        wadah(debug: true, sumber: SumberData.api).read(akunUjiProvider),
+        isNull,
+      );
+    });
+
+    test('panel penawaran admin hilang walau buildnya debug', () {
+      expect(
+        wadah(
+          debug: true,
+          sumber: SumberData.api,
+        ).read(simulatorPenawaranProvider),
+        isNull,
+      );
+    });
+  });
+
+  group('saklar sumber data', () {
+    test('tiruan ditolak di build rilis', () {
+      expect(
+        () => KonfigurasiSumberData.baca(modeDebug: false, nilai: 'tiruan'),
+        throwsStateError,
+      );
+    });
+
+    test('nilai yang tidak dikenal ditolak, bukan jatuh ke salah satunya', () {
+      expect(
+        () => KonfigurasiSumberData.baca(modeDebug: true, nilai: 'tiruann'),
+        throwsStateError,
+      );
+    });
+
+    test('bawaannya API, bukan tiruan', () {
+      expect(KonfigurasiSumberData.baca(modeDebug: true), SumberData.api);
     });
   });
 }

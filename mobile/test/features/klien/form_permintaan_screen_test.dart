@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:upnvj_suruh/app.dart';
+
+import '../../support/tiruan.dart';
 import 'package:upnvj_suruh/data/fake/fake_order_repository.dart';
 import 'package:upnvj_suruh/domain/enums.dart';
 import 'package:upnvj_suruh/providers/repository_providers.dart';
@@ -41,7 +43,10 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [orderRepositoryProvider.overrideWith((ref) => repo)],
+        overrides: [
+          sumberTiruan,
+          orderRepositoryProvider.overrideWith((ref) => repo),
+        ],
         child: const UpnvjSuruhApp(),
       ),
     );
