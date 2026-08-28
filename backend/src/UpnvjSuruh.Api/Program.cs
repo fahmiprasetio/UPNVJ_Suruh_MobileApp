@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using UpnvjSuruh.Api.Auth;
 using UpnvjSuruh.Api.Data;
 using UpnvjSuruh.Api.Hubs;
+using UpnvjSuruh.Api.Pricing;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +27,27 @@ builder.Services
     .ValidateOnStart();
 
 builder.Services.AddSingleton<ITokenService, TokenService>();
+
+// --- OTP ---
+
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<IPenyimpanOtp, PenyimpanOtpMemori>();
+builder.Services.AddSingleton<IPembuatKodeOtp, PembuatKodeOtp>();
+
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddSingleton<IPengirimOtp, PengirimOtpLog>();
+}
+else
+{
+    // Sengaja tidak ada pengirim bawaan untuk produksi. Menyala tanpa pengirim yang benar
+    // lebih berbahaya daripada tidak menyala: pengirim yang menulis kode ke log berarti
+    // siapa pun yang bisa membaca log bisa masuk sebagai siapa pun. Begitu mitra memilih
+    // penyedia SMS atau WhatsApp (bagian 14.8), daftarkan di sini.
+    throw new InvalidOperationException(
+        "Belum ada IPengirimOtp untuk lingkungan non-Development. Daftarkan penyedia SMS " +
+        "atau WhatsApp sungguhan sebelum menjalankan ini di luar mesin pengembang.");
+}
 
 var jwt = builder.Configuration.GetSection(JwtOptions.Section).Get<JwtOptions>();
 if (jwt is null || string.IsNullOrWhiteSpace(jwt.SigningKey))
@@ -75,6 +97,8 @@ builder.Services
     });
 
 builder.Services.AddAuthorization();
+
+builder.Services.AddSingleton<IKalkulatorTarif, KalkulatorTarif>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

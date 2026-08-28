@@ -1,0 +1,95 @@
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Npgsql;
+using UpnvjSuruh.Api.Auth;
+using UpnvjSuruh.Api.Data;
+
+namespace UpnvjSuruh.Api.Tests;
+
+/// <summary>
+/// API sungguhan dengan basis data sungguhan, di satu basis data sekali pakai per kelas tes.
+///
+/// Bukan penyedia in-memory. Yang dijaga di sini justru hal-hal yang tidak dimiliki penyedia
+/// itu: index unik pada nomor HP, dan pemetaan peran ke <c>integer[]</c> Postgres. Tes yang
+/// lolos karena penyedianya tidak menegakkan apa-apa lebih buruk daripada tidak ada tes.
+///
+/// Butuh Postgres hidup. Alamatnya bisa diatur lewat environment variable
+/// <c>UPNVJ_TEST_DB</c>, bawaannya Postgres lokal.
+/// </summary>
+public class DatabaseApiFactory : ApiFactory, IAsyncLifetime
+{
+    private static string Induk =>
+        Environment.GetEnvironmentVariable("UPNVJ_TEST_DB")
+        ?? "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres";
+
+    private readonly string _namaDb = $"upnvj_suruh_test_{Guid.NewGuid():N}";
+
+    protected override string ConnectionString =>
+        new NpgsqlConnectionStringBuilder(Induk) { Database = _namaDb }.ConnectionString;
+
+    /// <summary>Kode OTP terakhir yang "dikirim", supaya tes bisa memakainya untuk masuk.</summary>
+    public PengirimOtpPencatat Otp { get; } = new();
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        // ConfigureTestServices dijamin berjalan setelah seluruh pendaftaran aplikasi, jadi
+        // penggantian di sini pasti menang tanpa bergantung pada urutan.
+        builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<IPengirimOtp>();
+            services.AddSingleton<IPengirimOtp>(Otp);
+        });
+
+        base.ConfigureWebHost(builder);
+    }
+
+    async Task IAsyncLifetime.InitializeAsync()
+    {
+        await using (var koneksi = new NpgsqlConnection(Induk))
+        {
+            await koneksi.OpenAsync();
+            await using var perintah = koneksi.CreateCommand();
+            perintah.CommandText = $"CREATE DATABASE \"{_namaDb}\"";
+            await perintah.ExecuteNonQueryAsync();
+        }
+
+        using var lingkup = Services.CreateScope();
+        var db = lingkup.ServiceProvider.GetRequiredService<AppDbContext>();
+        await db.Database.MigrateAsync();
+    }
+
+    async Task IAsyncLifetime.DisposeAsync()
+    {
+        await base.DisposeAsync();
+
+        NpgsqlConnection.ClearAllPools();
+        await using var koneksi = new NpgsqlConnection(Induk);
+        await koneksi.OpenAsync();
+        await using var perintah = koneksi.CreateCommand();
+        perintah.CommandText = $"DROP DATABASE IF EXISTS \"{_namaDb}\" WITH (FORCE)";
+        await perintah.ExecuteNonQueryAsync();
+    }
+}
+
+/// <summary>
+/// Pengganti pengirim OTP yang mencatat kodenya alih-alih mengirim. Tes butuh kode yang
+/// sungguhan dipakai sistem, bukan kode yang ditebak tes.
+/// </summary>
+public class PengirimOtpPencatat : IPengirimOtp
+{
+    private readonly Dictionary<string, string> _kode = [];
+
+    public Task KirimAsync(string noHp, string kode, CancellationToken batal = default)
+    {
+        lock (_kode) _kode[noHp] = kode;
+        return Task.CompletedTask;
+    }
+
+    public string? KodeUntuk(string noHp)
+    {
+        lock (_kode) return _kode.GetValueOrDefault(noHp);
+    }
+}

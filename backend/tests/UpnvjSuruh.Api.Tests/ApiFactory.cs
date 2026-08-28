@@ -18,6 +18,13 @@ public class ApiFactory : WebApplicationFactory<Program>
     public const string Issuer = "UpnvjSuruh.Api";
     public const string Audience = "UpnvjSuruh.Mobile";
 
+    /// <summary>
+    /// Connection string yang dipakai. Tes yang benar-benar menyentuh basis data
+    /// menimpanya lewat sini, bukan lewat UseSetting, karena konfigurasi host yang
+    /// dipasang di bawah menang atas setelan web host.
+    /// </summary>
+    protected virtual string ConnectionString => "Host=localhost;Database=upnvj_suruh_test";
+
     protected override IHost CreateHost(IHostBuilder builder)
     {
         builder.ConfigureHostConfiguration(config =>
@@ -28,12 +35,12 @@ public class ApiFactory : WebApplicationFactory<Program>
                 ["Jwt:Issuer"] = Issuer,
                 ["Jwt:Audience"] = Audience,
                 ["Jwt:MasaBerlakuMenit"] = "60",
-                // Sengaja tanpa kredensial. Tidak ada kueri yang dijalankan tes ini, jadi
-                // yang dibutuhkan cuma string yang bentuknya sah supaya DbContext bisa
-                // dibangun. Menaruh password sungguhan di sini membuat pemindai rahasia
-                // berbunyi setiap kali, dan pemindai yang selalu berbunyi akan diabaikan
-                // justru saat menemukan yang asli.
-                ["ConnectionStrings:Default"] = "Host=localhost;Database=upnvj_suruh_test",
+                // Bawaannya sengaja tanpa kredensial: tes yang cuma memeriksa pipeline
+                // tidak menjalankan kueri apa pun, jadi yang dibutuhkan hanya string yang
+                // bentuknya sah supaya DbContext bisa dibangun. Menaruh password sungguhan
+                // di sini membuat pemindai rahasia berbunyi setiap kali, dan pemindai yang
+                // selalu berbunyi akan diabaikan justru saat menemukan yang asli.
+                ["ConnectionStrings:Default"] = ConnectionString,
             });
         });
 

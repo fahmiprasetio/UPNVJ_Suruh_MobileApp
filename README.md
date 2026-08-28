@@ -110,9 +110,15 @@ cd backend
 dotnet test
 ```
 
-Tes tidak butuh basis data maupun user-secrets: API dinyalakan di dalam proses tes lewat
-`WebApplicationFactory` dengan konfigurasi sendiri, jadi hasilnya sama di laptop siapa pun
-dan di CI yang tidak punya rahasia apa-apa.
+Tes tidak butuh user-secrets: API dinyalakan di dalam proses tes lewat
+`WebApplicationFactory` dengan konfigurasi sendiri, jadi hasilnya sama di laptop siapa pun.
+
+Sebagian tes butuh Postgres hidup, dan membuat basis data sekali pakai sendiri lalu
+menghapusnya lagi. Itu disengaja: yang diuji justru hal-hal yang tidak dimiliki penyedia
+in-memory, yaitu index unik pada nomor HP dan pemetaan peran ke `integer[]`. Tes yang lolos
+karena penyedianya tidak menegakkan apa-apa lebih buruk daripada tidak ada tes. Alamat
+Postgres-nya bisa diatur lewat environment variable `UPNVJ_TEST_DB` kalau bukan Postgres
+lokal dengan kredensial bawaan.
 
 Aplikasi mobile belum menyambung ke backend ini. Selama repositorinya masih memakai data tiruan, keduanya berjalan sendiri-sendiri.
 
