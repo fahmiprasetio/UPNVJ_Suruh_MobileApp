@@ -75,6 +75,11 @@ public class PembayaranController(AppDbContext db) : ControllerBase
             // Diambil dari harga ordernya, tidak pernah dari badan permintaan.
             Amount = harga,
             GatewayReference = $"sim-{Guid.NewGuid():N}",
+            // Dibaca dari jam yang sama dengan ExpiresAt, bukan dibiarkan memakai
+            // nilai bawaan entitasnya. Dua pembacaan jam membuat jarak antara dibuat
+            // dan kedaluwarsa meleset dari BatasWaktuBayar, dan yang membaca selisihnya
+            // nanti akan menyimpulkan batas waktunya bukan angka yang tertulis di sini.
+            CreatedAt = sekarang,
             QrPayload = PayloadSimulasi(order, harga),
             ExpiresAt = sekarang.Add(TarifConfig.BatasWaktuBayar),
         };

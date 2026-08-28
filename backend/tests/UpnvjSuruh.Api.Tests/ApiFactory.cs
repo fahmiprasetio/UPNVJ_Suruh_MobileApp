@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using UpnvjSuruh.Api.Auth;
 
 namespace UpnvjSuruh.Api.Tests;
 
@@ -43,6 +44,19 @@ public class ApiFactory : WebApplicationFactory<Program>
                 // di sini membuat pemindai rahasia berbunyi setiap kali, dan pemindai yang
                 // selalu berbunyi akan diabaikan justru saat menemukan yang asli.
                 ["ConnectionStrings:Default"] = ConnectionString,
+                // Dikosongkan, bukan dibiarkan tidak disebut.
+                //
+                // WebApplicationFactory menyalakan aplikasi sebagai Development, dan
+                // Development ikut membaca user-secrets proyek API. Sejak nomor admin
+                // pertama disimpan di sana, seluruh tes mulai menyalakan AdminAwal, yang
+                // menanyakan tabel Users sebelum migrasi dijalankan, dan gagal dengan
+                // "relation Users does not exist" yang tidak menyebut-nyebut sebabnya.
+                //
+                // Yang lebih penting daripada gagalnya: hasil tes jadi bergantung pada isi
+                // user-secrets mesin yang menjalankannya. Tes yang lulus di laptop yang
+                // belum memasang nomor admin dan gagal di laptop yang sudah bukan tes yang
+                // mengukur kode.
+                [AdminAwal.KunciKonfigurasi] = string.Empty,
             });
         });
 
