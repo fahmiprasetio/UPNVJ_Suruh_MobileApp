@@ -148,6 +148,29 @@ public class OrdersController(AppDbContext db, IKalkulatorTarif kalkulator) : Co
         return Ok(orders.Select(o => OrderResponse.Dari(o, o.Client?.Name ?? "Klien")).ToList());
     }
 
+    /// <summary>Order yang sedang dipegang runner yang masuk, terbaru di atas.</summary>
+    /// <remarks>
+    /// Termasuk yang sudah selesai, karena runner perlu melihat riwayat pekerjaannya sendiri.
+    /// Yang memisahkan "sedang dikerjakan" dari "sudah selesai" adalah statusnya, dan itu
+    /// pekerjaan tampilan, bukan alasan membuat dua endpoint.
+    /// </remarks>
+    [HttpGet("runner-saya")]
+    [Authorize(Roles = Peran.Runner)]
+    public async Task<ActionResult<IReadOnlyList<OrderResponse>>> RunnerSaya(CancellationToken batal)
+    {
+        var runnerId = User.Id();
+
+        var orders = await db.Orders
+            .Include(o => o.RunnerAssignments)
+            .Include(o => o.Offers)
+            .Include(o => o.Client)
+            .Where(o => o.RunnerAssignments.Any(a => a.RunnerId == runnerId))
+            .OrderByDescending(o => o.CreatedAt)
+            .ToListAsync(batal);
+
+        return Ok(orders.Select(o => OrderResponse.Dari(o, o.Client?.Name ?? "Klien")).ToList());
+    }
+
     /// <summary>
     /// Runner menekan TERIMA. Inti teknis proyek (rencana capstone bagian 14.5).
     /// </summary>

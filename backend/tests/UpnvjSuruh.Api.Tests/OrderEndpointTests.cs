@@ -386,6 +386,36 @@ public class OrderEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
     }
 
     [Fact]
+    public async Task DaftarOrderRunnerHanyaBerisiOrderYangDipegangnya()
+    {
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+        var (runner, _) = await AkunAsync(UserRole.Runner);
+        var (runnerLain, _) = await AkunAsync(UserRole.Runner);
+        var diambil = await BuatOrderAsync(klien);
+        var tidakDiambil = await BuatOrderAsync(klien);
+        await BayarAsync(diambil.Id, diambil.Harga!.Value);
+        await BayarAsync(tidakDiambil.Id, tidakDiambil.Harga!.Value);
+        await runner.PostAsync($"/api/orders/{diambil.Id}/terima", null);
+
+        var punyaRunner = await runner.GetFromJsonAsync<List<OrderResponse>>("/api/orders/runner-saya");
+        var punyaRunnerLain = await runnerLain.GetFromJsonAsync<List<OrderResponse>>("/api/orders/runner-saya");
+
+        Assert.Contains(punyaRunner!, o => o.Id == diambil.Id);
+        Assert.DoesNotContain(punyaRunner!, o => o.Id == tidakDiambil.Id);
+        Assert.DoesNotContain(punyaRunnerLain!, o => o.Id == diambil.Id);
+    }
+
+    [Fact]
+    public async Task KlienBiasaTidakBisaMembukaDaftarOrderRunner()
+    {
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+
+        var jawaban = await klien.GetAsync("/api/orders/runner-saya");
+
+        Assert.Equal(HttpStatusCode.Forbidden, jawaban.StatusCode);
+    }
+
+    [Fact]
     public async Task DuaRunnerMenekanTerimaBersamaanHanyaSatuYangDapat()
     {
         // Inti teknis proyek (bagian 14.5). Bukan simulasi: dua permintaan HTTP sungguhan
