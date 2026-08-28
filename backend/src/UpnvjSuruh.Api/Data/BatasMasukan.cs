@@ -19,4 +19,5 @@ public static class BatasMasukan
     public const int NomorHp = 20;
     public const int ReferensiGateway = 200;
     public const int Url = 500;
+    public const int KodeOrder = 20;
 }

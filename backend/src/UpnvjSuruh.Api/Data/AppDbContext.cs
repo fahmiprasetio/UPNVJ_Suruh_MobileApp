@@ -32,6 +32,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         modelBuilder.Entity<Order>(entity =>
         {
+            // Nomornya dibangkitkan basis data, bukan dihitung di kode. Menghitungnya di
+            // kode berarti membaca nomor terakhir lalu menambah satu, dan dua order yang
+            // dibuat bersamaan akan membaca angka yang sama.
+            entity.Property(o => o.OrderCode)
+                .HasMaxLength(BatasMasukan.KodeOrder)
+                .HasDefaultValueSql("'SRH-' || lpad(nextval('order_code_seq')::text, 4, '0')")
+                .ValueGeneratedOnAdd();
+
+            entity.HasIndex(o => o.OrderCode).IsUnique();
+
             entity.Property(o => o.Description).HasMaxLength(BatasMasukan.Deskripsi);
             entity.Property(o => o.PickupAddress).HasMaxLength(BatasMasukan.Alamat);
             entity.Property(o => o.DestinationAddress).HasMaxLength(BatasMasukan.Alamat);

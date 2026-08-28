@@ -46,6 +46,7 @@ public record RincianTarifResponse(string Label, decimal Nominal)
 
 public record OrderResponse(
     Guid Id,
+    string KodeOrder,
     string ServiceType,
     string Track,
     string Status,
@@ -60,13 +61,22 @@ public record OrderResponse(
     IReadOnlyList<Guid> RunnerIds,
     int? EstimasiDurasiMenit,
     DateTime? JadwalMulai,
+    string? FotoBuktiUrl,
+    string? CatatanSerahTerima,
     IReadOnlyList<OrderOfferResponse> Penawaran,
+    /// <summary>
+    /// Cukup jumlahnya, bukan isinya. Daftar order menampilkan penanda "ada 3 pesan", dan
+    /// mengirim seluruh percakapan setiap order cuma untuk satu angka adalah pemborosan
+    /// yang tumbuh seiring ramainya chat.
+    /// </summary>
+    int JumlahPesan,
     DateTime DibuatPada,
     DateTime? DibayarPada,
     DateTime? SelesaiPada)
 {
-    public static OrderResponse Dari(Order order, string namaKlien) => new(
+    public static OrderResponse Dari(Order order, string namaKlien, int jumlahPesan = 0) => new(
         order.Id,
+        order.OrderCode,
         order.ServiceType.ToString(),
         order.Track.ToString(),
         order.Status.ToString(),
@@ -81,10 +91,13 @@ public record OrderResponse(
         [.. order.RunnerAssignments.Select(a => a.RunnerId)],
         order.EstimatedDuration is null ? null : (int)order.EstimatedDuration.Value.TotalMinutes,
         order.ScheduledStart,
+        order.PhotoUrl,
+        order.HandoverNote,
         // Penawaran ikut terkirim bersama ordernya, bukan lewat permintaan terpisah.
         // Layar yang menampilkan penawaran selalu menampilkan ordernya juga, jadi
         // memisahkannya cuma menambah satu permintaan yang selalu menyusul.
         [.. order.Offers.OrderBy(f => f.CreatedAt).Select(OrderOfferResponse.Dari)],
+        jumlahPesan,
         order.CreatedAt,
         order.PaidAt,
         order.CompletedAt);

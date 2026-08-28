@@ -3,6 +3,23 @@ namespace UpnvjSuruh.Api.Domain;
 public class Order
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+
+    /// <summary>
+    /// Kode pendek yang dibaca manusia, misalnya <c>SRH-0412</c>.
+    ///
+    /// Ada bukan demi kerapian. Id order berupa GUID tidak bisa dibacakan lewat telepon,
+    /// tidak bisa ditulis di nota, dan tidak bisa disebut klien saat mengeluh ke admin.
+    /// Nomornya datang dari sequence di basis data, jadi tidak ada dua order yang bisa
+    /// mendapat kode sama walau dibuat pada saat yang sama.
+    /// </summary>
+    /// <remarks>
+    /// Sengaja `null!`, bukan string kosong. EF hanya membiarkan basis data mengisi kolom
+    /// kalau nilainya masih nilai bawaan CLR; string kosong sudah dianggap nilai yang
+    /// sengaja diisi, jadi setiap order akan dikirim dengan kode kosong yang sama dan order
+    /// kedua langsung menabrak index uniknya.
+    /// </remarks>
+    public string OrderCode { get; set; } = null!;
+
     public required Guid ClientId { get; set; }
     public User? Client { get; set; }
 

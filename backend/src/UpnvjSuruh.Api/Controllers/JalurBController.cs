@@ -135,7 +135,8 @@ public class JalurBController(AppDbContext db) : ControllerBase
             return Konflik("Order ini baru saja ditawari admin lain.");
         }
 
-        return Ok(OrderResponse.Dari(order, order.Client?.Name ?? "Klien"));
+        return Ok(OrderResponse.Dari(
+            order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, batal)));
     }
 
     /// <summary>
@@ -159,7 +160,8 @@ public class JalurBController(AppDbContext db) : ControllerBase
         Jawab(penawaran, OfferStatus.Disetujui);
 
         await db.SaveChangesAsync(batal);
-        return Ok(OrderResponse.Dari(order, order.Client?.Name ?? "Klien"));
+        return Ok(OrderResponse.Dari(
+            order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, batal)));
     }
 
     /// <summary>
@@ -181,7 +183,8 @@ public class JalurBController(AppDbContext db) : ControllerBase
         Jawab(penawaran!, OfferStatus.Ditolak);
 
         await db.SaveChangesAsync(batal);
-        return Ok(OrderResponse.Dari(order, order.Client?.Name ?? "Klien"));
+        return Ok(OrderResponse.Dari(
+            order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, batal)));
     }
 
     /// <summary>
@@ -217,7 +220,8 @@ public class JalurBController(AppDbContext db) : ControllerBase
         });
 
         await db.SaveChangesAsync(batal);
-        return Ok(OrderResponse.Dari(order, order.Client?.Name ?? "Klien"));
+        return Ok(OrderResponse.Dari(
+            order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, batal)));
     }
 
     private Task<Order?> Muat(Guid id, CancellationToken batal) => db.Orders

@@ -99,7 +99,8 @@ public class OrdersController(AppDbContext db, IKalkulatorTarif kalkulator) : Co
 
         if (!AksesOrder.BolehLihat(order, User.Id(), User)) return NotFound();
 
-        return Ok(OrderResponse.Dari(order, order.Client?.Name ?? "Klien"));
+        return Ok(OrderResponse.Dari(
+            order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, batal)));
     }
 
     /// <summary>Order milik klien yang sedang masuk, terbaru di atas.</summary>
@@ -117,7 +118,11 @@ public class OrdersController(AppDbContext db, IKalkulatorTarif kalkulator) : Co
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync(batal);
 
-        return Ok(orders.Select(o => OrderResponse.Dari(o, o.Client?.Name ?? "Klien")).ToList());
+        var jumlahPesan = await db.JumlahPesanAsync([.. orders.Select(o => o.Id)], batal);
+        return Ok(orders
+            .Select(o => OrderResponse.Dari(
+                o, o.Client?.Name ?? "Klien", jumlahPesan.GetValueOrDefault(o.Id)))
+            .ToList());
     }
 
     /// <summary>
@@ -145,7 +150,11 @@ public class OrdersController(AppDbContext db, IKalkulatorTarif kalkulator) : Co
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync(batal);
 
-        return Ok(orders.Select(o => OrderResponse.Dari(o, o.Client?.Name ?? "Klien")).ToList());
+        var jumlahPesan = await db.JumlahPesanAsync([.. orders.Select(o => o.Id)], batal);
+        return Ok(orders
+            .Select(o => OrderResponse.Dari(
+                o, o.Client?.Name ?? "Klien", jumlahPesan.GetValueOrDefault(o.Id)))
+            .ToList());
     }
 
     /// <summary>Order yang sedang dipegang runner yang masuk, terbaru di atas.</summary>
@@ -168,7 +177,11 @@ public class OrdersController(AppDbContext db, IKalkulatorTarif kalkulator) : Co
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync(batal);
 
-        return Ok(orders.Select(o => OrderResponse.Dari(o, o.Client?.Name ?? "Klien")).ToList());
+        var jumlahPesan = await db.JumlahPesanAsync([.. orders.Select(o => o.Id)], batal);
+        return Ok(orders
+            .Select(o => OrderResponse.Dari(
+                o, o.Client?.Name ?? "Klien", jumlahPesan.GetValueOrDefault(o.Id)))
+            .ToList());
     }
 
     /// <summary>
@@ -322,7 +335,8 @@ public class OrdersController(AppDbContext db, IKalkulatorTarif kalkulator) : Co
         order.HandoverNote = permintaan.CatatanSerahTerima?.Trim();
 
         await db.SaveChangesAsync(batal);
-        return Ok(OrderResponse.Dari(order, order.Client?.Name ?? "Klien"));
+        return Ok(OrderResponse.Dari(
+            order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, batal)));
     }
 
     /// <summary>
@@ -375,6 +389,7 @@ public class OrdersController(AppDbContext db, IKalkulatorTarif kalkulator) : Co
         order.Status = OrderStatus.Batal;
 
         await db.SaveChangesAsync(batal);
-        return Ok(OrderResponse.Dari(order, order.Client?.Name ?? "Klien"));
+        return Ok(OrderResponse.Dari(
+            order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, batal)));
     }
 }

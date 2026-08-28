@@ -136,6 +136,48 @@ public class OrderEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
         Assert.Equal(nameof(OrderStatus.MenungguPembayaran), order.Status);
     }
 
+    [Fact]
+    public async Task SetiapOrderDapatKodePendekYangBerbeda()
+    {
+        // Id berupa GUID tidak bisa dibacakan lewat telepon atau ditulis di nota.
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+
+        var pertama = await BuatOrderAsync(klien);
+        var kedua = await BuatOrderAsync(klien);
+
+        Assert.Matches(@"^SRH-\d{4,}$", pertama.KodeOrder);
+        Assert.Matches(@"^SRH-\d{4,}$", kedua.KodeOrder);
+        Assert.NotEqual(pertama.KodeOrder, kedua.KodeOrder);
+    }
+
+    [Fact]
+    public async Task KodeOrderTetapBerbedaWalauDibuatBersamaan()
+    {
+        // Nomornya datang dari sequence basis data, bukan dari membaca nomor terakhir
+        // lalu menambah satu, jadi dua order yang lahir bersamaan tidak bisa kembar.
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+
+        var hasil = await Task.WhenAll(
+            Enumerable.Range(0, 5).Select(_ => BuatOrderAsync(klien)));
+
+        Assert.Equal(5, hasil.Select(o => o.KodeOrder).Distinct().Count());
+    }
+
+    [Fact]
+    public async Task JumlahPesanIkutDiDaftarOrder()
+    {
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+        var order = await BuatOrderAsync(klien);
+        await klien.PostAsJsonAsync($"/api/orders/{order.Id}/pesan", new { Isi = "halo" });
+        await klien.PostAsJsonAsync($"/api/orders/{order.Id}/pesan", new { Isi = "halo lagi" });
+
+        var daftar = await klien.GetFromJsonAsync<List<OrderResponse>>("/api/orders/saya");
+        var tunggal = await klien.GetFromJsonAsync<OrderResponse>($"/api/orders/{order.Id}");
+
+        Assert.Equal(2, daftar!.Single(o => o.Id == order.Id).JumlahPesan);
+        Assert.Equal(2, tunggal!.JumlahPesan);
+    }
+
     // --- Otorisasi membaca order ---
 
     [Fact]
