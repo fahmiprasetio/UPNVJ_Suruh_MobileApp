@@ -91,6 +91,7 @@ public class OrdersController(AppDbContext db, IKalkulatorTarif kalkulator) : Co
     {
         var order = await db.Orders
             .Include(o => o.RunnerAssignments)
+            .Include(o => o.Offers)
             .Include(o => o.Client)
             .SingleOrDefaultAsync(o => o.Id == id, batal);
 
@@ -115,6 +116,7 @@ public class OrdersController(AppDbContext db, IKalkulatorTarif kalkulator) : Co
 
         var orders = await db.Orders
             .Include(o => o.RunnerAssignments)
+            .Include(o => o.Offers)
             .Include(o => o.Client)
             .Where(o => o.ClientId == klienId)
             .OrderByDescending(o => o.CreatedAt)
@@ -139,6 +141,7 @@ public class OrdersController(AppDbContext db, IKalkulatorTarif kalkulator) : Co
 
         var orders = await db.Orders
             .Include(o => o.RunnerAssignments)
+            .Include(o => o.Offers)
             .Include(o => o.Client)
             .Where(o => o.Status == OrderStatus.MencariRunner)
             .Where(o => o.ClientId != runnerId)
@@ -168,10 +171,33 @@ public class OrdersController(AppDbContext db, IKalkulatorTarif kalkulator) : Co
     {
         var runnerId = User.Id();
 
+        // Seluruh transaksinya dibungkus, bukan cuma penyimpanannya.
+        //
+        // Di isolasi serializable, Postgres boleh menolak transaksi mana pun yang tidak bisa
+        // diurutkan, dan penolakan itu bisa muncul di perintah apa pun, termasuk SELECT.
+        // Versi sebelumnya cuma menjaga SaveChanges, jadi kegagalan yang mengenai pembacaan
+        // lolos keluar sebagai galat server, dan runner yang cuma kalah cepat melihat
+        // aplikasinya rusak.
+        try
+        {
+            return await Jalankan(id, runnerId, batal);
+        }
+        catch (Exception galat) when (GalatDb.KalahCepat(galat))
+        {
+            return Ok(new TerimaOrderResponse(false, "Order ini keburu diambil runner lain."));
+        }
+    }
+
+    private async Task<ActionResult<TerimaOrderResponse>> Jalankan(
+        Guid id,
+        Guid runnerId,
+        CancellationToken batal)
+    {
         await using var transaksi = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, batal);
 
         var order = await db.Orders
             .Include(o => o.RunnerAssignments)
+            .Include(o => o.Offers)
             .SingleOrDefaultAsync(o => o.Id == id, batal);
 
         if (order is null) return NotFound();
@@ -216,31 +242,9 @@ public class OrdersController(AppDbContext db, IKalkulatorTarif kalkulator) : Co
             order.Status = OrderStatus.Dikerjakan;
         }
 
-        try
-        {
-            await db.SaveChangesAsync(batal);
-            await transaksi.CommitAsync(batal);
-        }
-        catch (Exception galat) when (KalahCepat(galat))
-        {
-            await transaksi.RollbackAsync(batal);
-            return Ok(new TerimaOrderResponse(false, "Order ini keburu diambil runner lain."));
-        }
+        await db.SaveChangesAsync(batal);
+        await transaksi.CommitAsync(batal);
 
         return Ok(new TerimaOrderResponse(true, "Order jadi milikmu."));
     }
-
-    /// <summary>
-    /// Benar kalau galatnya berarti runner ini kalah lomba, bukan ada yang rusak.
-    ///
-    /// 40001 adalah kegagalan serialisasi, yaitu dua transaksi yang tidak bisa diurutkan.
-    /// 23505 adalah pelanggaran index unik, yaitu runner yang sama menyelip dua kali.
-    /// Keduanya hasil yang wajar di sini dan tidak boleh muncul sebagai galat server.
-    /// </summary>
-    private static bool KalahCepat(Exception galat) =>
-        galat is DbUpdateConcurrencyException
-        || (galat.InnerException ?? galat) is PostgresException
-        {
-            SqlState: PostgresErrorCodes.SerializationFailure or PostgresErrorCodes.UniqueViolation,
-        };
 }

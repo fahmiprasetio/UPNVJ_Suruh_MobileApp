@@ -58,6 +58,9 @@ public record OrderResponse(
     double? JarakKm,
     int JumlahRunnerDibutuhkan,
     IReadOnlyList<Guid> RunnerIds,
+    int? EstimasiDurasiMenit,
+    DateTime? JadwalMulai,
+    IReadOnlyList<OrderOfferResponse> Penawaran,
     DateTime DibuatPada,
     DateTime? DibayarPada,
     DateTime? SelesaiPada)
@@ -76,6 +79,12 @@ public record OrderResponse(
         order.DistanceKm,
         order.RequiredRunnerCount,
         [.. order.RunnerAssignments.Select(a => a.RunnerId)],
+        order.EstimatedDuration is null ? null : (int)order.EstimatedDuration.Value.TotalMinutes,
+        order.ScheduledStart,
+        // Penawaran ikut terkirim bersama ordernya, bukan lewat permintaan terpisah.
+        // Layar yang menampilkan penawaran selalu menampilkan ordernya juga, jadi
+        // memisahkannya cuma menambah satu permintaan yang selalu menyusul.
+        [.. order.Offers.OrderBy(f => f.CreatedAt).Select(OrderOfferResponse.Dari)],
         order.CreatedAt,
         order.PaidAt,
         order.CompletedAt);

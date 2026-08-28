@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 using UpnvjSuruh.Api.Auth;
 using UpnvjSuruh.Api.Contracts;
 using UpnvjSuruh.Api.Data;
@@ -54,7 +53,7 @@ public class AuthController(
         {
             await db.SaveChangesAsync(batal);
         }
-        catch (DbUpdateException galat) when (galat.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        catch (DbUpdateException galat) when (GalatDb.Bentrok(galat))
         {
             // Kalah cepat dengan pendaftaran lain untuk nomor yang sama. Inilah sebabnya
             // pemeriksaan di atas saja tidak cukup: keduanya membaca sebelum ada yang menulis,

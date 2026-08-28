@@ -64,11 +64,22 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
-        modelBuilder.Entity<OrderOffer>()
-            .HasOne(f => f.Order)
-            .WithMany(o => o.Offers)
-            .HasForeignKey(f => f.OrderId)
-            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<OrderOffer>(entity =>
+        {
+            entity.Property(f => f.Note).HasMaxLength(BatasMasukan.Deskripsi);
+
+            // Satu order tidak boleh punya dua penawaran yang sama-sama menunggu jawaban.
+            // Tanpa ini, penawaran kedua diam-diam menimpa yang sedang dibaca klien, dan
+            // klien menekan setuju untuk harga yang berbeda dari yang tampil di layarnya.
+            entity.HasIndex(f => f.OrderId)
+                .IsUnique()
+                .HasFilter($"\"Status\" = {(int)OfferStatus.Pending}");
+
+            entity.HasOne(f => f.Order)
+                .WithMany(o => o.Offers)
+                .HasForeignKey(f => f.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
 
         modelBuilder.Entity<OrderMessage>(entity =>
         {
