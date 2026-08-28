@@ -21,6 +21,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             // yang cuma membaca.
             entity.HasIndex(u => u.Phone).IsUnique();
 
+            entity.Property(u => u.Name).HasMaxLength(BatasMasukan.Nama);
+            entity.Property(u => u.Phone).HasMaxLength(BatasMasukan.NomorHp);
+            entity.Property(u => u.Address).HasMaxLength(BatasMasukan.Alamat);
+
             // Disimpan sebagai integer[] Postgres, bukan JSON, supaya "cari semua runner"
             // tetap bisa dijawab satu query berindeks nanti.
             entity.Property(u => u.Roles).HasColumnType("integer[]");
@@ -28,6 +32,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         modelBuilder.Entity<Order>(entity =>
         {
+            entity.Property(o => o.Description).HasMaxLength(BatasMasukan.Deskripsi);
+            entity.Property(o => o.PickupAddress).HasMaxLength(BatasMasukan.Alamat);
+            entity.Property(o => o.DestinationAddress).HasMaxLength(BatasMasukan.Alamat);
+            entity.Property(o => o.HandoverNote).HasMaxLength(BatasMasukan.CatatanSerahTerima);
+            entity.Property(o => o.PhotoUrl).HasMaxLength(BatasMasukan.Url);
+            entity.Property(o => o.VoiceNoteUrl).HasMaxLength(BatasMasukan.Url);
+
             // Postgres system column used as optimistic-concurrency token: a runner-accept
             // that races against a stale read of Order fails instead of silently overwriting.
             entity.Property<uint>("xmin").HasColumnName("xmin").IsRowVersion();
@@ -59,11 +70,21 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .HasForeignKey(f => f.OrderId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        modelBuilder.Entity<OrderMessage>()
-            .HasOne(m => m.Order)
-            .WithMany(o => o.Messages)
-            .HasForeignKey(m => m.OrderId)
-            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<OrderMessage>(entity =>
+        {
+            entity.Property(m => m.Text).HasMaxLength(BatasMasukan.PesanChat);
+            entity.Property(m => m.PhotoUrl).HasMaxLength(BatasMasukan.Url);
+            entity.Property(m => m.VoiceNoteUrl).HasMaxLength(BatasMasukan.Url);
+
+            entity.HasOne(m => m.Order)
+                .WithMany(o => o.Messages)
+                .HasForeignKey(m => m.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Payment>()
+            .Property(p => p.GatewayReference)
+            .HasMaxLength(BatasMasukan.ReferensiGateway);
 
         modelBuilder.Entity<Payment>()
             .HasOne(p => p.Order)

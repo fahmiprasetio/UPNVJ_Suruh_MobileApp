@@ -50,3 +50,22 @@ public enum PaymentStatus
     Gagal,
     Kedaluwarsa
 }
+
+public static class ServiceTypeExtensions
+{
+    /// <summary>
+    /// Jalur mana yang dipakai satu jenis layanan. Wajib sama persis dengan
+    /// <c>ServiceType</c> di aplikasi mobile, yang menaruh pemetaan ini di enum-nya.
+    /// </summary>
+    public static OrderTrack Track(this ServiceType serviceType) => serviceType switch
+    {
+        ServiceType.AnterJemput => OrderTrack.JalurA,
+        ServiceType.JastipMakanan => OrderTrack.JalurA,
+        ServiceType.JastipBarang => OrderTrack.JalurA,
+        ServiceType.BantuPindahKos => OrderTrack.JalurB,
+        ServiceType.BersihKos => OrderTrack.JalurB,
+        ServiceType.BersihKamarMandi => OrderTrack.JalurB,
+        ServiceType.PermintaanLain => OrderTrack.JalurB,
+        _ => throw new ArgumentOutOfRangeException(nameof(serviceType), serviceType, null),
+    };
+}
