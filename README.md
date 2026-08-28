@@ -131,7 +131,17 @@ karena penyedianya tidak menegakkan apa-apa lebih buruk daripada tidak ada tes. 
 Postgres-nya bisa diatur lewat environment variable `UPNVJ_TEST_DB` kalau bukan Postgres
 lokal dengan kredensial bawaan.
 
-Aplikasi mobile belum menyambung ke backend ini. Selama repositorinya masih memakai data tiruan, keduanya berjalan sendiri-sendiri.
+### Mengarahkan aplikasi ke backend
+
+Alamat backend tidak ditulis mati di kode, melainkan diisi saat build:
+
+```
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:5059
+```
+
+`10.0.2.2` adalah cara emulator Android menyebut localhost mesin induknya, dan itu juga nilai bawaannya. Di perangkat fisik, ganti dengan alamat IP mesin kamu di jaringan yang sama.
+
+Aplikasi belum benar-benar memakai backend ini: providernya masih mengembalikan repository tiruan. Lapisan API dan `ApiAuthRepository` sudah ada dan sudah teruji, tapi menukarnya sekarang akan membuat aplikasi tidak bisa dimasuki sama sekali, karena layar login belum ada dan alat penguji ganti akun ikut hilang begitu repositorynya bukan tiruan lagi. Layar login dulu, baru penukarannya.
 
 ## Struktur proyek
 
