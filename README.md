@@ -103,6 +103,17 @@ dotnet run
 
 Swagger terbuka di `/swagger` dan hanya di lingkungan Development.
 
+Menjalankan pengujian backend:
+
+```
+cd backend
+dotnet test
+```
+
+Tes tidak butuh basis data maupun user-secrets: API dinyalakan di dalam proses tes lewat
+`WebApplicationFactory` dengan konfigurasi sendiri, jadi hasilnya sama di laptop siapa pun
+dan di CI yang tidak punya rahasia apa-apa.
+
 Aplikasi mobile belum menyambung ke backend ini. Selama repositorinya masih memakai data tiruan, keduanya berjalan sendiri-sendiri.
 
 ## Struktur proyek
