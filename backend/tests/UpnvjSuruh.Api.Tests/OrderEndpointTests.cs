@@ -65,7 +65,7 @@ public class OrderEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
         return hasil!.Order;
     }
 
-    private async Task BayarAsync(Guid orderId, decimal jumlah)
+    private async Task BayarAsync(Guid orderId, decimal jumlah, string? referensi = null)
     {
         var klien = pabrik.CreateClient();
         klien.DefaultRequestHeaders.Add(
@@ -74,7 +74,7 @@ public class OrderEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
         var jawaban = await klien.PostAsJsonAsync("/api/webhooks/pembayaran", new
         {
             OrderId = orderId,
-            ReferensiGateway = "trx-" + Guid.NewGuid().ToString("N"),
+            ReferensiGateway = referensi ?? "trx-" + Guid.NewGuid().ToString("N"),
             Status = nameof(PaymentStatus.Berhasil),
             Jumlah = jumlah,
         });
@@ -345,8 +345,11 @@ public class OrderEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
         var (klien, _) = await AkunAsync(UserRole.Klien);
         var order = await BuatOrderAsync(klien);
 
-        await BayarAsync(order.Id, order.Harga!.Value);
-        await BayarAsync(order.Id, order.Harga!.Value);
+        // Referensi yang sama, karena itulah yang membuatnya kiriman ulang dan bukan dua
+        // transaksi berbeda. Gateway mengulang kabarnya dengan referensi yang sama persis.
+        const string referensi = "trx-diulang";
+        await BayarAsync(order.Id, order.Harga!.Value, referensi);
+        await BayarAsync(order.Id, order.Harga!.Value, referensi);
 
         using var lingkup = pabrik.Services.CreateScope();
         var db = lingkup.ServiceProvider.GetRequiredService<AppDbContext>();

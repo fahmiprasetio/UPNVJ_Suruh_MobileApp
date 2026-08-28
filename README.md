@@ -111,10 +111,18 @@ dotnet run
 
 Swagger terbuka di `/swagger` dan hanya di lingkungan Development.
 
-Kode OTP tidak dikirim ke mana pun selama pengembangan, melainkan ditulis ke log server
-dengan penanda `[ALAT PENGUJI]`. Di luar Development server menolak menyala sampai ada
-pengirim OTP sungguhan yang didaftarkan, karena pengirim yang menulis kode ke log sama saja
-dengan tidak punya OTP sama sekali.
+Selama Development ada dua alat penguji yang menggantikan pihak luar yang belum tersambung,
+dan keduanya sengaja tidak pernah terdaftar di luar Development:
+
+- Kode OTP tidak dikirim ke mana pun, melainkan ditulis ke log server dengan penanda
+  `[ALAT PENGUJI]`.
+- `POST /api/dev/pembayaran/{orderId}/lunas` menirukan gateway mengabarkan uang sudah masuk,
+  sepadan dengan halaman simulator di sandbox Midtrans. Buat tagihannya dulu lewat
+  `POST /api/orders/{orderId}/pembayaran`.
+
+Di luar Development server menolak menyala sampai ada pengirim OTP sungguhan yang
+didaftarkan, karena pengirim yang menulis kode ke log sama saja dengan tidak punya OTP sama
+sekali.
 
 Menjalankan pengujian backend:
 

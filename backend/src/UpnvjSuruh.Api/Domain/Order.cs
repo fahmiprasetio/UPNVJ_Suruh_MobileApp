@@ -64,5 +64,12 @@ public class Order
     public List<OrderOffer> Offers { get; set; } = [];
     public List<OrderMessage> Messages { get; set; } = [];
     public List<OrderRunnerAssignment> RunnerAssignments { get; set; } = [];
-    public Payment? Payment { get; set; }
+    /// <summary>
+    /// Riwayat transaksi pembayaran order ini.
+    ///
+    /// Koleksi, bukan satu, karena transaksi bisa hangus lewat batas waktu lalu klien
+    /// mencoba lagi. Memaksanya satu berarti percobaan yang gagal harus dihapus atau
+    /// ditimpa, dan order yang uangnya dipertanyakan jadi tidak punya jejak.
+    /// </summary>
+    public List<Payment> Payments { get; set; } = [];
 }

@@ -1,11 +1,14 @@
 using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using UpnvjSuruh.Api.Auth;
 using UpnvjSuruh.Api.Data;
+using UpnvjSuruh.Api.Domain;
 using UpnvjSuruh.Api.Hubs;
+using UpnvjSuruh.Api.Payments;
 using UpnvjSuruh.Api.Pricing;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -131,6 +134,7 @@ builder.Services
 builder.Services.AddAuthorization();
 
 builder.Services.AddSingleton<IKalkulatorTarif, KalkulatorTarif>();
+builder.Services.AddScoped<PenyelesaiPembayaran>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -153,6 +157,54 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<OrderHub>("/hubs/orders");
+
+if (app.Environment.IsDevelopment())
+{
+    // Tiruan gateway, sepadan dengan halaman simulator di sandbox Midtrans.
+    //
+    // Dipasang sebagai endpoint yang cuma ada di Development, bukan sebagai controller
+    // dengan penjagaan di dalamnya. Bedanya penting: controller yang dijaga tetap ada di
+    // aplikasi produksi, dan penjagaannya tinggal satu baris yang bisa hilang saat
+    // penyuntingan. Yang tidak pernah terdaftar tidak bisa dipanggil, apa pun yang terjadi
+    // pada kodenya nanti.
+    //
+    // Kalau ini sampai hidup di produksi, siapa pun yang tahu alamatnya bisa memesan lalu
+    // menandai pesanannya sendiri lunas, dan seluruh aturan bayar di depan jadi hiasan.
+    app.MapPost("/api/dev/pembayaran/{orderId:guid}/lunas", async (
+        Guid orderId,
+        PenyelesaiPembayaran penyelesai,
+        AppDbContext db,
+        CancellationToken batal) =>
+    {
+        var order = await db.Orders
+            .Include(o => o.Payments)
+            .SingleOrDefaultAsync(o => o.Id == orderId, batal);
+
+        if (order is null) return Results.NotFound();
+
+        var pembayaran = order.Payments.SingleOrDefault(p => p.Menunggu);
+        if (pembayaran is null)
+        {
+            return Results.BadRequest(new ProblemDetails
+            {
+                Title = "Order ini belum punya transaksi yang menunggu",
+                Detail = "Buat transaksinya dulu lewat POST /api/orders/{id}/pembayaran.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        var hasil = await penyelesai.SelesaikanAsync(
+            orderId,
+            pembayaran.GatewayReference,
+            PaymentStatus.Berhasil,
+            pembayaran.Amount,
+            batal);
+
+        return hasil == HasilPenyelesaian.TidakDitemukan ? Results.NotFound() : Results.Ok();
+    })
+    .AllowAnonymous()
+    .WithSummary("ALAT PENGUJI: menirukan gateway mengabarkan uang sudah masuk.");
+}
 
 app.Run();
 

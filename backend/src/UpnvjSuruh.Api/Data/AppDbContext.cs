@@ -103,14 +103,23 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        modelBuilder.Entity<Payment>()
-            .Property(p => p.GatewayReference)
-            .HasMaxLength(BatasMasukan.ReferensiGateway);
+        modelBuilder.Entity<Payment>(entity =>
+        {
+            entity.Property(p => p.GatewayReference).HasMaxLength(BatasMasukan.ReferensiGateway);
+            entity.Property(p => p.QrPayload).HasMaxLength(BatasMasukan.QrPayload);
+
+            // Satu order tidak boleh punya dua transaksi yang sama-sama menunggu. Membuka
+            // ulang layar bayar tidak melahirkan QR baru, dan dua QR untuk satu order berarti
+            // klien bisa membayar dua kali untuk pekerjaan yang sama.
+            entity.HasIndex(p => p.OrderId)
+                .IsUnique()
+                .HasFilter($"\"Status\" = {(int)PaymentStatus.Pending}");
+        });
 
         modelBuilder.Entity<Payment>()
             .HasOne(p => p.Order)
-            .WithOne(o => o.Payment)
-            .HasForeignKey<Payment>(p => p.OrderId)
+            .WithMany(o => o.Payments)
+            .HasForeignKey(p => p.OrderId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
