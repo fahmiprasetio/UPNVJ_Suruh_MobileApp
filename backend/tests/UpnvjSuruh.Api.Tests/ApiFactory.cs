@@ -28,8 +28,12 @@ public class ApiFactory : WebApplicationFactory<Program>
                 ["Jwt:Issuer"] = Issuer,
                 ["Jwt:Audience"] = Audience,
                 ["Jwt:MasaBerlakuMenit"] = "60",
-                ["ConnectionStrings:Default"] =
-                    "Host=localhost;Port=5432;Database=upnvj_suruh_test;Username=postgres;Password=postgres",
+                // Sengaja tanpa kredensial. Tidak ada kueri yang dijalankan tes ini, jadi
+                // yang dibutuhkan cuma string yang bentuknya sah supaya DbContext bisa
+                // dibangun. Menaruh password sungguhan di sini membuat pemindai rahasia
+                // berbunyi setiap kali, dan pemindai yang selalu berbunyi akan diabaikan
+                // justru saat menemukan yang asli.
+                ["ConnectionStrings:Default"] = "Host=localhost;Database=upnvj_suruh_test",
             });
         });
 
