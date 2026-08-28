@@ -21,6 +21,15 @@ namespace UpnvjSuruh.Api.Tests;
 /// </summary>
 public class DatabaseApiFactory : ApiFactory, IAsyncLifetime
 {
+    /// <summary>
+    /// Alamat Postgres untuk tes.
+    ///
+    /// Bawaannya sengaja memuat kredensial bawaan Postgres lokal, supaya `dotnet test` jalan
+    /// tanpa setup. Ini akan selalu tersangkut pemindai rahasia, dan itu memang harganya:
+    /// yang tertulis di sini bukan rahasia siapa-siapa, cuma nilai bawaan pemasangan Postgres
+    /// di mesin sendiri. Mesin atau CI yang berbeda menimpanya lewat UPNVJ_TEST_DB, dan
+    /// kredensial sungguhan tidak boleh menggantikan baris ini.
+    /// </summary>
     private static string Induk =>
         Environment.GetEnvironmentVariable("UPNVJ_TEST_DB")
         ?? "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres";
