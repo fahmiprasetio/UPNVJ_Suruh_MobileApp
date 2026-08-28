@@ -23,6 +23,10 @@ builder.Services.AddSignalR();
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     options.UseNpgsql(builder.Configuration.GetConnectionString("Default"));
+    // Nilai parameter ikut tercatat di log, termasuk nomor HP. Sangat menolong saat
+    // menelusuri galat basis data yang pesannya menyesatkan, dan justru karena itu harus
+    // dikurung ke Development: log yang memuat data orang adalah kebocoran yang menunggu
+    // giliran, dan server produksi menulis log ke tempat yang lebih banyak matanya.
     if (builder.Environment.IsDevelopment())
     {
         options.EnableSensitiveDataLogging();

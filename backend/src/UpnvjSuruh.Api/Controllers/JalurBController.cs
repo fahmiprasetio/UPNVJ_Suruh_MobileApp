@@ -212,6 +212,7 @@ public class JalurBController(AppDbContext db) : ControllerBase
             // Pengirimnya diambil dari token. Peran penulis pesan tidak pernah datang dari
             // badan permintaan, karena kalau begitu siapa pun bisa menulis atas nama admin.
             SenderId = User.Id(),
+            SenderRole = UserRole.Klien,
             Text = permintaan.Alasan.Trim(),
         });
 

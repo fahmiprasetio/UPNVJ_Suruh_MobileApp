@@ -97,12 +97,7 @@ public class OrdersController(AppDbContext db, IKalkulatorTarif kalkulator) : Co
 
         if (order is null) return NotFound();
 
-        var pemanggil = User.Id();
-        var berhak = order.ClientId == pemanggil
-                     || order.RunnerAssignments.Any(a => a.RunnerId == pemanggil)
-                     || User.Punya(Peran.Admin);
-
-        if (!berhak) return NotFound();
+        if (!AksesOrder.BolehLihat(order, User.Id(), User)) return NotFound();
 
         return Ok(OrderResponse.Dari(order, order.Client?.Name ?? "Klien"));
     }
@@ -246,5 +241,117 @@ public class OrdersController(AppDbContext db, IKalkulatorTarif kalkulator) : Co
         await transaksi.CommitAsync(batal);
 
         return Ok(new TerimaOrderResponse(true, "Order jadi milikmu."));
+    }
+
+    /// <summary>
+    /// Runner menandai pekerjaannya selesai.
+    /// </summary>
+    /// <remarks>
+    /// Yang berhak menutup order hanya runner yang memegangnya. Pemeriksaan itu tempatnya di
+    /// sini, bukan di tampilan: tombol yang disembunyikan tidak menghentikan siapa pun yang
+    /// memanggil langsung.
+    ///
+    /// Foto bukti wajib ada, dan itu yang membedakan pekerjaan selesai dari pengakuan
+    /// selesai.
+    ///
+    /// Pada order multi-runner, runner mana pun yang ditugaskan boleh menutupnya. Itu
+    /// keputusan sementara: siapa yang berhak menekan selesai kalau pekerjaannya dibagi tiga
+    /// orang masih menunggu jawaban mitra (rencana capstone bagian 14.7d).
+    /// </remarks>
+    [HttpPost("{id:guid}/selesai")]
+    [Authorize(Roles = Peran.Runner)]
+    public async Task<ActionResult<OrderResponse>> Selesaikan(
+        Guid id,
+        SelesaikanOrderRequest permintaan,
+        CancellationToken batal)
+    {
+        var runnerId = User.Id();
+
+        var order = await db.Orders
+            .Include(o => o.RunnerAssignments)
+            .Include(o => o.Offers)
+            .Include(o => o.Client)
+            .SingleOrDefaultAsync(o => o.Id == id, batal);
+
+        if (order is null) return NotFound();
+
+        var penugasan = order.RunnerAssignments.SingleOrDefault(a => a.RunnerId == runnerId);
+        // Yang tidak memegang order ini tidak berhak tahu bahwa ordernya ada.
+        if (penugasan is null) return NotFound();
+
+        if (order.Status != OrderStatus.Dikerjakan)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Order belum dikerjakan",
+                Detail = $"Order ini sedang {order.Status}, jadi belum bisa diselesaikan.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        var sekarang = DateTime.UtcNow;
+        penugasan.MarkedDoneAt = sekarang;
+        penugasan.CompletionPhotoUrl = permintaan.FotoBuktiUrl.Trim();
+
+        order.Status = OrderStatus.Selesai;
+        order.CompletedAt = sekarang;
+        order.PhotoUrl = permintaan.FotoBuktiUrl.Trim();
+        order.HandoverNote = permintaan.CatatanSerahTerima?.Trim();
+
+        await db.SaveChangesAsync(batal);
+        return Ok(OrderResponse.Dari(order, order.Client?.Name ?? "Klien"));
+    }
+
+    /// <summary>
+    /// Membatalkan order.
+    /// </summary>
+    /// <remarks>
+    /// Yang boleh membatalkan hanya pemesannya dan admin. Runner tidak, walaupun ia sedang
+    /// memegangnya: runner yang tidak jadi mengerjakan adalah urusan yang perlu diketahui
+    /// admin, bukan tombol yang menghapus pekerjaan orang lain.
+    ///
+    /// Order yang sudah dibayar tidak bisa dibatalkan lewat sini, karena membatalkannya
+    /// berarti ada uang yang harus kembali, dan pengembalian uang bukan sesuatu yang boleh
+    /// terjadi sebagai efek samping satu tombol.
+    /// </remarks>
+    [HttpPost("{id:guid}/batal")]
+    public async Task<ActionResult<OrderResponse>> Batalkan(Guid id, CancellationToken batal)
+    {
+        var order = await db.Orders
+            .Include(o => o.RunnerAssignments)
+            .Include(o => o.Offers)
+            .Include(o => o.Client)
+            .SingleOrDefaultAsync(o => o.Id == id, batal);
+
+        if (order is null) return NotFound();
+
+        var pemanggil = User.Id();
+        if (order.ClientId != pemanggil && !User.Punya(Peran.Admin)) return NotFound();
+
+        if (!order.Status.Aktif())
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Order sudah berakhir",
+                Detail = $"Order ini sudah {order.Status}.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        if (order.PaidAt is not null)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Order ini sudah dibayar",
+                Detail = "Pembatalan setelah pembayaran menyangkut pengembalian uang, "
+                         + "jadi harus lewat admin.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        order.Status = OrderStatus.Batal;
+
+        await db.SaveChangesAsync(batal);
+        return Ok(OrderResponse.Dari(order, order.Client?.Name ?? "Klien"));
     }
 }

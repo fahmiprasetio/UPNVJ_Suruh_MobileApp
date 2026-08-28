@@ -51,6 +51,16 @@ public enum PaymentStatus
     Kedaluwarsa
 }
 
+public static class OrderStatusExtensions
+{
+    /// <summary>
+    /// Order yang masih berjalan. Selesai dan batal adalah keadaan akhir: tidak ada tindakan
+    /// yang boleh menghidupkannya lagi, termasuk mengirim pesan ke chatnya.
+    /// </summary>
+    public static bool Aktif(this OrderStatus status) =>
+        status is not (OrderStatus.Selesai or OrderStatus.Batal);
+}
+
 public static class ServiceTypeExtensions
 {
     /// <summary>
