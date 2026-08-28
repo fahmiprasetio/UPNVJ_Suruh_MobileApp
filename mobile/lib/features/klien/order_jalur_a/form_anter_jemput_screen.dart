@@ -152,9 +152,8 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
   Future<void> _buatOrder() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final hasil = _hasilTarif;
-    final user = ref.read(userAktifProvider).value;
-    if (hasil == null || user == null) return;
+    final jarak = _bacaJarak(_jarakController.text);
+    if (jarak == null) return;
 
     setState(() => _sedangMengirim = true);
 
@@ -163,9 +162,11 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
       order = await ref
           .read(orderRepositoryProvider)
           .buatOrderJalurA(
-            klienId: user.id,
             serviceType: ServiceType.anterJemput,
-            harga: hasil.total,
+            // Yang dikirim jaraknya, bukan totalnya. Angka di layar tadi cuma
+            // rincian yang dilihat klien sebelum memesan; yang mengikat adalah
+            // hitungan server.
+            jarakKm: jarak,
             deskripsi: _catatanController.text.trim().isEmpty
                 ? null
                 : _catatanController.text.trim(),

@@ -87,7 +87,7 @@ class _Isi extends ConsumerWidget {
     final skema = Theme.of(context).colorScheme;
     final penawaran = order.penawaranTerakhir;
     final simulatorAdmin =
-        ref.watch(simulatorPenawaranProvider) &&
+        ref.watch(simulatorPenawaranProvider) != null &&
         order.track == OrderTrack.jalurB &&
         order.status == OrderStatus.permintaan;
 

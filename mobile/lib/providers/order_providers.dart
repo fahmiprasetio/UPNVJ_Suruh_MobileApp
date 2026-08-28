@@ -7,7 +7,7 @@ import 'repository_providers.dart';
 final orderKlienProvider = StreamProvider<List<Order>>((ref) {
   final user = ref.watch(userAktifProvider).value;
   if (user == null) return Stream.value(const <Order>[]);
-  return ref.watch(orderRepositoryProvider).watchOrderKlien(user.id);
+  return ref.watch(orderRepositoryProvider).watchOrderKlien();
 });
 
 /// Satu order yang diamati terus-menerus.

@@ -124,7 +124,7 @@ void main() {
 
     expect(find.textContaining('Tunggu penawaran admin'), findsOneWidget);
 
-    final orders = await repo.watchOrderKlien('u-klien-1').first;
+    final orders = await repo.watchOrderKlienUntuk('u-klien-1').first;
     expect(orders, hasLength(1));
     expect(orders.single.status, OrderStatus.permintaan);
     expect(orders.single.serviceType, ServiceType.bantuPindahKos);
@@ -144,7 +144,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pumpAndSettle();
 
-    final orders = await repo.watchOrderKlien('u-klien-1').first;
+    final orders = await repo.watchOrderKlienUntuk('u-klien-1').first;
     expect(orders.single.jumlahRunnerDibutuhkan, 3);
   });
 }

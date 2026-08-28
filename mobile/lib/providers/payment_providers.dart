@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/fake/fake_order_repository.dart';
 import '../data/fake/fake_payment_gateway.dart';
 import '../domain/models/transaksi_pembayaran.dart';
 import '../domain/repositories/payment_gateway.dart';
@@ -59,7 +60,13 @@ final transaksiOrderProvider =
 
       var sudahDiteruskan = false;
       await for (final terbaru in gateway.watchTransaksi(transaksi.id)) {
-        if (terbaru.berhasil && !sudahDiteruskan) {
+        // Yang memajukan order ke "mencari runner" bukan layar dan bukan klien,
+        // melainkan kabar dari gateway. Di produksi langkah ini tidak terjadi di
+        // sini sama sekali: server menerima webhook dan memajukan ordernya,
+        // aplikasi cuma ikut membaca hasilnya. Karena itu jalannya lewat tiruan
+        // repository langsung, bukan lewat kontrak, dan hilang sendiri begitu
+        // backend sungguhan terpasang.
+        if (terbaru.berhasil && !sudahDiteruskan && orderRepo is FakeOrderRepository) {
           sudahDiteruskan = true;
           await orderRepo.tandaiSudahDibayar(orderId);
         }

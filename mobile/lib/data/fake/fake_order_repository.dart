@@ -6,22 +6,31 @@ import '../../domain/enums.dart';
 import '../../domain/models/order.dart';
 import '../../domain/models/order_message.dart';
 import '../../domain/models/order_offer.dart';
+import '../../domain/pricing/kalkulator_tarif.dart';
 import '../../domain/repositories/order_repository.dart';
 import 'seed_data.dart';
 
 /// Implementasi [OrderRepository] yang menyimpan semuanya di memori.
 ///
-/// Dipakai supaya seluruh antarmuka bisa dibangun dan diuji sebelum pilihan
-/// stack backend dikunci. Setiap operasi diberi jeda kecil agar layar
-/// benar-benar melewati keadaan memuat, bug "lupa menangani loading" jadi
-/// ketahuan sekarang, bukan nanti saat server asli dipasang.
+/// Dipakai supaya seluruh antarmuka bisa dibangun dan diuji sebelum backend
+/// tersambung. Setiap operasi diberi jeda kecil agar layar benar-benar melewati
+/// keadaan memuat, bug "lupa menangani loading" jadi ketahuan sekarang.
+///
+/// Karena kontraknya tidak lagi menerima identitas pemanggil, tiruan ini butuh
+/// cara lain mengetahuinya, dan itu [pemanggil]. Di aplikasi ia dipasang ke user
+/// yang sedang masuk; di tes ia diisi langsung. Beberapa method punya kembaran
+/// berakhiran `Sebagai` yang menerima id secara eksplisit, khusus untuk tes yang
+/// perlu menirukan lebih dari satu orang sekaligus, misalnya dua runner yang
+/// menekan TERIMA pada saat yang sama.
 class FakeOrderRepository implements OrderRepository {
-  FakeOrderRepository({List<Order>? orderAwal})
-    : _orders = List.of(orderAwal ?? SeedData.orderAwal());
+  FakeOrderRepository({List<Order>? orderAwal, String Function()? pemanggil})
+    : _orders = List.of(orderAwal ?? SeedData.orderAwal()),
+      _pemanggil = pemanggil ?? (() => SeedData.klien.id);
 
   static const Duration _jedaJaringan = Duration(milliseconds: 350);
 
   final List<Order> _orders;
+  final String Function() _pemanggil;
   final StreamController<List<Order>> _controller =
       StreamController<List<Order>>.broadcast();
   final Random _random = Random();
@@ -52,7 +61,7 @@ class FakeOrderRepository implements OrderRepository {
   /// Memeriksa panjang satu isian teks bebas.
   ///
   /// Dipanggil dari repository, bukan dari layar, karena kolom yang dibatasi
-  /// `maxLength` tetap bisa diisi lewat tempel, dan nanti lewat pemanggilan API
+  /// `maxLength` tetap bisa diisi lewat tempel, dan lewat pemanggilan API
   /// langsung. Mengembalikan teks yang sudah dirapikan supaya pemanggil tidak
   /// perlu memangkas dua kali.
   static String? _batasi(String? nilai, int batas, String namaIsian) {
@@ -72,18 +81,37 @@ class FakeOrderRepository implements OrderRepository {
     return order;
   }
 
+  /// Order yang pemanggilnya memang pemesannya.
+  ///
+  /// Order milik orang lain diperlakukan sebagai tidak ada, mengikuti server yang
+  /// menjawab 404 untuk keduanya.
+  Order _wajibMilikPemanggil(String orderId) {
+    final order = _wajibAda(orderId);
+    if (order.klienId != _pemanggil()) {
+      throw StateError('Order $orderId tidak ditemukan');
+    }
+    return order;
+  }
+
   static List<Order> _terbaruDiAtas(List<Order> orders) =>
       List.of(orders)..sort((a, b) => b.dibuatPada.compareTo(a.dibuatPada));
 
   @override
-  Stream<List<Order>> watchOrderKlien(String klienId) => _stream.map(
+  Stream<List<Order>> watchOrderKlien() => watchOrderKlienUntuk(_pemanggil());
+
+  /// [watchOrderKlien] untuk klien yang disebutkan langsung, untuk tes.
+  Stream<List<Order>> watchOrderKlienUntuk(String klienId) => _stream.map(
     (orders) =>
         _terbaruDiAtas(orders.where((o) => o.klienId == klienId).toList()),
   );
 
   @override
-  Stream<List<Order>> watchOrderTersiar(String runnerId) => _stream.map(
-    (orders) => _terbaruDiAtas(
+  Stream<List<Order>> watchOrderTersiar() => watchOrderTersiarUntuk(_pemanggil());
+
+  /// [watchOrderTersiar] untuk runner yang disebutkan langsung, untuk tes.
+  Stream<List<Order>> watchOrderTersiarUntuk(String runnerId) =>
+      _stream.map((orders) {
+    return _terbaruDiAtas(
       orders
           .where(
             (o) =>
@@ -93,16 +121,18 @@ class FakeOrderRepository implements OrderRepository {
                 // lagi. Pada order multi-runner kuotanya bisa saja masih
                 // terbuka, tapi slot keduanya bukan untuk orang yang sama.
                 !o.runnerIds.contains(runnerId) &&
-                // Dan ordernya sendiri tidak pernah sampai ke matanya, lihat
-                // alasannya di kontrak.
+                // Dan ordernya sendiri tidak pernah sampai ke matanya.
                 o.klienId != runnerId,
           )
           .toList(),
-    ),
-  );
+    );
+  });
 
   @override
-  Stream<List<Order>> watchOrderRunner(String runnerId) => _stream.map(
+  Stream<List<Order>> watchOrderRunner() => watchOrderRunnerUntuk(_pemanggil());
+
+  /// [watchOrderRunner] untuk runner yang disebutkan langsung, untuk tes.
+  Stream<List<Order>> watchOrderRunnerUntuk(String runnerId) => _stream.map(
     (orders) => _terbaruDiAtas(
       orders.where((o) => o.runnerIds.contains(runnerId)).toList(),
     ),
@@ -120,14 +150,17 @@ class FakeOrderRepository implements OrderRepository {
 
   @override
   Future<Order> buatOrderJalurA({
-    required String klienId,
     required ServiceType serviceType,
-    required int harga,
+    double? jarakKm,
     String? deskripsi,
     String? alamatJemput,
     String? alamatTujuan,
   }) async {
     await Future<void>.delayed(_jedaJaringan);
+
+    if (serviceType.track != OrderTrack.jalurA) {
+      throw StateError('${serviceType.name} bukan layanan Jalur A');
+    }
 
     final deskripsiBersih = _batasi(
       deskripsi,
@@ -145,6 +178,12 @@ class FakeOrderRepository implements OrderRepository {
       'Alamat tujuan',
     );
 
+    // Harganya dihitung di sini, bukan diterima dari pemanggil, sama seperti di
+    // server. Tiruan yang menerima harga jadi akan membuat layar dibangun dengan
+    // asumsi yang tidak berlaku di sana.
+    final tarif = KalkulatorTarif.hitung(serviceType, jarakKm);
+
+    final klienId = _pemanggil();
     final order = Order(
       id: _idBaru(),
       kodeOrder: _kodeOrderBaru(),
@@ -157,7 +196,7 @@ class FakeOrderRepository implements OrderRepository {
       deskripsi: deskripsiBersih,
       alamatJemput: jemputBersih,
       alamatTujuan: tujuanBersih,
-      harga: harga,
+      harga: tarif.total,
     );
     _orders.add(order);
     _pancarkan();
@@ -166,7 +205,6 @@ class FakeOrderRepository implements OrderRepository {
 
   @override
   Future<Order> buatPermintaanJalurB({
-    required String klienId,
     required ServiceType serviceType,
     required String deskripsi,
     required DateTime jadwalMulai,
@@ -174,6 +212,10 @@ class FakeOrderRepository implements OrderRepository {
     int jumlahRunnerDibutuhkan = 1,
   }) async {
     await Future<void>.delayed(_jedaJaringan);
+
+    if (serviceType.track != OrderTrack.jalurB) {
+      throw StateError('${serviceType.name} bukan layanan Jalur B');
+    }
 
     final deskripsiBersih = _batasi(
       deskripsi,
@@ -186,6 +228,7 @@ class FakeOrderRepository implements OrderRepository {
       'Alamat tujuan',
     );
 
+    final klienId = _pemanggil();
     final order = Order(
       id: _idBaru(),
       kodeOrder: _kodeOrderBaru(),
@@ -204,7 +247,13 @@ class FakeOrderRepository implements OrderRepository {
     return order;
   }
 
-  @override
+  /// Admin mengirim penawaran harga untuk satu permintaan Jalur B.
+  ///
+  /// SENGAJA BUKAN BAGIAN DARI [OrderRepository]. Menawar adalah pekerjaan admin,
+  /// dan admin bekerja lewat dashboard web; aplikasi ini tidak punya permukaan
+  /// admin, jadi tidak punya alasan bisa menawar. Yang memanggilnya cuma panel
+  /// alat penguji yang berdiri di tempat dashboard itu, dan panel itu hilang
+  /// sendiri di build rilis.
   Future<Order> buatPenawaran({
     required String orderId,
     required int harga,
@@ -221,10 +270,10 @@ class FakeOrderRepository implements OrderRepository {
         'order dibuat',
       );
     }
-    // Hanya permintaan yang belum punya penawaran menunggu yang boleh
-    // ditawari. Tanpa syarat ini, penawaran kedua akan diam-diam menimpa
-    // penawaran yang sedang dibaca klien, dan klien menekan setuju untuk harga
-    // yang berbeda dari yang tampil di layarnya.
+    // Hanya permintaan yang belum punya penawaran menunggu yang boleh ditawari.
+    // Tanpa syarat ini, penawaran kedua akan diam-diam menimpa penawaran yang
+    // sedang dibaca klien, dan klien menekan setuju untuk harga yang berbeda
+    // dari yang tampil di layarnya.
     if (order.status != OrderStatus.permintaan) {
       throw StateError(
         'Order ${order.kodeOrder} sedang ${order.status.label}, '
@@ -245,7 +294,8 @@ class FakeOrderRepository implements OrderRepository {
       status: OfferStatus.pending,
       catatan: catatan,
     );
-    // Harga ordernya sengaja tidak diisi di sini, lihat alasannya di kontrak.
+    // Harga ordernya sengaja tidak diisi di sini: angka itu masih usulan sampai
+    // klien menyetujuinya.
     final diperbarui = order.copyWith(
       status: OrderStatus.menungguPersetujuanKlien,
       offers: [...order.offers, penawaran],
@@ -257,7 +307,7 @@ class FakeOrderRepository implements OrderRepository {
   @override
   Future<Order> setujuiPenawaran(String orderId) async {
     await Future<void>.delayed(_jedaJaringan);
-    final order = _wajibAda(orderId);
+    final order = _wajibMilikPemanggil(orderId);
     final penawaran = _penawaranMenunggu(order);
 
     final diperbarui = order.copyWith(
@@ -274,7 +324,7 @@ class FakeOrderRepository implements OrderRepository {
   @override
   Future<Order> tolakPenawaran(String orderId) async {
     await Future<void>.delayed(_jedaJaringan);
-    final order = _wajibAda(orderId);
+    final order = _wajibMilikPemanggil(orderId);
     final penawaran = _penawaranMenunggu(order);
 
     final diperbarui = order.copyWith(
@@ -291,7 +341,7 @@ class FakeOrderRepository implements OrderRepository {
     required String alasan,
   }) async {
     await Future<void>.delayed(_jedaJaringan);
-    final order = _wajibAda(orderId);
+    final order = _wajibMilikPemanggil(orderId);
     final penawaran = _penawaranMenunggu(order);
 
     final bersih = _batasi(alasan, BatasMasukan.alasanNego, 'Alasan nego')!;
@@ -305,18 +355,11 @@ class FakeOrderRepository implements OrderRepository {
     // Alasannya masuk ke chat ordernya, bukan ke kolom tersembunyi di
     // penawaran, supaya admin menjawabnya di tempat yang sama dengan
     // pertanyaan lain tentang order ini.
-    final pesan = OrderMessage(
-      id: 'm-${DateTime.now().microsecondsSinceEpoch}-${_random.nextInt(999)}',
-      orderId: orderId,
-      pengirim: MessageSender.klien,
-      isi: bersih,
-      dikirimPada: DateTime.now(),
-    );
     final diperbarui = order.copyWith(
       // Kembali ke antrean admin, bukan batal: klien masih berminat.
       status: OrderStatus.permintaan,
       offers: _gantiPenawaran(order, penawaran, OfferStatus.dinegoUlang),
-      messages: [...order.messages, pesan],
+      messages: [...order.messages, _pesanBaru(orderId, MessageSender.klien, bersih)],
     );
     _ganti(diperbarui);
     return diperbarui;
@@ -347,7 +390,13 @@ class FakeOrderRepository implements OrderRepository {
     ];
   }
 
-  @override
+  /// Menandai order lunas lalu menyiarkannya ke runner.
+  ///
+  /// SENGAJA BUKAN BAGIAN DARI [OrderRepository]. Uang yang masuk adalah kejadian
+  /// di luar aplikasi, jadi yang boleh mengabarkannya adalah pihak yang menerima
+  /// uangnya. Di server ini webhook gateway, dan aplikasi tidak punya jalan ke
+  /// sana. Yang memanggilnya di sini cuma tiruan gateway, yang hilang sendiri di
+  /// build rilis.
   Future<Order> tandaiSudahDibayar(String orderId) async {
     await Future<void>.delayed(_jedaJaringan);
     final order = _wajibAda(orderId);
@@ -366,15 +415,21 @@ class FakeOrderRepository implements OrderRepository {
   }
 
   @override
-  Future<bool> terimaOrder({
+  Future<bool> terimaOrder({required String orderId}) =>
+      terimaOrderSebagai(orderId: orderId, runnerId: _pemanggil());
+
+  /// [terimaOrder] dengan runner yang disebutkan langsung.
+  ///
+  /// Untuk tes yang perlu menirukan dua runner menekan TERIMA pada saat yang
+  /// sama, yang tidak bisa dinyatakan lewat satu pemanggil tunggal.
+  Future<bool> terimaOrderSebagai({
     required String orderId,
     required String runnerId,
   }) async {
     await Future<void>.delayed(_jedaJaringan);
     final order = _wajibAda(orderId);
 
-    // Pemesan tidak boleh menjadi runner ordernya sendiri. Diperiksa lebih
-    // dulu dari syarat perlombaan di bawah, dan melempar galat alih-alih
+    // Pemesan tidak boleh menjadi runner ordernya sendiri. Melempar, bukan
     // mengembalikan `false`, karena ini bukan kalah cepat: hasilnya tidak akan
     // berubah walau dicoba seribu kali.
     if (order.klienId == runnerId) {
@@ -403,20 +458,42 @@ class FakeOrderRepository implements OrderRepository {
   @override
   Future<Order> selesaikanOrder({
     required String orderId,
+    required String fotoBuktiUrl,
+    String? catatanSerahTerima,
+  }) => selesaikanOrderSebagai(
+    orderId: orderId,
+    runnerId: _pemanggil(),
+    fotoBuktiUrl: fotoBuktiUrl,
+    catatanSerahTerima: catatanSerahTerima,
+  );
+
+  /// [selesaikanOrder] dengan runner yang disebutkan langsung, untuk tes.
+  Future<Order> selesaikanOrderSebagai({
+    required String orderId,
     required String runnerId,
     required String fotoBuktiUrl,
     String? catatanSerahTerima,
   }) async {
     await Future<void>.delayed(_jedaJaringan);
     final order = _wajibAda(orderId);
+
+    // Yang berhak menutup order hanya runner yang memegangnya. Pemeriksaan itu
+    // tempatnya di sini, bukan di layar: tombol yang disembunyikan tidak
+    // menghentikan siapa pun yang memanggil langsung.
+    if (!order.runnerIds.contains(runnerId)) {
+      throw StateError(
+        'Runner $runnerId tidak memegang order ${order.kodeOrder}',
+      );
+    }
     if (order.status != OrderStatus.dikerjakan) {
       throw StateError(
         'Order ${order.kodeOrder} belum dikerjakan, tidak bisa diselesaikan',
       );
     }
-    if (!order.runnerIds.contains(runnerId)) {
+    if (fotoBuktiUrl.trim().isEmpty) {
       throw StateError(
-        'Runner $runnerId tidak memegang order ${order.kodeOrder}',
+        'Foto bukti wajib ada, itu yang membedakan pekerjaan selesai dari '
+        'pengakuan selesai',
       );
     }
     final catatanBersih = _batasi(
@@ -424,13 +501,14 @@ class FakeOrderRepository implements OrderRepository {
       BatasMasukan.catatanSerahTerima,
       'Catatan serah terima',
     );
+
     // Pada order multi-runner, runner mana pun yang ditugaskan boleh menutup
     // order. Ini keputusan sementara: siapa yang berhak menekan selesai kalau
     // pekerjaannya dibagi tiga orang masih menunggu jawaban mitra (bagian
     // 14.7d).
     final diperbarui = order.copyWith(
       status: OrderStatus.selesai,
-      fotoBuktiUrl: fotoBuktiUrl,
+      fotoBuktiUrl: fotoBuktiUrl.trim(),
       catatanSerahTerima: catatanBersih,
       selesaiPada: DateTime.now(),
     );
@@ -441,10 +519,19 @@ class FakeOrderRepository implements OrderRepository {
   @override
   Future<Order> batalkanOrder(String orderId) async {
     await Future<void>.delayed(_jedaJaringan);
-    final order = _wajibAda(orderId);
+    final order = _wajibMilikPemanggil(orderId);
+
     if (!order.status.isAktif) {
       throw StateError('Order ${order.kodeOrder} sudah ${order.status.label}');
     }
+    // Pembatalan setelah pembayaran menyangkut pengembalian uang, dan itu tidak
+    // boleh terjadi sebagai efek samping satu tombol.
+    if (order.dibayarPada != null) {
+      throw StateError(
+        'Order ${order.kodeOrder} sudah dibayar, pembatalannya lewat admin',
+      );
+    }
+
     final diperbarui = order.copyWith(status: OrderStatus.batal);
     _ganti(diperbarui);
     return diperbarui;
@@ -453,11 +540,22 @@ class FakeOrderRepository implements OrderRepository {
   @override
   Future<Order> kirimPesan({
     required String orderId,
-    required MessageSender pengirim,
+    required String isi,
+  }) => kirimPesanSebagai(orderId: orderId, pengirimId: _pemanggil(), isi: isi);
+
+  /// [kirimPesan] dengan pengirim yang disebutkan langsung, untuk tes.
+  Future<Order> kirimPesanSebagai({
+    required String orderId,
+    required String pengirimId,
     required String isi,
   }) async {
     await Future<void>.delayed(_jedaJaringan);
     final order = _wajibAda(orderId);
+
+    final peran = _peranPada(order, pengirimId);
+    if (peran == null) {
+      throw StateError('Order $orderId tidak ditemukan');
+    }
 
     final bersih = _batasi(isi, BatasMasukan.pesanChat, 'Pesan')!;
     if (bersih.isEmpty) {
@@ -474,17 +572,37 @@ class FakeOrderRepository implements OrderRepository {
       );
     }
 
-    final pesan = OrderMessage(
-      id: 'm-${DateTime.now().microsecondsSinceEpoch}-${_random.nextInt(999)}',
-      orderId: orderId,
-      pengirim: pengirim,
-      isi: bersih,
-      dikirimPada: DateTime.now(),
+    final diperbarui = order.copyWith(
+      messages: [...order.messages, _pesanBaru(orderId, peran, bersih)],
     );
-    final diperbarui = order.copyWith(messages: [...order.messages, pesan]);
     _ganti(diperbarui);
     return diperbarui;
   }
+
+  /// Peran seseorang pada satu order, atau `null` kalau ia bukan siapa-siapa di
+  /// sana.
+  ///
+  /// Diturunkan dari hubungannya dengan ordernya, tidak pernah disebutkan
+  /// pemanggil. Penugasan runner diperiksa sebelum peran admin: founder mitra
+  /// memegang keduanya, dan kalau ia yang mengambil ordernya, ia sedang bekerja
+  /// sebagai runner di sana.
+  MessageSender? _peranPada(Order order, String pengirimId) {
+    if (order.klienId == pengirimId) return MessageSender.klien;
+    if (order.runnerIds.contains(pengirimId)) return MessageSender.runner;
+
+    final user = SeedData.semuaUser.where((u) => u.id == pengirimId).firstOrNull;
+    if (user != null && user.isAdmin) return MessageSender.admin;
+    return null;
+  }
+
+  OrderMessage _pesanBaru(String orderId, MessageSender pengirim, String isi) =>
+      OrderMessage(
+        id: 'm-${DateTime.now().microsecondsSinceEpoch}-${_random.nextInt(999)}',
+        orderId: orderId,
+        pengirim: pengirim,
+        isi: isi,
+        dikirimPada: DateTime.now(),
+      );
 
   void dispose() => _controller.close();
 

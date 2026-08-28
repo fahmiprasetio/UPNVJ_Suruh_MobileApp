@@ -12,7 +12,7 @@ import 'repository_providers.dart';
 final orderTersiarProvider = StreamProvider<List<Order>>((ref) {
   final user = ref.watch(userAktifProvider).value;
   if (user == null) return Stream.value(const <Order>[]);
-  return ref.watch(orderRepositoryProvider).watchOrderTersiar(user.id);
+  return ref.watch(orderRepositoryProvider).watchOrderTersiar();
 });
 
 /// Order yang sedang dipegang runner yang masuk.
@@ -23,5 +23,5 @@ final orderTersiarProvider = StreamProvider<List<Order>>((ref) {
 final orderRunnerProvider = StreamProvider<List<Order>>((ref) {
   final user = ref.watch(userAktifProvider).value;
   if (user == null) return Stream.value(const <Order>[]);
-  return ref.watch(orderRepositoryProvider).watchOrderRunner(user.id);
+  return ref.watch(orderRepositoryProvider).watchOrderRunner();
 });

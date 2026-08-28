@@ -32,7 +32,7 @@ void main() {
     final repo = FakeOrderRepository(orderAwal: [orderDikerjakan()]);
     addTearDown(repo.dispose);
 
-    final order = await repo.selesaikanOrder(
+    final order = await repo.selesaikanOrderSebagai(
       orderId: 'o-uji',
       runnerId: 'u-runner-1',
       fotoBuktiUrl: 'fake://bukti/o-uji.jpg',
@@ -50,7 +50,7 @@ void main() {
     addTearDown(repo.dispose);
 
     await expectLater(
-      repo.selesaikanOrder(
+      repo.selesaikanOrderSebagai(
         orderId: 'o-uji',
         runnerId: 'u-runner-lain',
         fotoBuktiUrl: 'fake://bukti/curang.jpg',
@@ -76,7 +76,7 @@ void main() {
     addTearDown(repo.dispose);
 
     await expectLater(
-      repo.selesaikanOrder(
+      repo.selesaikanOrderSebagai(
         orderId: 'o-uji',
         runnerId: 'u-runner-1',
         fotoBuktiUrl: 'fake://bukti/o-uji.jpg',
@@ -89,14 +89,14 @@ void main() {
     final repo = FakeOrderRepository(orderAwal: [orderDikerjakan()]);
     addTearDown(repo.dispose);
 
-    await repo.selesaikanOrder(
+    await repo.selesaikanOrderSebagai(
       orderId: 'o-uji',
       runnerId: 'u-runner-1',
       fotoBuktiUrl: 'fake://bukti/o-uji.jpg',
     );
 
     await expectLater(
-      repo.selesaikanOrder(
+      repo.selesaikanOrderSebagai(
         orderId: 'o-uji',
         runnerId: 'u-runner-1',
         fotoBuktiUrl: 'fake://bukti/lagi.jpg',
@@ -118,7 +118,7 @@ void main() {
     );
     addTearDown(repo.dispose);
 
-    final order = await repo.selesaikanOrder(
+    final order = await repo.selesaikanOrderSebagai(
       orderId: 'o-uji',
       runnerId: 'u-runner-2',
       fotoBuktiUrl: 'fake://bukti/o-uji.jpg',
@@ -131,7 +131,7 @@ void main() {
     final repo = FakeOrderRepository(orderAwal: [orderDikerjakan()]);
     addTearDown(repo.dispose);
 
-    await repo.selesaikanOrder(
+    await repo.selesaikanOrderSebagai(
       orderId: 'o-uji',
       runnerId: 'u-runner-1',
       fotoBuktiUrl: 'fake://bukti/o-uji.jpg',
@@ -139,7 +139,7 @@ void main() {
 
     // Tetap terdaftar sebagai order runner, riwayatnya tidak hilang, tapi
     // tidak lagi terhitung sebagai pekerjaan berjalan.
-    final punyaRunner = await repo.watchOrderRunner('u-runner-1').first;
+    final punyaRunner = await repo.watchOrderRunnerUntuk('u-runner-1').first;
     expect(punyaRunner, hasLength(1));
     expect(punyaRunner.where((o) => o.status.isAktif), isEmpty);
   });

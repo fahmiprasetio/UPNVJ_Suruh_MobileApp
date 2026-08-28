@@ -34,7 +34,7 @@ void main() {
     });
 
     test('tidak ada panel penawaran admin', () {
-      expect(wadah(debug: false).read(simulatorPenawaranProvider), isFalse);
+      expect(wadah(debug: false).read(simulatorPenawaranProvider), isNull);
     });
   });
 
@@ -44,7 +44,7 @@ void main() {
 
       expect(container.read(akunUjiProvider), isNotNull);
       expect(container.read(simulatorPembayaranProvider), isNotNull);
-      expect(container.read(simulatorPenawaranProvider), isTrue);
+      expect(container.read(simulatorPenawaranProvider), isNotNull);
     });
   });
 }

@@ -170,7 +170,6 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
           .read(orderRepositoryProvider)
           .selesaikanOrder(
             orderId: widget.order.id,
-            runnerId: user.id,
             fotoBuktiUrl: fotoBuktiUrl,
             catatanSerahTerima: catatan.isEmpty ? null : catatan,
           );

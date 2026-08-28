@@ -170,9 +170,6 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
   Future<void> _kirimPermintaan() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final user = ref.read(userAktifProvider).value;
-    if (user == null) return;
-
     setState(() => _sedangMengirim = true);
 
     final Order order;
@@ -180,7 +177,6 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
       order = await ref
           .read(orderRepositoryProvider)
           .buatPermintaanJalurB(
-            klienId: user.id,
             serviceType: widget.serviceType,
             deskripsi: _kebutuhanController.text.trim(),
             jadwalMulai: _jadwal,

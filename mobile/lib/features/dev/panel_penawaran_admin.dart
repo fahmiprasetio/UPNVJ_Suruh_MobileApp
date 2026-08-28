@@ -126,8 +126,13 @@ class _PanelPenawaranAdminState extends ConsumerState<PanelPenawaranAdmin> {
     setState(() => _sedangMengirim = true);
 
     try {
-      await ref
-          .read(orderRepositoryProvider)
+      // Lewat tiruannya langsung, bukan lewat kontrak. Menawar adalah pekerjaan
+      // admin di dashboard web, jadi `OrderRepository` sengaja tidak punya
+      // method itu, dan panel ini memang berdiri di tempat dashboard tersebut.
+      final tiruan = ref.read(simulatorPenawaranProvider);
+      if (tiruan == null) return;
+
+      await tiruan
           .buatPenawaran(
             orderId: widget.order.id,
             harga: harga,

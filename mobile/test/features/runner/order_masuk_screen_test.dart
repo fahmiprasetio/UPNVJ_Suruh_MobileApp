@@ -41,7 +41,9 @@ void main() {
     WidgetTester tester, {
     List<Order>? orderAwal,
   }) async {
-    final orderRepo = FakeOrderRepository(orderAwal: orderAwal);
+    final orderRepo = FakeOrderRepository(
+      pemanggil: () => SeedData.runner.id,
+      orderAwal: orderAwal);
     addTearDown(orderRepo.dispose);
 
     await tester.pumpWidget(
@@ -167,7 +169,7 @@ void main() {
 
     // Runner lain menekan TERIMA lebih dulu; permintaannya sudah di jalan
     // ketika runner ini ikut menekan.
-    final pesaing = repo.terimaOrder(
+    final pesaing = repo.terimaOrderSebagai(
       orderId: 'o-uji',
       runnerId: SeedData.adminRunner.id,
     );

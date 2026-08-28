@@ -25,7 +25,14 @@ final modeDebugProvider = Provider<bool>((ref) => kDebugMode);
 /// baris `return` di bawah, atau di test cukup `overrideWith`. Tidak ada
 /// layar yang perlu disentuh.
 final orderRepositoryProvider = Provider<OrderRepository>((ref) {
-  final repo = FakeOrderRepository();
+  final repo = FakeOrderRepository(
+    // Kontraknya tidak lagi menerima identitas pemanggil, jadi tiruannya perlu
+    // cara lain mengetahuinya. Dibaca dari repository auth, bukan dari
+    // `userAktifProvider`: provider itu beraliran dan otomatis dibuang saat tidak
+    // ada yang mengawasinya, sementara `userAktif` adalah getter serentak yang
+    // selalu menjawab keadaan sekarang.
+    pemanggil: () => ref.read(authRepositoryProvider).userAktif?.id ?? '',
+  );
   ref.onDispose(repo.dispose);
   return repo;
 });
@@ -47,7 +54,13 @@ final fotoBuktiTiruanProvider = Provider<bool>((ref) {
   return ref.watch(fotoBuktiRepositoryProvider) is FakeFotoBuktiRepository;
 });
 
-/// Penanda bahwa penawaran admin masih datang dari alat penguji.
+/// Tiruan repository, kalau panel penawaran admin masih boleh dipakai.
+///
+/// Mengembalikan repositorynya sendiri, bukan sekadar penanda benar atau salah,
+/// karena `buatPenawaran` sengaja bukan bagian dari kontrak `OrderRepository`:
+/// menawar adalah pekerjaan admin, dan aplikasi ini tidak punya permukaan admin.
+/// Panel alat penguji memanggil tiruannya langsung, dan begitu backend sungguhan
+/// terpasang penyedianya mengembalikan `null` sehingga panelnya hilang sendiri.
 ///
 /// Dashboard admin sungguhan tinggal di web (bagian 14.2), jadi bagi aplikasi
 /// ini penawaran adalah kabar dari luar. Selama repository masih tiruan, panel
@@ -57,9 +70,10 @@ final fotoBuktiTiruanProvider = Provider<bool>((ref) {
 /// Mode build ikut menjaga, dan itu bukan pengulangan. Selama backend belum
 /// tersambung repositorynya memang masih tiruan, jadi penjagaan tipe saja
 /// membuat build rilis hari ini tetap membawa panel ini.
-final simulatorPenawaranProvider = Provider<bool>((ref) {
-  if (!ref.watch(modeDebugProvider)) return false;
-  return ref.watch(orderRepositoryProvider) is FakeOrderRepository;
+final simulatorPenawaranProvider = Provider<FakeOrderRepository?>((ref) {
+  if (!ref.watch(modeDebugProvider)) return null;
+  final repo = ref.watch(orderRepositoryProvider);
+  return repo is FakeOrderRepository ? repo : null;
 });
 
 /// User yang sedang masuk, `null` kalau belum.

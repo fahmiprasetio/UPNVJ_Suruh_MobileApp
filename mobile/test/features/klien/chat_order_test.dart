@@ -5,6 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:upnvj_suruh/app.dart';
 import 'package:upnvj_suruh/data/fake/fake_order_repository.dart';
 import 'package:upnvj_suruh/domain/enums.dart';
+import 'package:upnvj_suruh/data/fake/seed_data.dart';
 
 void main() {
   setUpAll(() async {
@@ -104,9 +105,9 @@ void main() {
       addTearDown(repo.dispose);
 
       await expectLater(
-        repo.kirimPesan(
+        repo.kirimPesanSebagai(
           orderId: 'o-1',
-          pengirim: MessageSender.klien,
+          pengirimId: SeedData.klien.id,
           isi: '   ',
         ),
         throwsStateError,
@@ -118,9 +119,9 @@ void main() {
       addTearDown(repo.dispose);
 
       await expectLater(
-        repo.kirimPesan(
+        repo.kirimPesanSebagai(
           orderId: 'o-4',
-          pengirim: MessageSender.klien,
+          pengirimId: SeedData.klien.id,
           isi: 'Masih boleh nanya?',
         ),
         throwsStateError,
@@ -131,14 +132,14 @@ void main() {
       final repo = FakeOrderRepository();
       addTearDown(repo.dispose);
 
-      await repo.kirimPesan(
+      await repo.kirimPesanSebagai(
         orderId: 'o-1',
-        pengirim: MessageSender.klien,
+        pengirimId: SeedData.klien.id,
         isi: 'Pesan pertama',
       );
-      final order = await repo.kirimPesan(
+      final order = await repo.kirimPesanSebagai(
         orderId: 'o-1',
-        pengirim: MessageSender.admin,
+        pengirimId: SeedData.adminRunner.id,
         isi: 'Pesan kedua',
       );
 

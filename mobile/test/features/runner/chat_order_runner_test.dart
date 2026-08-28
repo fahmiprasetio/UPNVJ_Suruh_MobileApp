@@ -41,7 +41,7 @@ void main() {
     WidgetTester tester,
     String kodeOrder,
   ) async {
-    final orderRepo = FakeOrderRepository();
+    final orderRepo = FakeOrderRepository(pemanggil: () => SeedData.runner.id);
     addTearDown(orderRepo.dispose);
 
     await tester.pumpWidget(
@@ -139,7 +139,9 @@ void main() {
         )
         .toList();
 
-    final repo = FakeOrderRepository(orderAwal: orders);
+    final repo = FakeOrderRepository(
+      pemanggil: () => SeedData.runner.id,
+      orderAwal: orders);
     addTearDown(repo.dispose);
 
     await tester.pumpWidget(

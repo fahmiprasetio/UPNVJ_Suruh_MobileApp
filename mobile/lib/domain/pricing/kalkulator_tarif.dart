@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../core/config/tarif_config.dart';
+import '../enums.dart';
 
 /// Satu baris rincian pembentuk harga.
 ///
@@ -30,6 +31,60 @@ class HasilTarif {
 /// datang dari [TarifConfig], jangan pernah menulis angka tarif di layar.
 class KalkulatorTarif {
   const KalkulatorTarif._();
+
+  /// Harga satu layanan Jalur A.
+  ///
+  /// Satu pintu untuk semua layanan, kembaran `KalkulatorTarif.Hitung` di server,
+  /// dan bentuknya sengaja sama supaya perbedaan hasil antara keduanya ketahuan
+  /// sebagai perbedaan angka, bukan sebagai perbedaan cara memanggil.
+  ///
+  /// Yang mengikat tetap hitungan server. Hitungan di sini gunanya menampilkan
+  /// rincian sebelum klien memesan, supaya ia tidak perlu menekan tombol dulu
+  /// untuk tahu berapa yang akan ditagih.
+  static HasilTarif hitung(ServiceType serviceType, double? jarakKm) {
+    if (serviceType.track != OrderTrack.jalurA) {
+      throw StateError(
+        '${serviceType.name} adalah Jalur B, harganya ditentukan admin lewat '
+        'penawaran',
+      );
+    }
+
+    return switch (serviceType) {
+      ServiceType.anterJemput => anterJemput(
+        jarakKm: _wajibJarak(serviceType, jarakKm),
+      ),
+      ServiceType.jastipBarang => jastipBarang(
+        jarakKm: _wajibJarak(serviceType, jarakKm),
+      ),
+      ServiceType.jastipMakanan => jastipMakanan(),
+      _ => throw StateError('${serviceType.name} belum punya rumus tarif'),
+    };
+  }
+
+  static double _wajibJarak(ServiceType serviceType, double? jarakKm) {
+    if (jarakKm == null) {
+      throw StateError('${serviceType.name} butuh jarak untuk dihitung');
+    }
+    if (jarakKm.isNaN || jarakKm.isInfinite) {
+      throw StateError('Jarak bukan angka yang sah');
+    }
+    return jarakKm;
+  }
+
+  /// Jastip Makanan: fee tetap, harga makanannya dibayar terpisah.
+  ///
+  /// Tidak bergantung jarak, jadi tidak menerima jarak sama sekali. Parameter yang
+  /// diterima lalu diabaikan akan dibaca orang berikutnya sebagai sesuatu yang
+  /// berpengaruh.
+  static HasilTarif jastipMakanan() => const HasilTarif(
+    rincian: [
+      RincianTarif(
+        label: 'Ongkos jasa titip',
+        nominal: TarifConfig.jastipMakananFee,
+      ),
+    ],
+    total: TarifConfig.jastipMakananFee,
+  );
 
   /// Anter jemput: tarif dasar + ongkos jarak.
   ///

@@ -160,9 +160,8 @@ class _FormJastipBarangScreenState
   Future<void> _buatOrder() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final hasil = _hasilTarif;
-    final user = ref.read(userAktifProvider).value;
-    if (hasil == null || user == null) return;
+    final jarak = _bacaJarak(_jarakController.text);
+    if (jarak == null) return;
 
     setState(() => _sedangMengirim = true);
 
@@ -171,9 +170,9 @@ class _FormJastipBarangScreenState
       order = await ref
           .read(orderRepositoryProvider)
           .buatOrderJalurA(
-            klienId: user.id,
             serviceType: ServiceType.jastipBarang,
-            harga: hasil.total,
+            // Yang dikirim jaraknya, bukan totalnya, lihat alasannya di kontrak.
+            jarakKm: jarak,
             deskripsi: _barangController.text.trim(),
             alamatJemput: _ambilController.text.trim(),
             alamatTujuan: _tujuanController.text.trim(),

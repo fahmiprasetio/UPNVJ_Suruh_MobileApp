@@ -85,7 +85,7 @@ class _OrderMasukScreenState extends ConsumerState<OrderMasukScreen> {
     try {
       dapat = await ref
           .read(orderRepositoryProvider)
-          .terimaOrder(orderId: order.id, runnerId: user.id);
+          .terimaOrder(orderId: order.id);
     } catch (galat) {
       if (!mounted) return;
       setState(() => _sedangDiproses.remove(order.id));

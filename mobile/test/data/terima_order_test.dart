@@ -36,8 +36,8 @@ void main() {
     addTearDown(repo.dispose);
 
     final hasil = await Future.wait([
-      repo.terimaOrder(orderId: 'o-uji', runnerId: 'u-runner-1'),
-      repo.terimaOrder(orderId: 'o-uji', runnerId: 'u-runner-2'),
+      repo.terimaOrderSebagai(orderId: 'o-uji', runnerId: 'u-runner-1'),
+      repo.terimaOrderSebagai(orderId: 'o-uji', runnerId: 'u-runner-2'),
     ]);
 
     expect(hasil.where((dapat) => dapat).length, 1);
@@ -51,8 +51,8 @@ void main() {
     final repo = FakeOrderRepository(orderAwal: [orderSiaran()]);
     addTearDown(repo.dispose);
 
-    await repo.terimaOrder(orderId: 'o-uji', runnerId: 'u-runner-1');
-    final dapat = await repo.terimaOrder(
+    await repo.terimaOrderSebagai(orderId: 'o-uji', runnerId: 'u-runner-1');
+    final dapat = await repo.terimaOrderSebagai(
       orderId: 'o-uji',
       runnerId: 'u-runner-2',
     );
@@ -67,14 +67,14 @@ void main() {
     );
     addTearDown(repo.dispose);
 
-    await repo.terimaOrder(orderId: 'o-uji', runnerId: 'u-runner-1');
-    await repo.terimaOrder(orderId: 'o-uji', runnerId: 'u-runner-2');
+    await repo.terimaOrderSebagai(orderId: 'o-uji', runnerId: 'u-runner-1');
+    await repo.terimaOrderSebagai(orderId: 'o-uji', runnerId: 'u-runner-2');
 
     var order = (await repo.getOrder('o-uji'))!;
     expect(order.status, OrderStatus.mencariRunner);
     expect(order.sisaKuotaRunner, 1);
 
-    await repo.terimaOrder(orderId: 'o-uji', runnerId: 'u-runner-3');
+    await repo.terimaOrderSebagai(orderId: 'o-uji', runnerId: 'u-runner-3');
 
     order = (await repo.getOrder('o-uji'))!;
     expect(order.status, OrderStatus.dikerjakan);
@@ -93,7 +93,7 @@ void main() {
     addTearDown(repo.dispose);
 
     expect(
-      await repo.terimaOrder(orderId: 'o-uji', runnerId: 'u-runner-3'),
+      await repo.terimaOrderSebagai(orderId: 'o-uji', runnerId: 'u-runner-3'),
       isFalse,
     );
   });
@@ -104,8 +104,8 @@ void main() {
     );
     addTearDown(repo.dispose);
 
-    await repo.terimaOrder(orderId: 'o-uji', runnerId: 'u-runner-1');
-    final lagi = await repo.terimaOrder(
+    await repo.terimaOrderSebagai(orderId: 'o-uji', runnerId: 'u-runner-1');
+    final lagi = await repo.terimaOrderSebagai(
       orderId: 'o-uji',
       runnerId: 'u-runner-1',
     );
@@ -123,7 +123,7 @@ void main() {
     addTearDown(repo.dispose);
 
     expect(
-      await repo.terimaOrder(orderId: 'o-uji', runnerId: 'u-runner-1'),
+      await repo.terimaOrderSebagai(orderId: 'o-uji', runnerId: 'u-runner-1'),
       isFalse,
     );
     expect(
@@ -136,13 +136,13 @@ void main() {
     final repo = FakeOrderRepository(orderAwal: [orderSiaran()]);
     addTearDown(repo.dispose);
 
-    final tersiar = repo.watchOrderTersiar('u-runner-1');
+    final tersiar = repo.watchOrderTersiarUntuk('u-runner-1');
     expect(await tersiar.first, hasLength(1));
 
-    await repo.terimaOrder(orderId: 'o-uji', runnerId: 'u-runner-1');
+    await repo.terimaOrderSebagai(orderId: 'o-uji', runnerId: 'u-runner-1');
 
-    expect(await repo.watchOrderTersiar('u-runner-1').first, isEmpty);
-    expect(await repo.watchOrderRunner('u-runner-1').first, hasLength(1));
+    expect(await repo.watchOrderTersiarUntuk('u-runner-1').first, isEmpty);
+    expect(await repo.watchOrderRunnerUntuk('u-runner-1').first, hasLength(1));
   });
 
   test('klien tidak bisa menerima ordernya sendiri', () async {
@@ -154,7 +154,7 @@ void main() {
     addTearDown(repo.dispose);
 
     await expectLater(
-      repo.terimaOrder(orderId: 'o-uji', runnerId: 'u-klien-1'),
+      repo.terimaOrderSebagai(orderId: 'o-uji', runnerId: 'u-klien-1'),
       throwsStateError,
     );
 
@@ -170,7 +170,7 @@ void main() {
     final repo = FakeOrderRepository(orderAwal: [orderSiaran()]);
     addTearDown(repo.dispose);
 
-    expect(await repo.watchOrderTersiar('u-klien-1').first, isEmpty);
-    expect(await repo.watchOrderTersiar('u-runner-1').first, hasLength(1));
+    expect(await repo.watchOrderTersiarUntuk('u-klien-1').first, isEmpty);
+    expect(await repo.watchOrderTersiarUntuk('u-runner-1').first, hasLength(1));
   });
 }

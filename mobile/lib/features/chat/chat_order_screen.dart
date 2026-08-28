@@ -107,11 +107,7 @@ class _ChatOrderScreenState extends ConsumerState<ChatOrderScreen> {
     try {
       await ref
           .read(orderRepositoryProvider)
-          .kirimPesan(
-            orderId: order.id,
-            pengirim: widget.pengirim,
-            isi: isi,
-          );
+          .kirimPesan(orderId: order.id, isi: isi);
     } catch (galat) {
       if (!mounted) return;
       setState(() => _sedangMengirim = false);
