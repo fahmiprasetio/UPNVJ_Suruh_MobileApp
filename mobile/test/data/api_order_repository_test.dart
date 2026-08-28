@@ -233,6 +233,17 @@ void main() {
     });
   });
 
+  /// Menunggu sampai permintaan yang sudah berangkat selesai mendarat.
+  ///
+  /// Beberapa giliran event loop, bukan jeda waktu tertentu: yang ditunggu adalah
+  /// pekerjaan yang sudah antre, bukan pekerjaan yang dijadwalkan nanti, jadi
+  /// mengukurnya dengan milidetik membuat hasilnya bergantung pada beban mesin.
+  Future<void> tenang() async {
+    for (var i = 0; i < 8; i++) {
+      await Future<void>.delayed(Duration.zero);
+    }
+  }
+
   group('penyegaran', () {
     test('perubahan dari aplikasi ini langsung terlihat di aliran yang terbuka', () async {
       // Tanpa ini, runner menekan TERIMA lalu ordernya masih tertera di daftar
@@ -263,8 +274,35 @@ void main() {
       final langganan = uji.repo.watchOrderKlien().listen((_) {});
       await Future<void>.delayed(const Duration(milliseconds: 70));
       await langganan.cancel();
+      // Permintaan yang sudah terlanjur berangkat sebelum penutupan baru terhitung
+      // beberapa giliran event loop kemudian, karena penghitungnya ada di dalam
+      // klien tiruan. Menghitungnya tepat setelah `cancel()` membuat tes ini kadang
+      // lolos kadang tidak, tergantung seberapa sibuk mesin yang menjalankannya.
+      await tenang();
       final sesudahBerhenti = jumlahAmbil;
       await Future<void>.delayed(const Duration(milliseconds: 80));
+      expect(jumlahAmbil, sesudahBerhenti);
+    });
+
+    test('susulan yang tertunda ikut dibatalkan saat layarnya ditutup', () async {
+      // Permintaan yang datang selagi pengambilan berjalan ditunda, bukan dibuang.
+      // Yang ditunda itu harus ikut hangus kalau layarnya keburu ditutup: hasilnya
+      // memang tidak sampai ke siapa-siapa, tapi permintaannya tetap berangkat ke
+      // server. Inilah yang membuat tes di atas kadang lolos kadang tidak.
+      var jumlahAmbil = 0;
+      final uji = buat((p) {
+        if (p.method == 'GET') jumlahAmbil++;
+        return jawabanUmum(p);
+      });
+
+      final langganan = uji.repo.watchOrderKlien().listen((_) {});
+      // Menabuh penyegaran selagi pengambilan pertama masih berjalan, lalu menutup
+      // langganannya sebelum susulan itu sempat berangkat.
+      await uji.repo.terimaOrder(orderId: 'x');
+      await langganan.cancel();
+      final sesudahBerhenti = jumlahAmbil;
+
+      await Future<void>.delayed(const Duration(milliseconds: 50));
       expect(jumlahAmbil, sesudahBerhenti);
     });
   });

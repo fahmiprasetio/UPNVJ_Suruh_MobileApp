@@ -50,6 +50,7 @@ class ApiOrderRepository implements OrderRepository {
 
     var sedangAmbil = false;
     var mintaLagi = false;
+    var berhenti = false;
 
     Future<void> segarkan() async {
       // Permintaan yang datang saat pengambilan sedang jalan tidak menumpuk jadi
@@ -59,13 +60,18 @@ class ApiOrderRepository implements OrderRepository {
         mintaLagi = true;
         return;
       }
+      if (berhenti) return;
       sedangAmbil = true;
       try {
         do {
           mintaLagi = false;
           final hasil = await ambil();
           if (!kendali.isClosed) kendali.add(hasil);
-        } while (mintaLagi);
+          // Susulan yang terlanjur diminta tepat sebelum layarnya ditutup tidak
+          // ikut dijalankan. Hasilnya memang tidak akan sampai ke siapa-siapa,
+          // tapi permintaannya tetap berangkat ke server, dan jumlah permintaan
+          // yang terbang setelah layar ditutup seharusnya nol.
+        } while (mintaLagi && !berhenti);
       } catch (galat, jejak) {
         if (!kendali.isClosed) kendali.addError(galat, jejak);
       } finally {
@@ -82,6 +88,7 @@ class ApiOrderRepository implements OrderRepository {
       onCancel: () async {
         // Pewaktu yang tertinggal hidup setelah layarnya ditutup akan terus
         // menembak permintaan sepanjang aplikasi terbuka.
+        berhenti = true;
         pewaktu?.cancel();
         await langganan?.cancel();
       },
