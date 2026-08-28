@@ -1,10 +1,12 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using UpnvjSuruh.Api.Auth;
 using UpnvjSuruh.Api.Data;
 using UpnvjSuruh.Api.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
 
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
@@ -12,13 +14,73 @@ builder.Services.AddSignalR();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+// --- Autentikasi ---
+
+builder.Services
+    .AddOptions<JwtOptions>()
+    .Bind(builder.Configuration.GetSection(JwtOptions.Section))
+    .ValidateDataAnnotations()
+    // Divalidasi saat start, bukan saat token pertama diterbitkan. Server yang mau hidup
+    // tanpa kunci penanda tangan lalu gagal di permintaan login pertama jauh lebih sulit
+    // ditelusuri daripada server yang menolak menyala sambil menyebut apa yang kurang.
+    .ValidateOnStart();
+
+builder.Services.AddSingleton<ITokenService, TokenService>();
+
+var jwt = builder.Configuration.GetSection(JwtOptions.Section).Get<JwtOptions>();
+if (jwt is null || string.IsNullOrWhiteSpace(jwt.SigningKey))
+{
+    throw new InvalidOperationException(
+        "Jwt:SigningKey belum diisi. Di mesin pengembang jalankan: " +
+        "dotnet user-secrets set \"Jwt:SigningKey\" \"<kunci acak minimal 32 karakter>\". " +
+        "Jangan pernah menuliskannya di appsettings.json.");
+}
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwt.Issuer,
+            ValidAudience = jwt.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SigningKey)),
+            // Bawaannya 5 menit, artinya token yang sudah kedaluwarsa masih diterima
+            // selama itu. Untuk aplikasi yang tokennya berumur satu jam, kelonggaran
+            // sebesar itu tidak ada gunanya.
+            ClockSkew = TimeSpan.FromSeconds(30),
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                // WebSocket tidak bisa membawa header Authorization, jadi klien SignalR
+                // mengirim tokennya lewat query string. Hanya diterima untuk jalur hub,
+                // supaya token tidak ikut tercatat di log akses endpoint biasa.
+                var token = context.Request.Query["access_token"];
+                if (!string.IsNullOrEmpty(token) &&
+                    context.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+                {
+                    context.Token = token;
+                }
+
+                return Task.CompletedTask;
+            },
+        };
+    });
+
+builder.Services.AddAuthorization();
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -27,9 +89,16 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// Urutannya wajib begini: UseAuthentication membaca siapa pemanggilnya, UseAuthorization
+// memutuskan apakah ia boleh. Terbalik, atau yang pertama hilang seperti sebelumnya,
+// membuat setiap [Authorize] gagal dengan "No authenticationScheme was specified".
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<OrderHub>("/hubs/orders");
 
 app.Run();
+
+/// <summary>Ditembus tes integrasi lewat WebApplicationFactory.</summary>
+public partial class Program;

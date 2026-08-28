@@ -58,6 +58,32 @@ Akun contoh Rangga Saputra memegang peran klien sekaligus runner. Akun seperti i
 
 Admin bekerja lewat dashboard web, bukan aplikasi ini, jadi penawaran Jalur B datang dari luar aplikasi. Selama dashboard itu belum ada, panel bertanda ALAT PENGUJI di halaman detail permintaan menggantikannya: isi harga, pilih perkiraan durasi, lalu tekan tombolnya untuk memunculkan penawaran seolah admin baru saja mengirimnya.
 
+
+## Menjalankan backend
+
+Butuh SDK .NET 10 dan PostgreSQL yang hidup di `localhost:5432`.
+
+Rahasia tidak disimpan di dalam repositori, jadi sekali per mesin perlu diisi dulu:
+
+```
+cd backend/src/UpnvjSuruh.Api
+dotnet user-secrets set "ConnectionStrings:Default" "Host=localhost;Port=5432;Database=upnvj_suruh;Username=postgres;Password=<password Postgres kamu>"
+dotnet user-secrets set "Jwt:SigningKey" "<teks acak minimal 32 karakter>"
+```
+
+Kunci penanda tangan boleh dibangkitkan dengan `openssl rand -base64 48`, dan tidak boleh sama antara mesin pengembang dengan server. Server menolak menyala kalau salah satu belum diisi, lengkap dengan keterangan mana yang kurang, karena gagal saat start jauh lebih mudah ditelusuri daripada gagal di permintaan login pertama.
+
+Menyiapkan basis data lalu menjalankannya:
+
+```
+dotnet ef database update
+dotnet run
+```
+
+Swagger terbuka di `/swagger` dan hanya di lingkungan Development.
+
+Aplikasi mobile belum menyambung ke backend ini. Selama repositorinya masih memakai data tiruan, keduanya berjalan sendiri-sendiri.
+
 ## Struktur proyek
 
 ```
