@@ -1,8 +1,8 @@
-import '../../core/api/galat_api.dart';
 import '../../domain/enums.dart';
 import '../../domain/models/order.dart';
 import '../../domain/models/order_message.dart';
 import '../../domain/models/order_offer.dart';
+import 'pemeta_dasar.dart';
 
 /// Menerjemahkan jawaban API jadi model domain.
 ///
@@ -68,51 +68,23 @@ class PemetaOrder {
     dikirimPada: _waktu(isi, 'dikirimPada')!,
   );
 
-  static String _teks(Map<String, dynamic> isi, String kunci) {
-    final nilai = isi[kunci];
-    if (nilai is! String || nilai.isEmpty) {
-      throw GalatServer('Jawaban server tidak memuat $kunci.');
-    }
-    return nilai;
-  }
+  // Pembacaan dasarnya ada di PemetaDasar, dipakai bersama pemeta transaksi
+  // pembayaran. Yang tinggal di sini cuma yang khas order.
 
-  /// Rupiah penuh. Server mengirimnya sebagai angka desimal, tapi rupiah tidak
-  /// punya sen, dan `double` untuk uang adalah sumber galat pembulatan.
-  static int? _rupiah(dynamic nilai) =>
-      nilai == null ? null : (nilai as num).round();
+  static String _teks(Map<String, dynamic> isi, String kunci) =>
+      PemetaDasar.teks(isi, kunci);
+
+  static int? _rupiah(dynamic nilai) => PemetaDasar.rupiah(nilai);
+
+  static DateTime? _waktu(Map<String, dynamic> isi, String kunci) =>
+      PemetaDasar.waktu(isi, kunci);
+
+  static T _enum<T extends Enum>(
+    List<T> pilihan,
+    dynamic nilai,
+    String namaKolom,
+  ) => PemetaDasar.pilihan(pilihan, nilai, namaKolom);
 
   static Duration? _menit(dynamic nilai) =>
       nilai == null ? null : Duration(minutes: (nilai as num).toInt());
-
-  /// Waktu dari server selalu UTC, dan selalu diubah ke waktu perangkat.
-  ///
-  /// Kalau tidak, jadwal "besok jam 9" akan tampil tujuh jam meleset di layar,
-  /// dan yang seperti itu tidak terlihat seperti bug, cuma terlihat seperti
-  /// jadwal yang salah.
-  static DateTime? _waktu(Map<String, dynamic> isi, String kunci) {
-    final nilai = isi[kunci];
-    if (nilai == null) return null;
-    final waktu = DateTime.tryParse(nilai.toString());
-    if (waktu == null) {
-      throw GalatServer('Nilai $kunci bukan waktu yang bisa dibaca.');
-    }
-    return waktu.toLocal();
-  }
-
-  /// Mencocokkan nama enum tanpa memperhatikan besar kecil huruf.
-  ///
-  /// Server menulisnya PascalCase (`AnterJemput`), Dart camelCase
-  /// (`anterJemput`). Nama anggotanya sengaja dibuat sama persis di kedua sisi,
-  /// jadi yang perlu diabaikan cuma huruf pertamanya.
-  ///
-  /// Nilai yang tidak dikenal melempar, bukan diam-diam jatuh ke nilai pertama.
-  /// Status order yang salah baca akan membuat layar menawarkan tombol yang tidak
-  /// seharusnya ada, dan itu jauh lebih berbahaya daripada layar yang gagal muat.
-  static T _enum<T extends Enum>(List<T> pilihan, dynamic nilai, String namaKolom) {
-    final teks = nilai?.toString().toLowerCase();
-    for (final kandidat in pilihan) {
-      if (kandidat.name.toLowerCase() == teks) return kandidat;
-    }
-    throw GalatServer('Nilai $namaKolom tidak dikenal: $nilai');
-  }
 }

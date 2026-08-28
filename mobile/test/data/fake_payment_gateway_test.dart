@@ -10,12 +10,9 @@ TransaksiPembayaran buatTransaksi(
   FakeAsync async,
   FakePaymentGateway gateway, {
   String orderId = 'o-1',
-  int jumlah = 11000,
 }) {
   TransaksiPembayaran? hasil;
-  gateway
-      .buatTransaksi(orderId: orderId, jumlah: jumlah)
-      .then((t) => hasil = t);
+  gateway.buatTransaksi(orderId: orderId).then((t) => hasil = t);
   async.elapse(const Duration(seconds: 1));
   return hasil!;
 }
@@ -56,10 +53,10 @@ void main() {
 
       final transaksi = buatTransaksi(async, gateway);
       final diterima = <TransaksiPembayaran>[];
-      gateway.watchTransaksi(transaksi.id).listen(diterima.add);
+      gateway.watchTransaksi(transaksi.orderId).listen(diterima.add);
       async.flushMicrotasks();
 
-      gateway.simulasikanPembayaranMasuk(transaksi.id);
+      gateway.simulasikanPembayaranMasuk(transaksi.orderId);
       async.flushMicrotasks();
 
       expect(diterima.last.status, PaymentStatus.berhasil);
@@ -74,7 +71,7 @@ void main() {
 
       final transaksi = buatTransaksi(async, gateway);
       final diterima = <TransaksiPembayaran>[];
-      gateway.watchTransaksi(transaksi.id).listen(diterima.add);
+      gateway.watchTransaksi(transaksi.orderId).listen(diterima.add);
 
       async.elapse(TarifConfig.batasWaktuBayar + const Duration(minutes: 1));
 
@@ -89,9 +86,9 @@ void main() {
 
       final transaksi = buatTransaksi(async, gateway);
       final diterima = <TransaksiPembayaran>[];
-      gateway.watchTransaksi(transaksi.id).listen(diterima.add);
+      gateway.watchTransaksi(transaksi.orderId).listen(diterima.add);
 
-      gateway.simulasikanPembayaranMasuk(transaksi.id);
+      gateway.simulasikanPembayaranMasuk(transaksi.orderId);
       async.elapse(TarifConfig.batasWaktuBayar + const Duration(minutes: 1));
 
       expect(diterima.last.status, PaymentStatus.berhasil);

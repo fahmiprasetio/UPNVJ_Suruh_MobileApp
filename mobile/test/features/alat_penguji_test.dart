@@ -79,6 +79,21 @@ void main() {
       );
     });
 
+    test('tombol simulasi pembayaran tetap ada, dan itu disengaja', () {
+      // Yang dipanggilnya bukan keadaan di dalam aplikasi melainkan tiruan gateway
+      // di server, dan endpoint itu hanya didaftarkan server saat berjalan di
+      // Development. Tanpa tombol ini tidak ada cara mencoba alur bayar sampai
+      // tuntas terhadap backend lokal, karena yang menggantikannya di produksi
+      // adalah bank klien.
+      expect(
+        wadah(
+          debug: true,
+          sumber: SumberData.api,
+        ).read(simulatorPembayaranProvider),
+        isNotNull,
+      );
+    });
+
     test('panel penawaran admin hilang walau buildnya debug', () {
       expect(
         wadah(

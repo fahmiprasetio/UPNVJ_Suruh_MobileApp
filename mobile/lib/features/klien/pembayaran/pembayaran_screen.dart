@@ -127,7 +127,10 @@ class _MenungguBayar extends ConsumerWidget {
         ),
         if (simulator != null) ...[
           const SizedBox(height: AppTheme.spasiBesar),
-          PanelSimulator(onBayar: () => simulator(transaksi.id)),
+          // Bersumbu pada order, bukan pada id transaksi: yang ditandai lunas
+          // adalah tagihan yang sedang berlaku untuk order ini, dan hanya
+          // servernya yang tahu tagihan mana itu.
+          PanelSimulator(onBayar: () => simulator(orderId)),
         ],
       ],
     );
