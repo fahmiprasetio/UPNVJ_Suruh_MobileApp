@@ -20,6 +20,7 @@ class PengalihAkun extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final akunUji = ref.watch(akunUjiProvider);
     if (akunUji == null) return const SizedBox.shrink();
+    if (ref.watch(pengalihAkunProvider) == null) return const SizedBox.shrink();
 
     return IconButton(
       onPressed: () => _pilihAkun(context, ref, akunUji),
@@ -85,6 +86,6 @@ class PengalihAkun extends ConsumerWidget {
     );
 
     if (dipilih == null || dipilih.id == aktif?.id) return;
-    await ref.read(authRepositoryProvider).masuk(noHp: dipilih.noHp);
+    ref.read(pengalihAkunProvider)?.call(dipilih);
   }
 }

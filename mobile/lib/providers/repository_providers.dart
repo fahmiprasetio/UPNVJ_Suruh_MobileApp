@@ -87,3 +87,15 @@ final akunUjiProvider = Provider<List<AppUser>?>((ref) {
   final repo = ref.watch(authRepositoryProvider);
   return repo is FakeAuthRepository ? SeedData.semuaUser : null;
 });
+
+/// Cara alat penguji memakai satu akun contoh, tanpa melewati alur kode.
+///
+/// Sengaja terpisah dari `masuk`, yang bentuknya harus tetap sama dengan server.
+/// Alat penguji yang menumpang di alur sungguhan akan pelan-pelan membengkokkannya,
+/// dan yang paling mungkin dibengkokkan adalah bagian yang menyusahkan saat menguji,
+/// yaitu justru pemeriksaannya.
+final pengalihAkunProvider = Provider<void Function(AppUser)?>((ref) {
+  if (!ref.watch(modeDebugProvider)) return null;
+  final repo = ref.watch(authRepositoryProvider);
+  return repo is FakeAuthRepository ? repo.pakaiAkunUji : null;
+});

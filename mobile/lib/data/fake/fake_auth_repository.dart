@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import '../../domain/enums.dart';
 import '../../domain/models/app_user.dart';
@@ -7,12 +8,10 @@ import 'seed_data.dart';
 
 /// Autentikasi palsu: mencocokkan nomor HP ke daftar user contoh.
 ///
-/// Sengaja dibuat sudah "masuk" sebagai klien sejak awal supaya pengembangan
-/// layar tidak terhalang layar login yang bentuk aslinya belum diputuskan
-/// (bagian 14.8).
+/// Sengaja dibuat sudah "masuk" sebagai klien sejak awal supaya pengembangan layar
+/// tidak terhalang layar login yang bentuk aslinya belum diputuskan (bagian 14.8).
 class FakeAuthRepository implements AuthRepository {
-  FakeAuthRepository({AppUser? userAwal})
-    : _userAktif = userAwal ?? SeedData.klien;
+  FakeAuthRepository({AppUser? userAwal}) : _userAktif = userAwal ?? SeedData.klien;
 
   static const Duration _jedaJaringan = Duration(milliseconds: 300);
 
@@ -21,6 +20,16 @@ class FakeAuthRepository implements AuthRepository {
   /// Daftar akun yang dikenal, disalin supaya [daftar] tidak mengubah
   /// [SeedData.semuaUser] yang const dan dipakai bersama tes lain.
   final List<AppUser> _users = List.of(SeedData.semuaUser);
+
+  /// Kode yang sedang berlaku per nomor.
+  ///
+  /// Tiruan ini tidak menirukan batas waktu maupun batas percobaan, karena keduanya
+  /// ditegakkan server dan tidak ada gunanya diduakan di sini. Yang ditirukan cuma
+  /// sifat yang mengubah bentuk layar: kode harus diminta dulu, dan kode yang salah
+  /// ditolak.
+  final Map<String, String> _kode = {};
+
+  final Random _acak = Random();
 
   final StreamController<AppUser?> _controller =
       StreamController<AppUser?>.broadcast();
@@ -35,22 +44,7 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<AppUser> masuk({required String noHp}) async {
-    await Future<void>.delayed(_jedaJaringan);
-    final user = _users.where((u) => u.noHp == noHp).firstOrNull;
-    if (user == null) {
-      throw StateError('Nomor $noHp belum terdaftar');
-    }
-    _userAktif = user;
-    _controller.add(user);
-    return user;
-  }
-
-  @override
-  Future<AppUser> daftar({
-    required String nama,
-    required String noHp,
-  }) async {
+  Future<AppUser> daftar({required String nama, required String noHp}) async {
     await Future<void>.delayed(_jedaJaringan);
 
     final bersihNama = nama.trim();
@@ -69,8 +63,8 @@ class FakeAuthRepository implements AuthRepository {
       id: 'u-${DateTime.now().microsecondsSinceEpoch}',
       nama: bersihNama,
       noHp: bersihNoHp,
-      // Ditulis di sini, bukan diterima dari pemanggil. Lihat aturan pemberian
-      // peran di kontrak: runner adalah pegawai mitra, dan tidak ada yang
+      // Ditulis di sini, tidak pernah diterima dari pemanggil. Lihat aturan
+      // pemberian peran di kontrak: runner adalah pegawai mitra, dan tidak ada yang
       // boleh mengangkat dirinya sendiri jadi pegawai.
       roles: const {UserRole.klien},
     );
@@ -79,10 +73,63 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<void> mintaKode({required String noHp}) async {
+    await Future<void>.delayed(_jedaJaringan);
+
+    final bersih = noHp.trim();
+    // Nomor yang tidak terdaftar berakhir sama saja, sama seperti di server. Tiruan
+    // yang membocorkan keberadaan akun akan membuat layar dibangun dengan asumsi
+    // yang tidak berlaku di server.
+    if (!_users.any((u) => u.noHp == bersih)) return;
+
+    _kode[bersih] = (_acak.nextInt(1000000)).toString().padLeft(6, '0');
+  }
+
+  /// Kode yang sedang berlaku untuk satu nomor, untuk dipakai tes.
+  ///
+  /// Sepadan dengan pengirim OTP di server yang menulis kodenya ke log saat
+  /// pengembangan. Tes butuh kode yang sungguhan dipakai sistem, bukan kode yang
+  /// ditebaknya sendiri.
+  String? kodeUntuk(String noHp) => _kode[noHp.trim()];
+
+  @override
+  Future<AppUser> masuk({required String noHp, required String kode}) async {
+    await Future<void>.delayed(_jedaJaringan);
+
+    final bersihNoHp = noHp.trim();
+    final tersimpan = _kode[bersihNoHp];
+    final user = _users.where((u) => u.noHp == bersihNoHp).firstOrNull;
+
+    // Satu galat untuk semua sebab, sama seperti server. Membedakan "nomor tidak
+    // terdaftar" dari "kode salah" memberi tahu penebak bahwa setengah jawabannya
+    // sudah benar.
+    if (tersimpan == null || tersimpan != kode.trim() || user == null) {
+      throw StateError('Nomor atau kode tidak cocok');
+    }
+
+    // Sekali pakai.
+    _kode.remove(bersihNoHp);
+
+    _userAktif = user;
+    _controller.add(user);
+    return user;
+  }
+
+  @override
   Future<void> keluar() async {
     await Future<void>.delayed(_jedaJaringan);
     _userAktif = null;
     _controller.add(null);
+  }
+
+  /// Memakai satu akun contoh langsung, tanpa kode.
+  ///
+  /// Hanya untuk alat penguji ganti akun. Sengaja bukan [masuk], karena [masuk]
+  /// adalah alur sungguhan yang bentuknya harus tetap sama dengan server; alat
+  /// penguji yang menumpang di alur itu akan pelan-pelan membengkokkannya.
+  void pakaiAkunUji(AppUser user) {
+    _userAktif = user;
+    _controller.add(user);
   }
 
   void dispose() => _controller.close();
