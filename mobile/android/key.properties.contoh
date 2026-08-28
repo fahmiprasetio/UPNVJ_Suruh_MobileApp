@@ -1,0 +1,12 @@
+# Salin jadi android/key.properties lalu isi sesuai keystore kamu.
+# Berkas key.properties dan berkas .jks TIDAK boleh masuk repositori.
+#
+# Membuat keystore sekali saja, simpan baik-baik, kehilangan berkas ini berarti
+# tidak bisa lagi menerbitkan pembaruan untuk aplikasi yang sudah beredar:
+#
+#   keytool -genkey -v -keystore upnvj-suruh.jks -keyalg RSA -keysize 2048 \
+#     -validity 10000 -alias upnvj-suruh
+storePassword=
+keyPassword=
+keyAlias=upnvj-suruh
+storeFile=../upnvj-suruh.jks

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/config/batas_masukan.dart';
+
 import '../../core/format/formatters.dart';
 import '../../core/theme/app_theme.dart';
 import '../../domain/enums.dart';
@@ -347,6 +349,7 @@ class _KotakKirim extends StatelessWidget {
           Expanded(
             child: TextField(
               controller: controller,
+              maxLength: BatasMasukan.pesanChat,
               textCapitalization: TextCapitalization.sentences,
               maxLines: 4,
               minLines: 1,

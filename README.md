@@ -59,6 +59,27 @@ Akun contoh Rangga Saputra memegang peran klien sekaligus runner. Akun seperti i
 Admin bekerja lewat dashboard web, bukan aplikasi ini, jadi penawaran Jalur B datang dari luar aplikasi. Selama dashboard itu belum ada, panel bertanda ALAT PENGUJI di halaman detail permintaan menggantikannya: isi harga, pilih perkiraan durasi, lalu tekan tombolnya untuk memunculkan penawaran seolah admin baru saja mengirimnya.
 
 
+
+## Membangun rilis Android
+
+Build rilis butuh keystore sendiri. Debug keystore bawaan Flutter tidak boleh dipakai:
+kuncinya publik dan sama di setiap mesin, jadi siapa pun bisa merakit APK yang lolos
+verifikasi tanda tangan aplikasi ini.
+
+```
+cd mobile/android
+keytool -genkey -v -keystore upnvj-suruh.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upnvj-suruh
+cp key.properties.contoh key.properties
+```
+
+Isi `key.properties` sesuai keystore tadi. Berkas `.jks` dan `key.properties` tidak ikut
+di repositori, dan memang tidak boleh. Simpan keduanya di tempat aman: kehilangan berkas
+`.jks` berarti tidak bisa lagi menerbitkan pembaruan untuk aplikasi yang sudah beredar.
+
+Selama `key.properties` belum ada, `flutter build apk --release` menghasilkan APK tanpa
+tanda tangan yang gagal dipasang. Itu disengaja, supaya tidak ada APK bertanda tangan
+debug yang diam-diam sampai ke dosen atau mitra.
+
 ## Menjalankan backend
 
 Butuh SDK .NET 10 dan PostgreSQL yang hidup di `localhost:5432`.

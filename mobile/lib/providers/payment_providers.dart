@@ -21,6 +21,10 @@ final paymentGatewayProvider = Provider<PaymentGateway>((ref) {
 /// simulator di layar pembayaran hilang dengan sendirinya, tidak ada risiko
 /// alat penguji ikut terbawa ke tangan pengguna.
 final simulatorPembayaranProvider = Provider<void Function(String)?>((ref) {
+  // Mode build ikut menjaga: selama gateway sungguhan belum dipasang, penjagaan
+  // tipe saja tetap meloloskan tombol ini ke build rilis, dan tombol ini
+  // menandai order mana pun lunas tanpa uang berpindah.
+  if (!ref.watch(modeDebugProvider)) return null;
   final gateway = ref.watch(paymentGatewayProvider);
   return gateway is FakePaymentGateway
       ? gateway.simulasikanPembayaranMasuk

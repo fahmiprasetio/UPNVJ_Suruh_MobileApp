@@ -43,3 +43,10 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Penandatanganan rilis. Kehilangan berkas .jks berarti tidak bisa lagi
+# menerbitkan pembaruan untuk aplikasi yang sudah beredar, dan membocorkannya
+# berarti orang lain bisa. Keduanya tidak boleh diselesaikan dengan commit.
+android/key.properties
+*.jks
+*.keystore

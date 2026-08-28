@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/batas_masukan.dart';
+
 import '../../../core/config/tarif_config.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/format/formatters.dart';
@@ -68,6 +70,7 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
             children: [
               TextFormField(
                 controller: _jemputController,
+                maxLength: BatasMasukan.alamat,
                 textCapitalization: TextCapitalization.sentences,
                 maxLines: 2,
                 minLines: 1,
@@ -81,6 +84,7 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
               const SizedBox(height: AppTheme.spasiSedang),
               TextFormField(
                 controller: _tujuanController,
+                maxLength: BatasMasukan.alamat,
                 textCapitalization: TextCapitalization.sentences,
                 maxLines: 2,
                 minLines: 1,
@@ -118,6 +122,7 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
               const SizedBox(height: AppTheme.spasiSedang),
               TextFormField(
                 controller: _catatanController,
+                maxLength: BatasMasukan.deskripsi,
                 textCapitalization: TextCapitalization.sentences,
                 maxLines: 3,
                 minLines: 1,

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/config/batas_masukan.dart';
+
 import '../../../../core/theme/app_theme.dart';
 import '../../../../domain/models/order.dart';
 import '../../../../domain/service_catalog.dart';
@@ -105,6 +107,7 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
           const SizedBox(height: AppTheme.spasiBesar),
           TextField(
             controller: _catatanController,
+            maxLength: BatasMasukan.catatanSerahTerima,
             textCapitalization: TextCapitalization.sentences,
             maxLines: 3,
             minLines: 2,

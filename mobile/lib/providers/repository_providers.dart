@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/fake/fake_auth_repository.dart';
@@ -8,6 +9,14 @@ import '../domain/models/app_user.dart';
 import '../domain/repositories/auth_repository.dart';
 import '../domain/repositories/foto_bukti_repository.dart';
 import '../domain/repositories/order_repository.dart';
+
+/// Benar hanya di build debug.
+///
+/// Dibuat sebagai provider, bukan `kDebugMode` yang dibaca langsung di tiap
+/// tempat, supaya tes bisa memaksanya `false` dan membuktikan alat penguji
+/// benar-benar hilang di rilis. Tes selalu berjalan di mode debug, jadi tanpa
+/// seam ini perilaku rilisnya mustahil diuji dan cuma bisa dipercaya.
+final modeDebugProvider = Provider<bool>((ref) => kDebugMode);
 
 /// Titik tukar backend.
 ///
@@ -44,7 +53,12 @@ final fotoBuktiTiruanProvider = Provider<bool>((ref) {
 /// ini penawaran adalah kabar dari luar. Selama repository masih tiruan, panel
 /// alat penguji berdiri di tempat dashboard itu; begitu backend sungguhan
 /// dipasang, panelnya hilang sendiri tanpa ada layar yang perlu diubah.
+///
+/// Mode build ikut menjaga, dan itu bukan pengulangan. Selama backend belum
+/// tersambung repositorynya memang masih tiruan, jadi penjagaan tipe saja
+/// membuat build rilis hari ini tetap membawa panel ini.
 final simulatorPenawaranProvider = Provider<bool>((ref) {
+  if (!ref.watch(modeDebugProvider)) return false;
   return ref.watch(orderRepositoryProvider) is FakeOrderRepository;
 });
 
@@ -69,6 +83,7 @@ final userWajibProvider = Provider<AppUser>((ref) {
 /// ganti akun hilang sendiri, alat penguji tidak ikut terbawa ke tangan
 /// pengguna. Pola yang sama dipakai panel simulator pembayaran.
 final akunUjiProvider = Provider<List<AppUser>?>((ref) {
+  if (!ref.watch(modeDebugProvider)) return null;
   final repo = ref.watch(authRepositoryProvider);
   return repo is FakeAuthRepository ? SeedData.semuaUser : null;
 });

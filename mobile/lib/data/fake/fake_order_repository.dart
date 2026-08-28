@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import '../../core/config/batas_masukan.dart';
 import '../../domain/enums.dart';
 import '../../domain/models/order.dart';
 import '../../domain/models/order_message.dart';
@@ -46,6 +47,21 @@ class FakeOrderRepository implements OrderRepository {
     }
     _orders[indeks] = baru;
     _pancarkan();
+  }
+
+  /// Memeriksa panjang satu isian teks bebas.
+  ///
+  /// Dipanggil dari repository, bukan dari layar, karena kolom yang dibatasi
+  /// `maxLength` tetap bisa diisi lewat tempel, dan nanti lewat pemanggilan API
+  /// langsung. Mengembalikan teks yang sudah dirapikan supaya pemanggil tidak
+  /// perlu memangkas dua kali.
+  static String? _batasi(String? nilai, int batas, String namaIsian) {
+    if (nilai == null) return null;
+    final bersih = nilai.trim();
+    if (bersih.length > batas) {
+      throw StateError('$namaIsian maksimal $batas karakter');
+    }
+    return bersih;
   }
 
   Order _wajibAda(String orderId) {
@@ -112,6 +128,23 @@ class FakeOrderRepository implements OrderRepository {
     String? alamatTujuan,
   }) async {
     await Future<void>.delayed(_jedaJaringan);
+
+    final deskripsiBersih = _batasi(
+      deskripsi,
+      BatasMasukan.deskripsi,
+      'Deskripsi',
+    );
+    final jemputBersih = _batasi(
+      alamatJemput,
+      BatasMasukan.alamat,
+      'Alamat jemput',
+    );
+    final tujuanBersih = _batasi(
+      alamatTujuan,
+      BatasMasukan.alamat,
+      'Alamat tujuan',
+    );
+
     final order = Order(
       id: _idBaru(),
       kodeOrder: _kodeOrderBaru(),
@@ -121,9 +154,9 @@ class FakeOrderRepository implements OrderRepository {
       // Jalur A melewati dua status pertama, harga sudah pasti sejak awal.
       status: OrderStatus.menungguPembayaran,
       dibuatPada: DateTime.now(),
-      deskripsi: deskripsi,
-      alamatJemput: alamatJemput,
-      alamatTujuan: alamatTujuan,
+      deskripsi: deskripsiBersih,
+      alamatJemput: jemputBersih,
+      alamatTujuan: tujuanBersih,
       harga: harga,
     );
     _orders.add(order);
@@ -141,6 +174,18 @@ class FakeOrderRepository implements OrderRepository {
     int jumlahRunnerDibutuhkan = 1,
   }) async {
     await Future<void>.delayed(_jedaJaringan);
+
+    final deskripsiBersih = _batasi(
+      deskripsi,
+      BatasMasukan.deskripsi,
+      'Deskripsi',
+    )!;
+    final tujuanBersih = _batasi(
+      alamatTujuan,
+      BatasMasukan.alamat,
+      'Alamat tujuan',
+    );
+
     final order = Order(
       id: _idBaru(),
       kodeOrder: _kodeOrderBaru(),
@@ -149,8 +194,8 @@ class FakeOrderRepository implements OrderRepository {
       serviceType: serviceType,
       status: OrderStatus.permintaan,
       dibuatPada: DateTime.now(),
-      deskripsi: deskripsi,
-      alamatTujuan: alamatTujuan,
+      deskripsi: deskripsiBersih,
+      alamatTujuan: tujuanBersih,
       jadwalMulai: jadwalMulai,
       jumlahRunnerDibutuhkan: jumlahRunnerDibutuhkan,
     );
@@ -249,7 +294,7 @@ class FakeOrderRepository implements OrderRepository {
     final order = _wajibAda(orderId);
     final penawaran = _penawaranMenunggu(order);
 
-    final bersih = alasan.trim();
+    final bersih = _batasi(alasan, BatasMasukan.alasanNego, 'Alasan nego')!;
     if (bersih.isEmpty) {
       throw StateError(
         'Nego tanpa alasan tidak bisa dikirim, admin tidak punya bahan untuk '
@@ -374,6 +419,11 @@ class FakeOrderRepository implements OrderRepository {
         'Runner $runnerId tidak memegang order ${order.kodeOrder}',
       );
     }
+    final catatanBersih = _batasi(
+      catatanSerahTerima,
+      BatasMasukan.catatanSerahTerima,
+      'Catatan serah terima',
+    );
     // Pada order multi-runner, runner mana pun yang ditugaskan boleh menutup
     // order. Ini keputusan sementara: siapa yang berhak menekan selesai kalau
     // pekerjaannya dibagi tiga orang masih menunggu jawaban mitra (bagian
@@ -381,7 +431,7 @@ class FakeOrderRepository implements OrderRepository {
     final diperbarui = order.copyWith(
       status: OrderStatus.selesai,
       fotoBuktiUrl: fotoBuktiUrl,
-      catatanSerahTerima: catatanSerahTerima,
+      catatanSerahTerima: catatanBersih,
       selesaiPada: DateTime.now(),
     );
     _ganti(diperbarui);
@@ -409,7 +459,7 @@ class FakeOrderRepository implements OrderRepository {
     await Future<void>.delayed(_jedaJaringan);
     final order = _wajibAda(orderId);
 
-    final bersih = isi.trim();
+    final bersih = _batasi(isi, BatasMasukan.pesanChat, 'Pesan')!;
     if (bersih.isEmpty) {
       throw StateError('Pesan kosong tidak bisa dikirim');
     }

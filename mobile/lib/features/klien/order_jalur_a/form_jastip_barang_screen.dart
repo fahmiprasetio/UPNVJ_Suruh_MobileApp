@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/batas_masukan.dart';
+
 import '../../../core/config/tarif_config.dart';
 import '../../../core/format/formatters.dart';
 import '../../../core/router/app_router.dart';
@@ -71,6 +73,7 @@ class _FormJastipBarangScreenState
             children: [
               TextFormField(
                 controller: _barangController,
+                maxLength: BatasMasukan.deskripsi,
                 textCapitalization: TextCapitalization.sentences,
                 maxLines: 3,
                 minLines: 2,
@@ -85,6 +88,7 @@ class _FormJastipBarangScreenState
               const SizedBox(height: AppTheme.spasiSedang),
               TextFormField(
                 controller: _ambilController,
+                maxLength: BatasMasukan.alamat,
                 textCapitalization: TextCapitalization.sentences,
                 maxLines: 2,
                 minLines: 1,
@@ -98,6 +102,7 @@ class _FormJastipBarangScreenState
               const SizedBox(height: AppTheme.spasiSedang),
               TextFormField(
                 controller: _tujuanController,
+                maxLength: BatasMasukan.alamat,
                 textCapitalization: TextCapitalization.sentences,
                 maxLines: 2,
                 minLines: 1,

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/batas_masukan.dart';
+
 import '../../../core/format/formatters.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
@@ -460,6 +462,7 @@ class _DialogNegoState extends State<_DialogNego> {
           const SizedBox(height: AppTheme.spasiSedang),
           TextField(
             controller: _controller,
+            maxLength: BatasMasukan.alasanNego,
             autofocus: true,
             maxLines: 3,
             minLines: 2,

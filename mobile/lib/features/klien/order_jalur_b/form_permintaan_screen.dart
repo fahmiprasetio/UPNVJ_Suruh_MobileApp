@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/batas_masukan.dart';
+
 import '../../../core/format/formatters.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
@@ -77,6 +79,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
               const SizedBox(height: AppTheme.spasiBesar),
               TextFormField(
                 controller: _kebutuhanController,
+                maxLength: BatasMasukan.deskripsi,
                 textCapitalization: TextCapitalization.sentences,
                 maxLines: 6,
                 minLines: 4,
@@ -96,6 +99,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
               const SizedBox(height: AppTheme.spasiSedang),
               TextFormField(
                 controller: _alamatController,
+                maxLength: BatasMasukan.alamat,
                 textCapitalization: TextCapitalization.sentences,
                 maxLines: 2,
                 minLines: 1,

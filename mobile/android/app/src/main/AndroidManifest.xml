@@ -2,7 +2,14 @@
     <application
         android:label="upnvj_suruh"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false">
+        <!-- Cadangan dimatikan. Begitu aplikasi ini menyimpan token sesi dan foto bukti
+             pekerjaan di perangkat, cadangan bawaan Android menyalinnya ke luar, dan di
+             perangkat yang bisa di-adb salinan itu bisa ditarik tanpa membuka kunci
+             layar. Order membawa nama dan alamat rumah pelanggan, jadi yang bocor bukan
+             preferensi tampilan. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -1,0 +1,137 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:upnvj_suruh/core/config/batas_masukan.dart';
+import 'package:upnvj_suruh/data/fake/fake_order_repository.dart';
+import 'package:upnvj_suruh/domain/enums.dart';
+import 'package:upnvj_suruh/domain/models/order.dart';
+import 'package:upnvj_suruh/domain/models/order_offer.dart';
+
+/// Teks bebas yang tidak dibatasi adalah pintu membebani penyimpanan, dan
+/// batas yang cuma dipasang di layar bukan batas: kolom bisa diisi lewat
+/// tempel, dan nanti lewat pemanggilan API langsung.
+void main() {
+  String panjang(int n) => 'a' * n;
+
+  Order orderAktif() => Order(
+    id: 'o-uji',
+    kodeOrder: 'SRH-9001',
+    klienId: 'u-klien-1',
+    namaKlien: 'Dina Rahmawati',
+    serviceType: ServiceType.anterJemput,
+    status: OrderStatus.mencariRunner,
+    dibuatPada: DateTime.now(),
+    harga: 11000,
+  );
+
+  test('pesan chat yang melewati batas ditolak', () async {
+    final repo = FakeOrderRepository(orderAwal: [orderAktif()]);
+    addTearDown(repo.dispose);
+
+    await expectLater(
+      repo.kirimPesan(
+        orderId: 'o-uji',
+        pengirim: MessageSender.klien,
+        isi: panjang(BatasMasukan.pesanChat + 1),
+      ),
+      throwsStateError,
+    );
+  });
+
+  test('pesan chat tepat di batas tetap diterima', () async {
+    final repo = FakeOrderRepository(orderAwal: [orderAktif()]);
+    addTearDown(repo.dispose);
+
+    final order = await repo.kirimPesan(
+      orderId: 'o-uji',
+      pengirim: MessageSender.klien,
+      isi: panjang(BatasMasukan.pesanChat),
+    );
+
+    expect(order.messages, hasLength(1));
+  });
+
+  test('deskripsi dan alamat order Jalur A dibatasi', () async {
+    final repo = FakeOrderRepository(orderAwal: const []);
+    addTearDown(repo.dispose);
+
+    await expectLater(
+      repo.buatOrderJalurA(
+        klienId: 'u-klien-1',
+        serviceType: ServiceType.anterJemput,
+        harga: 11000,
+        deskripsi: panjang(BatasMasukan.deskripsi + 1),
+      ),
+      throwsStateError,
+    );
+
+    await expectLater(
+      repo.buatOrderJalurA(
+        klienId: 'u-klien-1',
+        serviceType: ServiceType.anterJemput,
+        harga: 11000,
+        alamatJemput: panjang(BatasMasukan.alamat + 1),
+      ),
+      throwsStateError,
+    );
+  });
+
+  test('deskripsi permintaan Jalur B dibatasi', () async {
+    final repo = FakeOrderRepository(orderAwal: const []);
+    addTearDown(repo.dispose);
+
+    await expectLater(
+      repo.buatPermintaanJalurB(
+        klienId: 'u-klien-1',
+        serviceType: ServiceType.bersihKos,
+        deskripsi: panjang(BatasMasukan.deskripsi + 1),
+        jadwalMulai: DateTime.now().add(const Duration(days: 1)),
+      ),
+      throwsStateError,
+    );
+  });
+
+  test('alasan nego yang melewati batas ditolak', () async {
+    final order = orderAktif().copyWith(
+      status: OrderStatus.menungguPersetujuanKlien,
+      offers: [
+        OrderOffer(
+          id: 'p-1',
+          orderId: 'o-uji',
+          harga: 50000,
+          estimasiDurasi: const Duration(hours: 2),
+          jadwalMulai: DateTime.now().add(const Duration(days: 1)),
+          dibuatPada: DateTime.now(),
+          status: OfferStatus.pending,
+        ),
+      ],
+    );
+    final repo = FakeOrderRepository(orderAwal: [order]);
+    addTearDown(repo.dispose);
+
+    await expectLater(
+      repo.ajukanNego(
+        orderId: 'o-uji',
+        alasan: panjang(BatasMasukan.alasanNego + 1),
+      ),
+      throwsStateError,
+    );
+  });
+
+  test('catatan serah terima yang melewati batas ditolak', () async {
+    final order = orderAktif().copyWith(
+      status: OrderStatus.dikerjakan,
+      runnerIds: const ['u-runner-1'],
+    );
+    final repo = FakeOrderRepository(orderAwal: [order]);
+    addTearDown(repo.dispose);
+
+    await expectLater(
+      repo.selesaikanOrder(
+        orderId: 'o-uji',
+        runnerId: 'u-runner-1',
+        fotoBuktiUrl: 'fake://bukti/o-uji.jpg',
+        catatanSerahTerima: panjang(BatasMasukan.catatanSerahTerima + 1),
+      ),
+      throwsStateError,
+    );
+  });
+}
