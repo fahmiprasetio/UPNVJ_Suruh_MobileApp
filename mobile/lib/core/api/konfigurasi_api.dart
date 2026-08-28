@@ -25,4 +25,15 @@ class KonfigurasiApi {
   /// selamanya dalam keadaan memuat, dan pengguna tidak punya cara keluar selain
   /// menutup paksa aplikasinya.
   static const Duration batasWaktu = Duration(seconds: 20);
+
+  /// Selang pengambilan ulang untuk layar yang sedang terbuka.
+  ///
+  /// Jaring pengaman untuk perubahan yang dibuat orang lain, yang tidak terkabar
+  /// ke aplikasi ini. Sengaja tidak terlalu rapat: pada layar order masuk, basi
+  /// belasan detik cuma membuat runner menekan tombol yang gagal, sementara
+  /// mengambil ulang tiap detik menguras baterai dan kuota sepanjang hari.
+  ///
+  /// Hilang begitu hub SignalR tersambung, karena sejak itu kabarnya datang tepat
+  /// saat ada yang berubah.
+  static const Duration jedaSegarkan = Duration(seconds: 15);
 }

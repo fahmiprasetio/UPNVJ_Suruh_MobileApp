@@ -34,6 +34,7 @@ class Order {
     this.offers = const [],
     this.messages = const [],
     this.payment,
+    this.jumlahPesan = 0,
   });
 
   final String id;
@@ -73,6 +74,15 @@ class Order {
 
   final List<OrderOffer> offers;
   final List<OrderMessage> messages;
+
+  /// Berapa pesan yang ada di chat order ini.
+  ///
+  /// Terpisah dari [messages] karena daftar order tidak membawa isi percakapannya,
+  /// cuma jumlahnya: penanda "ada 3 pesan" tidak layak menuntut seluruh chat ikut
+  /// terkirim, dan biayanya justru tumbuh saat aplikasinya mulai ramai dipakai.
+  /// Di layar chat pesannya memang dimuat, dan [messages] terisi; di daftar ia
+  /// kosong sementara angka ini tetap benar.
+  final int jumlahPesan;
   final Payment? payment;
 
   OrderTrack get track => serviceType.track;
@@ -136,6 +146,9 @@ class Order {
       selesaiPada: selesaiPada ?? this.selesaiPada,
       offers: offers ?? this.offers,
       messages: messages ?? this.messages,
+      // Kalau daftar pesannya diganti, jumlahnya ikut dihitung ulang dari daftar
+      // baru itu; kalau tidak, angka dari server dipertahankan apa adanya.
+      jumlahPesan: messages?.length ?? jumlahPesan,
       payment: payment ?? this.payment,
     );
   }

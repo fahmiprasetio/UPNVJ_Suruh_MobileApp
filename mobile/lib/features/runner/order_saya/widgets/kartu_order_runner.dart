@@ -105,9 +105,9 @@ class KartuOrderRunner extends StatelessWidget {
                 onPressed: onChat,
                 icon: const Icon(Icons.forum_outlined),
                 label: Text(
-                  order.messages.isEmpty
+                  order.jumlahPesan == 0
                       ? 'Chat Klien'
-                      : 'Chat Klien (${order.messages.length})',
+                      : 'Chat Klien (${order.jumlahPesan})',
                 ),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size.fromHeight(46),

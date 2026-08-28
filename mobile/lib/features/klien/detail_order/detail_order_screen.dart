@@ -62,7 +62,7 @@ class _TombolChat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final jumlah = order.messages.length;
+    final jumlah = order.jumlahPesan;
     return IconButton(
       onPressed: () => context.push(Rute.chatOrder(order.id)),
       tooltip: 'Chat Order',

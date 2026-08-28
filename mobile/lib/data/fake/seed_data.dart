@@ -99,6 +99,7 @@ class SeedData {
         jumlahRunnerDibutuhkan: 3,
         // Percakapan contoh untuk order Jalur B: admin bertanya dulu sebelum
         // bisa memberi harga, persis alur di bagian 3.
+        jumlahPesan: 2,
         messages: [
           OrderMessage(
             id: 'm-1',
