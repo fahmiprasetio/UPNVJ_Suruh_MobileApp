@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../../domain/enums.dart';
 import '../../domain/models/app_user.dart';
 import '../../domain/repositories/auth_repository.dart';
 import 'seed_data.dart';
@@ -16,6 +17,11 @@ class FakeAuthRepository implements AuthRepository {
   static const Duration _jedaJaringan = Duration(milliseconds: 300);
 
   AppUser? _userAktif;
+
+  /// Daftar akun yang dikenal, disalin supaya [daftar] tidak mengubah
+  /// [SeedData.semuaUser] yang const dan dipakai bersama tes lain.
+  final List<AppUser> _users = List.of(SeedData.semuaUser);
+
   final StreamController<AppUser?> _controller =
       StreamController<AppUser?>.broadcast();
 
@@ -31,12 +37,44 @@ class FakeAuthRepository implements AuthRepository {
   @override
   Future<AppUser> masuk({required String noHp}) async {
     await Future<void>.delayed(_jedaJaringan);
-    final user = SeedData.semuaUser.where((u) => u.noHp == noHp).firstOrNull;
+    final user = _users.where((u) => u.noHp == noHp).firstOrNull;
     if (user == null) {
       throw StateError('Nomor $noHp belum terdaftar');
     }
     _userAktif = user;
     _controller.add(user);
+    return user;
+  }
+
+  @override
+  Future<AppUser> daftar({
+    required String nama,
+    required String noHp,
+  }) async {
+    await Future<void>.delayed(_jedaJaringan);
+
+    final bersihNama = nama.trim();
+    final bersihNoHp = noHp.trim();
+    if (bersihNama.isEmpty) {
+      throw StateError('Nama tidak boleh kosong');
+    }
+    if (bersihNoHp.isEmpty) {
+      throw StateError('Nomor HP tidak boleh kosong');
+    }
+    if (_users.any((u) => u.noHp == bersihNoHp)) {
+      throw StateError('Nomor $bersihNoHp sudah terdaftar');
+    }
+
+    final user = AppUser(
+      id: 'u-${DateTime.now().microsecondsSinceEpoch}',
+      nama: bersihNama,
+      noHp: bersihNoHp,
+      // Ditulis di sini, bukan diterima dari pemanggil. Lihat aturan pemberian
+      // peran di kontrak: runner adalah pegawai mitra, dan tidak ada yang
+      // boleh mengangkat dirinya sendiri jadi pegawai.
+      roles: const {UserRole.klien},
+    );
+    _users.add(user);
     return user;
   }
 
