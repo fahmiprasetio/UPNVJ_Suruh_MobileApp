@@ -14,6 +14,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<User>(entity =>
+        {
+            // Satu nomor HP satu akun. Ditegakkan basis data, bukan cuma dicek sebelum
+            // menyimpan, karena dua pendaftaran yang tiba bersamaan lolos pemeriksaan
+            // yang cuma membaca.
+            entity.HasIndex(u => u.Phone).IsUnique();
+
+            // Disimpan sebagai integer[] Postgres, bukan JSON, supaya "cari semua runner"
+            // tetap bisa dijawab satu query berindeks nanti.
+            entity.Property(u => u.Roles).HasColumnType("integer[]");
+        });
+
         modelBuilder.Entity<Order>(entity =>
         {
             // Postgres system column used as optimistic-concurrency token: a runner-accept
