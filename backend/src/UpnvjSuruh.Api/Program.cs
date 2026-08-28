@@ -139,6 +139,25 @@ builder.Services.AddScoped<PenyelesaiPembayaran>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// --- CORS, hanya untuk pengembangan ---
+//
+// Aplikasi Flutter yang dijalankan di browser tunduk pada aturan asal-usul: halaman di
+// localhost:port-acak tidak boleh membaca jawaban dari localhost:5059 kecuali server itu
+// mengizinkannya. Di perangkat Android maupun iOS aturan ini tidak berlaku, jadi ini murni
+// kebutuhan menjalankan aplikasi di browser saat mengembangkan.
+//
+// Kebijakannya cuma didaftarkan di Development, dan asalnya dibatasi ke localhost, bukan
+// AllowAnyOrigin. Digabung dengan AllowCredentials, izin ke semua asal berarti halaman mana
+// pun yang dibuka korban bisa memanggil API ini membawa sesi korban.
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddCors(opsi => opsi.AddDefaultPolicy(kebijakan => kebijakan
+        .SetIsOriginAllowed(asal => new Uri(asal).IsLoopback)
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials()));
+}
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -147,7 +166,17 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// Dilewati di Development. Aplikasi web dan emulator menembak alamat http biasa, dan
+// pengalihan ke https membuat permintaan pertama dijawab 307 ke port yang tidak
+// mendengarkan, yang di browser terbaca sebagai galat jaringan tanpa sebab yang jelas.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+else
+{
+    app.UseCors();
+}
 
 // Urutannya wajib begini: UseAuthentication membaca siapa pemanggilnya, UseAuthorization
 // memutuskan apakah ia boleh. Terbalik, atau yang pertama hilang seperti sebelumnya,

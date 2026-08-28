@@ -33,6 +33,39 @@ class ApiAuthRepository implements AuthRepository {
     yield* _controller.stream;
   }
 
+  /// Menghidupkan kembali sesi yang tokennya masih tersimpan.
+  ///
+  /// Dipanggil sekali saat aplikasi mulai, setelah [SesiToken.muat]. Tanpa langkah ini,
+  /// menyimpan token tidak ada gunanya: tokennya ada dan permintaan berikutnya akan
+  /// membawanya, tapi aplikasi tidak tahu itu milik siapa, jadi ia mengantar pemiliknya
+  /// ke layar masuk seperti orang yang belum pernah masuk.
+  ///
+  /// Perannya sengaja ditanyakan ke server, bukan disimpan ikut tokennya, karena peran
+  /// bisa berubah selagi aplikasi tertutup: seseorang yang baru diangkat jadi runner
+  /// harus melihat permukaan runner saat membukanya lagi, dan yang baru dicabut
+  /// perannya tidak boleh terus melihatnya.
+  ///
+  /// Kegagalan apa pun berakhir sebagai "belum masuk", termasuk token kedaluwarsa dan
+  /// server yang sedang tidak bisa dihubungi. Melempar dari sini berarti aplikasi gagal
+  /// menyala gara-gara jaringan, dan yang benar dilakukan pengguna dalam keadaan itu
+  /// adalah masuk lagi, bukan menatap layar yang tidak mau terbuka.
+  Future<AppUser?> pulihkanSesi() async {
+    if (!_sesi.adaSesi) return null;
+
+    try {
+      final jawaban = await _klien.get('/api/auth/saya');
+      final user = _bacaUser(jawaban);
+      _userAktif = user;
+      _controller.add(user);
+      return user;
+    } catch (_) {
+      // Token yang ditolak dibuang sekarang juga. Membiarkannya berarti setiap
+      // permintaan berikutnya berangkat membawa token yang sudah pasti ditolak.
+      await _sesi.kosongkan();
+      return null;
+    }
+  }
+
   @override
   Future<AppUser> daftar({required String nama, required String noHp}) async {
     final jawaban = await _klien.post(
