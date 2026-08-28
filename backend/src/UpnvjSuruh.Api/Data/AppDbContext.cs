@@ -11,6 +11,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<OrderMessage> OrderMessages => Set<OrderMessage>();
     public DbSet<OrderRunnerAssignment> OrderRunnerAssignments => Set<OrderRunnerAssignment>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<UserRoleChange> UserRoleChanges => Set<UserRoleChange>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -28,6 +29,22 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             // Disimpan sebagai integer[] Postgres, bukan JSON, supaya "cari semua runner"
             // tetap bisa dijawab satu query berindeks nanti.
             entity.Property(u => u.Roles).HasColumnType("integer[]");
+        });
+
+        modelBuilder.Entity<UserRoleChange>(entity =>
+        {
+            entity.Property(p => p.RolesBefore).HasColumnType("integer[]");
+            entity.Property(p => p.RolesAfter).HasColumnType("integer[]");
+            entity.Property(p => p.Reason).HasMaxLength(BatasMasukan.Deskripsi);
+
+            entity.HasIndex(p => p.UserId);
+
+            entity.HasOne(p => p.User)
+                .WithMany()
+                .HasForeignKey(p => p.UserId)
+                // Catatan audit tidak ikut hilang bersama akunnya. Justru akun yang dihapus
+                // adalah akun yang paling mungkin dipertanyakan belakangan.
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Order>(entity =>

@@ -155,6 +155,11 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Dijalankan sebelum permintaan pertama dilayani, dan tidak melakukan apa-apa kalau
+// Admin:NomorHpAwal tidak diisi. Karena itu tes dan pemasangan biasa tidak menyentuhnya
+// sama sekali.
+await AdminAwal.PastikanAsync(app.Services);
+
 app.MapControllers();
 app.MapHub<OrderHub>("/hubs/orders");
 

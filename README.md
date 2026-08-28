@@ -95,6 +95,26 @@ dotnet user-secrets set "Jwt:SigningKey" "<teks acak minimal 32 karakter>"
 dotnet user-secrets set "Webhook:Secret" "<teks acak minimal 32 karakter, berbeda dari yang di atas>"
 ```
 
+### Admin pertama
+
+Peran hanya bisa diberikan admin, jadi sistem yang belum punya admin sama sekali tidak punya
+jalan mengangkat siapa pun. Jalan keluarnya lewat konfigurasi server, bukan lewat API: yang
+bisa mengangkat admin pertama adalah orang yang memegang user-secrets mesinnya, bukan siapa
+pun yang bisa mengirim permintaan HTTP.
+
+Daftarkan dulu akunnya lewat aplikasi seperti orang biasa, lalu:
+
+```
+dotnet user-secrets set "Admin:NomorHpAwal" "08xxxxxxxxxx"
+```
+
+Server mengangkatnya jadi admin saat menyala berikutnya, dan mencatatnya di riwayat perubahan
+peran seperti perubahan lainnya. Sesudah itu admin bisa mengangkat runner lewat
+`PUT /api/admin/pengguna/{id}/peran`, dan setelan ini boleh dilepas.
+
+Setelan ini tidak pernah membuat akun. Membuat akun dari konfigurasi berarti ada jalan kedua
+melahirkan akun, dan jalan kedua adalah jalan yang lupa diperiksa.
+
 `Webhook:Secret` adalah rahasia yang dipakai gateway pembayaran untuk membuktikan bahwa
 kabar lunas benar-benar datang darinya. Endpoint yang menandai order lunas adalah endpoint
 paling berharga di sistem ini: tanpa penjagaan, siapa pun yang tahu alamatnya bisa memesan
