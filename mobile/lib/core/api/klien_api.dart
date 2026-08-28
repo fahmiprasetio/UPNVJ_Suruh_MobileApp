@@ -57,6 +57,36 @@ class KlienApi {
         ),
       );
 
+  /// Mengirim satu berkas sebagai multipart.
+  ///
+  /// Lewat pintu yang sama dengan permintaan lain, bukan merakit `MultipartRequest`
+  /// sendiri di repository yang membutuhkannya. Yang harus benar di setiap permintaan,
+  /// yaitu token, batas waktu, dan penerjemahan galat, cuma ditulis sekali di sini;
+  /// repository yang merakit permintaannya masing-masing adalah kesempatan baru untuk
+  /// melupakan salah satunya.
+  Future<Map<String, dynamic>> postBerkas(
+    String jalur, {
+    required String kolom,
+    required String namaBerkas,
+    required List<int> isi,
+  }) async {
+    Future<http.Response> kirim() async {
+      final permintaan = http.MultipartRequest('POST', _alamat(jalur, null))
+        // Content-Type tidak ikut dipasang di sini: paket http yang menyusunnya,
+        // lengkap dengan batas antarbagian yang harus cocok dengan badannya.
+        ..headers.addAll(_header())
+        ..files.add(
+          http.MultipartFile.fromBytes(kolom, isi, filename: namaBerkas),
+        );
+
+      // Dikembalikan sebagai Response biasa supaya jalannya sama persis dengan
+      // permintaan lain sesudah ini, termasuk penerjemahan galatnya.
+      return http.Response.fromStream(await _klien.send(permintaan));
+    }
+
+    return _kirim(kirim);
+  }
+
   Uri _alamat(String jalur, Map<String, String>? kueri) =>
       Uri.parse('$_baseUrl$jalur').replace(queryParameters: kueri);
 

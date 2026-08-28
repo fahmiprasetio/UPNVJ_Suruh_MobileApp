@@ -66,5 +66,10 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- Wajib ada, kalau tidak iOS menghentikan aplikasi begitu kamera dibuka.
+	     Kalimatnya yang dibaca pengguna di kotak izin, jadi ia menyebutkan untuk apa,
+	     bukan sekadar meminta. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Kamera dipakai runner untuk memotret bukti pekerjaan yang sudah selesai.</string>
 </dict>
 </plist>

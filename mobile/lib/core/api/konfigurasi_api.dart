@@ -36,4 +36,18 @@ class KonfigurasiApi {
   /// Hilang begitu hub SignalR tersambung, karena sejak itu kabarnya datang tepat
   /// saat ada yang berubah.
   static const Duration jedaSegarkan = Duration(seconds: 15);
+
+  /// Melengkapi alamat berkas yang dikirim server sebagai jalur relatif.
+  ///
+  /// Server menyebut foto bukti sebagai `/media/bukti/...`, bukan alamat lengkap, dan
+  /// itu memang yang benar: server tidak selalu tahu lewat alamat mana ia dihubungi,
+  /// dan alamat lengkap yang salah tebak akan tersimpan di basis data selamanya.
+  /// Yang tahu ke mana ia sedang bicara adalah aplikasi ini.
+  ///
+  /// Alamat yang sudah lengkap dibiarkan apa adanya, termasuk `fake://` dari tiruan,
+  /// supaya layar tetap bisa membedakan tautan sungguhan dari tautan karangan.
+  static String lengkapi(String alamat) {
+    if (!alamat.startsWith('/')) return alamat;
+    return '$baseUrl$alamat';
+  }
 }

@@ -7,7 +7,9 @@ using Microsoft.IdentityModel.Tokens;
 using UpnvjSuruh.Api.Auth;
 using UpnvjSuruh.Api.Data;
 using UpnvjSuruh.Api.Domain;
+using Microsoft.Extensions.FileProviders;
 using UpnvjSuruh.Api.Hubs;
+using UpnvjSuruh.Api.Media;
 using UpnvjSuruh.Api.Payments;
 using UpnvjSuruh.Api.Pricing;
 
@@ -136,6 +138,9 @@ builder.Services.AddAuthorization();
 builder.Services.AddSingleton<IKalkulatorTarif, KalkulatorTarif>();
 builder.Services.AddScoped<PenyelesaiPembayaran>();
 
+// --- Foto bukti pekerjaan ---
+builder.Services.AddSingleton<PenyimpanFoto>();
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -188,6 +193,22 @@ app.UseAuthorization();
 // Admin:NomorHpAwal tidak diisi. Karena itu tes dan pemasangan biasa tidak menyentuhnya
 // sama sekali.
 await AdminAwal.PastikanAsync(app.Services);
+
+// Melayani foto bukti sebagai berkas statis dari foldernya sendiri, bukan dari wwwroot.
+//
+// Terpisah supaya jelas apa yang boleh dibaca umum: yang ada di folder ini hanya berkas
+// yang ditulis PenyimpanFoto, dengan nama yang dibuat server. Menaruhnya di wwwroot
+// bersama berkas aplikasi berarti satu kesalahan jalur cukup untuk melayani hal lain.
+//
+// Tautannya sengaja tidak ditebak-tebak: namanya memuat GUID acak, jadi mengetahui id
+// order saja tidak cukup untuk membuka fotonya. Itu belum sama dengan penjagaan yang
+// sesungguhnya, dan foto yang benar-benar dijaga baru mungkin setelah ada penyimpanan
+// yang bisa menerbitkan tautan berbatas waktu.
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(app.Services.GetRequiredService<PenyimpanFoto>().FolderSiap()),
+    RequestPath = PenyimpanFoto.Prefiks.TrimEnd('/'),
+});
 
 app.MapControllers();
 app.MapHub<OrderHub>("/hubs/orders");

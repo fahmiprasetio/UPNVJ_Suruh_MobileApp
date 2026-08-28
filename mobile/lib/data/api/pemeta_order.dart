@@ -2,6 +2,7 @@ import '../../domain/enums.dart';
 import '../../domain/models/order.dart';
 import '../../domain/models/order_message.dart';
 import '../../domain/models/order_offer.dart';
+import '../../core/api/konfigurasi_api.dart';
 import 'pemeta_dasar.dart';
 
 /// Menerjemahkan jawaban API jadi model domain.
@@ -33,7 +34,9 @@ class PemetaOrder {
       runnerIds: [
         for (final id in (isi['runnerIds'] as List? ?? const [])) id.toString(),
       ],
-      fotoBuktiUrl: isi['fotoBuktiUrl'] as String?,
+      // Dilengkapi di sini, satu tempat, bukan di tiap layar yang menggambarnya.
+      // Layar yang harus merangkai alamatnya sendiri adalah layar yang bisa lupa.
+      fotoBuktiUrl: _alamatFoto(isi['fotoBuktiUrl']),
       catatanSerahTerima: isi['catatanSerahTerima'] as String?,
       dibayarPada: _waktu(isi, 'dibayarPada'),
       selesaiPada: _waktu(isi, 'selesaiPada'),
@@ -75,6 +78,11 @@ class PemetaOrder {
       PemetaDasar.teks(isi, kunci);
 
   static int? _rupiah(dynamic nilai) => PemetaDasar.rupiah(nilai);
+
+  static String? _alamatFoto(dynamic nilai) =>
+      nilai is String && nilai.isNotEmpty
+      ? KonfigurasiApi.lengkapi(nilai)
+      : null;
 
   static DateTime? _waktu(Map<String, dynamic> isi, String kunci) =>
       PemetaDasar.waktu(isi, kunci);

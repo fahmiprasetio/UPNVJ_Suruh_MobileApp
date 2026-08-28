@@ -6,6 +6,7 @@ using Npgsql;
 using UpnvjSuruh.Api.Auth;
 using UpnvjSuruh.Api.Contracts;
 using UpnvjSuruh.Api.Data;
+using UpnvjSuruh.Api.Media;
 using UpnvjSuruh.Api.Domain;
 using UpnvjSuruh.Api.Pricing;
 
@@ -14,7 +15,10 @@ namespace UpnvjSuruh.Api.Controllers;
 [ApiController]
 [Route("api/orders")]
 [Authorize]
-public class OrdersController(AppDbContext db, IKalkulatorTarif kalkulator) : ControllerBase
+public class OrdersController(
+    AppDbContext db,
+    IKalkulatorTarif kalkulator,
+    PenyimpanFoto penyimpanFoto) : ControllerBase
 {
     /// <summary>
     /// Klien membuat order Jalur A. Harganya dihitung di sini, bukan diterima dari klien.
@@ -321,6 +325,22 @@ public class OrdersController(AppDbContext db, IKalkulatorTarif kalkulator) : Co
             {
                 Title = "Order belum dikerjakan",
                 Detail = $"Order ini sedang {order.Status}, jadi belum bisa diselesaikan.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        // Foto buktinya harus benar-benar foto yang pernah diunggah ke server ini lewat
+        // endpoint unggah, bukan sekadar tulisan di kolom foto. Tanpa pemeriksaan ini,
+        // runner yang tidak mengerjakan apa-apa bisa menutup order dengan menempelkan
+        // tautan gambar mana pun dari internet, dan "wajib ada foto bukti" kehilangan
+        // seluruh artinya.
+        if (!penyimpanFoto.Sah(permintaan.FotoBuktiUrl))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Foto buktinya tidak dikenali",
+                Detail = "Unggah fotonya dulu lewat POST /api/orders/{id}/foto-bukti, "
+                         + "lalu kirim URL yang dikembalikan endpoint itu.",
                 Status = StatusCodes.Status400BadRequest,
             });
         }

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/api/klien_api.dart';
 import '../core/config/sumber_data.dart';
 import '../data/api/api_auth_repository.dart';
+import '../data/api/api_foto_bukti_repository.dart';
 import '../data/api/api_order_repository.dart';
 import '../data/api/sesi_token.dart';
 import '../data/fake/fake_auth_repository.dart';
@@ -92,12 +93,14 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 
 /// Kamera + penyimpanan foto bukti.
 ///
-/// Satu-satunya yang masih tiruan setelah penukaran ini, dan sadar: yang kurang
-/// bukan endpoint-nya, melainkan tempat menaruh berkasnya. Endpoint penutupan order
-/// sudah menerima URL foto, jadi yang tersisa adalah memilih penyimpanan dan
-/// memasang kamera perangkat.
+/// Ikut saklar sumber data seperti dua repository lainnya. Di jalur API, kamera
+/// perangkat yang dibuka dan hasilnya diunggah ke server; di jalur tiruan, tidak ada
+/// kamera sama sekali, karena tes layar dan demo tanpa server tidak bisa memotret.
 final fotoBuktiRepositoryProvider = Provider<FotoBuktiRepository>((ref) {
-  return FakeFotoBuktiRepository();
+  if (ref.watch(sumberDataProvider) == SumberData.tiruan) {
+    return FakeFotoBuktiRepository();
+  }
+  return ApiFotoBuktiRepository(klien: ref.watch(klienApiProvider));
 });
 
 /// Penanda bahwa foto bukti masih tiruan, dipakai layar untuk mengaku terus
