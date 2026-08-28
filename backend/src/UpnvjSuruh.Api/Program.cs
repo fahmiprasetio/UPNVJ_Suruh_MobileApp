@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -9,7 +10,14 @@ using UpnvjSuruh.Api.Pricing;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(opsi =>
+{
+    // Enum dikirim dan diterima sebagai nama, bukan angka. Nama anggota enum di sini sengaja
+    // dibuat sama persis dengan enum di aplikasi Flutter, jadi penerjemahannya cukup cocokkan
+    // nama. Angka akan bekerja sampai ada yang menyisipkan anggota baru di tengah enum, dan
+    // sejak saat itu order lama berubah jenis layanannya tanpa ada yang menyentuhnya.
+    opsi.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
 builder.Services.AddSignalR();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -27,6 +35,20 @@ builder.Services
     .ValidateOnStart();
 
 builder.Services.AddSingleton<ITokenService, TokenService>();
+
+builder.Services
+    .AddOptions<WebhookOptions>()
+    .Bind(builder.Configuration.GetSection(WebhookOptions.Section))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+if (string.IsNullOrWhiteSpace(builder.Configuration[$"{WebhookOptions.Section}:Secret"]))
+{
+    throw new InvalidOperationException(
+        "Webhook:Secret belum diisi. Di mesin pengembang jalankan: " +
+        "dotnet user-secrets set \"Webhook:Secret\" \"<rahasia acak minimal 32 karakter>\". " +
+        "Tanpa ini, endpoint yang menandai order lunas terbuka untuk siapa saja.");
+}
 
 // --- OTP ---
 

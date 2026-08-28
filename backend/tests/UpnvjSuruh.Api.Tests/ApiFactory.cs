@@ -17,6 +17,7 @@ public class ApiFactory : WebApplicationFactory<Program>
     public const string SigningKey = "kunci-uji-yang-cukup-panjang-untuk-hmac-sha256";
     public const string Issuer = "UpnvjSuruh.Api";
     public const string Audience = "UpnvjSuruh.Mobile";
+    public const string WebhookSecret = "rahasia-webhook-uji-yang-cukup-panjang-sekali";
 
     /// <summary>
     /// Connection string yang dipakai. Tes yang benar-benar menyentuh basis data
@@ -35,6 +36,7 @@ public class ApiFactory : WebApplicationFactory<Program>
                 ["Jwt:Issuer"] = Issuer,
                 ["Jwt:Audience"] = Audience,
                 ["Jwt:MasaBerlakuMenit"] = "60",
+                ["Webhook:Secret"] = WebhookSecret,
                 // Bawaannya sengaja tanpa kredensial: tes yang cuma memeriksa pipeline
                 // tidak menjalankan kueri apa pun, jadi yang dibutuhkan hanya string yang
                 // bentuknya sah supaya DbContext bisa dibangun. Menaruh password sungguhan

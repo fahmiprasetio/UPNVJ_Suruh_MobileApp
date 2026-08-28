@@ -90,7 +90,13 @@ Rahasia tidak disimpan di dalam repositori, jadi sekali per mesin perlu diisi du
 cd backend/src/UpnvjSuruh.Api
 dotnet user-secrets set "ConnectionStrings:Default" "Host=localhost;Port=5432;Database=upnvj_suruh;Username=postgres;Password=<password Postgres kamu>"
 dotnet user-secrets set "Jwt:SigningKey" "<teks acak minimal 32 karakter>"
+dotnet user-secrets set "Webhook:Secret" "<teks acak minimal 32 karakter, berbeda dari yang di atas>"
 ```
+
+`Webhook:Secret` adalah rahasia yang dipakai gateway pembayaran untuk membuktikan bahwa
+kabar lunas benar-benar datang darinya. Endpoint yang menandai order lunas adalah endpoint
+paling berharga di sistem ini: tanpa penjagaan, siapa pun yang tahu alamatnya bisa memesan
+lalu menandai pesanannya sendiri lunas.
 
 Kunci penanda tangan boleh dibangkitkan dengan `openssl rand -base64 48`, dan tidak boleh sama antara mesin pengembang dengan server. Server menolak menyala kalau salah satu belum diisi, lengkap dengan keterangan mana yang kurang, karena gagal saat start jauh lebih mudah ditelusuri daripada gagal di permintaan login pertama.
 
@@ -102,6 +108,11 @@ dotnet run
 ```
 
 Swagger terbuka di `/swagger` dan hanya di lingkungan Development.
+
+Kode OTP tidak dikirim ke mana pun selama pengembangan, melainkan ditulis ke log server
+dengan penanda `[ALAT PENGUJI]`. Di luar Development server menolak menyala sampai ada
+pengirim OTP sungguhan yang didaftarkan, karena pengirim yang menulis kode ke log sama saja
+dengan tidak punya OTP sama sekali.
 
 Menjalankan pengujian backend:
 
