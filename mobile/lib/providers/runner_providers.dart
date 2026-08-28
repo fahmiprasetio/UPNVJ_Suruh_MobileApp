@@ -3,22 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/models/order.dart';
 import 'repository_providers.dart';
 
-/// Order yang sedang disiarkan ke semua runner.
+/// Order yang sedang disiarkan kepada runner yang sedang masuk.
 ///
-/// Order yang sudah diambil runner ini sengaja dibuang dari daftar. Pada order
-/// multi-runner (pindah kos butuh 3 orang) kuotanya bisa saja masih terbuka,
-/// tapi menawarkan tombol TERIMA untuk order yang sudah dipegang sendiri cuma
-/// mengundang salah tekan, dan repository memang akan menolaknya.
+/// Siarannya sudah tersaring di repository, jadi tidak ada penyaringan kedua
+/// di sini. Order yang sudah dipegang runner ini dan order yang ia pesan
+/// sendiri tidak pernah sampai, dan itu memang tempatnya: daftar yang cuma
+/// dipangkas di tampilan tetap terkirim utuh ke perangkat.
 final orderTersiarProvider = StreamProvider<List<Order>>((ref) {
   final user = ref.watch(userAktifProvider).value;
   if (user == null) return Stream.value(const <Order>[]);
-  return ref
-      .watch(orderRepositoryProvider)
-      .watchOrderTersiar()
-      .map(
-        (orders) =>
-            orders.where((o) => !o.runnerIds.contains(user.id)).toList(),
-      );
+  return ref.watch(orderRepositoryProvider).watchOrderTersiar(user.id);
 });
 
 /// Order yang sedang dipegang runner yang masuk.

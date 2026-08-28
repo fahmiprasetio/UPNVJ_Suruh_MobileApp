@@ -13,8 +13,15 @@ abstract interface class OrderRepository {
   /// Order milik satu klien, terbaru di atas.
   Stream<List<Order>> watchOrderKlien(String klienId);
 
-  /// Order yang sedang disiarkan dan masih punya sisa kuota runner.
-  Stream<List<Order>> watchOrderTersiar();
+  /// Order yang sedang disiarkan dan masih punya sisa kuota runner, dilihat
+  /// dari sudut pandang satu runner.
+  ///
+  /// [runnerId] wajib karena siaran bukan daftar yang sama untuk semua orang.
+  /// Order yang sudah dipegang runner ini, dan order yang ia pesan sendiri,
+  /// tidak pernah ikut disiarkan kepadanya. Penyaringan itu tempatnya di sini,
+  /// bukan di layar: daftar yang dipangkas tampilan tetap terkirim utuh ke
+  /// perangkatnya, dan yang bocor lewat siaran adalah nama serta alamat orang.
+  Stream<List<Order>> watchOrderTersiar(String runnerId);
 
   /// Order yang sedang dipegang satu runner.
   Stream<List<Order>> watchOrderRunner(String runnerId);
@@ -94,6 +101,14 @@ abstract interface class OrderRepository {
   /// kalau kuota sudah keburu penuh diambil runner lain. Inti teknis proyek,
   /// implementasi sesungguhnya harus atomik di level basis data, bukan cuma di
   /// tampilan (bagian 14.5).
+  ///
+  /// Kalah cepat mengembalikan `false` karena itu hasil yang wajar, bukan
+  /// kesalahan. Melanggar aturan melempar galat, dan satu-satunya aturan di
+  /// sini: pemesan tidak boleh menjadi runner ordernya sendiri. Akun yang
+  /// memegang peran klien sekaligus runner (bagian 14.3) membuat itu mungkin
+  /// secara teknis, dan membiarkannya berarti membuka jalan memesan lalu
+  /// menerima sendiri, menagih upah atas pekerjaan yang tidak pernah berpindah
+  /// tangan.
   Future<bool> terimaOrder({required String orderId, required String runnerId});
 
   /// Runner menandai pekerjaannya selesai.

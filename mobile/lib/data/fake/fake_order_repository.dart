@@ -66,11 +66,20 @@ class FakeOrderRepository implements OrderRepository {
   );
 
   @override
-  Stream<List<Order>> watchOrderTersiar() => _stream.map(
+  Stream<List<Order>> watchOrderTersiar(String runnerId) => _stream.map(
     (orders) => _terbaruDiAtas(
       orders
           .where(
-            (o) => o.status == OrderStatus.mencariRunner && !o.kuotaRunnerPenuh,
+            (o) =>
+                o.status == OrderStatus.mencariRunner &&
+                !o.kuotaRunnerPenuh &&
+                // Order yang sudah dipegang runner ini tidak perlu ditawarkan
+                // lagi. Pada order multi-runner kuotanya bisa saja masih
+                // terbuka, tapi slot keduanya bukan untuk orang yang sama.
+                !o.runnerIds.contains(runnerId) &&
+                // Dan ordernya sendiri tidak pernah sampai ke matanya, lihat
+                // alasannya di kontrak.
+                o.klienId != runnerId,
           )
           .toList(),
     ),
@@ -318,6 +327,16 @@ class FakeOrderRepository implements OrderRepository {
   }) async {
     await Future<void>.delayed(_jedaJaringan);
     final order = _wajibAda(orderId);
+
+    // Pemesan tidak boleh menjadi runner ordernya sendiri. Diperiksa lebih
+    // dulu dari syarat perlombaan di bawah, dan melempar galat alih-alih
+    // mengembalikan `false`, karena ini bukan kalah cepat: hasilnya tidak akan
+    // berubah walau dicoba seribu kali.
+    if (order.klienId == runnerId) {
+      throw StateError(
+        'Pemesan order ${order.kodeOrder} tidak bisa menerima ordernya sendiri',
+      );
+    }
 
     // Cerminan dari UPDATE ... WHERE status = MENCARI_RUNNER di basis data:
     // kalau syaratnya tidak lagi terpenuhi, runner ini kalah cepat.
