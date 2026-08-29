@@ -151,14 +151,22 @@ void main() {
   });
 
   testWidgets(
-    'lencana tetap utuh menunggu sesi, baru pudar begitu siap',
+    'lencana tetap utuh menunggu sesi, tidak memudar sebelum waktunya',
     (tester) async {
       // Sebelumnya, gerakan dekoratif dan pudarnya adalah satu pengendali yang
       // sama, jadi begitu waktunya habis lencananya memudar tanpa peduli apakah
-      // sesi sudah selesai dipulihkan dari server. Kalau panggilan itu lebih
-      // lambat dari animasinya, pengguna menatap layar putih kosong menunggu.
-      // Tes ini membuktikan lencananya sekarang menunggu, bukan memudar duluan.
+      // sesi sudah selesai dipulihkan dari server. Tes ini membuktikan
+      // lencananya sekarang menunggu, bukan memudar begitu gerakan dekoratifnya
+      // selesai di 2,1 detik: sesi ini sengaja tidak pernah diselesaikan sama
+      // sekali, jadi kalau lencananya sudah memudar di sini, itu berarti
+      // penantiannya diam-diam diabaikan.
       final siap = Completer<void>();
+      addTearDown(() {
+        // Completer yang tidak pernah diselesaikan tetap harus ditutup,
+        // supaya provider yang menunggunya tidak mengeluh "future belum
+        // selesai" begitu tes ini berakhir.
+        if (!siap.isCompleted) siap.complete();
+      });
       final authRepo = FakeAuthRepository.belumMasuk();
       addTearDown(authRepo.dispose);
       final orderRepo = FakeOrderRepository();
@@ -175,16 +183,63 @@ void main() {
         ),
       );
 
-      // Jauh melewati waktu gerakan dekoratifnya. Kalau sesi belum siap, layar
-      // pembuka harus tetap di sana dan lencananya tidak boleh sedang memudar.
+      // Melewati waktu gerakan dekoratifnya (2,1 detik) tapi masih di dalam
+      // batas tunggu sesi (3 detik). Sesinya belum siap sama sekali, jadi
+      // layar pembuka harus tetap di sana dan lencananya tidak boleh sedang
+      // memudar.
       await tester.pump();
-      await tester.pump(const Duration(seconds: 4));
+      await tester.pump(const Duration(milliseconds: 2500));
 
       expect(find.byType(PembukaScreen), findsOneWidget);
       expect(tester.widget<Opacity>(find.byType(Opacity).first).opacity, 1.0);
 
+      // Diselesaikan dan dihabiskan di sini, bukan diserahkan ke `addTearDown`.
+      // Timer di balik `Future.timeout` (batas tunggu sesinya) masih menyala
+      // pada titik ini, dan `flutter_test` mengeluh kalau widget tree dibuang
+      // sementara masih ada timer yang menyala.
       siap.complete();
       await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'penantian sesi punya batas, tidak menunggu selamanya',
+    (tester) async {
+      // Panggilan jaringan yang tidak pernah dijawab tidak boleh menahan layar
+      // pertama selamanya. Sesinya di sini sengaja tidak pernah diselesaikan,
+      // jadi kalau layar pembuka masih ada setelah batas tunggunya lewat, itu
+      // berarti batasnya tidak sungguh-sungguh dipatuhi.
+      final siap = Completer<void>();
+      addTearDown(() {
+        if (!siap.isCompleted) siap.complete();
+      });
+      final authRepo = FakeAuthRepository.belumMasuk();
+      addTearDown(authRepo.dispose);
+      final orderRepo = FakeOrderRepository();
+      addTearDown(orderRepo.dispose);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authRepositoryProvider.overrideWith((ref) => authRepo),
+            orderRepositoryProvider.overrideWith((ref) => orderRepo),
+            kesiapanSesiProvider.overrideWith((ref) => siap.future),
+          ],
+          child: const UpnvjSuruhApp(),
+        ),
+      );
+
+      // Batas tunggu sesinya 3 detik, gerakan dekoratifnya 2,1 detik, pudarnya
+      // 280 milidetik: total jalur terpanjang sekitar 3,3 detik. Dipompa
+      // sampai 5 detik, cukup jauh melewati itu, tanpa sesinya pernah
+      // diselesaikan. Bingkai kecil berturut-turut, bukan satu bingkai besar:
+      // `Future.timeout` dan `Future.wait` butuh beberapa putaran microtask
+      // dan bingkai sebelum benar-benar tuntas, dan satu `pump` besar cuma
+      // memajukan satu bingkai.
+      await tester.pump();
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 250));
+      }
 
       expect(find.byType(PembukaScreen), findsNothing);
       expect(find.widgetWithText(TextFormField, 'Nomor HP'), findsOneWidget);

@@ -216,15 +216,43 @@ Perbaikannya dua bagian, saling bergantung:
    diam utuh (pengendali `_utama` berhenti di nilai akhirnya begitu `forward()` selesai,
    dan `_pudar` belum digerakkan sama sekali), bukan kosong.
 
-Diuji lewat kasus baru `'lencana tetap utuh menunggu sesi, baru pudar begitu siap'` di
-`pembuka_screen_test.dart`: `kesiapanSesiProvider` ditimpa dengan `Completer` yang
-dikendalikan tes, dipompa 4 detik penuh (jauh melewati durasi `_utama`) sambil
-completer-nya belum diselesaikan, dan lencananya harus tetap ada dengan opacity 1,0.
+Diuji lewat kasus `'lencana tetap utuh menunggu sesi, tidak memudar sebelum waktunya'` di
+`pembuka_screen_test.dart`: `kesiapanSesiProvider` ditimpa dengan `Completer` yang tidak
+pernah diselesaikan tesnya sendiri, dipompa sampai lewat durasi `_utama`, dan lencananya
+harus tetap ada dengan opacity 1,0.
 
-Batas 20 detik `KonfigurasiApi.batasWaktu` tetap satu-satunya jaring pengaman kalau
-backend sungguhan tidak menyala. Itu jaring pengaman lama yang sudah ada, bukan sesuatu
-yang baru ditambahkan untuk splash screen ini, dan mempersingkatnya di luar lingkup
-pekerjaan ini.
+### Batas tunggu sesinya sendiri, bukan mengandalkan batas API
+
+Versi pertama perbaikan di atas ternyata belum cukup, dan gejalanya sempat dilaporkan
+sebagai "rusak": jeda setelah animasi selesai jadi lama sekali, tidak berhenti sendiri,
+dan cuma bergerak lagi setelah tab-nya diklik. Sebabnya bertumpuk dua:
+
+1. `kesiapanSesiProvider` menunggu `pulihkanSesi`, dan itu jatuh ke `KonfigurasiApi.batasWaktu`
+   milik `KlienApi`, yaitu **20 detik**. Cocok untuk permintaan biasa yang penggunanya
+   sudah tahu sedang menunggu (menekan tombol, melihat putaran pemuatan), tapi di layar
+   pembuka penggunanya belum menekan apa pun dan tidak tahu ada permintaan yang sedang
+   berjalan sama sekali. Belasan detik diam terbaca sebagai macet.
+2. Timer di baliknya, baik `Future.timeout` milik Dart maupun `setTimeout` milik
+   browser di baliknya, ditahan (throttled) kalau tab-nya tidak sedang fokus atau
+   sedang di latar belakang, sesuatu yang lazim di semua browser modern untuk menghemat
+   baterai. Itu sebabnya jedanya terasa **tidak berbatas** dan baru bergerak lagi
+   setelah tab-nya diklik: klik itu mengembalikan fokus tab, timer yang tertahan
+   akhirnya diizinkan berjalan, dan 20 detik yang tertunda itu langsung habis begitu
+   diberi kesempatan.
+
+Perbaikannya `_batasTungguSesi`, 3 detik, ditulis di `pembuka_screen.dart` sendiri,
+lewat `ref.read(kesiapanSesiProvider.future).timeout(_batasTungguSesi, onTimeout: () {})`
+sebelum masuk ke `Future.wait`. Panggilan jaringannya sendiri tetap boleh berjalan
+sampai batas 20 detiknya di balik layar; yang dibatasi cuma berapa lama LAYAR PEMBUKA
+boleh ikut menunggunya. Begitu 3 detik itu habis, pembuka jalan terus seakan belum
+masuk. Kalau ternyata sesinya memang ada dan jawaban server akhirnya datang belakangan,
+`_PendengarSesi` di `app_router.dart` tetap menyimaknya lewat stream `watchUserAktif()`,
+dan router memindahkan dari layar masuk ke beranda sendiri tanpa diminta ulang.
+
+Diuji lewat kasus `'penantian sesi punya batas, tidak menunggu selamanya'`: sesi yang
+sama sekali tidak pernah diselesaikan tesnya, dipompa lewat 3,3 detik (batas tunggu
+ditambah durasi pudar), dan layar pembuka harus sudah pergi ke layar masuk meski
+sesinya tidak pernah siap.
 
 ### Yang berubah dari rencana lama
 

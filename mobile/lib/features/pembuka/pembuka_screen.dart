@@ -45,6 +45,15 @@ import 'widgets/teks_melengkung.dart';
 /// kesiapan sesi. Selama menunggu yang mana pun yang lebih lambat, lencananya
 /// diam utuh di layar, bukan kosong.
 ///
+/// Menunggu itu punya batas, [_batasTungguSesi], jauh lebih pendek dari batas
+/// waktu permintaan API biasa. Panggilan jaringannya sendiri boleh tetap
+/// berjalan sampai batasnya sendiri di baliknya, tapi layar pembuka tidak boleh
+/// ikut menunggu selama itu: penggunanya belum menekan apa pun, jadi belasan
+/// detik diam terbaca sebagai aplikasi macet, bukan sebagai animasi yang belum
+/// selesai. Begitu batas ini habis, pembuka jalan terus seperti belum masuk;
+/// kalau ternyata sudah, router memindahkannya sendiri begitu jawaban server
+/// akhirnya datang.
+///
 /// ## Latar putih, bukan warna tema
 ///
 /// Logonya digambar untuk latar putih dan tepi garisnya hijau kehitaman. Di tema
@@ -70,6 +79,21 @@ class _PembukaScreenState extends ConsumerState<PembukaScreen>
 
   /// Waktu memudar keluar, baru mulai setelah layar berikutnya benar-benar siap.
   static const Duration _durasiPudar = Duration(milliseconds: 280);
+
+  /// Batas sabar menunggu [kesiapanSesiProvider], terpisah dari
+  /// `KonfigurasiApi.batasWaktu` (20 detik) yang dipakai permintaan API biasa.
+  ///
+  /// Dua puluh detik masuk akal untuk permintaan yang penggunanya sudah tahu
+  /// sedang menunggu sesuatu, misalnya menekan tombol dan melihat putaran
+  /// pemuatan. Di layar pembuka, penggunanya belum menekan apa pun dan tidak
+  /// tahu ada permintaan yang sedang berjalan sama sekali; menahannya belasan
+  /// detik terbaca sebagai aplikasi yang macet, bukan sebagai animasi yang
+  /// belum selesai. Kalau sesi belum juga siap setelah batas ini, layar
+  /// pembuka tetap jalan terus menuju layar masuk. Kalau ternyata penggunanya
+  /// sedang masuk, [_PendengarSesi] di `app_router.dart` tetap menyimak
+  /// jawaban server begitu akhirnya datang, dan router memindahkannya sendiri
+  /// dari layar masuk ke beranda tanpa perlu diminta.
+  static const Duration _batasTungguSesi = Duration(seconds: 3);
 
   late final AnimationController _utama = AnimationController(
     vsync: this,
@@ -125,7 +149,12 @@ class _PembukaScreenState extends ConsumerState<PembukaScreen>
       gerakan = _utama.forward();
     }
 
-    await Future.wait([?gerakan, ref.read(kesiapanSesiProvider.future)]);
+    await Future.wait([
+      ?gerakan,
+      ref
+          .read(kesiapanSesiProvider.future)
+          .timeout(_batasTungguSesi, onTimeout: () {}),
+    ]);
     if (!mounted) return;
 
     if (tanpaAnimasi) {
