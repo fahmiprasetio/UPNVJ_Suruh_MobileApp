@@ -30,6 +30,21 @@ import 'widgets/teks_melengkung.dart';
 /// dipotong jadi lapisan terpisah, penukaran "buaya saja" menjadi "buaya di atas
 /// motor" tinggal disisipkan di puncak putaran ini.
 ///
+/// ## Dua pengendali, bukan satu
+///
+/// Gerakan dekoratifnya (naik, berputar, menulis) selalu selesai dalam waktu
+/// tetap, [_durasiUtama]. Tapi layar berikutnya belum tentu siap begitu gerakan
+/// itu selesai: [kesiapanSesiProvider] menanyakan ke server siapa pemilik sesi
+/// yang tersimpan, dan itu panggilan jaringan yang waktunya tidak pernah pasti.
+///
+/// Kalau fade keluarnya ikut di dalam pengendali dekoratif yang sama, lencananya
+/// akan memudar tepat waktu tanpa peduli apakah layar berikutnya sudah siap, dan
+/// begitu jaringannya lebih lambat dari animasinya, pengguna menatap putih
+/// kosong sambil menunggu. Karena itu fade keluarnya pengendali terpisah,
+/// [_pudar], yang baru mulai setelah KEDUANYA selesai: gerakan dekoratif, dan
+/// kesiapan sesi. Selama menunggu yang mana pun yang lebih lambat, lencananya
+/// diam utuh di layar, bukan kosong.
+///
 /// ## Latar putih, bukan warna tema
 ///
 /// Logonya digambar untuk latar putih dan tepi garisnya hijau kehitaman. Di tema
@@ -48,45 +63,41 @@ class PembukaScreen extends ConsumerStatefulWidget {
 }
 
 class _PembukaScreenState extends ConsumerState<PembukaScreen>
-    with SingleTickerProviderStateMixin {
-  /// Durasinya sudah termasuk jeda menatap logo utuh dan pudarnya di ujung.
-  ///
-  /// Keduanya sengaja ikut di dalam pengendali animasi, bukan dipasang sebagai
-  /// [Future.delayed] setelahnya. Timer yang menggantung di luar pengendali
-  /// tidak ikut terhitung oleh `pumpAndSettle`, jadi tes layar akan selesai
-  /// sebelum perpindahannya terjadi, lalu gagal dengan keluhan timer yang masih
-  /// hidup, bukan dengan keluhan yang menjelaskan apa pun.
-  static const Duration _durasi = Duration(milliseconds: 2500);
+    with TickerProviderStateMixin {
+  /// Waktu tetap untuk gerakan dekoratif: naik, berputar, menulis. Selalu
+  /// selesai dalam waktu ini, apa pun keadaan jaringannya.
+  static const Duration _durasiUtama = Duration(milliseconds: 2100);
 
-  late final AnimationController _pengendali = AnimationController(
+  /// Waktu memudar keluar, baru mulai setelah layar berikutnya benar-benar siap.
+  static const Duration _durasiPudar = Duration(milliseconds: 280);
+
+  late final AnimationController _utama = AnimationController(
     vsync: this,
-    duration: _durasi,
+    duration: _durasiUtama,
+  );
+  late final AnimationController _pudar = AnimationController(
+    vsync: this,
+    duration: _durasiPudar,
   );
 
-  late final Animation<double> _masuk = _kurva(0.00, 0.10, Curves.easeOut);
-  late final Animation<double> _naik = _kurva(0.00, 0.40, Curves.elasticOut);
-  late final Animation<double> _putar = _kurva(
-    0.40,
-    0.66,
+  late final Animation<double> _masuk = _kurvaUtama(0.00, 0.12, Curves.easeOut);
+  late final Animation<double> _naik = _kurvaUtama(
+    0.00,
+    0.48,
+    Curves.elasticOut,
+  );
+  late final Animation<double> _putar = _kurvaUtama(
+    0.48,
+    0.79,
     Curves.easeInOutCubic,
   );
-  late final Animation<double> _tulis = _kurva(0.58, 0.84, Curves.linear);
-
-  /// Memudar keluar, sekaligus penutup animasinya.
-  ///
-  /// Sebelumnya ujung animasinya adalah jeda diam: gerakan berhenti, logo utuh
-  /// terpampang beberapa ratus milidetik, lalu layar berikutnya menggantikannya
-  /// dalam satu potongan keras. Jeda diam sesudah gerakan terbaca sebagai
-  /// aplikasi yang menggantung, bukan sebagai jeda, dan potongan kerasnya
-  /// menegaskan kesan itu. Dengan pudar, sisa waktunya jadi gerakan juga, dan
-  /// layar berikutnya muncul di atas putih yang memang sedang dituju.
-  late final Animation<double> _pudar = _kurva(0.92, 1.00, Curves.easeIn);
+  late final Animation<double> _tulis = _kurvaUtama(0.69, 1.00, Curves.linear);
 
   bool _sudahMulai = false;
 
-  Animation<double> _kurva(double dari, double sampai, Curve kurva) =>
+  Animation<double> _kurvaUtama(double dari, double sampai, Curve kurva) =>
       CurvedAnimation(
-        parent: _pengendali,
+        parent: _utama,
         curve: Interval(dari, sampai, curve: kurva),
       );
 
@@ -95,24 +106,39 @@ class _PembukaScreenState extends ConsumerState<PembukaScreen>
     super.didChangeDependencies();
     if (_sudahMulai) return;
     _sudahMulai = true;
+    _jalankan(tanpaAnimasi: MediaQuery.disableAnimationsOf(context));
+  }
 
+  Future<void> _jalankan({required bool tanpaAnimasi}) async {
     // Pengguna yang mematikan animasi di setelan perangkatnya biasanya
     // mematikannya karena gerakan besar membuatnya pusing, atau karena ia
     // memakai pembaca layar dan animasi cuma menahan-nahan. Menahan orang itu
-    // 2,75 detik demi lencana yang berputar adalah jawaban yang salah.
-    if (MediaQuery.disableAnimationsOf(context)) {
-      _pengendali.value = 1;
-      _selesai();
+    // demi lencana yang berputar adalah jawaban yang salah, jadi gerakan
+    // dekoratifnya dilompati langsung ke keadaan akhir. Kesiapan sesi tetap
+    // ditunggu meski begitu: melompatinya berarti aplikasi bisa menampilkan
+    // layar dalam sebelum tahu siapa yang masuk.
+    final TickerFuture? gerakan;
+    if (tanpaAnimasi) {
+      _utama.value = 1;
+      gerakan = null;
     } else {
-      _pengendali.forward().whenComplete(_selesai);
+      gerakan = _utama.forward();
     }
-  }
 
-  void _selesai() {
-    // Ditunda ke akhir bingkai. Pengendali animasi berdetak di awal bingkai,
-    // sebelum tahap membangun widget, sementara penanda ini menggerakkan
-    // pengalihan rute. Mengubah rute di tengah bingkai yang sedang berjalan
-    // adalah cara yang rapi untuk mendapatkan kesalahan yang sulit dibaca.
+    await Future.wait([?gerakan, ref.read(kesiapanSesiProvider.future)]);
+    if (!mounted) return;
+
+    if (tanpaAnimasi) {
+      _pudar.value = 1;
+    } else {
+      await _pudar.forward();
+    }
+    if (!mounted) return;
+
+    // Ditunda ke akhir bingkai. Ticker animasi berdetak sebelum tahap
+    // membangun widget, sementara penanda ini menggerakkan pengalihan rute.
+    // Mengubah rute di tengah bingkai yang sedang berjalan adalah cara yang
+    // rapi untuk mendapatkan kesalahan yang sulit dibaca.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       ref.read(statusPembukaProvider).tandaiSelesai();
@@ -121,7 +147,8 @@ class _PembukaScreenState extends ConsumerState<PembukaScreen>
 
   @override
   void dispose() {
-    _pengendali.dispose();
+    _utama.dispose();
+    _pudar.dispose();
     super.dispose();
   }
 
@@ -134,7 +161,7 @@ class _PembukaScreenState extends ConsumerState<PembukaScreen>
           builder: (context, batas) {
             final sisi = _sisiLencana(batas.biggest);
             return AnimatedBuilder(
-              animation: _pengendali,
+              animation: Listenable.merge([_utama, _pudar]),
               builder: (context, _) => _Komposisi(
                 sisi: sisi,
                 tampak: _masuk.value * (1 - _pudar.value),

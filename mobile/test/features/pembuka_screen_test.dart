@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -132,16 +134,62 @@ void main() {
       ),
     );
 
-    // 50 milidetik, jauh lebih pendek dari 2,75 detik animasinya. Kalau
-    // animasinya tidak benar-benar dilewati, pembukanya masih terpampang di
-    // sini. Bingkai pertama menggambar pembuka dan menjadwalkan penandanya;
-    // bingkai kedua menjalankan pengalihannya.
+    // Total satu detik, jauh lebih pendek dari 2,1 detik gerakan dekoratifnya.
+    // Kalau animasinya tidak benar-benar dilewati, pembukanya masih terpampang
+    // di sini menunggu gerakan yang harusnya dilompati. Beberapa bingkai kecil,
+    // bukan satu bingkai besar: menunggu `kesiapanSesiProvider` lewat Riverpod
+    // butuh beberapa putaran microtask dan bingkai berturut-turut sebelum
+    // `Future`-nya benar-benar selesai, dan `pump` cuma memajukan satu bingkai
+    // per panggilan.
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
 
     expect(find.byType(PembukaScreen), findsNothing);
     expect(find.widgetWithText(TextFormField, 'Nomor HP'), findsOneWidget);
   });
+
+  testWidgets(
+    'lencana tetap utuh menunggu sesi, baru pudar begitu siap',
+    (tester) async {
+      // Sebelumnya, gerakan dekoratif dan pudarnya adalah satu pengendali yang
+      // sama, jadi begitu waktunya habis lencananya memudar tanpa peduli apakah
+      // sesi sudah selesai dipulihkan dari server. Kalau panggilan itu lebih
+      // lambat dari animasinya, pengguna menatap layar putih kosong menunggu.
+      // Tes ini membuktikan lencananya sekarang menunggu, bukan memudar duluan.
+      final siap = Completer<void>();
+      final authRepo = FakeAuthRepository.belumMasuk();
+      addTearDown(authRepo.dispose);
+      final orderRepo = FakeOrderRepository();
+      addTearDown(orderRepo.dispose);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authRepositoryProvider.overrideWith((ref) => authRepo),
+            orderRepositoryProvider.overrideWith((ref) => orderRepo),
+            kesiapanSesiProvider.overrideWith((ref) => siap.future),
+          ],
+          child: const UpnvjSuruhApp(),
+        ),
+      );
+
+      // Jauh melewati waktu gerakan dekoratifnya. Kalau sesi belum siap, layar
+      // pembuka harus tetap di sana dan lencananya tidak boleh sedang memudar.
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      expect(find.byType(PembukaScreen), findsOneWidget);
+      expect(tester.widget<Opacity>(find.byType(Opacity).first).opacity, 1.0);
+
+      siap.complete();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PembukaScreen), findsNothing);
+      expect(find.widgetWithText(TextFormField, 'Nomor HP'), findsOneWidget);
+    },
+  );
 
   test('penanda pembuka cuma memberi kabar sekali', () {
     final status = StatusPembuka();

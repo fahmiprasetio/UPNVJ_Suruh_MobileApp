@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'app.dart';
-import 'data/api/api_auth_repository.dart';
 import 'data/api/sesi_token.dart';
+import 'providers/pembuka_providers.dart';
 import 'providers/repository_providers.dart';
 
 Future<void> main() async {
@@ -16,7 +16,8 @@ Future<void> main() async {
   // Token dimuat sebelum aplikasi digambar, bukan sesudah. Kalau urutannya terbalik,
   // permintaan pertama tiap layar terbang tanpa token dan dijawab 401, lalu pengguna
   // yang sebenarnya masih punya sesi terlempar ke layar masuk sekali setiap membuka
-  // aplikasi.
+  // aplikasi. Ini pembacaan penyimpanan lokal, bukan panggilan jaringan, jadi
+  // tetap ditunggu di sini: tidak pernah lambat.
   final sesi = SesiToken();
   await sesi.muat();
 
@@ -24,14 +25,13 @@ Future<void> main() async {
     overrides: [sesiTokenProvider.overrideWithValue(sesi)],
   );
 
-  // Token saja tidak cukup: aplikasi juga harus tahu itu milik siapa sebelum layar
-  // pertama digambar, karena yang menentukan layar mana yang dibuka adalah ada atau
-  // tidaknya sesi. Menanyakannya setelah aplikasi tergambar membuat pemilik sesi yang
-  // sah melihat kedipan layar masuk setiap kali membuka aplikasi.
-  final auth = wadah.read(authRepositoryProvider);
-  if (auth is ApiAuthRepository) {
-    await auth.pulihkanSesi();
-  }
+  // Dipicu sekarang, bukan ditunggu. Tanya-ke-server siapa pemilik tokennya
+  // adalah panggilan jaringan, dan layar pembuka sendiri yang menunggunya
+  // sambil memainkan animasinya, lewat [kesiapanSesiProvider]. `main` cuma
+  // menyalakan pemicunya lebih awal supaya panggilannya sudah berjalan
+  // sebelum bingkai pertama digambar, bukan baru dimulai setelah lencananya
+  // muncul.
+  wadah.read(kesiapanSesiProvider);
 
   runApp(
     UncontrolledProviderScope(container: wadah, child: const UpnvjSuruhApp()),

@@ -161,25 +161,23 @@ lebih besar memuat lebar yang sama dalam sudut yang lebih kecil.
 
 ### Urutan animasi yang jalan sekarang
 
-Total 2,5 detik, latar putih polos, satu `AnimationController` dengan lima `Interval`.
+Dua `AnimationController`, bukan satu, dan itu bukan detail remeh — lihat subbagian
+setelah ini.
 
-1. `0,00 - 0,40` lencana naik dari bawah dengan `Curves.elasticOut`, sekalian memudar
-   masuk di `0,00 - 0,10`
-2. `0,40 - 0,66` berputar satu putaran penuh di sumbu Y dengan perspektif, seperti koin
-3. `0,58 - 0,84` teks melengkung tertulis huruf demi huruf dari kiri ke kanan, tiap
+**`_utama`, 2,1 detik, gerakan dekoratifnya. Selalu selesai dalam waktu tetap ini:**
+
+1. `0,00 - 0,48` lencana naik dari bawah dengan `Curves.elasticOut`, sekalian memudar
+   masuk di `0,00 - 0,12`
+2. `0,48 - 0,79` berputar satu putaran penuh di sumbu Y dengan perspektif, seperti koin
+3. `0,69 - 1,00` teks melengkung tertulis huruf demi huruf dari kiri ke kanan, tiap
    huruf turun ke tempatnya dari arah luar lingkaran
-4. `0,84 - 0,92` diam sebagai logo utuh
-5. `0,92 - 1,00` memudar keluar
 
-Langkah 5 itu ditambahkan belakangan dan alasannya perlu diingat. Sebelumnya ujung
-animasinya cuma jeda diam sepanjang 360 milidetik, dan layar berikutnya menggantikannya
-dalam satu potongan keras. Jeda diam sesudah gerakan berhenti terbaca sebagai aplikasi
-yang menggantung, bukan sebagai jeda, dan potongan kerasnya menegaskan kesan itu. Dengan
-memudar, sisa waktunya jadi gerakan juga, dan layar berikutnya muncul di atas putih yang
-memang sedang dituju.
+**`_pudar`, 280 milidetik, cuma memudar keluar.** Baru mulai setelah `_utama` selesai
+DAN sesi selesai dipulihkan dari server, mana pun yang lebih lambat (lihat subbagian
+berikutnya). Sebelum `_pudar` mulai, lencananya diam utuh di layar, bukan kosong.
 
-Jeda dan pudar di akhir sengaja ikut di dalam pengendali animasi, bukan `Future.delayed`
-setelahnya. Timer yang menggantung di luar pengendali tidak terhitung oleh
+Jeda dan pudar sengaja ikut di dalam pengendali animasi, bukan `Future.delayed`
+terpisah. Timer yang menggantung di luar pengendali tidak terhitung oleh
 `pumpAndSettle`, jadi tes layar selesai sebelum perpindahannya terjadi lalu gagal dengan
 keluhan timer yang masih hidup.
 
@@ -188,8 +186,45 @@ atas itu yang paling sering terpakai: di jendela browser sisi terpendek adalah t
 dan tinggi jendela di layar biasa jauh lebih besar dari lebar ponsel, jadi tanpa batas
 itu lencananya membengkak jadi gambar raksasa.
 
-Kalau perangkat mematikan animasi di setelan aksesibilitas, seluruh 2,5 detik itu
-dilewati dan aplikasi langsung membuka layar berikutnya.
+Kalau perangkat mematikan animasi di setelan aksesibilitas, `_utama` dilompati langsung
+ke keadaan akhir. Kesiapan sesi tetap ditunggu meski begitu: melompatinya berarti
+aplikasi bisa menampilkan layar dalam sebelum tahu siapa yang masuk, itu beda soal dari
+sekadar menghemat waktu pengguna.
+
+### Kenapa dua pengendali, bukan satu: bug layar putih kosong
+
+Sebelumnya pudar keluarnya ikut di dalam pengendali dekoratif yang sama, jadi begitu
+waktunya habis, lencananya memudar tanpa peduli apakah layar berikutnya sudah siap.
+Pemulihan sesinya sendiri sebuah panggilan jaringan ke `KonfigurasiApi.baseUrl`, dan
+waktunya tidak pernah pasti. Kalau panggilan itu lebih lambat dari durasi animasi (dan di
+mesin ini, tanpa backend .NET yang menyala, ia memang selalu lebih lambat, dibatasi 20
+detik oleh `KonfigurasiApi.batasWaktu` sebelum menyerah), yang terlihat pengguna adalah:
+animasi selesai, lencananya memudar sampai tidak terlihat, layar tetap putih kosong
+sampai batas waktu itu habis, baru layar berikutnya muncul. Persis keluhan "logo hilang,
+layar putih, nunggu, baru muncul halaman 2".
+
+Perbaikannya dua bagian, saling bergantung:
+
+1. **`main()` tidak lagi menunggu pemulihan sesi sebelum `runApp`.** Panggilannya
+   dipindah ke [kesiapanSesiProvider](mobile/lib/providers/pembuka_providers.dart),
+   sebuah `FutureProvider` yang dipicu lewat `ref.read` di `main()` (bukan ditunggu),
+   supaya panggilannya sudah berjalan sejak sebelum bingkai pertama, berbarengan dengan
+   animasi, bukan menahannya.
+2. **`_pudar` baru mulai setelah `_utama` selesai DAN `kesiapanSesiProvider` selesai**,
+   lewat `Future.wait([?gerakan, ref.read(kesiapanSesiProvider.future)])` di
+   `pembuka_screen.dart`. Selama menunggu yang mana pun yang lebih lambat, lencananya
+   diam utuh (pengendali `_utama` berhenti di nilai akhirnya begitu `forward()` selesai,
+   dan `_pudar` belum digerakkan sama sekali), bukan kosong.
+
+Diuji lewat kasus baru `'lencana tetap utuh menunggu sesi, baru pudar begitu siap'` di
+`pembuka_screen_test.dart`: `kesiapanSesiProvider` ditimpa dengan `Completer` yang
+dikendalikan tes, dipompa 4 detik penuh (jauh melewati durasi `_utama`) sambil
+completer-nya belum diselesaikan, dan lencananya harus tetap ada dengan opacity 1,0.
+
+Batas 20 detik `KonfigurasiApi.batasWaktu` tetap satu-satunya jaring pengaman kalau
+backend sungguhan tidak menyala. Itu jaring pengaman lama yang sudah ada, bukan sesuatu
+yang baru ditambahkan untuk splash screen ini, dan mempersingkatnya di luar lingkup
+pekerjaan ini.
 
 ### Yang berubah dari rencana lama
 
@@ -241,6 +276,9 @@ mobile/lib/features/pembuka/widgets/teks_melengkung.dart
 mobile/test/features/pembuka_screen_test.dart
 ```
 
+`main.dart` juga berubah: baris yang dulu `await auth.pulihkanSesi()` sebelum `runApp`
+sekarang `wadah.read(kesiapanSesiProvider)`, tanpa `await`.
+
 ### Catatan pahit soal iterasi, dan jalan keluarnya
 
 Build release tidak punya hot reload, sekitar 3 menit per perubahan, dan itu menyiksa
@@ -258,14 +296,35 @@ Untuk menyetel timing (bukan geometri), pilihannya tetap dua dan belum diambil:
 - Pakai `flutter run -d chrome` yang punya hot reload 1 sampai 3 detik, tapi harus lewat
   jendela Brave berprofil sementara yang dibuka otomatis Flutter
 
-### Yang bisa dikerjakan berikutnya
+### Tone warna tema gelap
 
-`main()` masih memulihkan sesi sebelum `runApp`, jadi pengguna yang sudah masuk menunggu
-satu panggilan HTTP di layar putih, baru animasi 2,5 detiknya jalan. Sekarang gerbang
-pembukanya sudah ada, alasan lama untuk urutan itu tidak berlaku lagi: layar dalam tidak
-mungkin terbuka selama pembuka belum selesai, jadi `pulihkanSesi` bisa dipindah ke
-belakang `runApp` supaya berjalan berbarengan dengan animasinya. Belum dikerjakan karena
-di luar lingkup pekerjaan splash screen.
+Keluhan terpisah dari splash screen, tapi ditemukan dan diperbaiki di sesi yang sama:
+tema gelap terlihat murahan, kartu-kartu di beranda nyaris tidak terbedakan dari latar
+di belakangnya.
+
+Sebabnya ketahuan lewat golden test sementara yang merender `BerandaKlienScreen` dengan
+`AppTheme.gelap()`: `CardThemeData` di `app_theme.dart` tidak pernah mengisi `color`,
+jadi jatuh ke bawaan Material 3 untuk `Card` tanpa warna sendiri, yaitu
+`surfaceContainerLow`, cuma satu tingkat dari `surface` yang jadi warna latar
+`Scaffold`. Di tema terang selisih satu tingkat itu masih kelihatan karena putihnya
+tetap terbaca putih; di tema gelap, dua abu-abu gelap yang berdekatan itu sama-sama
+terbaca hitam, dan yang tersisa untuk menandai kartunya cuma garis setipis rambut.
+
+Dua perbaikan di `app_theme.dart`:
+
+1. `cardTheme.color` diisi eksplisit ke `skema.surfaceContainerHigh` (dua tingkat dari
+   latar, bukan satu), dan `appBarTheme.backgroundColor` dari `skema.surface` jadi
+   `skema.surfaceContainer`, supaya bilah atas juga punya batasnya sendiri.
+2. Khusus untuk `brightness == Brightness.dark`, seluruh tangga permukaan (`surface`,
+   `surfaceContainerLowest` sampai `surfaceContainerHighest`, `onSurface`,
+   `onSurfaceVariant`, `outline`, `outlineVariant`) ditimpa dengan navy yang searah
+   warna merek (`_biruUpnvj`), bukan abu-abu nyaris tanpa warna bawaan
+   `ColorScheme.fromSeed`. Dicoba dulu lewat parameter `dynamicSchemeVariant`
+   (`vibrant`, `fidelity`, dll.), tapi Material 3 sengaja menjaga permukaannya
+   rendah-chroma di semua varian itu, jadi tidak ada yang menghasilkan navy yang cukup
+   terasa; warnanya akhirnya ditulis tangan.
+
+Tema terang tidak disentuh, tingkatannya sudah cukup jelas tanpa perubahan.
 
 ## 7. Perkakas yang Terpasang
 
