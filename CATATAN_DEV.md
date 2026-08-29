@@ -166,17 +166,24 @@ setelah ini.
 
 **`_utama`, 2,1 detik, gerakan dekoratifnya. Selalu selesai dalam waktu tetap ini:**
 
-1. `0,00 - 0,48` lencana naik dari bawah dengan `Curves.elasticOut`, sekalian memudar
-   masuk di `0,00 - 0,12`
+1. `0,00 - 0,48` lencana naik dari bawah dengan `Curves.elasticOut`. Sengaja TANPA
+   pemudaran masuk: lencananya utuh sejak bingkai pertama Flutter, cuma bergerak naik,
+   supaya di awal pun tidak ada sepersekian detik yang isinya putih polos
 2. `0,48 - 0,79` berputar satu putaran penuh di sumbu Y dengan perspektif, seperti koin
 3. `0,69 - 1,00` teks melengkung tertulis huruf demi huruf dari kiri ke kanan, tiap
    huruf turun ke tempatnya dari arah luar lingkaran
 
-**`_pudar`, 280 milidetik, cuma memudar keluar.** Baru mulai setelah `_utama` selesai
-DAN sesi selesai dipulihkan dari server, mana pun yang lebih lambat (lihat subbagian
-berikutnya). Sebelum `_pudar` mulai, lencananya diam utuh di layar, bukan kosong.
+**`_angkat`, 220 milidetik, mengangkat seluruh lapisannya.** Baru mulai setelah `_utama`
+selesai DAN sesi selesai dipulihkan dari server, mana pun yang lebih lambat (lihat
+subbagian berikutnya). Sebelum `_angkat` mulai, lencananya diam utuh di layar, bukan
+kosong.
 
-Jeda dan pudar sengaja ikut di dalam pengendali animasi, bukan `Future.delayed`
+Yang memudar adalah SELURUH lapisan putih berlencana itu, bukan lencananya sendirian di
+atas latar putih yang tetap tinggal. Bedanya menentukan: memudarkan lencana saja
+menyisakan latar putih lapisan itu di layar, dan latar putih yang tersisa itu persis
+bingkai kosong yang harus tidak ada.
+
+Jeda dan angkat sengaja ikut di dalam pengendali animasi, bukan `Future.delayed`
 terpisah. Timer yang menggantung di luar pengendali tidak terhitung oleh
 `pumpAndSettle`, jadi tes layar selesai sebelum perpindahannya terjadi lalu gagal dengan
 keluhan timer yang masih hidup.
@@ -210,16 +217,79 @@ Perbaikannya dua bagian, saling bergantung:
    sebuah `FutureProvider` yang dipicu lewat `ref.read` di `main()` (bukan ditunggu),
    supaya panggilannya sudah berjalan sejak sebelum bingkai pertama, berbarengan dengan
    animasi, bukan menahannya.
-2. **`_pudar` baru mulai setelah `_utama` selesai DAN `kesiapanSesiProvider` selesai**,
+2. **`_angkat` baru mulai setelah `_utama` selesai DAN `kesiapanSesiProvider` selesai**,
    lewat `Future.wait([?gerakan, ref.read(kesiapanSesiProvider.future)])` di
-   `pembuka_screen.dart`. Selama menunggu yang mana pun yang lebih lambat, lencananya
+   `pembuka_overlay.dart`. Selama menunggu yang mana pun yang lebih lambat, lencananya
    diam utuh (pengendali `_utama` berhenti di nilai akhirnya begitu `forward()` selesai,
-   dan `_pudar` belum digerakkan sama sekali), bukan kosong.
+   dan `_angkat` belum digerakkan sama sekali), bukan kosong.
 
-Diuji lewat kasus `'lencana tetap utuh menunggu sesi, tidak memudar sebelum waktunya'` di
-`pembuka_screen_test.dart`: `kesiapanSesiProvider` ditimpa dengan `Completer` yang tidak
+Diuji lewat kasus `'lencana tetap utuh menunggu sesi, tidak diangkat lebih awal'` di
+`pembuka_overlay_test.dart`: `kesiapanSesiProvider` ditimpa dengan `Completer` yang tidak
 pernah diselesaikan tesnya sendiri, dipompa sampai lewat durasi `_utama`, dan lencananya
 harus tetap ada dengan opacity 1,0.
+
+### Akar cacatnya: pembuka harus LAPISAN, bukan rute
+
+Dua perbaikan di atas ternyata masih menyisakan sekejap layar putih, dan sebabnya lebih
+dalam dari soal timing mana pun. Selama pembuka berupa rute `/pembuka`, urutannya selalu
+salah secara struktural:
+
+```
+pembuka dilepas  ->  layar berikutnya MULAI dibangun  ->  layar berikutnya tergambar
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                     sepanjang ini yang terlihat adalah sisa layar sebelumnya,
+                     yaitu latar putih polos
+```
+
+Tidak ada nilai durasi yang bisa memperbaiki ini, karena masalahnya bukan berapa lama
+melainkan siapa duluan. Menyetel `_angkat` jadi 0 milidetik pun tetap menyisakan jeda
+membangun dan merasterisasi halaman berikutnya, dan di mesin 2 core dengan CanvasKit,
+jeda itu cukup panjang untuk terlihat.
+
+Perbaikannya membalik urutannya: pembuka sekarang **lapisan di atas seluruh aplikasi**,
+dipasang lewat `builder` milik `MaterialApp.router` di `app.dart`, bukan rute.
+
+```
+Stack
+ ├─ ExcludeSemantics(aplikasi sesungguhnya)   <- dibangun & digambar sejak bingkai 1
+ └─ PembukaOverlay                            <- menutupinya
+```
+
+Akibatnya seluruh 2,1 detik animasi itu bukan lagi waktu tunggu yang terbuang: di
+belakang lencana, `MasukScreen` atau `BerandaKlienScreen` sudah selesai dibangun,
+di-layout, dan dirasterisasi. Mengangkat lapisannya tinggal memperlihatkan sesuatu yang
+sudah jadi, jadi tidak ada lagi jeda di antara keduanya karena tidak ada lagi urutan
+"yang satu pergi dulu, baru yang lain datang".
+
+Konsekuensi lain, semuanya ke arah yang benar:
+
+- `Rute.pembuka` dihapus, `initialLocation` kembali ke `Rute.beranda`, dan gerbang
+  `if (!pembuka.selesai)` di `redirect` ikut hilang. Router tidak perlu tahu apa-apa lagi
+  soal pembuka.
+- `refreshListenable` kembali jadi `pendengar` saja, tanpa `Listenable.merge`.
+- `StatusPembuka` tidak lagi perlu berupa `ChangeNotifier` (dulu supaya bisa dipasang ke
+  GoRouter), sekarang `Notifier<bool>` Riverpod biasa.
+- Bilah alamat browser tidak lagi sempat menampilkan `/#/pembuka`, langsung `/#/`.
+
+Dibuktikan lewat dua kasus di `pembuka_overlay_test.dart` yang khusus menjaga cacat ini
+tidak kembali: `'halaman berikutnya sudah dibangun di belakang pembuka, bukan sesudahnya'`
+dan pasangannya untuk yang sudah masuk. Keduanya memeriksa `MasukScreen`/
+`BerandaKlienScreen` sudah ada di pohon widget **di bingkai pertama**, selagi pembukanya
+masih menutupi. Kalau suatu saat pembuka dikembalikan menjadi rute, dua kasus itu gagal.
+
+Diperiksa juga secara piksel, dengan merender bingkai-bingkai tepat di tengah peralihan
+lalu mengukur kontras isinya:
+
+```
+2100ms  kontras konten =   0.0   (lapisan masih menutup penuh, ini masih splash)
+2160ms  kontras konten =  37.5   (beranda mulai tersingkap, lencana masih terlihat di atasnya)
+2220ms  kontras konten =  95.5   (makin tersingkap, lencana masih ada)
+2400ms  kontras konten = 210.8   (beranda utuh, lencana sudah hilang)
+```
+
+Yang penting bukan angkanya, melainkan tidak adanya bingkai yang kontrasnya nol SETELAH
+animasi selesai. Konten naik terus dari 0 sambil lencananya masih menumpuk di atasnya,
+jadi tidak pernah ada bingkai yang isinya putih saja.
 
 ### Batas tunggu sesinya sendiri, bukan mengandalkan batas API
 
@@ -240,7 +310,7 @@ dan cuma bergerak lagi setelah tab-nya diklik. Sebabnya bertumpuk dua:
    akhirnya diizinkan berjalan, dan 20 detik yang tertunda itu langsung habis begitu
    diberi kesempatan.
 
-Perbaikannya `_batasTungguSesi`, 3 detik, ditulis di `pembuka_screen.dart` sendiri,
+Perbaikannya `_batasTungguSesi`, 3 detik, ditulis di `pembuka_overlay.dart` sendiri,
 lewat `ref.read(kesiapanSesiProvider.future).timeout(_batasTungguSesi, onTimeout: () {})`
 sebelum masuk ke `Future.wait`. Panggilan jaringannya sendiri tetap boleh berjalan
 sampai batas 20 detiknya di balik layar; yang dibatasi cuma berapa lama LAYAR PEMBUKA
@@ -281,31 +351,23 @@ diubah cuma:
   `?android:colorBackground` jadi putih, supaya di mode gelap jendela peluncur tidak
   muncul hitam lebih dulu
 
-### Gerbangnya di router, bukan di layarnya
-
-`Rute.pembuka` adalah `initialLocation`, dan `redirect` menahan seluruh rute lain selama
-`StatusPembuka.selesai` masih `false`. Ditaruh di router supaya jalur yang diketik
-langsung di bilah alamat browser juga ikut tertahan.
-
-`StatusPembuka` sengaja `ChangeNotifier`, bukan state Riverpod. GoRouter menerima
-`Listenable`, dan kalau nilainya jadi state Riverpod, `routerProvider` harus
-mengamatinya, sehingga setiap perubahan membangun ulang seluruh GoRouter beserta riwayat
-navigasinya. Router cukup dibuat sekali; yang berubah cukup isi objeknya.
-`refreshListenable` sekarang `Listenable.merge([pendengar, pembuka])`.
-
 ### Berkas yang ditambahkan
 
 ```
 mobile/assets/logo/lencana.png
 mobile/lib/providers/pembuka_providers.dart
-mobile/lib/features/pembuka/pembuka_screen.dart
+mobile/lib/features/pembuka/pembuka_overlay.dart
 mobile/lib/features/pembuka/widgets/lencana_logo.dart
 mobile/lib/features/pembuka/widgets/teks_melengkung.dart
-mobile/test/features/pembuka_screen_test.dart
+mobile/test/features/pembuka_overlay_test.dart
 ```
 
-`main.dart` juga berubah: baris yang dulu `await auth.pulihkanSesi()` sebelum `runApp`
-sekarang `wadah.read(kesiapanSesiProvider)`, tanpa `await`.
+Dua berkas lama juga berubah:
+
+- `main.dart`, baris yang dulu `await auth.pulihkanSesi()` sebelum `runApp` sekarang
+  `wadah.read(kesiapanSesiProvider)`, tanpa `await`.
+- `app.dart`, `MaterialApp.router` dapat `builder` yang menumpuk `PembukaOverlay` di atas
+  seluruh aplikasi. Ini tempat perbaikan jeda putihnya sebenarnya tinggal.
 
 ### Catatan pahit soal iterasi, dan jalan keluarnya
 

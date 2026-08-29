@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/api/api_auth_repository.dart';
@@ -14,10 +13,7 @@ import 'repository_providers.dart';
 /// bahkan sebelum lencana pembuka sempat muncul.
 ///
 /// Sekarang dipicu lewat `ref.read` di [main], berjalan berbarengan dengan
-/// animasi pembuka, bukan menahannya. Layar pembuka menunggu future ini lewat
-/// [PembukaScreen] sebelum menandai dirinya selesai, jadi urutan "sesi
-/// dipulihkan dulu baru layar dalam terbuka" tetap benar, cuma penantiannya
-/// sekarang ditemani lencana yang bergerak, bukan layar kosong.
+/// animasi pembuka, bukan menahannya.
 final kesiapanSesiProvider = FutureProvider<void>((ref) async {
   final auth = ref.watch(authRepositoryProvider);
   if (auth is ApiAuthRepository) {
@@ -25,31 +21,26 @@ final kesiapanSesiProvider = FutureProvider<void>((ref) async {
   }
 });
 
-/// Penanda bahwa layar pembuka sudah selesai memainkan animasinya.
+/// Apakah lapisan pembuka sudah bubar dari atas aplikasi.
 ///
-/// Bentuknya [ChangeNotifier], bukan `StateProvider`, karena satu-satunya yang
-/// perlu tahu nilainya adalah `redirect` milik GoRouter, dan GoRouter menerima
-/// [Listenable]. Kalau nilainya disimpan sebagai state Riverpod, `routerProvider`
-/// harus mengamatinya, dan setiap perubahan akan membangun ulang seluruh GoRouter
-/// beserta riwayat navigasinya. Router cukup dibuat sekali; yang berubah cukup
-/// isi objek ini.
+/// Sekali `true`, selamanya `true` sampai aplikasi dimulai ulang. Pembuka bukan
+/// sesuatu yang boleh muncul kembali di tengah pemakaian.
 ///
-/// Nilainya sekali jalan: sekali `true`, selamanya `true` sampai aplikasi
-/// dimulai ulang. Pembuka bukan layar yang boleh dikunjungi lagi.
-class StatusPembuka extends ChangeNotifier {
-  bool _selesai = false;
-
-  bool get selesai => _selesai;
+/// Bentuknya state Riverpod biasa, bukan lagi [ChangeNotifier] yang dulu
+/// dipasang sebagai `refreshListenable` GoRouter. Sejak pembuka menjadi lapisan
+/// di atas aplikasi dan bukan rute tersendiri, router tidak perlu tahu apa-apa
+/// tentangnya; yang perlu tahu cuma satu widget di [UpnvjSuruhApp] yang
+/// memutuskan lapisannya masih dipasang atau tidak.
+class StatusPembuka extends Notifier<bool> {
+  @override
+  bool build() => false;
 
   void tandaiSelesai() {
-    if (_selesai) return;
-    _selesai = true;
-    notifyListeners();
+    if (state) return;
+    state = true;
   }
 }
 
-final statusPembukaProvider = Provider<StatusPembuka>((ref) {
-  final status = StatusPembuka();
-  ref.onDispose(status.dispose);
-  return status;
-});
+final statusPembukaProvider = NotifierProvider<StatusPembuka, bool>(
+  StatusPembuka.new,
+);

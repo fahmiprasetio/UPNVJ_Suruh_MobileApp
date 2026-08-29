@@ -13,11 +13,9 @@ import '../../features/klien/order_jalur_a/form_jastip_barang_screen.dart';
 import '../../features/klien/order_jalur_b/form_permintaan_screen.dart';
 import '../../features/klien/pembayaran/pembayaran_screen.dart';
 import '../../features/klien/riwayat/riwayat_order_screen.dart';
-import '../../features/pembuka/pembuka_screen.dart';
 import '../../domain/enums.dart';
 import '../../domain/models/app_user.dart';
 import '../../domain/repositories/auth_repository.dart';
-import '../../providers/pembuka_providers.dart';
 import '../../providers/repository_providers.dart';
 
 /// Nama rute ditulis sebagai konstanta supaya tidak ada string jalur yang
@@ -25,7 +23,6 @@ import '../../providers/repository_providers.dart';
 class Rute {
   const Rute._();
 
-  static const String pembuka = '/pembuka';
   static const String masuk = '/masuk';
   static const String beranda = '/';
   static const String riwayat = '/order';
@@ -61,25 +58,22 @@ final routerProvider = Provider<GoRouter>((ref) {
   final repo = ref.watch(authRepositoryProvider);
   final pendengar = _PendengarSesi(repo);
   ref.onDispose(pendengar.dispose);
-  final pembuka = ref.watch(statusPembukaProvider);
 
   return GoRouter(
-    initialLocation: Rute.pembuka,
-    // Router menyimak dua hal sekaligus: sesi menentukan layar mana yang boleh
-    // dibuka, pembuka menentukan kapan layar mana pun boleh dibuka. Tanpa
-    // disimak, pengalihan di bawah cuma dihitung saat ada perpindahan halaman,
-    // sehingga layar masuk tetap terpampang setelah kode diterima, layar dalam
-    // tetap terbuka setelah pengguna keluar, dan pembuka tidak pernah bubar
-    // karena tidak ada yang menyuruh router menghitung ulang.
-    refreshListenable: Listenable.merge([pendengar, pembuka]),
+    initialLocation: Rute.beranda,
+    // Router ikut menyimak sesi. Tanpa ini, pengalihan di bawah cuma dihitung
+    // saat ada perpindahan halaman, sehingga layar masuk tetap terpampang setelah
+    // kode diterima, dan layar dalam tetap terbuka setelah pengguna keluar.
+    //
+    // Layar pembuka sengaja TIDAK ikut di sini, dan itu keputusan yang berubah:
+    // dulu ia rute tersendiri dengan gerbang di `redirect`, sekarang ia lapisan
+    // di atas seluruh aplikasi (lihat `UpnvjSuruhApp`). Sebagai rute, layar di
+    // belakangnya baru mulai dibangun setelah pembukanya pergi, jadi selalu ada
+    // jeda kosong di antara keduanya. Sebagai lapisan, layar di belakangnya
+    // dibangun sejak bingkai pertama, tertutup pembuka, dan sudah tergambar utuh
+    // saat pembukanya diangkat.
+    refreshListenable: pendengar,
     redirect: (context, state) {
-      final diPembuka = state.matchedLocation == Rute.pembuka;
-
-      // Selama animasi pembuka berjalan, tidak ada layar lain yang terbuka.
-      // Gerbangnya di sini, bukan di dalam layar pembukanya, supaya jalur yang
-      // diketik langsung di bilah alamat browser juga ikut tertahan.
-      if (!pembuka.selesai) return diPembuka ? null : Rute.pembuka;
-
       // Sesinya dibaca dari pendengar, bukan dari `userAktifProvider`. Provider itu
       // beraliran dan otomatis dibuang saat tidak ada yang mengawasinya, jadi
       // membacanya di sini selalu menghasilkan keadaan "sedang memuat" dan
@@ -87,19 +81,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       final sudahMasuk = pendengar.user != null;
       final diLayarMasuk = state.matchedLocation == Rute.masuk;
 
-      // Pembuka tidak punya isi setelah animasinya habis, jadi ia tidak boleh
-      // ditinggali. Ke mana perginya ditentukan sesi, sama seperti rute lain.
-      if (diPembuka) return sudahMasuk ? Rute.beranda : Rute.masuk;
-
       if (!sudahMasuk && !diLayarMasuk) return Rute.masuk;
       if (sudahMasuk && diLayarMasuk) return Rute.beranda;
       return null;
     },
     routes: [
-      GoRoute(
-        path: Rute.pembuka,
-        builder: (context, state) => const PembukaScreen(),
-      ),
       GoRoute(
         path: Rute.masuk,
         builder: (context, state) => const MasukScreen(),
