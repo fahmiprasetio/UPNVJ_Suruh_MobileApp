@@ -18,19 +18,35 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="UPNVJ Suruh, layanan titip dan antar di sekitar kampus.">
+  <meta name="theme-color" content="#FFFFFF">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="upnvj_suruh">
+  <meta name="apple-mobile-web-app-title" content="UPNVJ Suruh">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>upnvj_suruh</title>
+  <title>UPNVJ Suruh</title>
   <link rel="manifest" href="manifest.json">
+
+  <!--
+    Halaman ini putih polos sejak byte pertama, sebelum satu baris pun kode
+    Flutter dijalankan, karena layar pembuka di baliknya juga putih polos. Tanpa
+    ini, browser yang sedang bermode gelap menggambar halaman kosongnya hitam
+    lebih dulu, lalu berkedip jadi putih begitu bingkai pertama Flutter jadi.
+
+    Sengaja tidak ada logo di sini. Logo yang diam di tengah lalu tiba-tiba
+    diganti logo yang melompat masuk dari bawah terbaca sebagai kesalahan
+    gambar, bukan sebagai satu animasi. Yang perlu dihindari adalah kedipan
+    warna, dan itu sudah selesai dengan warna yang sama di kedua sisi.
+  -->
+  <style>
+    html, body { margin: 0; padding: 0; background-color: #FFFFFF; }
+  </style>
 </head>
 <body>
   <!--
