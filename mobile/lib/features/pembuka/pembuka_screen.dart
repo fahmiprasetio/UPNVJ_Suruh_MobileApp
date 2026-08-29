@@ -49,28 +49,38 @@ class PembukaScreen extends ConsumerStatefulWidget {
 
 class _PembukaScreenState extends ConsumerState<PembukaScreen>
     with SingleTickerProviderStateMixin {
-  /// Durasinya sudah termasuk jeda diam di ujung.
+  /// Durasinya sudah termasuk jeda menatap logo utuh dan pudarnya di ujung.
   ///
-  /// Jeda itu sengaja ikut di dalam pengendali animasi, bukan dipasang sebagai
+  /// Keduanya sengaja ikut di dalam pengendali animasi, bukan dipasang sebagai
   /// [Future.delayed] setelahnya. Timer yang menggantung di luar pengendali
   /// tidak ikut terhitung oleh `pumpAndSettle`, jadi tes layar akan selesai
   /// sebelum perpindahannya terjadi, lalu gagal dengan keluhan timer yang masih
   /// hidup, bukan dengan keluhan yang menjelaskan apa pun.
-  static const Duration _durasi = Duration(milliseconds: 2750);
+  static const Duration _durasi = Duration(milliseconds: 2500);
 
   late final AnimationController _pengendali = AnimationController(
     vsync: this,
     duration: _durasi,
   );
 
-  late final Animation<double> _redup = _kurva(0.00, 0.10, Curves.easeOut);
+  late final Animation<double> _masuk = _kurva(0.00, 0.10, Curves.easeOut);
   late final Animation<double> _naik = _kurva(0.00, 0.40, Curves.elasticOut);
   late final Animation<double> _putar = _kurva(
     0.40,
     0.66,
     Curves.easeInOutCubic,
   );
-  late final Animation<double> _tulis = _kurva(0.62, 0.87, Curves.linear);
+  late final Animation<double> _tulis = _kurva(0.58, 0.84, Curves.linear);
+
+  /// Memudar keluar, sekaligus penutup animasinya.
+  ///
+  /// Sebelumnya ujung animasinya adalah jeda diam: gerakan berhenti, logo utuh
+  /// terpampang beberapa ratus milidetik, lalu layar berikutnya menggantikannya
+  /// dalam satu potongan keras. Jeda diam sesudah gerakan terbaca sebagai
+  /// aplikasi yang menggantung, bukan sebagai jeda, dan potongan kerasnya
+  /// menegaskan kesan itu. Dengan pudar, sisa waktunya jadi gerakan juga, dan
+  /// layar berikutnya muncul di atas putih yang memang sedang dituju.
+  late final Animation<double> _pudar = _kurva(0.92, 1.00, Curves.easeIn);
 
   bool _sudahMulai = false;
 
@@ -127,7 +137,7 @@ class _PembukaScreenState extends ConsumerState<PembukaScreen>
               animation: _pengendali,
               builder: (context, _) => _Komposisi(
                 sisi: sisi,
-                redup: _redup.value,
+                tampak: _masuk.value * (1 - _pudar.value),
                 naik: _naik.value,
                 putar: _putar.value,
                 tulis: _tulis.value,
@@ -141,14 +151,16 @@ class _PembukaScreenState extends ConsumerState<PembukaScreen>
 
   /// Lencana mengambil sebagian lebar layar, tapi tidak boleh sebesar apa pun.
   ///
-  /// Batas bawah menjaganya tetap terbaca di layar sempit; batas atas menjaganya
-  /// tidak menjadi gambar raksasa yang pecah di tablet dan di jendela browser
-  /// lebar. Yang dipakai sisi terpendek, karena komposisinya bujur sangkar.
+  /// Batas bawah menjaganya tetap terbaca di layar sempit. Batas ataslah yang
+  /// paling sering terpakai: di jendela browser, sisi terpendek adalah tingginya,
+  /// dan tinggi jendela di layar biasa jauh lebih besar dari lebar ponsel, jadi
+  /// tanpa batas itu lencananya membengkak jadi gambar raksasa. Yang dipakai sisi
+  /// terpendek, karena komposisinya bujur sangkar.
   double _sisiLencana(Size layar) {
     final terpendek = math.min(layar.width, layar.height);
-    return (terpendek * 0.62 / GeometriLencana.kotakKomposisi).clamp(
-      140.0,
-      280.0,
+    return (terpendek * 0.48 / GeometriLencana.kotakKomposisi).clamp(
+      120.0,
+      190.0,
     );
   }
 }
@@ -158,14 +170,16 @@ class _PembukaScreenState extends ConsumerState<PembukaScreen>
 class _Komposisi extends StatelessWidget {
   const _Komposisi({
     required this.sisi,
-    required this.redup,
+    required this.tampak,
     required this.naik,
     required this.putar,
     required this.tulis,
   });
 
   final double sisi;
-  final double redup;
+
+  /// Seberapa terlihat seluruh komposisinya, 0 sampai 1.
+  final double tampak;
   final double naik;
   final double putar;
   final double tulis;
@@ -186,7 +200,7 @@ class _Komposisi extends StatelessWidget {
     final jariJariCincin = sisi * GeometriLencana.jariJariCincin;
 
     return Opacity(
-      opacity: redup.clamp(0.0, 1.0),
+      opacity: tampak.clamp(0.0, 1.0),
       child: Transform.translate(
         offset: Offset(0, (1 - naik) * sisi * _jarakMasuk),
         child: SizedBox(

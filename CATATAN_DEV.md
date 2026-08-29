@@ -152,27 +152,43 @@ Teks melengkungnya digambar `CustomPainter`, bukan disimpan sebagai gambar, kare
 diinginkan hurufnya muncul satu per satu. Sebagai gambar, satu-satunya animasi yang
 mungkin adalah menyingkap seluruh baris di balik topeng, dan itu terbaca sebagai tirai.
 Geometrinya diambil dari `logo-with-name.jpg`: alas huruf 1,25 kali jari-jari cincin,
-rentang tulisan 107 derajat. Yang dipakai di kode 1,34, bukan 1,25, karena Roboto lebih
-lebar dari huruf perancang logonya; busur yang lebih besar memuat lebar yang sama dalam
-sudut yang lebih kecil, jadi rentangnya kembali ke 107 derajat tanpa mengecilkan huruf.
+tinggi huruf 0,372 kali jari-jari cincin, rentang tulisan 107 derajat. Yang dipakai di
+kode berbeda dari ketiganya: alas huruf 1,46 dan tinggi huruf 0,29. Logo aslinya gambar
+diam yang dipandang utuh, sementara ini layar yang dilewati, dan di detik yang cuma
+sekejap itu tulisan yang menempel di cincin terbaca sebagai satu gumpalan gelap bersama
+lencananya. Menjauhkan tulisan sekaligus mengecilkan rentang sudutnya, karena busur yang
+lebih besar memuat lebar yang sama dalam sudut yang lebih kecil.
 
 ### Urutan animasi yang jalan sekarang
 
-Total 2,75 detik, latar putih polos, satu `AnimationController` dengan empat `Interval`.
+Total 2,5 detik, latar putih polos, satu `AnimationController` dengan lima `Interval`.
 
 1. `0,00 - 0,40` lencana naik dari bawah dengan `Curves.elasticOut`, sekalian memudar
    masuk di `0,00 - 0,10`
 2. `0,40 - 0,66` berputar satu putaran penuh di sumbu Y dengan perspektif, seperti koin
-3. `0,62 - 0,87` teks melengkung tertulis huruf demi huruf dari kiri ke kanan, tiap
+3. `0,58 - 0,84` teks melengkung tertulis huruf demi huruf dari kiri ke kanan, tiap
    huruf turun ke tempatnya dari arah luar lingkaran
-4. `0,87 - 1,00` diam
+4. `0,84 - 0,92` diam sebagai logo utuh
+5. `0,92 - 1,00` memudar keluar
 
-Jeda diam di akhir sengaja ikut di dalam pengendali animasi, bukan `Future.delayed`
+Langkah 5 itu ditambahkan belakangan dan alasannya perlu diingat. Sebelumnya ujung
+animasinya cuma jeda diam sepanjang 360 milidetik, dan layar berikutnya menggantikannya
+dalam satu potongan keras. Jeda diam sesudah gerakan berhenti terbaca sebagai aplikasi
+yang menggantung, bukan sebagai jeda, dan potongan kerasnya menegaskan kesan itu. Dengan
+memudar, sisa waktunya jadi gerakan juga, dan layar berikutnya muncul di atas putih yang
+memang sedang dituju.
+
+Jeda dan pudar di akhir sengaja ikut di dalam pengendali animasi, bukan `Future.delayed`
 setelahnya. Timer yang menggantung di luar pengendali tidak terhitung oleh
 `pumpAndSettle`, jadi tes layar selesai sebelum perpindahannya terjadi lalu gagal dengan
 keluhan timer yang masih hidup.
 
-Kalau perangkat mematikan animasi di setelan aksesibilitas, seluruh 2,75 detik itu
+Ukuran lencananya 0,48 kali sisi terpendek layar, dibatasi 120 sampai 190 piksel. Batas
+atas itu yang paling sering terpakai: di jendela browser sisi terpendek adalah tingginya,
+dan tinggi jendela di layar biasa jauh lebih besar dari lebar ponsel, jadi tanpa batas
+itu lencananya membengkak jadi gambar raksasa.
+
+Kalau perangkat mematikan animasi di setelan aksesibilitas, seluruh 2,5 detik itu
 dilewati dan aplikasi langsung membuka layar berikutnya.
 
 ### Yang berubah dari rencana lama
@@ -245,7 +261,7 @@ Untuk menyetel timing (bukan geometri), pilihannya tetap dua dan belum diambil:
 ### Yang bisa dikerjakan berikutnya
 
 `main()` masih memulihkan sesi sebelum `runApp`, jadi pengguna yang sudah masuk menunggu
-satu panggilan HTTP di layar putih, baru animasi 2,75 detiknya jalan. Sekarang gerbang
+satu panggilan HTTP di layar putih, baru animasi 2,5 detiknya jalan. Sekarang gerbang
 pembukanya sudah ada, alasan lama untuk urutan itu tidak berlaku lagi: layar dalam tidak
 mungkin terbuka selama pembuka belum selesai, jadi `pulihkanSesi` bisa dipindah ke
 belakang `runApp` supaya berjalan berbarengan dengan animasinya. Belum dikerjakan karena

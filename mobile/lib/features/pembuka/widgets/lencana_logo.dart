@@ -22,26 +22,25 @@ class GeometriLencana {
   /// [jariJariCincin].
   ///
   /// Di logo aslinya nilai ini 1,25: alas huruf di titik terbawah berada 464
-  /// piksel dari pusat, cincinnya 371 piksel. Dipakai lebih jauh sedikit di sini
-  /// karena Roboto lebih lebar dari huruf perancang logonya. Dengan 1,25
-  /// tulisannya merentang 117 derajat, sementara di logo aslinya 107, dan
-  /// selisih itu terbaca sebagai huruf ujung yang memanjat naik ke samping
-  /// lencana. Busur yang lebih besar memuat lebar yang sama dalam sudut yang
-  /// lebih kecil, jadi rentangnya kembali ke 107 derajat tanpa mengecilkan
-  /// hurufnya.
-  static const double jariJariAlasTeks = 1.34;
+  /// piksel dari pusat, cincinnya 371 piksel. Dipakai lebih jauh di sini karena
+  /// logo aslinya adalah gambar diam yang dipandang utuh, sementara ini layar
+  /// yang dilewati: tulisan yang menempel di cincin membuat keduanya terbaca
+  /// sebagai satu gumpalan gelap di detik yang cuma sekejap itu. Menjauhkannya
+  /// juga mengecilkan rentang sudutnya, karena busur yang lebih besar memuat
+  /// lebar yang sama dalam sudut yang lebih kecil.
+  static const double jariJariAlasTeks = 1.46;
 
   /// Tinggi huruf, sebagai kelipatan [jariJariCincin].
   ///
-  /// Di logo aslinya nilai ini 0,372. Sedikit dikecilkan supaya tulisannya
-  /// tidak menjadi bagian yang paling ramai di layar; rentang sudutnya
-  /// dikembalikan lewat [jariJariAlasTeks], bukan lewat angka ini.
-  static const double ukuranHuruf = 0.34;
+  /// Di logo aslinya nilai ini 0,372. Dikecilkan karena tulisannya di sini
+  /// bukan bagian yang harus dibaca, cuma yang harus dikenali: yang membawa
+  /// nama justru lencananya.
+  static const double ukuranHuruf = 0.29;
 
   /// Sisi kotak yang memuat lencana beserta tulisan melengkungnya, sebagai
   /// kelipatan sisi lencana. Tulisan jatuh di luar lingkaran lencana, jadi
   /// kotaknya harus lebih besar dari lencananya sendiri atau hurufnya terpotong.
-  static const double kotakKomposisi = 1.55;
+  static const double kotakKomposisi = 1.66;
 
   /// Hijau kehitaman yang dipakai garis luar dan tulisan di logo aslinya.
   static const Color warnaTinta = Color(0xFF1E302E);
