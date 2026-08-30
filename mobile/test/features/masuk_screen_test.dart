@@ -9,6 +9,7 @@ import 'package:upnvj_suruh/data/fake/fake_auth_repository.dart';
 import 'package:upnvj_suruh/data/fake/fake_order_repository.dart';
 import 'package:upnvj_suruh/data/fake/seed_data.dart';
 import 'package:upnvj_suruh/providers/repository_providers.dart';
+import '../support/tiruan.dart';
 
 /// Alur masuk diuji lewat aplikasi utuh, bukan layarnya sendirian, karena yang
 /// paling mungkin salah bukan isi layarnya melainkan sambungannya: apakah
@@ -48,6 +49,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          sumberTiruan,
           authRepositoryProvider.overrideWith((ref) => authRepo),
           orderRepositoryProvider.overrideWith((ref) => orderRepo),
         ],
@@ -266,6 +268,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          sumberTiruan,
           authRepositoryProvider.overrideWith((ref) => authRepo),
           orderRepositoryProvider.overrideWith((ref) => orderRepo),
         ],

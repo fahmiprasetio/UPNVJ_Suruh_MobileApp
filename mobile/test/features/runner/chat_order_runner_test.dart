@@ -9,6 +9,7 @@ import 'package:upnvj_suruh/data/fake/seed_data.dart';
 import 'package:upnvj_suruh/domain/enums.dart';
 import 'package:upnvj_suruh/domain/models/order_message.dart';
 import 'package:upnvj_suruh/providers/repository_providers.dart';
+import '../../support/tiruan.dart';
 
 void main() {
   setUpAll(() async {
@@ -47,6 +48,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          sumberTiruan,
           orderRepositoryProvider.overrideWith((ref) => orderRepo),
           authRepositoryProvider.overrideWith((ref) {
             final repo = FakeAuthRepository(userAwal: SeedData.runner);
@@ -147,6 +149,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          sumberTiruan,
           orderRepositoryProvider.overrideWith((ref) => repo),
           authRepositoryProvider.overrideWith((ref) {
             final auth = FakeAuthRepository(userAwal: SeedData.runner);
