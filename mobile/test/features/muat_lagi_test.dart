@@ -108,6 +108,12 @@ void main() {
 
     final tombol = find.textContaining('Muat 5 order lagi');
     await tester.scrollUntilVisible(tombol, 300);
+    // scrollUntilVisible berhenti begitu widgetnya ketemu, belum tentu setelah
+    // ia utuh di layar. Kalau tombolnya berhenti tepat di tepi bawah, ketukan
+    // di titik tengahnya jatuh di luar viewport dan tidak sampai ke mana-mana,
+    // dan tesnya gagal dengan cara yang terbaca seperti tombolnya tidak bekerja.
+    await tester.ensureVisible(tombol);
+    await tester.pumpAndSettle();
     await tester.tap(tombol);
     await tester.pumpAndSettle();
 
@@ -130,6 +136,12 @@ void main() {
 
     final tombol = find.textContaining('Muat 5 order lagi');
     await tester.scrollUntilVisible(tombol, 300);
+    // scrollUntilVisible berhenti begitu widgetnya ketemu, belum tentu setelah
+    // ia utuh di layar. Kalau tombolnya berhenti tepat di tepi bawah, ketukan
+    // di titik tengahnya jatuh di luar viewport dan tidak sampai ke mana-mana,
+    // dan tesnya gagal dengan cara yang terbaca seperti tombolnya tidak bekerja.
+    await tester.ensureVisible(tombol);
+    await tester.pumpAndSettle();
     await tester.tap(tombol);
     await tester.pump();
 

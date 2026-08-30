@@ -41,7 +41,14 @@ class _CangkangKlienState extends ConsumerState<CangkangKlien> {
     return Scaffold(
       body: IndexedStack(
         index: _tab,
-        children: const [BerandaKlienScreen(), RiwayatOrderScreen()],
+        children: [
+          const BerandaKlienScreen(),
+          // Riwayat yang kosong menawarkan mulai memesan, dan yang dituju tab
+          // sebelah, bukan rute baru. Mendorong beranda sebagai rute akan
+          // menumpuk dua beranda di riwayat navigasi, dan tombol kembali
+          // sesudahnya mengantar pengguna ke beranda kedua yang tidak ia buka.
+          RiwayatOrderScreen(onMintaBeranda: () => setState(() => _tab = 0)),
+        ],
       ),
       bottomNavigationBar: BilahNavigasiBawah(
         terpilih: _tab,
