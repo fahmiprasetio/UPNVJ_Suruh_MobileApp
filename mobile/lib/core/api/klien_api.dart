@@ -90,15 +90,28 @@ class KlienApi {
   Uri _alamat(String jalur, Map<String, String>? kueri) =>
       Uri.parse('$_baseUrl$jalur').replace(queryParameters: kueri);
 
+  /// Header identitas untuk permintaan yang tidak bisa lewat kelas ini.
+  ///
+  /// Ada satu: widget gambar. `Image.network` mengambil berkasnya sendiri, jadi ia
+  /// tidak bisa memakai [get] maupun [post], padahal sejak foto bukti dijaga token,
+  /// permintaan tanpa header ini dijawab 401 dan yang tampil cuma kotak gagal muat.
+  ///
+  /// Dibagikan dari sini, bukan disusun ulang di widget-nya, supaya bentuk header-nya
+  /// cuma ditulis sekali. Kata "Bearer" yang ditulis di dua tempat akan tetap benar
+  /// sampai salah satunya diubah, dan yang berubah lebih dulu biasanya yang punya tes.
+  ///
+  /// Kosong kalau belum masuk, bukan berisi token kosong: header Authorization yang
+  /// ada tapi kosong ditolak server dengan galat yang berbeda dari sekadar belum masuk.
+  Map<String, String> get headerOtorisasi {
+    final token = _token();
+    if (token == null || token.isEmpty) return const {};
+    return {'Authorization': 'Bearer $token'};
+  }
+
   Map<String, String> _header({bool denganBadan = false}) {
     final header = <String, String>{'Accept': 'application/json'};
     if (denganBadan) header['Content-Type'] = 'application/json';
-
-    final token = _token();
-    if (token != null && token.isNotEmpty) {
-      header['Authorization'] = 'Bearer $token';
-    }
-    return header;
+    return header..addAll(headerOtorisasi);
   }
 
   Future<Map<String, dynamic>> _kirim(Future<http.Response> Function() permintaan) async {

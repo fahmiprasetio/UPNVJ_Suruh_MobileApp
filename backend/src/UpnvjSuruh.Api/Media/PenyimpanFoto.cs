@@ -16,8 +16,15 @@ namespace UpnvjSuruh.Api.Media;
 /// </remarks>
 public class PenyimpanFoto(IWebHostEnvironment lingkungan, IConfiguration konfigurasi)
 {
+    /// <summary>
+    /// Jalur controller yang melayani berkasnya. Dipakai di <c>[Route]</c>, yang cuma
+    /// menerima konstanta, dan sekaligus menyusun <see cref="Prefiks"/> supaya alamat yang
+    /// disimpan di basis data tidak bisa berselisih dengan alamat yang benar-benar dilayani.
+    /// </summary>
+    public const string Rute = "media/bukti";
+
     /// <summary>Bagian URL yang menandai berkas media. Dipakai juga saat memeriksa keabsahan.</summary>
-    public const string Prefiks = "/media/bukti/";
+    public const string Prefiks = "/" + Rute + "/";
 
     /// <summary>Batas ukuran satu foto.</summary>
     /// <remarks>
@@ -82,32 +89,63 @@ public class PenyimpanFoto(IWebHostEnvironment lingkungan, IConfiguration konfig
 
         var nama = url[Prefiks.Length..];
 
-        // Nama yang mengandung pemisah jalur atau titik ganda bisa menuntun pemeriksaan
-        // keberadaan berkas ke luar folder media. Ditolak sebelum menyentuh cakram.
+        // Diperiksa sebelum menyentuh cakram, karena ini pemeriksaan yang paling murah dan
+        // paling sering menolak: nama yang tidak berawalan id order ini sudah pasti bukan
+        // foto untuk order ini, ada atau tidak ada berkasnya.
+        if (!nama.StartsWith(Awalan(orderId), StringComparison.Ordinal)) return false;
+
+        return Jalur(nama) is not null;
+    }
+
+    /// <summary>
+    /// Jalur berkas di cakram, atau <c>null</c> kalau namanya tidak aman atau berkasnya tidak
+    /// ada. Kedua sebab itu sengaja tidak dibedakan: yang memanggil menjawab keduanya dengan
+    /// 404 yang sama, dan membedakannya berarti memberi tahu penebak mana tebakan yang hampir
+    /// benar.
+    /// </summary>
+    public string? Jalur(string nama)
+    {
+        // Nama yang mengandung pemisah jalur atau titik ganda bisa menuntun pembacaan ke luar
+        // folder media. Ditolak sebelum menyentuh cakram.
         //
         // GetFileName dipakai sebagai penyaringnya, bukan daftar karakter terlarang yang
         // ditulis tangan: ia membuang segalanya sampai pemisah jalur terakhir, jadi nama
         // yang tidak berubah setelah melewatinya sudah pasti tidak memuat satu pun.
-        if (nama.Length == 0 || Path.GetFileName(nama) != nama || nama.Contains(".."))
-        {
-            return false;
-        }
+        if (nama.Length == 0 || Path.GetFileName(nama) != nama || nama.Contains("..")) return null;
 
-        // Diperiksa sebelum menyentuh cakram, karena ini pemeriksaan yang paling murah dan
-        // paling sering menolak: nama yang tidak berawalan id order ini sudah pasti bukan
-        // foto untuk order ini, ada atau tidak ada berkasnya.
-        if (!nama.StartsWith(Awalan(orderId), StringComparison.Ordinal))
-        {
-            return false;
-        }
-
-        return File.Exists(Path.Combine(Akar, nama));
+        var jalur = Path.Combine(Akar, nama);
+        return File.Exists(jalur) ? jalur : null;
     }
 
-    /// <summary>Folder tempat berkas dilayani, dibuat kalau belum ada.</summary>
-    public string FolderSiap()
+    /// <summary>
+    /// Order pemilik berkas ini, dibaca dari namanya, atau <c>null</c> kalau namanya tidak
+    /// berbentuk seperti yang dibuat <see cref="SimpanAsync"/>.
+    ///
+    /// Inilah yang membuat berkasnya bisa dijaga tanpa tabel tambahan: nama berkas dibuat
+    /// server dan memuat id ordernya, jadi id itu bisa dibaca kembali dan dipakai memutuskan
+    /// siapa yang boleh membukanya.
+    /// </summary>
+    public static Guid? OrderDari(string nama)
     {
-        Directory.CreateDirectory(Akar);
-        return Akar;
+        var pisah = nama.IndexOf('-', StringComparison.Ordinal);
+        if (pisah < 0) return null;
+
+        return Guid.TryParseExact(nama[..pisah], "N", out var id) ? id : null;
     }
+
+    /// <summary>
+    /// Tipe konten yang dilayani untuk nama berkas ini, atau <c>null</c> kalau bukan jenis
+    /// yang pernah disimpan kelas ini.
+    ///
+    /// Ditentukan dari daftar yang ditulis di sini, bukan ditebak dari ekstensinya lewat
+    /// pemetaan umum. Yang pernah masuk ke folder ini cuma dua jenis, karena endpoint
+    /// unggahnya cuma menerima dua, dan daftar yang lebih panjang dari kenyataan cuma
+    /// menambah jenis yang bisa dilayani kalau suatu hari ada berkas lain yang masuk.
+    /// </summary>
+    public static string? TipeKonten(string nama) => Path.GetExtension(nama) switch
+    {
+        ".jpg" => "image/jpeg",
+        ".png" => "image/png",
+        _ => null,
+    };
 }

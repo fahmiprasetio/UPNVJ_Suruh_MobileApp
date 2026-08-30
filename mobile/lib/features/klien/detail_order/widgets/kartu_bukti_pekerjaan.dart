@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/format/formatters.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../domain/models/order.dart';
+import '../../../../providers/repository_providers.dart';
 
 /// Bukti pekerjaan yang ditinggalkan runner, dilihat dari sisi klien.
 ///
 /// Sebelum ini alur buktinya putus: runner wajib memotret, tapi tidak ada
 /// seorang pun yang bisa melihat hasilnya. Kewajiban yang hasilnya tidak
 /// pernah dibaca cepat berubah jadi formalitas.
-class KartuBuktiPekerjaan extends StatelessWidget {
+class KartuBuktiPekerjaan extends ConsumerWidget {
   const KartuBuktiPekerjaan({super.key, required this.order});
 
   final Order order;
@@ -24,7 +26,7 @@ class KartuBuktiPekerjaan extends StatelessWidget {
       url.startsWith('http://') || url.startsWith('https://');
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final teks = Theme.of(context).textTheme;
     final skema = Theme.of(context).colorScheme;
     final fotoUrl = order.fotoBuktiUrl;
@@ -49,6 +51,10 @@ class KartuBuktiPekerjaan extends StatelessWidget {
                 child: bisaDigambar(fotoUrl)
                     ? Image.network(
                         fotoUrl,
+                        // Foto bukti dijaga token sejak ia berhenti dilayani sebagai
+                        // berkas statis. Tanpa header ini permintaannya dijawab 401,
+                        // dan yang terlihat pengguna cuma kotak gagal muat tanpa sebab.
+                        headers: ref.watch(klienApiProvider).headerOtorisasi,
                         height: 200,
                         width: double.infinity,
                         fit: BoxFit.cover,

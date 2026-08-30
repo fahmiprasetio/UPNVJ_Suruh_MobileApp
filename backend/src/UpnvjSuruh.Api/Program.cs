@@ -9,7 +9,6 @@ using Microsoft.IdentityModel.Tokens;
 using UpnvjSuruh.Api.Auth;
 using UpnvjSuruh.Api.Data;
 using UpnvjSuruh.Api.Domain;
-using Microsoft.Extensions.FileProviders;
 using UpnvjSuruh.Api.Hubs;
 using UpnvjSuruh.Api.Media;
 using UpnvjSuruh.Api.Payments;
@@ -286,22 +285,17 @@ app.UseAuthorization();
 // sama sekali.
 await AdminAwal.PastikanAsync(app.Services);
 
-// Melayani foto bukti sebagai berkas statis dari foldernya sendiri, bukan dari wwwroot.
+// Foto bukti tidak lagi dilayani sebagai berkas statis.
 //
-// Terpisah supaya jelas apa yang boleh dibaca umum: yang ada di folder ini hanya berkas
-// yang ditulis PenyimpanFoto, dengan nama yang dibuat server. Menaruhnya di wwwroot
-// bersama berkas aplikasi berarti satu kesalahan jalur cukup untuk melayani hal lain.
+// Dulu folder itu dipasang lewat UseStaticFiles, yang berarti siapa pun yang tahu alamatnya
+// bisa membukanya tanpa masuk sama sekali; yang menjaganya cuma sulitnya menebak nama
+// berkas. Alamat lengkapnya sendiri dikirim ke aplikasi dan tersimpan permanen di basis
+// data, jadi begitu satu alamat keluar ia berlaku selamanya bagi siapa pun yang memegangnya.
 //
-// Tautannya sengaja tidak ditebak-tebak: namanya memuat GUID acak, jadi mengetahui id
-// order saja tidak cukup untuk membuka fotonya. Itu belum sama dengan penjagaan yang
-// sesungguhnya, dan foto yang benar-benar dijaga baru mungkin setelah ada penyimpanan
-// yang bisa menerbitkan tautan berbatas waktu.
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(app.Services.GetRequiredService<PenyimpanFoto>().FolderSiap()),
-    RequestPath = PenyimpanFoto.Prefiks.TrimEnd('/'),
-});
-
+// Sekarang berkasnya keluar lewat BerkasBuktiController, yang menanyakan hal yang sama
+// dengan endpoint order: siapa penanyanya, dan apakah ia berhak melihat order itu. Jalur
+// URL-nya tidak berubah, jadi alamat yang sudah tersimpan tetap menunjuk ke tempat yang
+// benar.
 app.MapControllers();
 app.MapHub<OrderHub>("/hubs/orders");
 

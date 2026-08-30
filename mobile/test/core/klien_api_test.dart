@@ -34,6 +34,40 @@ void main() {
         ));
   }
 
+  group('header untuk pengambil berkas', () {
+    // Widget gambar mengambil berkasnya sendiri lewat Image.network, jadi ia tidak bisa
+    // memakai get maupun post. Sejak foto bukti dijaga token, ia tetap harus membawa
+    // identitas yang sama, dan bentuknya dipinjam dari sini supaya kata "Bearer" cuma
+    // ditulis di satu tempat.
+    test('membawa token yang sedang berlaku', () {
+      final klien = klienDengan(jawab(200), token: () => 'token-uji');
+
+      expect(klien.headerOtorisasi, {'Authorization': 'Bearer token-uji'});
+    });
+
+    test('kosong kalau belum masuk', () {
+      // Kosong, bukan berisi token kosong: header Authorization yang ada tapi kosong
+      // ditolak server dengan galat yang berbeda dari sekadar belum masuk.
+      expect(klienDengan(jawab(200)).headerOtorisasi, isEmpty);
+      expect(klienDengan(jawab(200), token: () => '').headerOtorisasi, isEmpty);
+    });
+
+    test('dipakai juga oleh permintaan biasa, bukan disusun dua kali', () async {
+      String? dibawa;
+      final klien = klienDengan(
+        MockClient((permintaan) async {
+          dibawa = permintaan.headers['Authorization'];
+          return http.Response('{}', 200);
+        }),
+        token: () => 'token-uji',
+      );
+
+      await klien.get('/api/orders/saya');
+
+      expect(dibawa, 'Bearer token-uji');
+    });
+  });
+
   group('permintaan', () {
     test('menyusun alamat dari base url dan jalur', () async {
       Uri? diminta;

@@ -5,6 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:upnvj_suruh/app.dart';
 
 import '../../support/tiruan.dart';
+import 'package:upnvj_suruh/core/api/klien_api.dart';
 import 'package:upnvj_suruh/data/fake/fake_order_repository.dart';
 import 'package:upnvj_suruh/data/fake/seed_data.dart';
 import 'package:upnvj_suruh/domain/enums.dart';
@@ -42,11 +43,18 @@ void main() {
     WidgetTester tester,
     String kodeOrder, {
     List<Order>? orderAwal,
+    String? token,
   }) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           sumberTiruan,
+          // Ditumpangkan di klienApiProvider, bukan di sesiTokenProvider. SesiToken
+          // sungguhan membaca Keystore lewat platform channel, dan channel itu tidak
+          // pernah menjawab di dalam tes, jadi tesnya menggantung sampai batas waktu.
+          // Yang dipakai widget-nya memang KlienApi, jadi di situlah tempatnya.
+          if (token != null)
+            klienApiProvider.overrideWithValue(KlienApi(token: () => token)),
           if (orderAwal != null)
             orderRepositoryProvider.overrideWith((ref) {
               final repo = FakeOrderRepository(orderAwal: orderAwal);
@@ -130,6 +138,29 @@ void main() {
 
     expect(find.byType(Image), findsOneWidget);
     expect(find.textContaining('belum bisa ditampilkan'), findsNothing);
+  });
+
+  testWidgets('gambar bukti membawa token, karena berkasnya dijaga', (
+    tester,
+  ) async {
+    // Foto bukti berhenti dilayani sebagai berkas statis: server sekarang menanyakan
+    // siapa yang memintanya. Image.network mengambil berkasnya sendiri, di luar
+    // KlienApi, jadi tanpa header ini permintaannya dijawab 401 dan yang terlihat
+    // pengguna cuma kotak gagal muat tanpa sebab.
+    await bukaDetail(
+      tester,
+      'SRH-9003',
+      token: 'token-uji',
+      orderAwal: [
+        orderSelesai(fotoBuktiUrl: 'https://contoh.test/bukti/o-uji.jpg'),
+      ],
+    );
+
+    final gambar = tester.widget<Image>(find.byType(Image));
+    expect(
+      (gambar.image as NetworkImage).headers,
+      containsPair('Authorization', 'Bearer token-uji'),
+    );
   });
 
   testWidgets('catatan runner ikut sampai ke klien', (tester) async {
