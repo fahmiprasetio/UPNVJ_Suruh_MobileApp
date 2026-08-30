@@ -1,8 +1,14 @@
-# Catatan Pengembangan: Menjalankan di Web dan Splash Screen
+# Catatan Pengembangan
 
-Berkas ini untuk diri sendiri dan untuk sesi berikutnya. Isinya dua hal: cara menyalakan
-proyek supaya bisa dilihat di browser, dan catatan animasi splash screen, termasuk
-angka-angka yang tidak boleh ditebak ulang dan bagian mana yang sengaja ditinggal.
+Berkas ini untuk diri sendiri dan untuk sesi berikutnya. Isinya angka-angka yang tidak boleh
+ditebak ulang, alasan di balik keputusan yang tidak terbaca dari kode, bagian yang sengaja
+ditinggal, dan tempat melanjutkan.
+
+Bagian 1 sampai 7 dari sesi pertama: cara menyalakan proyek supaya bisa dilihat di browser,
+dan catatan animasi splash screen. Bagian 8 dan seterusnya dari sesi 30 Agustus 2026:
+pengerasan keamanan backend dan migrasi sistem desain ke permukaan klien.
+
+**Kalau sedang mencari tempat melanjutkan, langsung ke bagian 11.**
 
 ---
 
@@ -427,3 +433,224 @@ Kalau suatu saat perlu memaksa `flutter run` memakai Brave, variabelnya `CHROME_
 dan di PowerShell harus ditulis dengan awalan `$env:`. Menulis `set VAR=...` tidak
 berpengaruh di PowerShell karena itu membuat variabel PowerShell biasa, bukan environment
 variable yang terbaca proses anak.
+
+---
+
+# Sesi 30 Agustus 2026: pengerasan backend dan migrasi sistem desain
+
+Tujuh belas commit, dari `136502b` sampai `19a4363`. Dua pekerjaan besar yang tidak
+berhubungan: menutup temuan keamanan di backend, lalu memindahkan DESIGN.md ke kode di
+permukaan klien.
+
+Bagian ini ditulis supaya sesi berikutnya tidak mengulang penelusuran yang sama. Yang
+dicatat cuma hal yang **tidak bisa disimpulkan dari membaca kode**: alasan di balik angka,
+aturan yang harus diikuti pekerjaan berikutnya, keputusan yang sengaja ditunda, dan
+keadaan yang tidak terlihat dari commit.
+
+## 8. Pengerasan Keamanan dan Keandalan Backend
+
+Berangkat dari penyisiran menyeluruh atas backend dan aplikasi. Sembilan putaran, satu
+temuan per putaran, masing-masing dengan tesnya.
+
+### Yang ditutup
+
+| Temuan | Inti perbaikannya |
+|---|---|
+| Tidak ada batas laju sama sekali | Dua lapis: per nomor HP untuk pengirim OTP, per pemanggil untuk sisanya |
+| Webhook tidak memeriksa jumlah uang | Kurang bayar tidak melunasi; ditandai `JumlahTidakCocok` |
+| Foto bukti bisa dipakai ulang lintas order | `Sah()` menuntut nama berkas berawalan id order |
+| Foto bukti terbuka bagi siapa pun yang tahu alamatnya | Lewat controller ber-`AksesOrder`, bukan `UseStaticFiles` |
+| Pendaftaran membocorkan siapa yang punya akun | 202 tanpa badan untuk semua nomor |
+| Runner membaca tawar-menawar sebelum ia bergabung | `PesanTerlihat`, disaring `AcceptedAt` penugasannya |
+| Semua daftar tanpa batas | Berhalaman, termasuk chat; aplikasi memakai jendela yang bisa diperlebar |
+| Admin tidak punya cara menemukan permintaan Jalur B | `GET /api/admin/orders` |
+| Tidak ada satu pun pekerja latar | `Penyapu`: kedaluwarsakan pembayaran, hapus foto yatim |
+
+Ditutup juga yang kecil-kecil: HSTS, `nosniff` global, indeks `Order.Status`, `/health`
+yang benar-benar menanyakan basis datanya, `DbUpdateConcurrencyException` jadi 409 bukan
+500, indeks unik `(OrderId, GatewayReference)`, `JadwalMulai` tidak boleh di masa lalu,
+dan build rilis menolak `API_BASE_URL` non-https.
+
+### Angka dan aturan yang tidak boleh ditebak ulang
+
+Semuanya di `backend/src/UpnvjSuruh.Api/Auth/BatasLaju.cs` dan `Data/BatasHalaman.cs`.
+
+- **Batas laju per nomor HP**: 5 permintaan kode per jam, jeda minimal 60 detik. Kuncinya
+  nomor HP, bukan alamat IP, karena nomor itulah yang menerima SMS dan yang tagihannya
+  ditanggung mitra. Penyerang berganti IP semudah pindah jaringan.
+- **Batas laju per alamat IP sengaja longgar** (100 per 5 menit). Jaringan kampus menaruh
+  ratusan orang di balik satu alamat; batas ketat di sana mengunci seisi gedung karena
+  ulah satu orang.
+- **Webhook pembayaran dikecualikan** dari seluruh batas laju, termasuk jaring umum, dan
+  begitu juga `/health`. Kabar yang tertahan di webhook adalah kabar uang masuk;
+  pemeriksa kesehatan yang dijawab 429 akan menyimpulkan servernya mati.
+- **Halaman**: bawaan 20, maksimal 100. Nilai bawaannya yang paling penting — endpoint
+  yang baru berbatas kalau diminta akan tetap tidak berbatas bagi pemanggil yang lupa.
+- **Foto yatim dihapus setelah 7 hari.** Longgar dengan sengaja: runner memotret,
+  melihat hasilnya, mungkin mengulang, dan pada order terjadwal jeda itu bisa berhari-hari.
+
+### Jebakan yang sudah kena sekali
+
+- **Parameter aksi tidak boleh senama dengan kunci kueri.** `[FromQuery] PermintaanHalaman
+  halaman` membuat properti `Halaman` tidak pernah terikat, jadi setiap permintaan
+  diam-diam menjawab halaman pertama. Namanya sekarang `permintaan` di semua controller.
+- **EF menautkan entitas baru ke koleksi navigasi induknya begitu ia terlacak.** Membaca
+  `order.RunnerAssignments.Count` sesudah `Add` lalu menambahinya satu menghasilkan
+  kelebihan satu. Pada order satu runner hasilnya kebetulan benar; pada order dua runner
+  ordernya berhenti disiarkan setelah runner pertama menerima.
+- **Urutan daftar butuh pemecah seri.** `OrderByDescending(CreatedAt)` saja membuat baris
+  hilang dari satu halaman lalu muncul dua kali di halaman berikutnya. Semua daftar
+  sekarang `.ThenByDescending(o => o.Id)`.
+
+### Tiga cacat yang ditemukan tesnya, bukan audit
+
+1. Order multi-runner tidak pernah bisa terisi penuh (lihat jebakan EF di atas).
+2. Nomor halaman tidak pernah terbaca server.
+3. Tujuh berkas uji sudah merah sejak sebelum sesi ini: empat backend memakai URL foto
+   karangan yang memang ditolak `Sah()`, tiga mobile membuka kamera sungguhan lalu
+   menggantung sepuluh menit karena berkas tesnya tidak menyatakan `sumberTiruan`.
+
+### Keputusan yang sengaja tidak diambil
+
+- **Membatalkan order yang lama menunggu pembayaran.** Tempatnya sudah siap di `Penyapu`,
+  tapi berapa lama dianggap ditinggalkan dan apakah pantas dibatalkan sendiri tanpa
+  memberi tahu pemesannya adalah keputusan produk. Butuh jawaban mitra.
+- **Verifikasi jarak tempuh.** Harga dihitung server dan tidak pernah diterima dari
+  aplikasi, tapi jaraknya masih diisi klien dan belum diverifikasi siapa pun. Risiko
+  pendapatan, bukan bug.
+- **Membuang EXIF dari foto bukti.** Koordinat di foto itu sudah diketahui semua orang
+  yang boleh membukanya, dan jalur bocornya sudah ditutup. Sebaiknya menunggu pindah ke
+  object storage, tempat pemrosesan gambar biasanya sudah tersedia.
+- **Jejak audit perubahan status order.** Perubahan peran punya `UserRoleChange`; order
+  belum. Ini tabel baru plus penulisan di setiap transisi, jadi pekerjaan tersendiri.
+- **`AllowedHosts` masih `*`.** Diisi saat deploy dengan domain sungguhan.
+
+### Strix
+
+Diminta dijalankan, belum dijalankan. Butuh Docker (terpasang v29.3.1 tapi daemonnya mati),
+pemasangan lewat `curl -sSL https://strix.ai/install | bash`, dan kunci API LLM berbayar.
+Nilainya di sini terbatas: ia menguji aplikasi berjalan lewat HTTP, dan untuk menembus
+lapisan auth ia butuh akun beserta token, sementara sisa temuan yang belum ditutup adalah
+celah rancangan yang tidak dikenali pemindai.
+
+## 9. Migrasi Sistem Desain dan Permukaan Klien
+
+DESIGN.md sudah menetapkan dunia visualnya berbulan lalu; kodenya tidak pernah menyusul.
+Sesi ini memindahkannya, lalu membangun ulang lima layar klien.
+
+### Palet
+
+Navy `#16336B` dengan aksen kuning `#F5A524` diganti hijau lencana `#4B7043` dengan maroon
+`#8B2331`. Seluruhnya dicuplik dari `assets/logo/lencana.png`. Aturannya: warna yang tidak
+bisa ditunjuk di lencananya tidak masuk.
+
+**Dua suara, dan ini yang paling sering dilanggar tanpa sadar.** Hijau menyatakan apa yang
+sudah benar (tahap terlewati, harga disepakati, pilihan yang aktif). Maroon meminta ditekan
+(tombol utama, TERIMA, pintu permintaan bebas). Karena itu tombol utama maroon, bukan hijau.
+
+**Aturan terang/gelap yang harus diikuti pekerjaan berikutnya:** bidang berwarna memakai
+peran berkekuatan penuh di tema terang, dan peran wadahnya di tema gelap. Di Material, peran
+penuh pada tema gelap adalah warna muda yang dibuat untuk teks, bukan untuk isian; hijau muda
+selebar layar di tengah malam menyilaukan. Dipakai di kepala beranda dan di pintu permintaan
+bebas.
+
+**Tabrakan warna yang muncul dari migrasi ini, semuanya sudah diperbaiki:**
+
+- `mencariRunner` dipindah dari `secondaryContainer` ke `primaryContainer`. Sejak maroon
+  jadi sekunder, ia dan `errorContainer` sama-sama merah muda dan tidak terbedakan pada pil
+  selebar sebelas piksel. Merah sekarang hanya berarti satu hal: ada yang harus dibayar.
+  `dikerjakan` naik ke `primary` penuh, jadi hijau punya dua tingkat yang terbaca berurutan.
+- Segmen `SegmentedButton` yang terpilih dihijaukan lewat tema. Bawaan Material memakai
+  `secondaryContainer`, jadi setiap pilihan aktif berubah merah muda.
+- Pita cara kerja Jalur B dihijaukan. Ia keterangan, bukan peringatan.
+
+Ketiganya lolos dari membaca kode, karena di kodenya tertulis `secondaryContainer` yang
+sebelum migrasi memang warna yang benar. Kalau nanti ada layar lain yang belum ditata,
+periksa dulu apakah ia memakai peran sekunder untuk sesuatu yang sebenarnya keadaan.
+
+### Skala harga
+
+DESIGN.md mewajibkan harga jadi elemen terbesar di permukaan mana pun yang memuat uang.
+Tiga layar melanggarnya. Skala yang sekarang dipakai:
+
+- **20 px / 700** — kartu order di daftar, total di kartu ringkasan harga
+- **24 px / 700** (`headlineSmall`/`headlineMedium`) — kepala detail order, layar bayar,
+  kartu penawaran
+- Harga yang belum ada ditulis **seukuran harga sungguhan**, "Harga menunggu penawaran",
+  dan cuma berbeda warnanya. Tidak pernah tanda hubung, nol, atau perkiraan.
+
+### Struktur yang berubah
+
+- **Permukaan klien sekarang punya cangkang dengan bilah bawah** (`CangkangKlien`), dua
+  tujuan: Beranda dan Order Saya. Sebelumnya Order Saya cuma ikon di pojok bilah atas.
+  Dipasang di `IndexedStack` supaya berpindah tab tidak memuat ulang daftar.
+- **Bilah navigasinya satu widget bersama** (`BilahNavigasiBawah`), dipakai cangkang klien
+  dan runner. Dua bilah yang berbeda tipis dirasakan pengguna sebagai kegugupan tanpa bisa
+  ia tunjuk, dan akun dua peran melihat keduanya dalam hitungan detik.
+- **Bilah bawah detail order hanya untuk tindakan.** Keterangan status pindah ke bawah
+  linimasa. Slot bilah bawah yang dipakai memajang kalimat menghasilkan teks mengambang di
+  tepi layar, jauh dari isi yang ia jelaskan.
+
+### Keputusan yang menyimpang dari DESIGN.md, sengaja
+
+DESIGN.md menulis bilah atas memakai `paper-container` untuk semua layar. Beranda diberi
+pengecualian berupa bilah hijau yang menyatu dengan panel sapaan, karena beranda satu-satunya
+layar yang tugasnya menyambut, bukan menyelesaikan sesuatu. Layar tugas boleh tenang; layar
+sambutan yang tenang cuma terbaca sebagai belum dikerjakan. Kalau kelak diputuskan konsistensi
+penuh lebih penting, ini satu baris untuk dikembalikan.
+
+## 10. Cara Memeriksa Desain Tanpa Emulator
+
+Mesin ini tidak punya emulator Android, dan tidak ada alat tangkap layar browser. Cara yang
+dipakai sepanjang sesi ini adalah golden sementara, memperluas trik yang dulu dipakai
+menyetel geometri teks melengkung splash (bagian 6).
+
+Resepnya:
+
+1. Tulis `test/pratinjau_<layar>_test.dart` sementara.
+2. Muat font sungguhan, kalau tidak semua teks jadi kotak:
+   `FontLoader('Roboto')..addFont(...File(r'C:\Windows\Fonts\segoeui.ttf')...)`.
+3. Atur `tester.view.physicalSize` ke ukuran ponsel (`400 x 860`, atau `400 x 1000` untuk
+   layar panjang) dengan `devicePixelRatio = 1`.
+4. Navigasi lewat ketukan sungguhan sampai layarnya, lalu
+   `expectLater(find.byType(UpnvjSuruhApp), matchesGoldenFile('pratinjau/<nama>.png'))`.
+5. Jalankan `flutter test <berkas> --update-goldens`, lalu **lihat PNG-nya**.
+6. Perbaiki semua yang terlihat sekaligus, render ulang sekali untuk memastikan, berhenti.
+7. Hapus berkas tes dan folder `test/pratinjau` setelah selesai.
+
+Yang perlu diingat saat membacanya:
+
+- **Ikon dan tombol tampil sebagai kotak.** Segoe UI tidak punya glyph Material, dan gaya
+  teks yang ditulis tangan tanpa `fontFamily` jatuh ke font tes. Itu artefak, bukan cacat.
+  Teks yang lewat `TextTheme` tampil normal.
+- Golden ini **sengaja tidak dipertahankan**. Ia rapuh antar versi Flutter, butuh font dari
+  `C:\Windows\Fonts`, dan tidak menjaga apa pun; ia alat lihat, bukan tes.
+
+Lima cacat ditemukan lewat cara ini dan tidak akan ditemukan lewat membaca kode: pintu
+maroon yang tampil merah muda pucat di tema terang, harga yang terkubur di tabel rincian,
+tahap akhir order selesai yang terbaca menggantung, segmen terpilih yang berubah merah, dan
+pita keterangan yang berubah jadi peringatan.
+
+## 11. Keadaan Sekarang dan Tempat Melanjutkan
+
+**Kedua suite hijau.** Backend 275 lulus, mobile 271 lulus, `flutter analyze` bersih. Tidak
+ada tes merah yang ditinggalkan.
+
+**Alur klien sudah utuh dan sudah ditata**: beranda, form Jalur A dan B, Order Saya, detail
+order, layar bayar.
+
+**Yang belum ditata** (warnanya sudah benar karena ikut tema, tata letaknya belum):
+
+1. **Permukaan runner** — Order Masuk beserta kartu siaran dan tombol TERIMA, Order Saya
+   runner, lembar penyelesaian. Separuh produk yang belum dapat perhatian sama sekali.
+   TERIMA adalah satu-satunya tombol huruf besar di sistem ini.
+2. **Chat order** — dipakai klien dan runner.
+3. **Layar masuk dan daftar** — kesan pertama, dan satu-satunya layar yang belum pernah
+   disentuh.
+
+**Yang belum dikerjakan di backend** sudah didaftar di bagian 8 sebagai keputusan yang
+sengaja ditunda.
+
+**Catatan kecil yang mudah terlupa:** `RINGKASAN_PAPARAN.md`, `PRODUCT.md`, dan `DESIGN.md`
+masih untracked di git. Bagian 10 di `RINGKASAN_PAPARAN.md` sudah diperbarui dengan hasil
+sesi ini, tapi perubahan itu belum ikut ter-commit.
