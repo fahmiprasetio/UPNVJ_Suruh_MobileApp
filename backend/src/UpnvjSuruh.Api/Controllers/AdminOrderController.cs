@@ -68,7 +68,8 @@ public class AdminOrderController(AppDbContext db) : ControllerBase
             .Take(permintaan.Ukuran)
             .ToListAsync(batal);
 
-        var jumlahPesan = await db.JumlahPesanAsync([.. orders.Select(o => o.Id)], batal);
+        var jumlahPesan = await db.JumlahPesanAsync(
+            [.. orders.Select(o => o.Id)], User.Id(), User.Punya(Peran.Admin), batal);
 
         return Ok(new HalamanResponse<OrderResponse>(
             [.. orders.Select(o => OrderResponse.Dari(

@@ -106,7 +106,7 @@ public class OrdersController(
         if (!AksesOrder.BolehLihat(order, User.Id(), User)) return NotFound();
 
         return Ok(OrderResponse.Dari(
-            order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, batal)));
+            order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, User.Id(), User.Punya(Peran.Admin), batal)));
     }
 
     /// <summary>Order milik klien yang sedang masuk, terbaru di atas.</summary>
@@ -207,7 +207,8 @@ public class OrdersController(
             .Take(permintaan.Ukuran)
             .ToListAsync(batal);
 
-        var jumlahPesan = await db.JumlahPesanAsync([.. orders.Select(o => o.Id)], batal);
+        var jumlahPesan = await db.JumlahPesanAsync(
+            [.. orders.Select(o => o.Id)], User.Id(), User.Punya(Peran.Admin), batal);
 
         return new HalamanResponse<OrderResponse>(
             [.. orders.Select(o => OrderResponse.Dari(
@@ -295,13 +296,26 @@ public class OrdersController(
             return Ok(new TerimaOrderResponse(false, "Kuota runner sudah penuh."));
         }
 
+        // Dihitung sebelum penugasannya ditambahkan, dan disimpan ke variabel.
+        //
+        // Sebelumnya baris di bawah membaca order.RunnerAssignments.Count sesudah Add lalu
+        // menambahinya satu, dengan anggapan koleksi itu belum memuat yang baru. Anggapan itu
+        // salah: EF menautkan entitas baru ke koleksi navigasi induknya begitu ia terlacak,
+        // jadi yang terhitung sudah termasuk yang baru dan hasilnya kelebihan satu.
+        //
+        // Pada order satu runner tidak ada bedanya, dan itu sebabnya lolos selama ini. Pada
+        // order yang butuh dua runner atau lebih akibatnya fatal: order berpindah ke
+        // Dikerjakan begitu runner pertama menerima, berhenti disiarkan, dan runner kedua
+        // tidak pernah bisa bergabung. Pekerjaan yang butuh tiga orang berangkat dengan satu.
+        var jumlahSebelum = order.RunnerAssignments.Count;
+
         db.OrderRunnerAssignments.Add(new OrderRunnerAssignment
         {
             OrderId = order.Id,
             RunnerId = runnerId,
         });
 
-        if (order.RunnerAssignments.Count + 1 >= order.RequiredRunnerCount)
+        if (jumlahSebelum + 1 >= order.RequiredRunnerCount)
         {
             order.Status = OrderStatus.Dikerjakan;
         }
@@ -390,7 +404,7 @@ public class OrdersController(
 
         await db.SaveChangesAsync(batal);
         return Ok(OrderResponse.Dari(
-            order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, batal)));
+            order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, User.Id(), User.Punya(Peran.Admin), batal)));
     }
 
     /// <summary>
@@ -444,6 +458,6 @@ public class OrdersController(
 
         await db.SaveChangesAsync(batal);
         return Ok(OrderResponse.Dari(
-            order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, batal)));
+            order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, User.Id(), User.Punya(Peran.Admin), batal)));
     }
 }

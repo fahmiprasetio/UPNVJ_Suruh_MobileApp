@@ -169,13 +169,35 @@ class FakeOrderRepository implements OrderRepository {
       Halaman(isi: semua.take(ukuran).toList(), total: semua.length);
 
   @override
-  Stream<Order?> watchOrder(String orderId) =>
-      _stream.map((orders) => orders.where((o) => o.id == orderId).firstOrNull);
+  Stream<Order?> watchOrder(String orderId, {int ukuranPesan = BatasHalaman.bawaan}) =>
+      _stream.map(
+        (orders) => _jendelaPesan(
+          orders.where((o) => o.id == orderId).firstOrNull,
+          ukuranPesan,
+        ),
+      );
+
+  /// Memotong percakapan sepanjang jendelanya, terbaru yang dipertahankan.
+  ///
+  /// Ditirukan seperti pemotongan daftar order, dengan alasan yang sama: tiruan yang
+  /// selalu mengirim semuanya membuat layar diuji di atas asumsi yang tidak berlaku
+  /// di server. `jumlahPesan` sengaja tidak ikut dipotong, karena angka itu memang
+  /// menyebut seluruhnya, dan dari selisih itulah layar tahu masih ada yang lebih lama.
+  static Order? _jendelaPesan(Order? order, int ukuran) {
+    if (order == null || order.messages.length <= ukuran) return order;
+
+    return order.copyWith(
+      messages: order.messages.sublist(order.messages.length - ukuran),
+    );
+  }
 
   @override
-  Future<Order?> getOrder(String orderId) async {
+  Future<Order?> getOrder(String orderId, {int ukuranPesan = BatasHalaman.bawaan}) async {
     await Future<void>.delayed(_jedaJaringan);
-    return _orders.where((o) => o.id == orderId).firstOrNull;
+    return _jendelaPesan(
+      _orders.where((o) => o.id == orderId).firstOrNull,
+      ukuranPesan,
+    );
   }
 
   @override

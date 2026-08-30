@@ -246,8 +246,8 @@ public class ChatDanPenutupanTests(DatabaseApiFactory pabrik) : IClassFixture<Da
         await runner.PostAsJsonAsync($"/api/orders/{order.Id}/pesan", new { Isi = "dua" });
         await klien.PostAsJsonAsync($"/api/orders/{order.Id}/pesan", new { Isi = "tiga" });
 
-        var pesan = await klien.GetFromJsonAsync<List<OrderMessageResponse>>(
-            $"/api/orders/{order.Id}/pesan");
+        var pesan = (await klien.GetFromJsonAsync<HalamanResponse<OrderMessageResponse>>(
+            $"/api/orders/{order.Id}/pesan"))!.Isi;
 
         Assert.Equal(["satu", "dua", "tiga"], pesan!.Select(p => p.Isi));
     }
@@ -280,8 +280,8 @@ public class ChatDanPenutupanTests(DatabaseApiFactory pabrik) : IClassFixture<Da
             FotoBuktiUrl = await UnggahFotoAsync(runner, order.Id),
         })).EnsureSuccessStatusCode();
 
-        var pesan = await klien.GetFromJsonAsync<List<OrderMessageResponse>>(
-            $"/api/orders/{order.Id}/pesan");
+        var pesan = (await klien.GetFromJsonAsync<HalamanResponse<OrderMessageResponse>>(
+            $"/api/orders/{order.Id}/pesan"))!.Isi;
 
         Assert.Single(pesan!);
     }

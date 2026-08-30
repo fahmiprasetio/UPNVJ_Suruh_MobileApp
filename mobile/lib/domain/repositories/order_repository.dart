@@ -1,4 +1,5 @@
 import '../enums.dart';
+import '../../core/config/batas_halaman.dart';
 import '../models/halaman.dart';
 import '../models/order.dart';
 
@@ -52,9 +53,17 @@ abstract interface class OrderRepository {
   /// "Tidak ada" dan "ada tapi bukan urusanmu" sengaja tidak dibedakan, mengikuti
   /// server yang menjawab keduanya sama. Membedakannya di sini akan membocorkan
   /// lagi apa yang sudah ditutup di sana.
-  Stream<Order?> watchOrder(String orderId);
+  Stream<Order?> watchOrder(
+    String orderId, {
+    int ukuranPesan = BatasHalaman.bawaan,
+  });
 
-  Future<Order?> getOrder(String orderId);
+  /// [ukuranPesan] membatasi percakapan yang ikut terbawa, terbaru yang
+  /// dipertahankan. Punya nilai bawaan yang berbatas, bukan wajib disebut:
+  /// pemanggil yang cuma butuh ordernya, misalnya untuk membaca harganya, tidak
+  /// perlu memikirkan percakapan sama sekali, dan yang lupa menyebutnya tetap
+  /// tidak menarik seluruh isi chat.
+  Future<Order?> getOrder(String orderId, {int ukuranPesan = BatasHalaman.bawaan});
 
   /// Jalur A: harga dihitung server dari jenis layanan dan jarak.
   ///

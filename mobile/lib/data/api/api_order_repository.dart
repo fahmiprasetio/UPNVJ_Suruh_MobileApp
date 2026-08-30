@@ -118,23 +118,27 @@ class ApiOrderRepository implements OrderRepository {
       _amati(() => _daftar('/api/orders/runner-saya', ukuran));
 
   @override
-  Stream<Order?> watchOrder(String orderId) => _amati(() => getOrder(orderId));
+  Stream<Order?> watchOrder(String orderId, {int ukuranPesan = BatasHalaman.bawaan}) =>
+      _amati(() => getOrder(orderId, ukuranPesan: ukuranPesan));
 
   @override
-  Future<Order?> getOrder(String orderId) async {
+  Future<Order?> getOrder(String orderId, {int ukuranPesan = BatasHalaman.bawaan}) async {
     // Ordernya dan percakapannya diambil bersamaan, bukan berurutan. Layar yang
     // menampilkan salah satunya hampir selalu menampilkan keduanya, dan menunggu
     // dua perjalanan bolak-balik berturut-turut terasa dua kali lebih lambat.
     final hasil = await Future.wait([
       _klien.get('/api/orders/$orderId'),
-      _klien.getDaftar('/api/orders/$orderId/pesan'),
+      _klien.get(
+        '/api/orders/$orderId/pesan',
+        kueri: {'ukuran': '${ukuranPesan.clamp(1, BatasHalaman.maksimal)}'},
+      ),
     ]);
 
-    final isi = hasil[0] as Map<String, dynamic>;
-    final pesan = [
-      for (final p in hasil[1] as List)
-        PemetaOrder.pesanChat(p as Map<String, dynamic>),
-    ];
+    final isi = hasil[0];
+    // Berapa pesan seluruhnya sudah ikut di jawaban ordernya sebagai jumlahPesan, jadi
+    // total pada halaman ini tidak perlu dibaca lagi: layar membandingkan panjang yang
+    // terbawa dengan angka itu untuk tahu masih ada yang lebih lama atau tidak.
+    final pesan = PemetaDasar.halaman(hasil[1], PemetaOrder.pesanChat).isi;
 
     return PemetaOrder.order(isi, pesan: pesan);
   }

@@ -11,6 +11,7 @@ import '../../domain/models/order_message.dart';
 import '../../domain/service_catalog.dart';
 import '../../providers/order_providers.dart';
 import '../../providers/repository_providers.dart';
+import '../../providers/ukuran_pesan.dart';
 
 /// Ruang chat yang menempel pada satu order.
 ///
@@ -162,7 +163,7 @@ class _JudulOrder extends StatelessWidget {
   }
 }
 
-class _DaftarPesan extends StatelessWidget {
+class _DaftarPesan extends ConsumerWidget {
   const _DaftarPesan({
     required this.order,
     required this.scroll,
@@ -173,8 +174,16 @@ class _DaftarPesan extends StatelessWidget {
   final ScrollController scroll;
   final MessageSender pengirim;
 
+  /// Benar kalau masih ada pesan lama yang belum terbawa.
+  ///
+  /// Dibandingkan dengan [Order.jumlahPesan], yang menyebut seluruh pesan yang boleh
+  /// dibaca pembacanya. Untuk runner angka itu sudah menyempit di server sejak ia cuma
+  /// berhak membaca percakapan sejak ia bergabung, jadi perbandingan ini tidak pernah
+  /// menawarkan memuat pesan yang memang tidak akan pernah dikirim kepadanya.
+  bool get _adaYangLebihLama => order.messages.length < order.jumlahPesan;
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (order.messages.isEmpty) {
       return _ChatKosong(order: order, pengirim: pengirim);
     }
@@ -182,10 +191,60 @@ class _DaftarPesan extends StatelessWidget {
     return ListView.builder(
       controller: scroll,
       padding: const EdgeInsets.all(AppTheme.spasiSedang),
-      itemCount: order.messages.length,
-      itemBuilder: (context, indeks) => _GelembungPesan(
-        pesan: order.messages[indeks],
-        pembaca: pengirim,
+      // Satu baris tambahan di paling atas, tempat percakapan yang lebih lama berada.
+      itemCount: order.messages.length + 1,
+      itemBuilder: (context, indeks) {
+        if (indeks == 0) {
+          return _MuatPesanLama(
+            orderId: order.id,
+            adaYangLebihLama: _adaYangLebihLama,
+          );
+        }
+
+        return _GelembungPesan(
+          pesan: order.messages[indeks - 1],
+          pembaca: pengirim,
+        );
+      },
+    );
+  }
+}
+
+/// Jalan menuju pesan yang lebih lama daripada jendela yang sedang terbawa.
+///
+/// Chat sekarang mengirim pesan terbaru sebanyak jendelanya, bukan seluruh percakapan:
+/// pesan cuma bertambah, dan layar ini mengambil ulang isinya setiap lima belas detik
+/// selama terbuka. Tanpa jalan memperlebarnya, percakapan lama jadi tidak bisa dijangkau
+/// siapa pun, dan itu berbahaya justru di tempat ini: chat adalah catatan apa yang dulu
+/// dijanjikan, dan ia dibaca ketika ada yang dipersoalkan.
+class _MuatPesanLama extends ConsumerWidget {
+  const _MuatPesanLama({required this.orderId, required this.adaYangLebihLama});
+
+  final String orderId;
+  final bool adaYangLebihLama;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (!adaYangLebihLama) return const SizedBox.shrink();
+
+    ref.watch(ukuranPesanProvider);
+    final jendela = ref.watch(ukuranPesanProvider.notifier);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppTheme.spasiSedang),
+      child: Center(
+        child: jendela.bisaDiperbesar(orderId)
+            ? TextButton(
+                onPressed: () => jendela.perbesar(orderId),
+                child: const Text('Muat pesan lama'),
+              )
+            : Text(
+                'Percakapan yang lebih lama tidak ditampilkan di sini.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
       ),
     );
   }

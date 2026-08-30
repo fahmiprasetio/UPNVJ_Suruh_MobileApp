@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/models/halaman.dart';
 import '../domain/models/order.dart';
 import 'ukuran_daftar.dart';
+import 'ukuran_pesan.dart';
 import 'repository_providers.dart';
 
 /// Order milik klien yang sedang masuk, terbaru di atas, sebanyak jendela yang
@@ -26,5 +27,13 @@ final orderKlienProvider = StreamProvider<Halaman<Order>>((ref) {
 /// Mengembalikan `null` kalau ordernya tidak ada, layar detail memakai ini
 /// untuk membedakan "sedang dimuat" dari "memang tidak ada".
 final orderProvider = StreamProvider.family<Order?, String>((ref, orderId) {
-  return ref.watch(orderRepositoryProvider).watchOrder(orderId);
+  // Percakapannya ikut jendela order ini sendiri, bukan jendela bersama. Chat order
+  // yang pernah diperlebar tidak boleh membuat chat order lain ikut mengambil jauh
+  // lebih banyak daripada yang dibutuhkan.
+  final ukuranPesan = ref.watch(ukuranPesanProvider.notifier).untuk(orderId);
+  ref.watch(ukuranPesanProvider);
+
+  return ref
+      .watch(orderRepositoryProvider)
+      .watchOrder(orderId, ukuranPesan: ukuranPesan);
 });

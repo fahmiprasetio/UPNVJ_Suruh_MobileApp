@@ -89,7 +89,9 @@ void main() {
     // dibuat. Membedakannya penting: kalau tidak, tesnya lulus terhadap bentuk
     // yang tidak pernah dikirim server.
     if (p.url.path.endsWith('/pesan')) {
-      return p.method == 'GET' ? [pesanJson] : pesanJson;
+      // GET mengembalikan percakapan berhalaman, POST mengembalikan satu pesan yang
+      // baru dibuat. Bentuk chat ikut berhalaman sejak percakapan dibatasi jendela.
+      return p.method == 'GET' ? halamanJson([pesanJson]) : pesanJson;
     }
     if (p.url.path.endsWith('/jalur-a')) return {'order': orderJson, 'rincian': []};
     if (p.url.path.endsWith('/terima')) return {'dapat': true, 'keterangan': 'ok'};
@@ -148,7 +150,7 @@ void main() {
 
     test('penawaran ikut terbaca', () async {
       final uji = buat((p) {
-        if (p.url.path.endsWith('/pesan')) return const <Object>[];
+        if (p.url.path.endsWith('/pesan')) return halamanJson(const []);
         return {
         ...orderJson,
         'status': 'MenungguPersetujuanKlien',
@@ -179,7 +181,7 @@ void main() {
       // Status salah baca membuat layar menawarkan tombol yang tidak seharusnya
       // ada, dan itu lebih berbahaya daripada layar yang gagal muat.
       final uji = buat((p) {
-        if (p.url.path.endsWith('/pesan')) return const <Object>[];
+        if (p.url.path.endsWith('/pesan')) return halamanJson(const []);
         return {...orderJson, 'status': 'EntahApa'};
       });
       await expectLater(uji.repo.getOrder('x'), throwsA(isA<GalatServer>()));

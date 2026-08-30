@@ -138,7 +138,7 @@ public class JalurBController(AppDbContext db) : ControllerBase
         }
 
         return Ok(OrderResponse.Dari(
-            order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, batal)));
+            order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, User.Id(), User.Punya(Peran.Admin), batal)));
     }
 
     /// <summary>
@@ -163,7 +163,7 @@ public class JalurBController(AppDbContext db) : ControllerBase
 
         await db.SaveChangesAsync(batal);
         return Ok(OrderResponse.Dari(
-            order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, batal)));
+            order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, User.Id(), User.Punya(Peran.Admin), batal)));
     }
 
     /// <summary>
@@ -186,7 +186,7 @@ public class JalurBController(AppDbContext db) : ControllerBase
 
         await db.SaveChangesAsync(batal);
         return Ok(OrderResponse.Dari(
-            order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, batal)));
+            order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, User.Id(), User.Punya(Peran.Admin), batal)));
     }
 
     /// <summary>
@@ -223,7 +223,7 @@ public class JalurBController(AppDbContext db) : ControllerBase
 
         await db.SaveChangesAsync(batal);
         return Ok(OrderResponse.Dari(
-            order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, batal)));
+            order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, User.Id(), User.Punya(Peran.Admin), batal)));
     }
 
     private Task<Order?> Muat(Guid id, CancellationToken batal) => db.Orders

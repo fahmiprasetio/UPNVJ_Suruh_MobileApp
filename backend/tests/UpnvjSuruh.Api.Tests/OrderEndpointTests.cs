@@ -299,6 +299,89 @@ public class OrderEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
         Assert.Equal(HttpStatusCode.Forbidden, jawaban.StatusCode);
     }
 
+    // --- Kuota runner ---
+
+    [Fact]
+    public async Task OrderYangButuhDuaRunnerMasihMenerimaRunnerKedua()
+    {
+        // Sebelumnya tidak. Status berpindah ke Dikerjakan begitu runner pertama menerima,
+        // ordernya berhenti disiarkan, dan runner kedua tidak pernah bisa bergabung: pekerjaan
+        // yang butuh dua orang berangkat dengan satu.
+        //
+        // Sebabnya satu baris yang membaca jumlah penugasan sesudah yang baru ditambahkan lalu
+        // menambahinya satu lagi. Pada order satu runner hasilnya kebetulan benar, dan itu
+        // sebabnya lolos selama ini.
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+        var (pertama, _) = await AkunAsync(UserRole.Runner);
+        var (kedua, _) = await AkunAsync(UserRole.Runner);
+        var order = await BuatOrderAsync(klien);
+        await ButuhRunnerAsync(order.Id, 2);
+        await BayarAsync(order.Id, order.Harga!.Value);
+
+        var hasilPertama = await TerimaAsync(pertama, order.Id);
+        var hasilKedua = await TerimaAsync(kedua, order.Id);
+
+        Assert.True(hasilPertama.Dapat, hasilPertama.Keterangan);
+        Assert.True(hasilKedua.Dapat, hasilKedua.Keterangan);
+    }
+
+    [Fact]
+    public async Task OrderMasihDisiarkanSelagiKuotanyaBelumPenuh()
+    {
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+        var (pertama, _) = await AkunAsync(UserRole.Runner);
+        var (kedua, _) = await AkunAsync(UserRole.Runner);
+        var order = await BuatOrderAsync(klien);
+        await ButuhRunnerAsync(order.Id, 2);
+        await BayarAsync(order.Id, order.Harga!.Value);
+        await TerimaAsync(pertama, order.Id);
+
+        var tersiar = await DaftarAsync(kedua, "/api/orders/tersiar");
+
+        Assert.Contains(tersiar, o => o.Id == order.Id);
+    }
+
+    [Fact]
+    public async Task OrderBerhentiDisiarkanBegituKuotanyaPenuh()
+    {
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+        var (pertama, _) = await AkunAsync(UserRole.Runner);
+        var (kedua, _) = await AkunAsync(UserRole.Runner);
+        var (ketiga, _) = await AkunAsync(UserRole.Runner);
+        var order = await BuatOrderAsync(klien);
+        await ButuhRunnerAsync(order.Id, 2);
+        await BayarAsync(order.Id, order.Harga!.Value);
+        await TerimaAsync(pertama, order.Id);
+        await TerimaAsync(kedua, order.Id);
+
+        var tersiar = await DaftarAsync(ketiga, "/api/orders/tersiar");
+
+        Assert.DoesNotContain(tersiar, o => o.Id == order.Id);
+    }
+
+    /// <summary>
+    /// Menaikkan kebutuhan runner sebuah order langsung di basis data.
+    ///
+    /// Lewat sini, bukan lewat alur Jalur B yang lengkap, karena yang diuji tiga tes di atas
+    /// adalah aturan kuota saat menerima order, bukan cara sebuah order sampai membutuhkan
+    /// dua runner. Setup yang panjang membuat tes gagal karena hal yang tidak sedang diuji.
+    /// </summary>
+    private async Task ButuhRunnerAsync(Guid orderId, int jumlah)
+    {
+        using var lingkup = pabrik.Services.CreateScope();
+        var db = lingkup.ServiceProvider.GetRequiredService<AppDbContext>();
+        var order = await db.Orders.SingleAsync(o => o.Id == orderId);
+        order.RequiredRunnerCount = jumlah;
+        await db.SaveChangesAsync();
+    }
+
+    private static async Task<TerimaOrderResponse> TerimaAsync(HttpClient runner, Guid orderId)
+    {
+        var jawaban = await runner.PostAsync($"/api/orders/{orderId}/terima", null);
+        jawaban.EnsureSuccessStatusCode();
+        return (await jawaban.Content.ReadFromJsonAsync<TerimaOrderResponse>())!;
+    }
+
     // --- Pembayaran ---
 
     [Fact]
