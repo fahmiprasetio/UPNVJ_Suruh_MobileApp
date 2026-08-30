@@ -22,6 +22,7 @@ public record BuatPermintaanJalurBRequest
     public string Deskripsi { get; init; } = string.Empty;
 
     [Required]
+    [WaktuDiMasaDepan]
     public DateTime JadwalMulai { get; init; }
 
     [MaxLength(BatasMasukan.Alamat)]
@@ -48,6 +49,7 @@ public record BuatPenawaranRequest
     public int EstimasiDurasiMenit { get; init; }
 
     [Required]
+    [WaktuDiMasaDepan]
     public DateTime JadwalMulai { get; init; }
 
     [MaxLength(BatasMasukan.Deskripsi)]

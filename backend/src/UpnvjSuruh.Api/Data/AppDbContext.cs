@@ -141,6 +141,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasIndex(p => p.OrderId)
                 .IsUnique()
                 .HasFilter($"\"Status\" = {(int)PaymentStatus.Pending}");
+
+            // Dan satu order tidak boleh punya dua transaksi dengan referensi gateway yang
+            // sama. Penyelesai pembayaran mencari transaksi lewat referensi itu dengan
+            // SingleOrDefault, jadi dua baris berreferensi sama tidak menghasilkan pilihan
+            // yang salah melainkan lemparan, pada jalur yang menangani kabar uang masuk.
+            //
+            // Jalur yang ada sekarang tidak bisa melahirkannya, dan justru itu alasannya
+            // dijadikan aturan basis data: yang mustahil hari ini cuma mustahil selama tidak
+            // ada yang menambah jalan masuk baru.
+            entity.HasIndex(p => new { p.OrderId, p.GatewayReference }).IsUnique();
         });
 
         modelBuilder.Entity<Payment>()

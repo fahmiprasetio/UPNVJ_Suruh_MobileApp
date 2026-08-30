@@ -1,3 +1,5 @@
+import '../config/sumber_data.dart';
+
 /// Alamat backend.
 ///
 /// Diisi saat build lewat `--dart-define=API_BASE_URL=...`, bukan ditulis mati di
@@ -18,6 +20,41 @@ class KonfigurasiApi {
     'API_BASE_URL',
     defaultValue: 'http://10.0.2.2:5059',
   );
+
+  /// Alamat yang boleh dipakai, atau lemparan kalau alamatnya tidak pantas untuk
+  /// build ini.
+  ///
+  /// Nilai bawaannya alamat emulator lewat http biasa, dan itu benar untuk mesin
+  /// pengembang. Yang berbahaya adalah build rilis yang lahir tanpa
+  /// `--dart-define=API_BASE_URL`: ia menyala seperti biasa, lalu setiap permintaan
+  /// gagal karena Android memblokir lalu lintas tanpa sandi, dan yang terlihat
+  /// pengguna cuma "tidak bisa menghubungi server" tanpa sebab yang bisa ditebak
+  /// siapa pun. Aplikasi yang gagal menyala terang-terangan jauh lebih baik daripada
+  /// aplikasi yang menyala menuju alamat yang salah.
+  ///
+  /// Alamat http juga ditolak di rilis walaupun servernya bisa dijangkau. Token sesi
+  /// dan nomor HP orang tidak boleh berangkat tanpa sandi, dan alamat http yang
+  /// kebetulan bekerja saat diuji adalah alamat yang akan terbawa ke tangan pengguna.
+  ///
+  /// Polanya sama persis dengan [KonfigurasiSumberData.baca], yang menolak data
+  /// tiruan di build rilis. [nilai] ada supaya penolakannya bisa dibuktikan di tes:
+  /// [baseUrl] konstanta waktu-kompilasi, jadi tanpa parameter ini satu-satunya cara
+  /// mengujinya adalah menjalankan ulang seluruh tes dengan `--dart-define` berbeda,
+  /// dan penolakan yang tidak pernah diuji baru ketahuan rusaknya saat dibutuhkan.
+  static String baca({required bool modeDebug, String? nilai}) {
+    final alamat = nilai ?? baseUrl;
+
+    if (!modeDebug && !alamat.startsWith('https://')) {
+      throw StateError(
+        'API_BASE_URL="$alamat" tidak boleh dipakai di build rilis: '
+        'alamat non-https mengirim token sesi dan nomor HP tanpa sandi, dan '
+        'alamat bawaan menunjuk emulator di mesin pengembang. '
+        'Isi lewat --dart-define=API_BASE_URL=https://...',
+      );
+    }
+
+    return alamat;
+  }
 
   /// Batas sabar menunggu satu permintaan.
   ///

@@ -223,6 +223,14 @@ builder.Services.AddScoped<PenyelesaiPembayaran>();
 // --- Foto bukti pekerjaan ---
 builder.Services.AddSingleton<PenyimpanFoto>();
 
+// --- Penanganan galat ---
+//
+// AddProblemDetails membuat galat yang tidak tertangani keluar sebagai ProblemDetails, bentuk
+// yang sama dengan seluruh penolakan lain di API ini, alih-alih badan kosong. Isinya tetap
+// tidak memuat jejak galat di luar Development.
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<PenanganGalatKonkurensi>();
+
 // --- Perawatan berkala ---
 //
 // Sebelum ini tidak ada satu pun pekerja latar di server ini, dan yang tidak ada yang
@@ -297,6 +305,9 @@ else
 // Urutannya wajib begini: UseAuthentication membaca siapa pemanggilnya, UseAuthorization
 // memutuskan apakah ia boleh. Terbalik, atau yang pertama hilang seperti sebelumnya,
 // membuat setiap [Authorize] gagal dengan "No authenticationScheme was specified".
+// Paling luar, supaya galat yang lolos dari middleware mana pun ikut tertangkap.
+app.UseExceptionHandler();
+
 // Satu header untuk semua jawaban: jangan menebak jenis isinya.
 //
 // Yang paling membutuhkannya berkas foto bukti, dan controller-nya memang memasangnya

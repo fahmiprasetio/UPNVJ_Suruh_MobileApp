@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/api/klien_api.dart';
+import '../core/api/konfigurasi_api.dart';
 import '../core/config/sumber_data.dart';
 import '../data/api/api_auth_repository.dart';
 import '../data/api/api_foto_bukti_repository.dart';
@@ -49,8 +50,20 @@ final sesiTokenProvider = Provider<SesiToken>((ref) => SesiToken());
 /// selalu membaca token yang berlaku sekarang. Klien yang menyalin tokennya sekali
 /// saat dibuat akan terus memakai token lama setelah pengguna keluar lalu masuk
 /// sebagai akun lain tanpa aplikasi dimulai ulang.
+/// Alamat backend yang dipakai, sekaligus tempat penolakannya terjadi.
+///
+/// Dibaca lewat provider, bukan langsung dari konstantanya, dengan alasan yang sama
+/// seperti [sumberDataProvider]: penolakannya jadi bisa dibuktikan tes, dan ia
+/// terjadi sekali di satu tempat alih-alih di setiap pemanggil.
+final alamatApiProvider = Provider<String>((ref) {
+  return KonfigurasiApi.baca(modeDebug: ref.watch(modeDebugProvider));
+});
+
 final klienApiProvider = Provider<KlienApi>((ref) {
-  final klien = KlienApi(token: () => ref.read(sesiTokenProvider).nilai);
+  final klien = KlienApi(
+    baseUrl: ref.watch(alamatApiProvider),
+    token: () => ref.read(sesiTokenProvider).nilai,
+  );
   ref.onDispose(klien.dispose);
   return klien;
 });
