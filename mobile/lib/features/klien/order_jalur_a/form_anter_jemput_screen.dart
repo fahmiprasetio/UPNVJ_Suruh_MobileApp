@@ -75,6 +75,7 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
                 maxLines: 2,
                 minLines: 1,
                 decoration: const InputDecoration(
+                  counterText: '',
                   labelText: 'Dijemput di mana?',
                   hintText: 'Kos Melati, Jl. Pondok Labu Raya No. 12',
                   prefixIcon: Icon(Icons.my_location_outlined),
@@ -89,6 +90,7 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
                 maxLines: 2,
                 minLines: 1,
                 decoration: const InputDecoration(
+                  counterText: '',
                   labelText: 'Diantar ke mana?',
                   hintText: 'Gedung Fakultas Ilmu Komputer UPNVJ',
                   prefixIcon: Icon(Icons.place_outlined),
@@ -105,6 +107,7 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
                   FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
                 ],
                 decoration: const InputDecoration(
+                  counterText: '',
                   labelText: 'Perkiraan jarak',
                   suffixText: 'km',
                   prefixIcon: Icon(Icons.straighten_outlined),
@@ -127,6 +130,7 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
                 maxLines: 3,
                 minLines: 1,
                 decoration: const InputDecoration(
+                  counterText: '',
                   labelText: 'Catatan untuk runner (opsional)',
                   hintText: 'Tunggu di gerbang depan, pakai jaket merah',
                   prefixIcon: Icon(Icons.sticky_note_2_outlined),
@@ -187,7 +191,9 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
 
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('Order ${order.kodeOrder} dibuat')));
+      ..showSnackBar(
+        SnackBar(content: Text('Order ${order.kodeOrder} dibuat')),
+      );
 
     // Form diganti, bukan ditumpuk: menekan kembali dari detail order
     // sebaiknya pulang ke beranda, bukan balik ke form yang sudah terkirim.
@@ -283,10 +289,17 @@ class _BilahBuatOrder extends StatelessWidget {
                         color: skema.onSurfaceVariant,
                       ),
                     ),
+                    // Hijau, sama seperti total di kartu ringkasan.
+                    //
+                    // Angkanya sama persis, jadi ia harus terlihat sama persis.
+                    // Dua perlakuan berbeda untuk satu fakta membuat orang
+                    // memeriksa apakah keduanya memang angka yang sama, dan itu
+                    // pekerjaan yang tidak perlu ada.
                     Text(
                       formatRupiah(total),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
+                        color: skema.primary,
                       ),
                     ),
                   ],

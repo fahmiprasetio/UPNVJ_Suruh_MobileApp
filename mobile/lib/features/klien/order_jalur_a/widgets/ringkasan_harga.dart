@@ -46,12 +46,17 @@ class RingkasanHarga extends StatelessWidget {
                   'Total',
                   style: teks.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
+                // Seukuran harga di daftar order dan di detail, bukan seukuran
+                // baris rinciannya. Ini satu-satunya angka di kartu ini yang
+                // benar-benar akan dibayar orang; sisanya cuma menerangkan dari
+                // mana angka itu datang.
                 Text(
                   formatRupiah(hasil.total),
-                  style: teks.titleMedium?.copyWith(
+                  style: const TextStyle(
+                    fontSize: 20,
+                    height: 1.2,
                     fontWeight: FontWeight.w700,
-                    color: skema.primary,
-                  ),
+                  ).copyWith(color: skema.primary),
                 ),
               ],
             ),

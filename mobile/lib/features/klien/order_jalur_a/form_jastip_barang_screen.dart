@@ -78,6 +78,7 @@ class _FormJastipBarangScreenState
                 maxLines: 3,
                 minLines: 2,
                 decoration: const InputDecoration(
+                  counterText: '',
                   labelText: 'Barang apa yang dititip?',
                   hintText:
                       'Ambil paket di Indomaret Pondok Labu, atas nama Dina',
@@ -93,6 +94,7 @@ class _FormJastipBarangScreenState
                 maxLines: 2,
                 minLines: 1,
                 decoration: const InputDecoration(
+                  counterText: '',
                   labelText: 'Diambil di mana?',
                   hintText: 'Indomaret Pondok Labu',
                   prefixIcon: Icon(Icons.store_outlined),
@@ -107,6 +109,7 @@ class _FormJastipBarangScreenState
                 maxLines: 2,
                 minLines: 1,
                 decoration: const InputDecoration(
+                  counterText: '',
                   labelText: 'Diantar ke mana?',
                   hintText: 'Kos Melati kamar 7',
                   prefixIcon: Icon(Icons.place_outlined),
@@ -123,6 +126,7 @@ class _FormJastipBarangScreenState
                   FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
                 ],
                 decoration: const InputDecoration(
+                  counterText: '',
                   labelText: 'Perkiraan jarak',
                   suffixText: 'km',
                   prefixIcon: Icon(Icons.straighten_outlined),
@@ -191,7 +195,9 @@ class _FormJastipBarangScreenState
 
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('Order ${order.kodeOrder} dibuat')));
+      ..showSnackBar(
+        SnackBar(content: Text('Order ${order.kodeOrder} dibuat')),
+      );
 
     context.pushReplacement(Rute.detailOrder(order.id));
   }

@@ -84,6 +84,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
                 maxLines: 6,
                 minLines: 4,
                 decoration: InputDecoration(
+                  counterText: '',
                   labelText: 'Ceritakan kebutuhanmu',
                   hintText: _contohUntuk(widget.serviceType),
                   alignLabelWithHint: true,
@@ -104,6 +105,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
                 maxLines: 2,
                 minLines: 1,
                 decoration: const InputDecoration(
+                  counterText: '',
                   labelText: 'Alamat',
                   hintText: 'Kos Melati, Jl. Pondok Labu Raya No. 12',
                   prefixIcon: Icon(Icons.place_outlined),
@@ -284,27 +286,29 @@ class _PitaCaraKerja extends StatelessWidget {
     final skema = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(AppTheme.spasiSedang),
+      // Hijau, bukan maroon.
+      //
+      // Sejak maroon jadi warna sekunder, wadah sekunder terbaca sebagai merah
+      // muda, dan pita ini berubah dari keterangan jadi peringatan: klien yang
+      // membacanya menyangka ada yang salah dengan pesanannya, padahal yang
+      // diterangkan justru cara kerja normal jalur ini.
       decoration: BoxDecoration(
-        color: skema.secondaryContainer,
+        color: skema.primaryContainer,
         borderRadius: BorderRadius.circular(AppTheme.radiusKartu),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.forum_outlined,
-            size: 20,
-            color: skema.onSecondaryContainer,
-          ),
+          Icon(Icons.forum_outlined, size: 20, color: skema.onPrimaryContainer),
           const SizedBox(width: AppTheme.spasiKecil),
           Expanded(
             child: Text(
               'Layanan ini tidak punya harga tetap. Kamu menulis kebutuhan, '
               'admin membacanya, lalu mengirim penawaran harga. Kamu bayar '
               'hanya kalau penawarannya kamu setujui.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: skema.onSecondaryContainer,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: skema.onPrimaryContainer),
             ),
           ),
         ],

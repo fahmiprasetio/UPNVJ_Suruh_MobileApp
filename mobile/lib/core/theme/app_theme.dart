@@ -134,9 +134,7 @@ class AppTheme {
       // gelap memakai hutan dalam, dan keduanya menjaga jarak dua tingkat
       // antara kartu dan latarnya supaya kartu benar-benar berdiri.
       surface: gelap ? const Color(0xFF13211A) : const Color(0xFFF5F8F4),
-      surfaceContainerLowest: gelap
-          ? const Color(0xFF0E1813)
-          : Colors.white,
+      surfaceContainerLowest: gelap ? const Color(0xFF0E1813) : Colors.white,
       surfaceContainerLow: gelap
           ? const Color(0xFF182820)
           : const Color(0xFFF0F5EE),
@@ -155,9 +153,7 @@ class AppTheme {
           ? const Color(0xFFB2C8BE)
           : const Color(0xFF4A5A50),
       outline: gelap ? const Color(0xFF5E8271) : const Color(0xFF6F8577),
-      outlineVariant: gelap
-          ? const Color(0xFF395648)
-          : const Color(0xFFD3DFD0),
+      outlineVariant: gelap ? const Color(0xFF395648) : const Color(0xFFD3DFD0),
     );
 
     /// Kartu berdiri di atas latar, bukan menyatu dengannya.
@@ -229,6 +225,30 @@ class AppTheme {
             color: terpilih ? skema.onSurface : skema.onSurfaceVariant,
           );
         }),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        // Segmen terpilih hijau, bukan maroon.
+        //
+        // Bawaan Material memakai secondaryContainer untuk segmen terpilih, dan
+        // sejak maroon jadi warna sekunder, setiap pilihan yang sedang aktif di
+        // aplikasi ini berubah jadi merah muda. Itu melanggar aturan dua suara:
+        // maroon meminta ditekan, hijau menyatakan apa yang sudah benar, dan
+        // pilihan yang sedang aktif jelas hal kedua. Merah pada sesuatu yang
+        // sudah dipilih terbaca seperti peringatan yang belum diselesaikan.
+        style: ButtonStyle(
+          backgroundColor: WidgetStateProperty.resolveWith((keadaan) {
+            if (keadaan.contains(WidgetState.selected)) {
+              return skema.primaryContainer;
+            }
+            return Colors.transparent;
+          }),
+          foregroundColor: WidgetStateProperty.resolveWith((keadaan) {
+            if (keadaan.contains(WidgetState.selected)) {
+              return skema.onPrimaryContainer;
+            }
+            return skema.onSurfaceVariant;
+          }),
+        ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
