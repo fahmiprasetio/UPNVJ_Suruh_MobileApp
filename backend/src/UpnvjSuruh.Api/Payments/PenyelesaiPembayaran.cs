@@ -19,6 +19,12 @@ public enum HasilPenyelesaian
 
     /// <summary>Kabarnya diterima, tapi bukan pembayaran berhasil.</summary>
     Dicatat,
+
+    /// <summary>
+    /// Kabarnya menyebut pembayaran berhasil, tapi jumlahnya kurang dari yang ditagihkan.
+    /// Ordernya tidak maju, dan transaksinya ditandai supaya ada orang yang menyelesaikannya.
+    /// </summary>
+    JumlahTidakCocok,
 }
 
 /// <summary>
@@ -66,7 +72,15 @@ public class PenyelesaiPembayaran(
             pembayaran = new Payment
             {
                 OrderId = order.Id,
-                Amount = jumlah,
+                // Yang dicatat sebagai tagihan adalah harga ordernya, bukan angka yang
+                // disebut kabar ini. Mengambilnya dari kabar berarti kabar itu menentukan
+                // sendiri berapa yang seharusnya dibayar, dan pemeriksaan jumlah di bawah
+                // berubah jadi membandingkan sebuah angka dengan dirinya sendiri.
+                //
+                // Order tanpa harga hanya mungkin pada Jalur B yang belum disetujui, dan
+                // order seperti itu tidak berstatus menunggu pembayaran, jadi ia berhenti
+                // di pemeriksaan status di bawah dan tidak pernah ditandai lunas.
+                Amount = order.Price ?? jumlah,
                 GatewayReference = referensiGateway,
                 QrPayload = string.Empty,
                 ExpiresAt = DateTime.UtcNow,
@@ -86,6 +100,39 @@ public class PenyelesaiPembayaran(
         {
             await db.SaveChangesAsync(batal);
             return HasilPenyelesaian.Dicatat;
+        }
+
+        // Kabar lunas yang jumlahnya kurang tidak melunasi apa pun.
+        //
+        // Tanpa pemeriksaan ini, "berhasil" saja sudah cukup untuk memajukan order, dan
+        // berapa uang yang benar-benar masuk tidak pernah ikut diperiksa. Siapa pun yang
+        // memegang rahasia webhook, atau gateway yang salah mengirim, bisa melunasi order
+        // seharga lima puluh ribu dengan kabar seribu rupiah. Harga yang dihitung server
+        // dengan susah payah tidak menjaga apa-apa kalau di ujungnya tidak ada yang
+        // membandingkannya dengan uang yang sungguhan diterima.
+        if (jumlah < pembayaran.Amount)
+        {
+            log.LogError(
+                "Pembayaran order {OrderId} kurang: diterima {Diterima}, seharusnya {Tagihan}.",
+                order.Id, jumlah, pembayaran.Amount);
+
+            // Ditandai, bukan dibiarkan menunggu. Transaksi yang tetap berstatus menunggu
+            // akan hangus sendiri saat batas waktunya lewat, dan uang yang sudah masuk ikut
+            // hilang dari pembukuan bersamanya.
+            pembayaran.Status = PaymentStatus.JumlahTidakCocok;
+            await db.SaveChangesAsync(batal);
+            return HasilPenyelesaian.JumlahTidakCocok;
+        }
+
+        if (jumlah > pembayaran.Amount)
+        {
+            // Kelebihan bayar tidak menahan pekerjaan. Yang membayar sudah menyerahkan lebih
+            // dari yang diminta, dan menahan ordernya berarti menghukum orang yang justru
+            // tidak melakukan kesalahan. Selisihnya urusan pengembalian uang, dan itu memang
+            // pekerjaan orang, jadi yang dibutuhkan di sini cuma jejak yang terlihat.
+            log.LogWarning(
+                "Pembayaran order {OrderId} lebih: diterima {Diterima}, ditagihkan {Tagihan}.",
+                order.Id, jumlah, pembayaran.Amount);
         }
 
         if (order.Status != OrderStatus.MenungguPembayaran)

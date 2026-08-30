@@ -50,6 +50,18 @@ public class WebhookPembayaranController(
             permintaan.Jumlah,
             batal);
 
-        return hasil == HasilPenyelesaian.TidakDitemukan ? NotFound() : Ok();
+        return hasil switch
+        {
+            HasilPenyelesaian.TidakDitemukan => NotFound(),
+
+            // Jumlah yang tidak cocok tetap dijawab 200, dan itu bukan kelalaian.
+            //
+            // Gateway mengulang kiriman yang dijawab selain 2xx, jadi menjawab galat di sini
+            // berarti kabar yang sama datang terus-menerus sampai kiriman ulangnya menyerah,
+            // dan tidak satu pun pengulangan itu mengubah apa pun: jumlahnya akan tetap sama.
+            // Yang dibutuhkan keadaan ini adalah orang yang memeriksanya, bukan gateway yang
+            // mencoba lagi. Kabarnya sudah diterima dan tercatat, dan itulah yang dijawab.
+            _ => Ok(),
+        };
     }
 }

@@ -83,7 +83,16 @@ enum OfferStatus {
   };
 }
 
-enum PaymentStatus { pending, berhasil, gagal, kedaluwarsa }
+/// Status satu transaksi pembayaran.
+///
+/// Nama anggotanya wajib sama persis dengan `PaymentStatus` di backend, karena
+/// penerjemahannya cuma mencocokkan nama. Nilai yang tidak dikenal melempar, bukan
+/// jatuh diam-diam ke anggota pertama, jadi anggota yang lahir di server tapi lupa
+/// ditambahkan di sini akan membuat layar pembayaran gagal muat.
+///
+/// [jumlahTidakCocok] berarti uangnya masuk tapi bukan sebesar yang ditagihkan.
+/// Ordernya sengaja tidak maju: selisihnya harus diselesaikan orang lebih dulu.
+enum PaymentStatus { pending, berhasil, gagal, kedaluwarsa, jumlahTidakCocok }
 
 /// Siapa penulis satu pesan di dalam ruang chat sebuah order.
 ///

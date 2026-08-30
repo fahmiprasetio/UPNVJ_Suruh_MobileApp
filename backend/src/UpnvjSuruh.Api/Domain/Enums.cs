@@ -48,7 +48,21 @@ public enum PaymentStatus
     Pending,
     Berhasil,
     Gagal,
-    Kedaluwarsa
+    Kedaluwarsa,
+
+    /// <summary>
+    /// Uangnya masuk, tapi bukan sebesar yang ditagihkan.
+    ///
+    /// Bukan Gagal, karena gagal berarti tidak ada uang yang berpindah dan ordernya boleh
+    /// ditagihkan ulang begitu saja. Di sini ada uang yang sudah diterima dan harus
+    /// dipertanggungjawabkan, entah dikembalikan atau dilengkapi, dan itu keputusan orang.
+    /// Menandainya Gagal berarti uang itu hilang dari pembukuan.
+    ///
+    /// Ditambahkan di ujung, tidak disisipkan di tengah. Nilainya tersimpan sebagai angka di
+    /// basis data, jadi menyisipkan anggota baru di tengah akan mengubah arti setiap baris
+    /// yang sudah ada tanpa ada yang menyentuhnya.
+    /// </summary>
+    JumlahTidakCocok
 }
 
 public static class OrderStatusExtensions
