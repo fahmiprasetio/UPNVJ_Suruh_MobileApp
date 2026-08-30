@@ -39,14 +39,20 @@ public class AuthEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Databa
     [Fact]
     public async Task PendaftaranMandiriSelaluLahirSebagaiKlienSaja()
     {
+        // Perannya diperiksa lewat akun yang tersimpan, bukan lewat jawaban pendaftarannya.
+        // Jawaban itu sengaja tidak memuat apa-apa tentang akunnya, supaya ia sama persis
+        // untuk nomor yang sudah terdaftar maupun belum.
         var klien = Klien();
         var noHp = NomorBaru();
 
         var jawaban = await klien.PostAsJsonAsync("/api/auth/daftar", new { Nama = "Sari Utami", NoHp = noHp });
 
-        Assert.Equal(HttpStatusCode.Created, jawaban.StatusCode);
-        var user = await jawaban.Content.ReadFromJsonAsync<UserResponse>();
-        Assert.Equal(["Klien"], user!.Roles);
+        Assert.Equal(HttpStatusCode.Accepted, jawaban.StatusCode);
+
+        using var lingkup = pabrik.Services.CreateScope();
+        var db = lingkup.ServiceProvider.GetRequiredService<AppDbContext>();
+        var tersimpan = await db.Users.SingleAsync(u => u.Phone == noHp);
+        Assert.Equal([UserRole.Klien], tersimpan.Roles);
     }
 
     [Fact]
@@ -70,11 +76,8 @@ public class AuthEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Databa
 
         var jawaban = await klien.PostAsync("/api/auth/daftar", badan);
 
-        Assert.Equal(HttpStatusCode.Created, jawaban.StatusCode);
-        var user = await jawaban.Content.ReadFromJsonAsync<UserResponse>();
-        Assert.Equal(["Klien"], user!.Roles);
+        Assert.Equal(HttpStatusCode.Accepted, jawaban.StatusCode);
 
-        // Dan bukan cuma jawabannya yang bersih, barisnya di basis data juga.
         using var lingkup = pabrik.Services.CreateScope();
         var db = lingkup.ServiceProvider.GetRequiredService<AppDbContext>();
         var tersimpan = await db.Users.SingleAsync(u => u.Phone == noHp);
@@ -94,14 +97,53 @@ public class AuthEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Databa
     }
 
     [Fact]
-    public async Task NomorYangSudahTerdaftarDitolak()
+    public async Task DaftarMenjawabSamaUntukNomorYangAdaMaupunTidak()
+    {
+        // Dulu yang kedua dijawab 409 "Nomor sudah terdaftar", dan itu membuka kembali
+        // persis kebocoran yang ditutup di minta-kode: cukup coba daftar dengan nomor
+        // seseorang, dan jawabannya menyebutkan apakah ia pelanggan di sini.
+        var klien = Klien();
+        var terdaftar = await DaftarAsync(klien, NomorBaru());
+        var asing = NomorBaru();
+
+        var lagi = await klien.PostAsJsonAsync("/api/auth/daftar", new { Nama = "Kembar", NoHp = terdaftar });
+        var baru = await klien.PostAsJsonAsync("/api/auth/daftar", new { Nama = "Sari", NoHp = asing });
+
+        Assert.Equal(HttpStatusCode.Accepted, lagi.StatusCode);
+        Assert.Equal(lagi.StatusCode, baru.StatusCode);
+        Assert.Equal(
+            await lagi.Content.ReadAsStringAsync(),
+            await baru.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task MendaftarUlangTidakMengubahAkunYangSudahAda()
+    {
+        // Nama pemilik akun adalah hal terakhir yang boleh disentuh orang yang cuma menebak
+        // nomor. Kalau pendaftaran ulang menimpanya, endpoint ini berubah dari bocor jadi
+        // merusak.
+        var klien = Klien();
+        var noHp = await DaftarAsync(klien, NomorBaru(), nama: "Dina Rahmawati");
+
+        await klien.PostAsJsonAsync("/api/auth/daftar", new { Nama = "Penyusup", NoHp = noHp });
+
+        using var lingkup = pabrik.Services.CreateScope();
+        var db = lingkup.ServiceProvider.GetRequiredService<AppDbContext>();
+        var tersimpan = await db.Users.SingleAsync(u => u.Phone == noHp);
+        Assert.Equal("Dina Rahmawati", tersimpan.Name);
+    }
+
+    [Fact]
+    public async Task MendaftarUlangTidakMelahirkanAkunKedua()
     {
         var klien = Klien();
         var noHp = await DaftarAsync(klien, NomorBaru());
 
-        var lagi = await klien.PostAsJsonAsync("/api/auth/daftar", new { Nama = "Kembar", NoHp = noHp });
+        await klien.PostAsJsonAsync("/api/auth/daftar", new { Nama = "Kembar", NoHp = noHp });
 
-        Assert.Equal(HttpStatusCode.Conflict, lagi.StatusCode);
+        using var lingkup = pabrik.Services.CreateScope();
+        var db = lingkup.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal(1, await db.Users.CountAsync(u => u.Phone == noHp));
     }
 
     [Theory]

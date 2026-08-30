@@ -231,7 +231,13 @@ void main() {
       expect(find.text('Nama belum diisi'), findsOneWidget);
     });
 
-    testWidgets('nomor yang sudah terdaftar memunculkan galat', (tester) async {
+    testWidgets('nomor yang sudah terdaftar tidak dibedakan di layar', (
+      tester,
+    ) async {
+      // Dulu layar ini memunculkan "sudah terdaftar", dan kalimat itu adalah cara
+      // memeriksa siapa saja yang punya akun: ketik nomor seseorang, dan layarnya
+      // menyebutkan jawabannya. Sekarang jalannya sama persis dengan nomor baru,
+      // yaitu lanjut ke langkah kode, jadi tidak ada yang bisa disimpulkan dari sini.
       final repo = await bukaBelumMasuk(tester);
 
       await tester.tap(find.text('Belum punya akun? Daftar'));
@@ -240,8 +246,31 @@ void main() {
       await isi(tester, 'Nomor HP', SeedData.klien.noHp);
       await tekan(tester, 'Daftar');
 
-      expect(find.textContaining('sudah terdaftar'), findsOneWidget);
+      expect(find.textContaining('sudah terdaftar'), findsNothing);
+      expect(find.widgetWithText(TextFormField, 'Kode'), findsOneWidget);
+      // Sampai di sini ia belum masuk: kodenya masih harus dibuktikan, dan kode itu
+      // dikirim ke nomornya, bukan ke orang yang mengetiknya.
       expect(repo.userAktif, isNull);
+    });
+
+    testWidgets('yang nomornya sudah terdaftar masuk ke akunnya sendiri', (
+      tester,
+    ) async {
+      // Sisi lain dari aturan yang sama, dan yang membuatnya tidak sekadar menutup
+      // mulut layar: orang yang lupa bahwa ia sudah punya akun tetap sampai ke
+      // akunnya, dengan nama lamanya, bukan nama yang baru saja ia ketik.
+      final repo = await bukaBelumMasuk(tester);
+
+      await tester.tap(find.text('Belum punya akun? Daftar'));
+      await tester.pumpAndSettle();
+      await isi(tester, 'Nama', 'Kembar');
+      await isi(tester, 'Nomor HP', SeedData.klien.noHp);
+      await tekan(tester, 'Daftar');
+
+      await isi(tester, 'Kode', repo.kodeUntuk(SeedData.klien.noHp)!);
+      await tekan(tester, 'Masuk');
+
+      expect(repo.userAktif?.nama, SeedData.klien.nama);
     });
 
     testWidgets('sudah punya akun mengembalikan ke langkah nomor', (tester) async {

@@ -23,26 +23,40 @@ public class AuthController(
     /// <summary>
     /// Mendaftarkan akun baru. Selalu lahir sebagai klien, lihat <see cref="DaftarRequest"/>.
     /// </summary>
+    /// <remarks>
+    /// Selalu menjawab 202 tanpa badan, terdaftar maupun tidak, persis seperti
+    /// <see cref="MintaKode"/>.
+    ///
+    /// Dulu endpoint ini menjawab 409 "Nomor sudah terdaftar", dan itu membuka kembali persis
+    /// kebocoran yang ditutup dengan susah payah di sebelahnya. Minta-kode sengaja menjawab
+    /// sama untuk semua nomor supaya ia tidak bisa dipakai memeriksa siapa saja yang punya
+    /// akun; kalau endpoint di sebelahnya menjawab berbeda untuk pertanyaan yang sama, pintu
+    /// itu tidak pernah benar-benar tertutup. Cukup coba daftar dengan nomor seseorang, dan
+    /// jawabannya menyebutkan apakah ia pelanggan di sini.
+    ///
+    /// Karena jawabannya harus sama, ia tidak boleh memuat apa pun tentang akunnya. Bukan
+    /// data akun yang baru dibuat, dan sudah pasti bukan data akun yang sudah ada: nama
+    /// pemiliknya adalah hal terakhir yang boleh diserahkan kepada orang yang cuma menebak
+    /// nomor. Yang sudah punya akun tidak diubah apa-apa, termasuk namanya.
+    ///
+    /// Bagi pendaftar yang sah, tidak ada yang hilang. Langkah berikutnya tetap sama:
+    /// minta kode, lalu masuk. Yang nomornya ternyata sudah terdaftar akan menerima kode ke
+    /// nomor itu juga, dan masuk ke akun yang memang miliknya.
+    ///
+    /// Tidak ada kode yang dikirim dari sini. Yang mengirim kode tetap satu endpoint saja,
+    /// dan batas per nomor di sana yang menjaganya dari dipakai membanjiri ponsel orang.
+    /// </remarks>
     [EnableRateLimiting(BatasLaju.KebijakanTamu)]
     [HttpPost("daftar")]
-    [ProducesResponseType(StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<UserResponse>> Daftar(DaftarRequest permintaan, CancellationToken batal)
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    public async Task<IActionResult> Daftar(DaftarRequest permintaan, CancellationToken batal)
     {
         var noHp = permintaan.NoHp.Trim();
 
-        // Pemeriksaan ini demi pesan galat yang enak dibaca. Yang benar-benar menjaga adalah
-        // index unik di kolom Phone, karena dua pendaftaran yang tiba bersamaan sama-sama
-        // lolos pemeriksaan yang cuma membaca.
-        if (await db.Users.AnyAsync(u => u.Phone == noHp, batal))
-        {
-            return Conflict(new ProblemDetails
-            {
-                Title = "Nomor sudah terdaftar",
-                Detail = "Nomor ini sudah punya akun. Masuk saja, tidak perlu mendaftar lagi.",
-                Status = StatusCodes.Status409Conflict,
-            });
-        }
+        // Nomor yang sudah punya akun berhenti di sini tanpa jejak di jawaban. Yang
+        // benar-benar menjaga tetap index unik di kolom Phone, karena dua pendaftaran yang
+        // tiba bersamaan sama-sama lolos pemeriksaan yang cuma membaca.
+        if (await db.Users.AnyAsync(u => u.Phone == noHp, batal)) return Accepted();
 
         var user = new User
         {
@@ -62,15 +76,11 @@ public class AuthController(
         {
             // Kalah cepat dengan pendaftaran lain untuk nomor yang sama. Inilah sebabnya
             // pemeriksaan di atas saja tidak cukup: keduanya membaca sebelum ada yang menulis,
-            // jadi keduanya sama-sama lolos.
-            return Conflict(new ProblemDetails
-            {
-                Title = "Nomor sudah terdaftar",
-                Status = StatusCodes.Status409Conflict,
-            });
+            // jadi keduanya sama-sama lolos. Berakhir sama dengan nomor yang memang sudah
+            // terdaftar, karena dari luar keadaannya memang sama.
         }
 
-        return CreatedAtAction(nameof(Daftar), UserResponse.Dari(user));
+        return Accepted();
     }
 
     /// <summary>

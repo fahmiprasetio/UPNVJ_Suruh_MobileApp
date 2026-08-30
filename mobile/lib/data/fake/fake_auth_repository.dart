@@ -49,7 +49,7 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<AppUser> daftar({required String nama, required String noHp}) async {
+  Future<void> daftar({required String nama, required String noHp}) async {
     await Future<void>.delayed(_jedaJaringan);
 
     final bersihNama = nama.trim();
@@ -60,21 +60,24 @@ class FakeAuthRepository implements AuthRepository {
     if (bersihNoHp.isEmpty) {
       throw StateError('Nomor HP tidak boleh kosong');
     }
-    if (_users.any((u) => u.noHp == bersihNoHp)) {
-      throw StateError('Nomor $bersihNoHp sudah terdaftar');
-    }
 
-    final user = AppUser(
-      id: 'u-${DateTime.now().microsecondsSinceEpoch}',
-      nama: bersihNama,
-      noHp: bersihNoHp,
-      // Ditulis di sini, tidak pernah diterima dari pemanggil. Lihat aturan
-      // pemberian peran di kontrak: runner adalah pegawai mitra, dan tidak ada yang
-      // boleh mengangkat dirinya sendiri jadi pegawai.
-      roles: const {UserRole.klien},
+    // Nomor yang sudah punya akun berhenti di sini tanpa jejak, sama seperti di
+    // server: akun lamanya tidak diubah, akun kedua tidak dibuat, dan pemanggil
+    // tidak diberi tahu bedanya. Tiruan yang melempar di sini akan membuat layar
+    // dibangun dengan asumsi yang tidak berlaku di server.
+    if (_users.any((u) => u.noHp == bersihNoHp)) return;
+
+    _users.add(
+      AppUser(
+        id: 'u-${DateTime.now().microsecondsSinceEpoch}',
+        nama: bersihNama,
+        noHp: bersihNoHp,
+        // Ditulis di sini, tidak pernah diterima dari pemanggil. Lihat aturan
+        // pemberian peran di kontrak: runner adalah pegawai mitra, dan tidak ada
+        // yang boleh mengangkat dirinya sendiri jadi pegawai.
+        roles: const {UserRole.klien},
+      ),
     );
-    _users.add(user);
-    return user;
   }
 
   @override

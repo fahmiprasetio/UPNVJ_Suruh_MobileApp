@@ -21,9 +21,13 @@ void main() {
     'roles': ['Klien'],
   };
 
+  /// [badanMentah] dipakai untuk jawaban yang memang bukan JSON objek, yaitu 202
+  /// tanpa badan dari endpoint daftar. Menirunya sebagai `{}` akan menguji hal yang
+  /// berbeda dari yang benar-benar dikirim server.
   ({ApiAuthRepository repo, SesiToken sesi, List<http.Request> dikirim}) buat(
     Map<String, Object?> Function(http.Request permintaan) jawab, {
     int status = 200,
+    String? badanMentah,
   }) {
     final dikirim = <http.Request>[];
     final sesi = SesiToken();
@@ -34,7 +38,7 @@ void main() {
       klien: MockClient((permintaan) async {
         dikirim.add(permintaan);
         return http.Response(
-          jsonEncode(jawab(permintaan)),
+          badanMentah ?? jsonEncode(jawab(permintaan)),
           status,
           headers: {'content-type': 'application/json; charset=utf-8'},
         );
@@ -47,25 +51,37 @@ void main() {
   }
 
   group('daftar', () {
-    test('mengirim nama dan nomor, dan membaca akun dari jawaban', () async {
-      final uji = buat((_) => jawabanUser, status: 201);
+    test('mengirim nama dan nomor yang sudah dirapikan', () async {
+      // Server menjawab 202 tanpa badan, sama untuk nomor yang terdaftar maupun
+      // belum, jadi tidak ada akun yang bisa dibaca dari jawabannya. Yang tersisa
+      // untuk diperiksa di sini cuma apa yang dikirim.
+      final uji = buat((_) => jawabanUser, status: 202, badanMentah: '');
 
-      final user = await uji.repo.daftar(nama: '  Dina Rahmawati ', noHp: ' 081234567890 ');
+      await uji.repo.daftar(nama: '  Dina Rahmawati ', noHp: ' 081234567890 ');
 
       expect(uji.dikirim.single.url.path, '/api/auth/daftar');
       expect(jsonDecode(uji.dikirim.single.body), {
         'nama': 'Dina Rahmawati',
         'noHp': '081234567890',
       });
-      expect(user.nama, 'Dina Rahmawati');
-      expect(user.roles, {UserRole.klien});
+    });
+
+    test('jawaban tanpa badan bukan galat', () async {
+      // Pemanggil yang mengira pendaftaran gagal karena jawabannya kosong akan
+      // menahan orang di langkah daftar padahal akunnya sudah dibuat.
+      final uji = buat((_) => jawabanUser, status: 202, badanMentah: '');
+
+      await expectLater(
+        uji.repo.daftar(nama: 'Dina', noHp: '081234567890'),
+        completes,
+      );
     });
 
     test('tidak pernah mengirim peran apa pun', () async {
       // Server memang mengabaikannya, tapi kode yang meminta sesuatu yang tidak
       // boleh diberikan akan dibaca orang berikutnya sebagai sesuatu yang
       // seharusnya bisa.
-      final uji = buat((_) => jawabanUser, status: 201);
+      final uji = buat((_) => jawabanUser, status: 202, badanMentah: '');
 
       await uji.repo.daftar(nama: 'Dina', noHp: '081234567890');
 

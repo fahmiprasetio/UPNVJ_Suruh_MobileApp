@@ -67,8 +67,10 @@ class ApiAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<AppUser> daftar({required String nama, required String noHp}) async {
-    final jawaban = await _klien.post(
+  Future<void> daftar({required String nama, required String noHp}) async {
+    // Jawabannya sengaja tidak dibaca: server menjawab 202 tanpa badan, sama untuk
+    // nomor yang terdaftar maupun belum. Lihat alasannya di kontrak.
+    await _klien.post(
       '/api/auth/daftar',
       // Perhatikan tidak ada peran di sini. Menambahkannya tidak akan berpengaruh,
       // karena DTO di server memang tidak punya tempatnya, tapi mengirimnya tetap
@@ -76,8 +78,6 @@ class ApiAuthRepository implements AuthRepository {
       // orang berikutnya sebagai sesuatu yang seharusnya bisa.
       badan: {'nama': nama.trim(), 'noHp': noHp.trim()},
     );
-
-    return _bacaUser(jawaban);
   }
 
   @override

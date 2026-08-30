@@ -40,7 +40,20 @@ abstract interface class AuthRepository {
   ///
   /// Tidak sekalian memasukkan penggunanya, karena masih ada verifikasi di antara
   /// keduanya. Yang memutuskan seseorang sudah masuk tetap [masuk].
-  Future<AppUser> daftar({required String nama, required String noHp});
+  ///
+  /// TIDAK MENGEMBALIKAN APA-APA, dan itu bukan penyederhanaan. Berakhir sama saja
+  /// untuk nomor yang terdaftar maupun tidak, sama seperti [mintaKode]: hasil yang
+  /// berbeda mengubah langkah ini jadi alat memeriksa siapa saja yang punya akun,
+  /// cukup dengan mencoba nomor satu per satu. Jawaban yang harus sama untuk kedua
+  /// keadaan karena itu tidak boleh memuat apa pun tentang akunnya, dan sudah pasti
+  /// tidak boleh memuat data akun yang sudah ada: nama pemiliknya adalah hal
+  /// terakhir yang boleh diserahkan kepada orang yang cuma menebak nomor.
+  ///
+  /// Akibatnya layar tidak boleh menyimpulkan apa pun dari sini, termasuk bahwa
+  /// pendaftarannya berhasil. Yang nomornya ternyata sudah terdaftar tidak dibuatkan
+  /// akun kedua dan tidak diubah apa-apa; ia menerima kode ke nomor itu juga, lalu
+  /// masuk ke akun yang memang miliknya.
+  Future<void> daftar({required String nama, required String noHp});
 
   /// Meminta kode sekali pakai dikirim ke nomor tersebut.
   ///
