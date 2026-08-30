@@ -10,6 +10,8 @@ import '../../dev/pengalih_akun.dart';
 import '../../peran/tombol_ganti_mode.dart';
 import 'widgets/kartu_order_runner.dart';
 import 'widgets/lembar_selesaikan_order.dart';
+import '../../../providers/ukuran_daftar.dart';
+import '../../widgets/tombol_muat_lagi.dart';
 
 /// Order yang dipegang runner, yang sedang dikerjakan dan yang sudah kelar.
 ///
@@ -30,13 +32,18 @@ class OrderSayaRunnerScreen extends ConsumerWidget {
       ),
       body: SafeArea(
         child: orders.when(
+          // Lihat alasannya di layar riwayat klien: jendela yang diperbesar menghitung
+          // ulang provider yang sama, dan daftar yang sudah tampil tidak boleh berkedip
+          // jadi pemuat karenanya.
+          skipLoadingOnReload: true,
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (galat, _) => _PesanKosong(
             ikon: Icons.error_outline,
             judul: 'Order gagal dimuat',
             keterangan: '$galat',
           ),
-          data: (semua) {
+          data: (halaman) {
+            final semua = halaman.isi;
             if (semua.isEmpty) {
               return const _PesanKosong(
                 ikon: Icons.assignment_outlined,
@@ -62,6 +69,10 @@ class OrderSayaRunnerScreen extends ConsumerWidget {
                   ),
                 if (selesai.isNotEmpty)
                   ..._bagian(context, 'Sudah selesai', selesai),
+                TombolMuatLagi(
+                  halaman: halaman,
+                  ukuranProvider: ukuranOrderRunnerProvider,
+                ),
               ],
             );
           },

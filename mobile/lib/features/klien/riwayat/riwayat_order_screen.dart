@@ -6,6 +6,8 @@ import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/models/order.dart';
 import '../../../providers/order_providers.dart';
+import '../../../providers/ukuran_daftar.dart';
+import '../../widgets/tombol_muat_lagi.dart';
 import '../widgets/kartu_order_ringkas.dart';
 
 /// Daftar order milik klien.
@@ -22,13 +24,18 @@ class RiwayatOrderScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Order Saya')),
       body: orders.when(
+        // Jendela yang baru diperbesar membuat provider ini dihitung ulang. Tanpa ini
+        // daftar yang sudah tampil berkedip jadi pemuat setiap kali "muat lagi"
+        // ditekan, yaitu tepat pada saat orang sedang menatapnya.
+        skipLoadingOnReload: true,
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (galat, _) => _PesanKosong(
           ikon: Icons.error_outline,
           judul: 'Order gagal dimuat',
           keterangan: '$galat',
         ),
-        data: (semua) {
+        data: (halaman) {
+          final semua = halaman.isi;
           if (semua.isEmpty) {
             return const _PesanKosong(
               ikon: Icons.receipt_long_outlined,
@@ -45,7 +52,12 @@ class RiwayatOrderScreen extends ConsumerWidget {
             children: [
               if (berjalan.isNotEmpty)
                 ..._bagian(context, 'Sedang berjalan', berjalan),
-              if (selesai.isNotEmpty) ..._bagian(context, 'Sudah selesai', selesai),
+              if (selesai.isNotEmpty)
+                ..._bagian(context, 'Sudah selesai', selesai),
+              TombolMuatLagi(
+                halaman: halaman,
+                ukuranProvider: ukuranOrderKlienProvider,
+              ),
             ],
           );
         },
@@ -53,11 +65,7 @@ class RiwayatOrderScreen extends ConsumerWidget {
     );
   }
 
-  List<Widget> _bagian(
-    BuildContext context,
-    String judul,
-    List<Order> orders,
-  ) {
+  List<Widget> _bagian(BuildContext context, String judul, List<Order> orders) {
     return [
       Padding(
         padding: const EdgeInsets.only(bottom: AppTheme.spasiKecil),

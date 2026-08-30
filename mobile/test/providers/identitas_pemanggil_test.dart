@@ -65,9 +65,9 @@ void main() {
     addTearDown(auth.dispose);
     final repo = wadah(auth).read(orderRepositoryProvider);
 
-    final punyaKlien = await repo.watchOrderKlien().first;
+    final punyaKlien = (await repo.watchOrderKlien(ukuran: 20).first).isi;
     auth.pakaiAkunUji(SeedData.klienRunner);
-    final punyaOrangLain = await repo.watchOrderKlien().first;
+    final punyaOrangLain = (await repo.watchOrderKlien(ukuran: 20).first).isi;
 
     expect(punyaKlien, isNotEmpty);
     expect(

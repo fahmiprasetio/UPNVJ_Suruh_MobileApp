@@ -1,4 +1,5 @@
 import '../enums.dart';
+import '../models/halaman.dart';
 import '../models/order.dart';
 
 /// Kontrak akses data order.
@@ -34,17 +35,17 @@ import '../models/order.dart';
 /// gampang dites", membuka lagi persis lubang yang ditutup.
 abstract interface class OrderRepository {
   /// Order milik klien yang sedang masuk, terbaru di atas.
-  Stream<List<Order>> watchOrderKlien();
+  Stream<Halaman<Order>> watchOrderKlien({required int ukuran});
 
   /// Order yang sedang disiarkan, dilihat dari sudut pandang runner yang masuk.
   ///
   /// Order yang ia pesan sendiri dan yang sudah ia pegang tidak pernah ikut. Yang
   /// menyaring adalah sisi data, bukan tampilan: daftar yang cuma dipangkas layar
   /// tetap terkirim utuh ke perangkatnya, dan isinya nama serta alamat orang.
-  Stream<List<Order>> watchOrderTersiar();
+  Stream<Halaman<Order>> watchOrderTersiar({required int ukuran});
 
   /// Order yang sedang dan pernah dipegang runner yang masuk.
-  Stream<List<Order>> watchOrderRunner();
+  Stream<Halaman<Order>> watchOrderRunner({required int ukuran});
 
   /// Satu order, atau `null` kalau tidak ada.
   ///

@@ -110,25 +110,22 @@ public class OrdersController(
     }
 
     /// <summary>Order milik klien yang sedang masuk, terbaru di atas.</summary>
+    /// <remarks>
+    /// Berhalaman, seperti seluruh daftar order di API ini. Riwayat pemesanan cuma bertambah,
+    /// tidak pernah menyusut, jadi endpoint tanpa batas di sini berarti pelanggan lama
+    /// mengunduh seluruh riwayatnya setiap kali membuka layar riwayat, dan aplikasi
+    /// mengambilnya ulang setiap lima belas detik selama layar itu terbuka.
+    /// </remarks>
     [HttpGet("saya")]
     [Authorize(Roles = Peran.Klien)]
-    public async Task<ActionResult<IReadOnlyList<OrderResponse>>> Saya(CancellationToken batal)
+    public async Task<ActionResult<HalamanResponse<OrderResponse>>> Saya(
+        [FromQuery] PermintaanHalaman permintaan,
+        CancellationToken batal)
     {
         var klienId = User.Id();
 
-        var orders = await db.Orders
-            .Include(o => o.RunnerAssignments)
-            .Include(o => o.Offers)
-            .Include(o => o.Client)
-            .Where(o => o.ClientId == klienId)
-            .OrderByDescending(o => o.CreatedAt)
-            .ToListAsync(batal);
-
-        var jumlahPesan = await db.JumlahPesanAsync([.. orders.Select(o => o.Id)], batal);
-        return Ok(orders
-            .Select(o => OrderResponse.Dari(
-                o, o.Client?.Name ?? "Klien", jumlahPesan.GetValueOrDefault(o.Id)))
-            .ToList());
+        return Ok(await HalamanAsync(
+            db.Orders.Where(o => o.ClientId == klienId), permintaan, batal));
     }
 
     /// <summary>
@@ -141,26 +138,20 @@ public class OrdersController(
     /// </remarks>
     [HttpGet("tersiar")]
     [Authorize(Roles = Peran.Runner)]
-    public async Task<ActionResult<IReadOnlyList<OrderResponse>>> Tersiar(CancellationToken batal)
+    public async Task<ActionResult<HalamanResponse<OrderResponse>>> Tersiar(
+        [FromQuery] PermintaanHalaman permintaan,
+        CancellationToken batal)
     {
         var runnerId = User.Id();
 
-        var orders = await db.Orders
-            .Include(o => o.RunnerAssignments)
-            .Include(o => o.Offers)
-            .Include(o => o.Client)
-            .Where(o => o.Status == OrderStatus.MencariRunner)
-            .Where(o => o.ClientId != runnerId)
-            .Where(o => !o.RunnerAssignments.Any(a => a.RunnerId == runnerId))
-            .Where(o => o.RunnerAssignments.Count < o.RequiredRunnerCount)
-            .OrderByDescending(o => o.CreatedAt)
-            .ToListAsync(batal);
-
-        var jumlahPesan = await db.JumlahPesanAsync([.. orders.Select(o => o.Id)], batal);
-        return Ok(orders
-            .Select(o => OrderResponse.Dari(
-                o, o.Client?.Name ?? "Klien", jumlahPesan.GetValueOrDefault(o.Id)))
-            .ToList());
+        return Ok(await HalamanAsync(
+            db.Orders
+                .Where(o => o.Status == OrderStatus.MencariRunner)
+                .Where(o => o.ClientId != runnerId)
+                .Where(o => !o.RunnerAssignments.Any(a => a.RunnerId == runnerId))
+                .Where(o => o.RunnerAssignments.Count < o.RequiredRunnerCount),
+            permintaan,
+            batal));
     }
 
     /// <summary>Order yang sedang dipegang runner yang masuk, terbaru di atas.</summary>
@@ -171,23 +162,59 @@ public class OrdersController(
     /// </remarks>
     [HttpGet("runner-saya")]
     [Authorize(Roles = Peran.Runner)]
-    public async Task<ActionResult<IReadOnlyList<OrderResponse>>> RunnerSaya(CancellationToken batal)
+    public async Task<ActionResult<HalamanResponse<OrderResponse>>> RunnerSaya(
+        [FromQuery] PermintaanHalaman permintaan,
+        CancellationToken batal)
     {
         var runnerId = User.Id();
 
-        var orders = await db.Orders
+        return Ok(await HalamanAsync(
+            db.Orders.Where(o => o.RunnerAssignments.Any(a => a.RunnerId == runnerId)),
+            permintaan,
+            batal));
+    }
+
+    /// <summary>
+    /// Menghitung, memotong, dan memetakan satu halaman order.
+    /// </summary>
+    /// <remarks>
+    /// Ditulis sekali karena tiga daftar di atas cuma berbeda pada penyaringnya. Yang gampang
+    /// menyimpang kalau disalin bukan penyaringnya melainkan hal-hal di sekitarnya: urutan,
+    /// Include yang harus lengkap supaya OrderResponse tidak kehilangan penawaran, dan
+    /// penghitungan pesan yang harus sekali untuk semua order alih-alih satu kueri per order.
+    ///
+    /// Totalnya dihitung sebelum dipotong, jadi angkanya menyebut seluruh yang cocok. Itulah
+    /// satu-satunya angka yang berguna bagi yang membacanya, karena dari situ ia tahu masih
+    /// ada sisa atau tidak.
+    /// </remarks>
+    private async Task<HalamanResponse<OrderResponse>> HalamanAsync(
+        IQueryable<Order> kueri,
+        PermintaanHalaman permintaan,
+        CancellationToken batal)
+    {
+        var total = await kueri.CountAsync(batal);
+
+        var orders = await kueri
             .Include(o => o.RunnerAssignments)
             .Include(o => o.Offers)
             .Include(o => o.Client)
-            .Where(o => o.RunnerAssignments.Any(a => a.RunnerId == runnerId))
             .OrderByDescending(o => o.CreatedAt)
+            // Pemecah seri. Dua order yang dibuat pada milidetik yang sama boleh muncul
+            // dalam urutan mana pun menurut Postgres, dan urutan yang tidak pasti membuat
+            // satu baris terlewat di halaman pertama lalu muncul lagi di halaman kedua.
+            .ThenByDescending(o => o.Id)
+            .Skip(permintaan.Dilewati)
+            .Take(permintaan.Ukuran)
             .ToListAsync(batal);
 
         var jumlahPesan = await db.JumlahPesanAsync([.. orders.Select(o => o.Id)], batal);
-        return Ok(orders
-            .Select(o => OrderResponse.Dari(
-                o, o.Client?.Name ?? "Klien", jumlahPesan.GetValueOrDefault(o.Id)))
-            .ToList());
+
+        return new HalamanResponse<OrderResponse>(
+            [.. orders.Select(o => OrderResponse.Dari(
+                o, o.Client?.Name ?? "Klien", jumlahPesan.GetValueOrDefault(o.Id)))],
+            total,
+            permintaan.Halaman,
+            permintaan.Ukuran);
     }
 
     /// <summary>

@@ -73,6 +73,17 @@ void main() {
     return (repo: repo, dikirim: dikirim);
   }
 
+  /// Membungkus baris jadi jawaban berhalaman, sepadan dengan HalamanResponse di server.
+  Map<String, Object?> halamanJson(
+    List<Map<String, Object?>> isi, {
+    int? total,
+  }) => {
+    'isi': isi,
+    'total': total ?? isi.length,
+    'halaman': 1,
+    'ukuranHalaman': isi.length,
+  };
+
   Object? jawabanUmum(http.Request p) {
     // GET mengembalikan daftar pesan, POST mengembalikan satu pesan yang baru
     // dibuat. Membedakannya penting: kalau tidak, tesnya lulus terhadap bentuk
@@ -85,7 +96,10 @@ void main() {
     if (p.url.path.endsWith('/saya') ||
         p.url.path.endsWith('/tersiar') ||
         p.url.path.endsWith('/runner-saya')) {
-      return [orderJson];
+      // Berhalaman, bukan larik telanjang. Bentuk inilah yang benar-benar dikirim
+      // server sejak daftar order dibatasi, dan tiruan yang masih mengirim larik
+      // akan membuat tes lulus terhadap bentuk yang tidak pernah ada.
+      return halamanJson([orderJson]);
     }
     return orderJson;
   }
@@ -124,12 +138,12 @@ void main() {
     });
 
     test('daftar order tidak membawa percakapan, tapi jumlahnya tetap benar', () async {
-      final uji = buat((p) => [
+      final uji = buat((p) => halamanJson([
         {...orderJson, 'jumlahPesan': 3},
-      ]);
-      final daftar = await uji.repo.watchOrderKlien().first;
-      expect(daftar.single.messages, isEmpty);
-      expect(daftar.single.jumlahPesan, 3);
+      ]));
+      final halaman = await uji.repo.watchOrderKlien(ukuran: 20).first;
+      expect(halaman.isi.single.messages, isEmpty);
+      expect(halaman.isi.single.jumlahPesan, 3);
     });
 
     test('penawaran ikut terbaca', () async {
@@ -254,7 +268,9 @@ void main() {
         return jawabanUmum(p);
       });
       final terlihat = <int>[];
-      final langganan = uji.repo.watchOrderTersiar().listen((d) => terlihat.add(d.length));
+      final langganan = uji.repo
+          .watchOrderTersiar(ukuran: 20)
+          .listen((d) => terlihat.add(d.isi.length));
       await Future<void>.delayed(Duration.zero);
       final sebelum = jumlahAmbil;
       await uji.repo.terimaOrder(orderId: 'x');
@@ -271,7 +287,7 @@ void main() {
         if (p.method == 'GET') jumlahAmbil++;
         return jawabanUmum(p);
       }, jedaSegarkan: const Duration(milliseconds: 20));
-      final langganan = uji.repo.watchOrderKlien().listen((_) {});
+      final langganan = uji.repo.watchOrderKlien(ukuran: 20).listen((_) {});
       await Future<void>.delayed(const Duration(milliseconds: 70));
       await langganan.cancel();
       // Permintaan yang sudah terlanjur berangkat sebelum penutupan baru terhitung
@@ -295,7 +311,7 @@ void main() {
         return jawabanUmum(p);
       });
 
-      final langganan = uji.repo.watchOrderKlien().listen((_) {});
+      final langganan = uji.repo.watchOrderKlien(ukuran: 20).listen((_) {});
       // Menabuh penyegaran selagi pengambilan pertama masih berjalan, lalu menutup
       // langganannya sebelum susulan itu sempat berangkat.
       await uji.repo.terimaOrder(orderId: 'x');

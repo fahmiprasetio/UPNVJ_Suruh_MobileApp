@@ -8,6 +8,8 @@ import '../../../providers/runner_providers.dart';
 import '../../dev/pengalih_akun.dart';
 import '../../peran/tombol_ganti_mode.dart';
 import 'widgets/kartu_order_siaran.dart';
+import '../../../providers/ukuran_daftar.dart';
+import '../../widgets/tombol_muat_lagi.dart';
 
 /// Layar utama runner: order yang sudah dibayar dan sedang mencari runner.
 ///
@@ -39,13 +41,15 @@ class _OrderMasukScreenState extends ConsumerState<OrderMasukScreen> {
       ),
       body: SafeArea(
         child: tersiar.when(
+          skipLoadingOnReload: true,
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (galat, _) => _PesanKosong(
             ikon: Icons.error_outline,
             judul: 'Order gagal dimuat',
             keterangan: '$galat',
           ),
-          data: (orders) {
+          data: (halaman) {
+            final orders = halaman.isi;
             if (orders.isEmpty) {
               return const _PesanKosong(
                 ikon: Icons.inbox_outlined,
@@ -57,10 +61,19 @@ class _OrderMasukScreenState extends ConsumerState<OrderMasukScreen> {
             }
             return ListView.separated(
               padding: const EdgeInsets.all(AppTheme.spasiSedang),
-              itemCount: orders.length,
+              // Satu baris tambahan di ujung untuk tombol muat lagi, yang menyembunyikan
+              // dirinya sendiri kalau memang tidak ada sisanya.
+              itemCount: orders.length + 1,
               separatorBuilder: (_, _) =>
                   const SizedBox(height: AppTheme.spasiKecil),
               itemBuilder: (context, indeks) {
+                if (indeks == orders.length) {
+                  return TombolMuatLagi(
+                    halaman: halaman,
+                    ukuranProvider: ukuranOrderTersiarProvider,
+                  );
+                }
+
                 final order = orders[indeks];
                 return KartuOrderSiaran(
                   order: order,

@@ -25,7 +25,11 @@ class _BerandaRunnerScreenState extends ConsumerState<BerandaRunnerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final dipegang = ref.watch(orderRunnerProvider).value ?? const <Order>[];
+    final dipegang =
+        ref.watch(orderRunnerProvider).value?.isi ?? const <Order>[];
+    // Dihitung dari yang terbawa, jadi angkanya ikut jendela daftar. Untuk lencana
+    // "berapa yang sedang dikerjakan" itu memang cukup: order yang sedang aktif selalu
+    // yang terbaru, dan yang terbaru selalu masuk jendela pertama.
     final jumlahAktif = dipegang.where((o) => o.status.isAktif).length;
 
     return Scaffold(

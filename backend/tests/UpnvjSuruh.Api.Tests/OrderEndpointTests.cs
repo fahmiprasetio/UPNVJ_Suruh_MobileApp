@@ -65,6 +65,23 @@ public class OrderEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
         return hasil!.Order;
     }
 
+    /// <summary>
+    /// Membaca satu daftar order beserta halamannya, lalu menyerahkan isinya saja.
+    ///
+    /// Ukurannya sengaja diminta besar. Yang diuji berkas ini adalah penyaringan, yaitu
+    /// order siapa yang muncul dan siapa yang tidak, dan penyaring yang benar bisa terbaca
+    /// salah kalau barisnya kebetulan terpotong di batas halaman. Perilaku halamannya
+    /// sendiri diuji terpisah di HalamanDaftarOrderTests.
+    /// </summary>
+    private static async Task<List<OrderResponse>> DaftarAsync(HttpClient klien, string jalur)
+    {
+        var pemisah = jalur.Contains('?') ? '&' : '?';
+        var halaman = await klien.GetFromJsonAsync<HalamanResponse<OrderResponse>>(
+            $"{jalur}{pemisah}ukuran={BatasHalaman.Maksimal}");
+
+        return [.. halaman!.Isi];
+    }
+
     private async Task BayarAsync(Guid orderId, decimal jumlah, string? referensi = null)
     {
         var klien = pabrik.CreateClient();
@@ -171,7 +188,7 @@ public class OrderEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
         await klien.PostAsJsonAsync($"/api/orders/{order.Id}/pesan", new { Isi = "halo" });
         await klien.PostAsJsonAsync($"/api/orders/{order.Id}/pesan", new { Isi = "halo lagi" });
 
-        var daftar = await klien.GetFromJsonAsync<List<OrderResponse>>("/api/orders/saya");
+        var daftar = await DaftarAsync(klien, "/api/orders/saya");
         var tunggal = await klien.GetFromJsonAsync<OrderResponse>($"/api/orders/{order.Id}");
 
         Assert.Equal(2, daftar!.Single(o => o.Id == order.Id).JumlahPesan);
@@ -240,8 +257,8 @@ public class OrderEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
         await BuatOrderAsync(pemesan);
         await BuatOrderAsync(orangLain);
 
-        var punyaPemesan = await pemesan.GetFromJsonAsync<List<OrderResponse>>("/api/orders/saya");
-        var punyaOrangLain = await orangLain.GetFromJsonAsync<List<OrderResponse>>("/api/orders/saya");
+        var punyaPemesan = await DaftarAsync(pemesan, "/api/orders/saya");
+        var punyaOrangLain = await DaftarAsync(orangLain, "/api/orders/saya");
 
         Assert.DoesNotContain(punyaPemesan!, o => punyaOrangLain!.Any(x => x.Id == o.Id));
     }
@@ -380,7 +397,7 @@ public class OrderEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
         var order = await BuatOrderAsync(keduanya);
         await BayarAsync(order.Id, order.Harga!.Value);
 
-        var tersiar = await keduanya.GetFromJsonAsync<List<OrderResponse>>("/api/orders/tersiar");
+        var tersiar = await DaftarAsync(keduanya, "/api/orders/tersiar");
 
         Assert.DoesNotContain(tersiar!, o => o.Id == order.Id);
     }
@@ -392,7 +409,7 @@ public class OrderEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
         var (runner, _) = await AkunAsync(UserRole.Runner);
         var order = await BuatOrderAsync(klien);
 
-        var tersiar = await runner.GetFromJsonAsync<List<OrderResponse>>("/api/orders/tersiar");
+        var tersiar = await DaftarAsync(runner, "/api/orders/tersiar");
 
         Assert.DoesNotContain(tersiar!, o => o.Id == order.Id);
     }
@@ -425,7 +442,7 @@ public class OrderEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
         await BayarAsync(order.Id, order.Harga!.Value);
         await runner.PostAsync($"/api/orders/{order.Id}/terima", null);
 
-        var tersiar = await runnerLain.GetFromJsonAsync<List<OrderResponse>>("/api/orders/tersiar");
+        var tersiar = await DaftarAsync(runnerLain, "/api/orders/tersiar");
 
         Assert.DoesNotContain(tersiar!, o => o.Id == order.Id);
     }
@@ -442,8 +459,8 @@ public class OrderEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
         await BayarAsync(tidakDiambil.Id, tidakDiambil.Harga!.Value);
         await runner.PostAsync($"/api/orders/{diambil.Id}/terima", null);
 
-        var punyaRunner = await runner.GetFromJsonAsync<List<OrderResponse>>("/api/orders/runner-saya");
-        var punyaRunnerLain = await runnerLain.GetFromJsonAsync<List<OrderResponse>>("/api/orders/runner-saya");
+        var punyaRunner = await DaftarAsync(runner, "/api/orders/runner-saya");
+        var punyaRunnerLain = await DaftarAsync(runnerLain, "/api/orders/runner-saya");
 
         Assert.Contains(punyaRunner!, o => o.Id == diambil.Id);
         Assert.DoesNotContain(punyaRunner!, o => o.Id == tidakDiambil.Id);

@@ -215,10 +215,11 @@ public class PemberianPeranTests(DatabaseApiFactory pabrik) : IClassFixture<Data
             admin, calonId, [UserRole.Klien, UserRole.Runner],
             alasan: "Direkrut mitra per 28 Agustus.");
 
-        var riwayat = await admin.GetFromJsonAsync<List<PerubahanPeranResponse>>(
+        var riwayat = await admin.GetFromJsonAsync<HalamanResponse<PerubahanPeranResponse>>(
             $"/api/admin/pengguna/{calonId}/peran/riwayat");
 
-        var catatan = Assert.Single(riwayat!);
+        var catatan = Assert.Single(riwayat!.Isi);
+        Assert.Equal(1, riwayat.Total);
         Assert.Equal(adminId, catatan.DiubahOlehAdminId);
         Assert.Equal(["Klien"], catatan.Sebelum);
         Assert.Equal(["Klien", "Runner"], catatan.Sesudah);
@@ -234,10 +235,11 @@ public class PemberianPeranTests(DatabaseApiFactory pabrik) : IClassFixture<Data
 
         await TetapkanAsync(admin, orangId, [UserRole.Klien, UserRole.Runner]);
 
-        var riwayat = await admin.GetFromJsonAsync<List<PerubahanPeranResponse>>(
+        var riwayat = await admin.GetFromJsonAsync<HalamanResponse<PerubahanPeranResponse>>(
             $"/api/admin/pengguna/{orangId}/peran/riwayat");
 
-        Assert.Empty(riwayat!);
+        Assert.Empty(riwayat!.Isi);
+        Assert.Equal(0, riwayat.Total);
     }
 
     // --- Mencari orang ---

@@ -55,17 +55,34 @@ public class AdminPenggunaController(AppDbContext db) : ControllerBase
     }
 
     /// <summary>Riwayat perubahan peran satu pengguna.</summary>
+    /// <remarks>
+    /// Berhalaman seperti daftar lain, walaupun satu akun biasanya cuma punya beberapa baris
+    /// di sini. Alasannya bukan ukurannya sekarang melainkan sifatnya: catatan audit tidak
+    /// pernah dihapus, jadi satu-satunya arah pertumbuhannya naik. Endpoint yang dibiarkan
+    /// tanpa batas karena "isinya masih sedikit" adalah endpoint yang batasnya baru dicari
+    /// setelah ada yang mengeluh.
+    /// </remarks>
     [HttpGet("{id:guid}/peran/riwayat")]
-    public async Task<ActionResult<IReadOnlyList<PerubahanPeranResponse>>> Riwayat(
+    public async Task<ActionResult<HalamanResponse<PerubahanPeranResponse>>> Riwayat(
         Guid id,
+        [FromQuery] PermintaanHalaman permintaan,
         CancellationToken batal)
     {
-        var riwayat = await db.UserRoleChanges
-            .Where(p => p.UserId == id)
+        var kueri = db.UserRoleChanges.Where(p => p.UserId == id);
+
+        var total = await kueri.CountAsync(batal);
+        var riwayat = await kueri
             .OrderByDescending(p => p.ChangedAt)
+            .ThenByDescending(p => p.Id)
+            .Skip(permintaan.Dilewati)
+            .Take(permintaan.Ukuran)
             .ToListAsync(batal);
 
-        return Ok(riwayat.Select(PerubahanPeranResponse.Dari).ToList());
+        return Ok(new HalamanResponse<PerubahanPeranResponse>(
+            [.. riwayat.Select(PerubahanPeranResponse.Dari)],
+            total,
+            permintaan.Halaman,
+            permintaan.Ukuran));
     }
 
     /// <summary>Menetapkan peran seseorang.</summary>

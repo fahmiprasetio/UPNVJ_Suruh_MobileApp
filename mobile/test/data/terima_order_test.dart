@@ -137,12 +137,12 @@ void main() {
     addTearDown(repo.dispose);
 
     final tersiar = repo.watchOrderTersiarUntuk('u-runner-1');
-    expect(await tersiar.first, hasLength(1));
+    expect((await tersiar.first).isi, hasLength(1));
 
     await repo.terimaOrderSebagai(orderId: 'o-uji', runnerId: 'u-runner-1');
 
-    expect(await repo.watchOrderTersiarUntuk('u-runner-1').first, isEmpty);
-    expect(await repo.watchOrderRunnerUntuk('u-runner-1').first, hasLength(1));
+    expect((await repo.watchOrderTersiarUntuk('u-runner-1').first).isi, isEmpty);
+    expect((await repo.watchOrderRunnerUntuk('u-runner-1').first).isi, hasLength(1));
   });
 
   test('klien tidak bisa menerima ordernya sendiri', () async {
@@ -170,7 +170,7 @@ void main() {
     final repo = FakeOrderRepository(orderAwal: [orderSiaran()]);
     addTearDown(repo.dispose);
 
-    expect(await repo.watchOrderTersiarUntuk('u-klien-1').first, isEmpty);
-    expect(await repo.watchOrderTersiarUntuk('u-runner-1').first, hasLength(1));
+    expect((await repo.watchOrderTersiarUntuk('u-klien-1').first).isi, isEmpty);
+    expect((await repo.watchOrderTersiarUntuk('u-runner-1').first).isi, hasLength(1));
   });
 }

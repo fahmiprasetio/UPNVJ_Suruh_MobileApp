@@ -140,7 +140,8 @@ void main() {
     // Tetap terdaftar sebagai order runner, riwayatnya tidak hilang, tapi
     // tidak lagi terhitung sebagai pekerjaan berjalan.
     final punyaRunner = await repo.watchOrderRunnerUntuk('u-runner-1').first;
-    expect(punyaRunner, hasLength(1));
-    expect(punyaRunner.where((o) => o.status.isAktif), isEmpty);
+    expect(punyaRunner.isi, hasLength(1));
+    expect(punyaRunner.total, 1);
+    expect(punyaRunner.isi.where((o) => o.status.isAktif), isEmpty);
   });
 }

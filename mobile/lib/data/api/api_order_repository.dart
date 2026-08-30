@@ -3,8 +3,11 @@ import 'dart:async';
 import '../../core/api/klien_api.dart';
 import '../../core/api/konfigurasi_api.dart';
 import '../../domain/enums.dart';
+import '../../core/config/batas_halaman.dart';
+import '../../domain/models/halaman.dart';
 import '../../domain/models/order.dart';
 import '../../domain/repositories/order_repository.dart';
+import 'pemeta_dasar.dart';
 import 'pemeta_order.dart';
 
 /// Akses order lewat API .NET.
@@ -34,8 +37,7 @@ class ApiOrderRepository implements OrderRepository {
 
   final KlienApi _klien;
   final Duration _jedaSegarkan;
-  final StreamController<void> _perubahan =
-      StreamController<void>.broadcast();
+  final StreamController<void> _perubahan = StreamController<void>.broadcast();
 
   /// Mengubah satu pengambilan jadi aliran yang menyegarkan diri.
   ///
@@ -104,15 +106,16 @@ class ApiOrderRepository implements OrderRepository {
   // --- Membaca ---
 
   @override
-  Stream<List<Order>> watchOrderKlien() => _amati(() => _daftar('/api/orders/saya'));
+  Stream<Halaman<Order>> watchOrderKlien({required int ukuran}) =>
+      _amati(() => _daftar('/api/orders/saya', ukuran));
 
   @override
-  Stream<List<Order>> watchOrderTersiar() =>
-      _amati(() => _daftar('/api/orders/tersiar'));
+  Stream<Halaman<Order>> watchOrderTersiar({required int ukuran}) =>
+      _amati(() => _daftar('/api/orders/tersiar', ukuran));
 
   @override
-  Stream<List<Order>> watchOrderRunner() =>
-      _amati(() => _daftar('/api/orders/runner-saya'));
+  Stream<Halaman<Order>> watchOrderRunner({required int ukuran}) =>
+      _amati(() => _daftar('/api/orders/runner-saya', ukuran));
 
   @override
   Stream<Order?> watchOrder(String orderId) => _amati(() => getOrder(orderId));
@@ -136,11 +139,20 @@ class ApiOrderRepository implements OrderRepository {
     return PemetaOrder.order(isi, pesan: pesan);
   }
 
-  Future<List<Order>> _daftar(String jalur) async {
-    final isi = await _klien.getDaftar(jalur);
-    return [
-      for (final o in isi) PemetaOrder.order(o as Map<String, dynamic>),
-    ];
+  /// Satu jendela dari sebuah daftar order.
+  ///
+  /// Selalu halaman pertama, dengan ukuran sebesar jendela yang sedang diminta layar.
+  /// Bukan penumpukan halaman satu per satu, dan itu disengaja: daftar ini diambil
+  /// ulang setiap lima belas detik, dan halaman yang ditumpuk sendiri akan tertimpa
+  /// setiap kali pengambilan ulang itu datang. Meminta jendela yang lebih lebar
+  /// membuat setiap pengambilan tetap menghasilkan satu potret yang utuh.
+  Future<Halaman<Order>> _daftar(String jalur, int ukuran) async {
+    final jawaban = await _klien.get(
+      jalur,
+      kueri: {'ukuran': '${ukuran.clamp(1, BatasHalaman.maksimal)}'},
+    );
+
+    return PemetaDasar.halaman(jawaban, PemetaOrder.order);
   }
 
   // --- Membuat ---
@@ -153,13 +165,16 @@ class ApiOrderRepository implements OrderRepository {
     String? alamatJemput,
     String? alamatTujuan,
   }) async {
-    final jawaban = await _klien.post('/api/orders/jalur-a', badan: {
-      'serviceType': _namaServer(serviceType.name),
-      'jarakKm': ?jarakKm,
-      'deskripsi': ?deskripsi,
-      'alamatJemput': ?alamatJemput,
-      'alamatTujuan': ?alamatTujuan,
-    });
+    final jawaban = await _klien.post(
+      '/api/orders/jalur-a',
+      badan: {
+        'serviceType': _namaServer(serviceType.name),
+        'jarakKm': ?jarakKm,
+        'deskripsi': ?deskripsi,
+        'alamatJemput': ?alamatJemput,
+        'alamatTujuan': ?alamatTujuan,
+      },
+    );
 
     _tandaiBerubah();
     // Jawabannya membungkus ordernya bersama rincian harga, karena layar
@@ -175,13 +190,16 @@ class ApiOrderRepository implements OrderRepository {
     String? alamatTujuan,
     int jumlahRunnerDibutuhkan = 1,
   }) async {
-    final jawaban = await _klien.post('/api/orders/jalur-b', badan: {
-      'serviceType': _namaServer(serviceType.name),
-      'deskripsi': deskripsi,
-      'jadwalMulai': jadwalMulai.toUtc().toIso8601String(),
-      'alamatTujuan': ?alamatTujuan,
-      'jumlahRunnerDibutuhkan': jumlahRunnerDibutuhkan,
-    });
+    final jawaban = await _klien.post(
+      '/api/orders/jalur-b',
+      badan: {
+        'serviceType': _namaServer(serviceType.name),
+        'deskripsi': deskripsi,
+        'jadwalMulai': jadwalMulai.toUtc().toIso8601String(),
+        'alamatTujuan': ?alamatTujuan,
+        'jumlahRunnerDibutuhkan': jumlahRunnerDibutuhkan,
+      },
+    );
 
     _tandaiBerubah();
     return PemetaOrder.order(jawaban);
@@ -199,7 +217,10 @@ class ApiOrderRepository implements OrderRepository {
 
   @override
   Future<Order> ajukanNego({required String orderId, required String alasan}) =>
-      _tindakan('/api/orders/$orderId/penawaran/nego', badan: {'alasan': alasan});
+      _tindakan(
+        '/api/orders/$orderId/penawaran/nego',
+        badan: {'alasan': alasan},
+      );
 
   // --- Runner ---
 
@@ -216,10 +237,13 @@ class ApiOrderRepository implements OrderRepository {
     required String orderId,
     required String fotoBuktiUrl,
     String? catatanSerahTerima,
-  }) => _tindakan('/api/orders/$orderId/selesai', badan: {
-    'fotoBuktiUrl': fotoBuktiUrl,
-    'catatanSerahTerima': ?catatanSerahTerima,
-  });
+  }) => _tindakan(
+    '/api/orders/$orderId/selesai',
+    badan: {
+      'fotoBuktiUrl': fotoBuktiUrl,
+      'catatanSerahTerima': ?catatanSerahTerima,
+    },
+  );
 
   @override
   Future<Order> batalkanOrder(String orderId) =>

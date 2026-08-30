@@ -1,4 +1,5 @@
 import '../../core/api/galat_api.dart';
+import '../../domain/models/halaman.dart';
 
 /// Potongan pembacaan JSON yang dipakai lebih dari satu pemeta.
 ///
@@ -36,6 +37,31 @@ class PemetaDasar {
       throw GalatServer('Nilai $kunci bukan waktu yang bisa dibaca.');
     }
     return hasil.toLocal();
+  }
+
+  /// Membaca jawaban berhalaman: daftar barisnya, beserta jumlah seluruhnya.
+  ///
+  /// `total` dibaca terpisah dari panjang `isi`, dan itu seluruh gunanya bungkus ini:
+  /// yang membacanya harus bisa tahu masih ada sisa atau tidak, dan panjang isi tidak
+  /// pernah bisa menjawab itu.
+  ///
+  /// Bentuk yang salah melempar, bukan jadi halaman kosong. Daftar yang diam-diam
+  /// kosong karena bentuk jawabannya berubah terbaca sebagai "belum ada order", dan
+  /// itu jenis kegagalan yang tidak pernah dilaporkan siapa pun.
+  static Halaman<T> halaman<T>(
+    Map<String, dynamic> jawaban,
+    T Function(Map<String, dynamic> baris) baca,
+  ) {
+    final isi = jawaban['isi'];
+    final total = jawaban['total'];
+    if (isi is! List || total is! int) {
+      throw const GalatServer('Jawaban server bukan daftar berhalaman.');
+    }
+
+    return Halaman<T>(
+      isi: [for (final baris in isi) baca(baris as Map<String, dynamic>)],
+      total: total,
+    );
   }
 
   /// Mencocokkan nama enum tanpa memperhatikan besar kecil huruf.

@@ -64,7 +64,7 @@ public class AdminOrderController(AppDbContext db) : ControllerBase
             // parameter urutan yang disebut terang-terangan, bukan kelakuan diam-diam.
             .OrderByDescending(o => o.CreatedAt)
             .ThenByDescending(o => o.Id)
-            .Skip((permintaan.Halaman - 1) * permintaan.Ukuran)
+            .Skip(permintaan.Dilewati)
             .Take(permintaan.Ukuran)
             .ToListAsync(batal);
 

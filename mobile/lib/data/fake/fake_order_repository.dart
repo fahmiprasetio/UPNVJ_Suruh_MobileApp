@@ -3,6 +3,8 @@ import 'dart:math';
 
 import '../../core/config/batas_masukan.dart';
 import '../../domain/enums.dart';
+import '../../core/config/batas_halaman.dart';
+import '../../domain/models/halaman.dart';
 import '../../domain/models/order.dart';
 import '../../domain/models/order_message.dart';
 import '../../domain/models/order_offer.dart';
@@ -97,46 +99,74 @@ class FakeOrderRepository implements OrderRepository {
       List.of(orders)..sort((a, b) => b.dibuatPada.compareTo(a.dibuatPada));
 
   @override
-  Stream<List<Order>> watchOrderKlien() => watchOrderKlienUntuk(_pemanggil());
+  Stream<Halaman<Order>> watchOrderKlien({required int ukuran}) =>
+      watchOrderKlienUntuk(_pemanggil(), ukuran: ukuran);
 
   /// [watchOrderKlien] untuk klien yang disebutkan langsung, untuk tes.
-  Stream<List<Order>> watchOrderKlienUntuk(String klienId) => _stream.map(
-    (orders) =>
-        _terbaruDiAtas(orders.where((o) => o.klienId == klienId).toList()),
+  Stream<Halaman<Order>> watchOrderKlienUntuk(
+    String klienId, {
+    int ukuran = BatasHalaman.maksimal,
+  }) => _stream.map(
+    (orders) => _jendela(
+      _terbaruDiAtas(orders.where((o) => o.klienId == klienId).toList()),
+      ukuran,
+    ),
   );
 
   @override
-  Stream<List<Order>> watchOrderTersiar() => watchOrderTersiarUntuk(_pemanggil());
+  Stream<Halaman<Order>> watchOrderTersiar({required int ukuran}) =>
+      watchOrderTersiarUntuk(_pemanggil(), ukuran: ukuran);
 
   /// [watchOrderTersiar] untuk runner yang disebutkan langsung, untuk tes.
-  Stream<List<Order>> watchOrderTersiarUntuk(String runnerId) =>
-      _stream.map((orders) {
-    return _terbaruDiAtas(
-      orders
-          .where(
-            (o) =>
-                o.status == OrderStatus.mencariRunner &&
-                !o.kuotaRunnerPenuh &&
-                // Order yang sudah dipegang runner ini tidak perlu ditawarkan
-                // lagi. Pada order multi-runner kuotanya bisa saja masih
-                // terbuka, tapi slot keduanya bukan untuk orang yang sama.
-                !o.runnerIds.contains(runnerId) &&
-                // Dan ordernya sendiri tidak pernah sampai ke matanya.
-                o.klienId != runnerId,
-          )
-          .toList(),
+  Stream<Halaman<Order>> watchOrderTersiarUntuk(
+    String runnerId, {
+    int ukuran = BatasHalaman.maksimal,
+  }) => _stream.map((orders) {
+    return _jendela(
+      _terbaruDiAtas(
+        orders
+            .where(
+              (o) =>
+                  o.status == OrderStatus.mencariRunner &&
+                  !o.kuotaRunnerPenuh &&
+                  // Order yang sudah dipegang runner ini tidak perlu ditawarkan
+                  // lagi. Pada order multi-runner kuotanya bisa saja masih
+                  // terbuka, tapi slot keduanya bukan untuk orang yang sama.
+                  !o.runnerIds.contains(runnerId) &&
+                  // Dan ordernya sendiri tidak pernah sampai ke matanya.
+                  o.klienId != runnerId,
+            )
+            .toList(),
+      ),
+      ukuran,
     );
   });
 
   @override
-  Stream<List<Order>> watchOrderRunner() => watchOrderRunnerUntuk(_pemanggil());
+  Stream<Halaman<Order>> watchOrderRunner({required int ukuran}) =>
+      watchOrderRunnerUntuk(_pemanggil(), ukuran: ukuran);
 
   /// [watchOrderRunner] untuk runner yang disebutkan langsung, untuk tes.
-  Stream<List<Order>> watchOrderRunnerUntuk(String runnerId) => _stream.map(
-    (orders) => _terbaruDiAtas(
-      orders.where((o) => o.runnerIds.contains(runnerId)).toList(),
+  Stream<Halaman<Order>> watchOrderRunnerUntuk(
+    String runnerId, {
+    int ukuran = BatasHalaman.maksimal,
+  }) => _stream.map(
+    (orders) => _jendela(
+      _terbaruDiAtas(
+        orders.where((o) => o.runnerIds.contains(runnerId)).toList(),
+      ),
+      ukuran,
     ),
   );
+
+  /// Memotong daftar sepanjang jendela yang diminta, sambil menyimpan jumlah utuhnya.
+  ///
+  /// Ditirukan, bukan diabaikan, walaupun data karangan tidak akan pernah sepanjang
+  /// itu. Tiruan yang selalu mengirim semuanya membuat layar dibangun dan diuji di
+  /// atas asumsi yang tidak berlaku di server, dan tombol muat lagi adalah bagian
+  /// layar yang paling mungkin salah karenanya.
+  static Halaman<Order> _jendela(List<Order> semua, int ukuran) =>
+      Halaman(isi: semua.take(ukuran).toList(), total: semua.length);
 
   @override
   Stream<Order?> watchOrder(String orderId) =>
@@ -359,7 +389,10 @@ class FakeOrderRepository implements OrderRepository {
       // Kembali ke antrean admin, bukan batal: klien masih berminat.
       status: OrderStatus.permintaan,
       offers: _gantiPenawaran(order, penawaran, OfferStatus.dinegoUlang),
-      messages: [...order.messages, _pesanBaru(orderId, MessageSender.klien, bersih)],
+      messages: [
+        ...order.messages,
+        _pesanBaru(orderId, MessageSender.klien, bersih),
+      ],
     );
     _ganti(diperbarui);
     return diperbarui;
@@ -538,10 +571,8 @@ class FakeOrderRepository implements OrderRepository {
   }
 
   @override
-  Future<Order> kirimPesan({
-    required String orderId,
-    required String isi,
-  }) => kirimPesanSebagai(orderId: orderId, pengirimId: _pemanggil(), isi: isi);
+  Future<Order> kirimPesan({required String orderId, required String isi}) =>
+      kirimPesanSebagai(orderId: orderId, pengirimId: _pemanggil(), isi: isi);
 
   /// [kirimPesan] dengan pengirim yang disebutkan langsung, untuk tes.
   Future<Order> kirimPesanSebagai({
@@ -590,19 +621,24 @@ class FakeOrderRepository implements OrderRepository {
     if (order.klienId == pengirimId) return MessageSender.klien;
     if (order.runnerIds.contains(pengirimId)) return MessageSender.runner;
 
-    final user = SeedData.semuaUser.where((u) => u.id == pengirimId).firstOrNull;
+    final user = SeedData.semuaUser
+        .where((u) => u.id == pengirimId)
+        .firstOrNull;
     if (user != null && user.isAdmin) return MessageSender.admin;
     return null;
   }
 
-  OrderMessage _pesanBaru(String orderId, MessageSender pengirim, String isi) =>
-      OrderMessage(
-        id: 'm-${DateTime.now().microsecondsSinceEpoch}-${_random.nextInt(999)}',
-        orderId: orderId,
-        pengirim: pengirim,
-        isi: isi,
-        dikirimPada: DateTime.now(),
-      );
+  OrderMessage _pesanBaru(
+    String orderId,
+    MessageSender pengirim,
+    String isi,
+  ) => OrderMessage(
+    id: 'm-${DateTime.now().microsecondsSinceEpoch}-${_random.nextInt(999)}',
+    orderId: orderId,
+    pengirim: pengirim,
+    isi: isi,
+    dikirimPada: DateTime.now(),
+  );
 
   void dispose() => _controller.close();
 
