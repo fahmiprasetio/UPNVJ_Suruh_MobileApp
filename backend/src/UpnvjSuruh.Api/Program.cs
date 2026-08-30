@@ -12,6 +12,7 @@ using UpnvjSuruh.Api.Domain;
 using UpnvjSuruh.Api.Hubs;
 using UpnvjSuruh.Api.Media;
 using UpnvjSuruh.Api.Payments;
+using UpnvjSuruh.Api.Perawatan;
 using UpnvjSuruh.Api.Pricing;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -221,6 +222,15 @@ builder.Services.AddScoped<PenyelesaiPembayaran>();
 
 // --- Foto bukti pekerjaan ---
 builder.Services.AddSingleton<PenyimpanFoto>();
+
+// --- Perawatan berkala ---
+//
+// Sebelum ini tidak ada satu pun pekerja latar di server ini, dan yang tidak ada yang
+// menanyakannya tidak pernah dirapikan siapa pun: transaksi yang lewat batas waktu tetap
+// berstatus menunggu selamanya, dan foto yang tidak jadi dipakai menutup order tidak pernah
+// dihapus.
+builder.Services.AddScoped<Penyapu>();
+builder.Services.AddHostedService<PenyapuTerjadwal>();
 
 // --- Pemeriksaan kesehatan ---
 //

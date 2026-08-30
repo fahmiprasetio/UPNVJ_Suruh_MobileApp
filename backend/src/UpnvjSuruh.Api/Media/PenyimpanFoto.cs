@@ -134,6 +134,67 @@ public class PenyimpanFoto(IWebHostEnvironment lingkungan, IConfiguration konfig
     }
 
     /// <summary>
+    /// Nama berkas yang ditunjuk sebuah URL media, atau <c>null</c> kalau URL itu bukan
+    /// menunjuk folder ini.
+    ///
+    /// Dipakai penyapu untuk mencocokkan alamat yang tersimpan di basis data dengan berkas
+    /// yang ada di cakram. Tidak memeriksa keamanan namanya, karena yang dibacanya alamat
+    /// yang ditulis server sendiri, bukan kiriman orang.
+    /// </summary>
+    public static string? NamaDari(string? url) =>
+        url is not null && url.StartsWith(Prefiks, StringComparison.Ordinal)
+            ? url[Prefiks.Length..]
+            : null;
+
+    /// <summary>
+    /// Nama setiap berkas di folder media beserta kapan ia ditulis.
+    ///
+    /// Folder yang belum pernah dibuat dijawab daftar kosong, bukan galat: server yang belum
+    /// pernah menerima satu pun unggahan memang tidak punya folder itu, dan itu keadaan yang
+    /// sah, bukan kerusakan yang perlu dilaporkan penyapu setiap kali ia berjalan.
+    /// </summary>
+    public IReadOnlyList<(string Nama, DateTime DitulisPada)> DaftarBerkas()
+    {
+        if (!Directory.Exists(Akar)) return [];
+
+        return [.. new DirectoryInfo(Akar)
+            .EnumerateFiles()
+            .Select(b => (b.Name, b.LastWriteTimeUtc))];
+    }
+
+    /// <summary>
+    /// Menghapus satu berkas, dan mengatakan apakah benar-benar terhapus.
+    /// </summary>
+    /// <remarks>
+    /// Kegagalan dijawab false, bukan dilempar. Di Windows berkas yang sedang dibaca orang
+    /// lain terkunci, dan itu keadaan yang wajar berulang: penyapu berikutnya akan
+    /// menemuinya lagi. Menggagalkan seluruh sapuan karena satu berkas yang sedang dibuka
+    /// berarti sisa pekerjaannya ikut tidak jadi.
+    ///
+    /// Namanya disaring lewat <see cref="Jalur"/> lebih dulu, jadi penghapusan tidak pernah
+    /// bisa keluar dari folder media sekalipun pemanggilnya salah.
+    /// </remarks>
+    public bool Hapus(string nama)
+    {
+        var jalur = Jalur(nama);
+        if (jalur is null) return false;
+
+        try
+        {
+            File.Delete(jalur);
+            return true;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Tipe konten yang dilayani untuk nama berkas ini, atau <c>null</c> kalau bukan jenis
     /// yang pernah disimpan kelas ini.
     ///
