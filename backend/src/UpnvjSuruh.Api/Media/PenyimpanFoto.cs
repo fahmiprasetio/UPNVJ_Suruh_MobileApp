@@ -31,6 +31,15 @@ public class PenyimpanFoto(IWebHostEnvironment lingkungan, IConfiguration konfig
     private string Akar => konfigurasi["Media:Folder"]
                            ?? Path.Combine(lingkungan.ContentRootPath, "berkas", "bukti");
 
+    /// <summary>
+    /// Awalan nama berkas milik satu order.
+    ///
+    /// Ditulis sekali dan dipakai dua sisi: yang menyimpan dan yang memeriksa. Kalau
+    /// masing-masing menyusun bentuknya sendiri, salah satu bisa diubah tanpa yang lain, dan
+    /// yang terjadi adalah foto yang baru saja diunggah ditolak sebagai bukan miliknya.
+    /// </summary>
+    private static string Awalan(Guid orderId) => $"{orderId:N}-";
+
     /// <summary>Menyimpan satu foto, mengembalikan URL untuk membacanya.</summary>
     public async Task<string> SimpanAsync(Guid orderId, Stream isi, string ekstensi, CancellationToken batal)
     {
@@ -39,7 +48,7 @@ public class PenyimpanFoto(IWebHostEnvironment lingkungan, IConfiguration konfig
         // Namanya dibuat server dari id order ditambah nilai acak, tidak pernah memakai nama
         // berkas kiriman. Nama kiriman bisa berisi "..\" yang menuntun penulisan keluar dari
         // folder ini, dan bisa bertabrakan dengan berkas milik order lain.
-        var nama = $"{orderId:N}-{Guid.NewGuid():N}{ekstensi}";
+        var nama = $"{Awalan(orderId)}{Guid.NewGuid():N}{ekstensi}";
         var jalur = Path.Combine(Akar, nama);
 
         await using var tujuan = File.Create(jalur);
@@ -49,15 +58,22 @@ public class PenyimpanFoto(IWebHostEnvironment lingkungan, IConfiguration konfig
     }
 
     /// <summary>
-    /// Benar kalau URL itu benar-benar menunjuk foto yang pernah disimpan server ini.
+    /// Benar kalau URL itu menunjuk foto yang pernah disimpan server ini <em>untuk order
+    /// tersebut</em>.
     /// </summary>
     /// <remarks>
     /// Endpoint penutupan order menerima URL foto sebagai teks, dan teks dari klien bisa
     /// berisi apa saja: tautan ke gambar orang lain, tautan ke situs mana pun, atau URL
     /// yang tidak menunjuk apa-apa. Tanpa pemeriksaan ini, "wajib ada foto bukti" cuma
     /// berarti "wajib ada tulisan di kolom foto".
+    ///
+    /// Ordernya ikut diperiksa, bukan cuma keberadaan berkasnya. Sebelumnya cukup berkas itu
+    /// pernah diunggah ke server ini, siapa pun pemiliknya dan untuk order mana pun, sehingga
+    /// runner yang memegang beberapa order bisa memotret sekali lalu menutup semuanya dengan
+    /// foto yang sama. Bukti yang boleh dipakai ulang bukan bukti apa-apa: yang dibuktikan
+    /// cuma bahwa satu pekerjaan pernah dikerjakan, bukan pekerjaan yang sedang ditutup ini.
     /// </remarks>
-    public bool Sah(string? url)
+    public bool Sah(string? url, Guid orderId)
     {
         if (string.IsNullOrWhiteSpace(url) || !url.StartsWith(Prefiks, StringComparison.Ordinal))
         {
@@ -73,6 +89,14 @@ public class PenyimpanFoto(IWebHostEnvironment lingkungan, IConfiguration konfig
         // ditulis tangan: ia membuang segalanya sampai pemisah jalur terakhir, jadi nama
         // yang tidak berubah setelah melewatinya sudah pasti tidak memuat satu pun.
         if (nama.Length == 0 || Path.GetFileName(nama) != nama || nama.Contains(".."))
+        {
+            return false;
+        }
+
+        // Diperiksa sebelum menyentuh cakram, karena ini pemeriksaan yang paling murah dan
+        // paling sering menolak: nama yang tidak berawalan id order ini sudah pasti bukan
+        // foto untuk order ini, ada atau tidak ada berkasnya.
+        if (!nama.StartsWith(Awalan(orderId), StringComparison.Ordinal))
         {
             return false;
         }

@@ -27,6 +27,18 @@ public class ApiFactory : WebApplicationFactory<Program>
     /// </summary>
     protected virtual string ConnectionString => "Host=localhost;Database=upnvj_suruh_test";
 
+    /// <summary>
+    /// Folder foto bukti untuk satu pabrik, sekali pakai.
+    ///
+    /// Diarahkan keluar dari pohon sumber dengan sengaja. Bawaan <c>PenyimpanFoto</c> adalah
+    /// folder di dalam proyek API, dan tes yang benar-benar mengunggah akan meninggalkan
+    /// berkas di sana: ikut terbawa ke commit berikutnya kalau ada yang lupa, dan bocor dari
+    /// satu jalannya tes ke jalan berikutnya sehingga tes bisa lulus karena berkas yang
+    /// ditinggalkan tes sebelumnya.
+    /// </summary>
+    public string FolderMedia { get; } = Path.Combine(
+        Path.GetTempPath(), "upnvj-uji-media", Guid.NewGuid().ToString("N"));
+
     protected override IHost CreateHost(IHostBuilder builder)
     {
         builder.ConfigureHostConfiguration(config =>
@@ -57,9 +69,35 @@ public class ApiFactory : WebApplicationFactory<Program>
                 // belum memasang nomor admin dan gagal di laptop yang sudah bukan tes yang
                 // mengukur kode.
                 [AdminAwal.KunciKonfigurasi] = string.Empty,
+                ["Media:Folder"] = FolderMedia,
             });
         });
 
         return base.CreateHost(builder);
+    }
+
+    /// <summary>
+    /// Membuang folder medianya bersama pabriknya.
+    ///
+    /// Dibungkus try karena kegagalan membersihkan bukan kegagalan tes: berkas sementara yang
+    /// tertinggal di folder temp mesin adalah kerapian, sedangkan tes yang dilaporkan gagal
+    /// karena penghapusan berkas akan mengirim orang menelusuri kode yang sebenarnya benar.
+    /// </summary>
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+
+        if (!disposing) return;
+
+        try
+        {
+            if (Directory.Exists(FolderMedia)) Directory.Delete(FolderMedia, recursive: true);
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
     }
 }

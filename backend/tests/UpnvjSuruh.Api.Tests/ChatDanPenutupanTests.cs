@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using UpnvjSuruh.Api.Auth;
 using UpnvjSuruh.Api.Contracts;
+using UpnvjSuruh.Api.Controllers;
 using UpnvjSuruh.Api.Data;
 using UpnvjSuruh.Api.Domain;
 
@@ -60,6 +61,27 @@ public class ChatDanPenutupanTests(DatabaseApiFactory pabrik) : IClassFixture<Da
         });
         jawaban.EnsureSuccessStatusCode();
         return (await jawaban.Content.ReadFromJsonAsync<BuatOrderResponse>())!.Order;
+    }
+
+    /// <summary>
+    /// Empat byte pertama sebuah JPEG. Server mengenali jenis berkas dari isinya, bukan dari
+    /// nama atau Content-Type kiriman, jadi inilah berkas terkecil yang ia terima sebagai
+    /// gambar. Gambar sungguhan cuma akan membuat tes ini lebih besar tanpa menguji apa pun
+    /// yang belum diuji.
+    /// </summary>
+    private static readonly byte[] JpegTerkecil = [0xFF, 0xD8, 0xFF, 0xE0];
+
+    /// <summary>Mengunggah satu foto bukti untuk order ini, mengembalikan URL-nya.</summary>
+    private static async Task<string> UnggahFotoAsync(HttpClient runner, Guid orderId)
+    {
+        using var isi = new MultipartFormDataContent();
+        var berkas = new ByteArrayContent(JpegTerkecil);
+        berkas.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+        isi.Add(berkas, "berkas", "bukti.jpg");
+
+        var jawaban = await runner.PostAsync($"/api/orders/{orderId}/foto-bukti", isi);
+        jawaban.EnsureSuccessStatusCode();
+        return (await jawaban.Content.ReadFromJsonAsync<FotoBuktiResponse>())!.Url;
     }
 
     private async Task BayarAsync(Guid orderId, decimal jumlah)
@@ -236,7 +258,7 @@ public class ChatDanPenutupanTests(DatabaseApiFactory pabrik) : IClassFixture<Da
         var (klien, runner, order) = await DikerjakanAsync();
         (await runner.PostAsJsonAsync($"/api/orders/{order.Id}/selesai", new
         {
-            FotoBuktiUrl = "https://contoh/bukti.jpg",
+            FotoBuktiUrl = await UnggahFotoAsync(runner, order.Id),
         })).EnsureSuccessStatusCode();
 
         var jawaban = await klien.PostAsJsonAsync(
@@ -255,7 +277,7 @@ public class ChatDanPenutupanTests(DatabaseApiFactory pabrik) : IClassFixture<Da
         await klien.PostAsJsonAsync($"/api/orders/{order.Id}/pesan", new { Isi = "titip air ya" });
         (await runner.PostAsJsonAsync($"/api/orders/{order.Id}/selesai", new
         {
-            FotoBuktiUrl = "https://contoh/bukti.jpg",
+            FotoBuktiUrl = await UnggahFotoAsync(runner, order.Id),
         })).EnsureSuccessStatusCode();
 
         var pesan = await klien.GetFromJsonAsync<List<OrderMessageResponse>>(
@@ -273,7 +295,7 @@ public class ChatDanPenutupanTests(DatabaseApiFactory pabrik) : IClassFixture<Da
 
         var jawaban = await runner.PostAsJsonAsync($"/api/orders/{order.Id}/selesai", new
         {
-            FotoBuktiUrl = "https://contoh/bukti.jpg",
+            FotoBuktiUrl = await UnggahFotoAsync(runner, order.Id),
             CatatanSerahTerima = "Dititipkan ke satpam kos.",
         });
         jawaban.EnsureSuccessStatusCode();
@@ -344,14 +366,15 @@ public class ChatDanPenutupanTests(DatabaseApiFactory pabrik) : IClassFixture<Da
     public async Task OrderYangSudahSelesaiTidakBisaDiselesaikanLagi()
     {
         var (_, runner, order) = await DikerjakanAsync();
+        var foto = await UnggahFotoAsync(runner, order.Id);
         (await runner.PostAsJsonAsync($"/api/orders/{order.Id}/selesai", new
         {
-            FotoBuktiUrl = "https://contoh/bukti.jpg",
+            FotoBuktiUrl = foto,
         })).EnsureSuccessStatusCode();
 
         var lagi = await runner.PostAsJsonAsync($"/api/orders/{order.Id}/selesai", new
         {
-            FotoBuktiUrl = "https://contoh/bukti2.jpg",
+            FotoBuktiUrl = await UnggahFotoAsync(runner, order.Id),
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, lagi.StatusCode);

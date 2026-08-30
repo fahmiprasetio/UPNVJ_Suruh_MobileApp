@@ -336,13 +336,18 @@ public class OrdersController(
         // runner yang tidak mengerjakan apa-apa bisa menutup order dengan menempelkan
         // tautan gambar mana pun dari internet, dan "wajib ada foto bukti" kehilangan
         // seluruh artinya.
-        if (!penyimpanFoto.Sah(permintaan.FotoBuktiUrl))
+        //
+        // Id ordernya ikut diserahkan, jadi yang diterima cuma foto yang diunggah untuk
+        // order ini. Tanpa itu, runner yang memegang beberapa order sekaligus bisa memotret
+        // sekali lalu menutup semuanya dengan foto yang sama, dan yang dibuktikan foto itu
+        // cuma bahwa satu pekerjaan pernah dikerjakan, bukan pekerjaan yang sedang ditutup.
+        if (!penyimpanFoto.Sah(permintaan.FotoBuktiUrl, order.Id))
         {
             return BadRequest(new ProblemDetails
             {
                 Title = "Foto buktinya tidak dikenali",
-                Detail = "Unggah fotonya dulu lewat POST /api/orders/{id}/foto-bukti, "
-                         + "lalu kirim URL yang dikembalikan endpoint itu.",
+                Detail = "Unggah fotonya dulu lewat POST /api/orders/{id}/foto-bukti untuk "
+                         + "order ini, lalu kirim URL yang dikembalikan endpoint itu.",
                 Status = StatusCodes.Status400BadRequest,
             });
         }
