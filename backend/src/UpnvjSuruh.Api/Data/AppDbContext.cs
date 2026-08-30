@@ -59,6 +59,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
             entity.HasIndex(o => o.OrderCode).IsUnique();
 
+            // Status diindeks karena dua kueri menyaring dengannya, dan keduanya jalan
+            // berulang-ulang: daftar siaran runner, yang diambil ulang aplikasi setiap lima
+            // belas detik selama layar order masuk terbuka, dan antrean penawaran admin.
+            //
+            // Tanpa indeks, keduanya memindai seluruh tabel order untuk menemukan segelintir
+            // baris yang sedang berstatus itu. Biayanya tumbuh seiring seluruh riwayat,
+            // sementara yang dicari justru cuma yang sedang berjalan, yaitu bagian yang tidak
+            // ikut tumbuh.
+            entity.HasIndex(o => o.Status);
+
             entity.Property(o => o.Description).HasMaxLength(BatasMasukan.Deskripsi);
             entity.Property(o => o.PickupAddress).HasMaxLength(BatasMasukan.Alamat);
             entity.Property(o => o.DestinationAddress).HasMaxLength(BatasMasukan.Alamat);

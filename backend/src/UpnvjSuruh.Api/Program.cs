@@ -222,6 +222,14 @@ builder.Services.AddScoped<PenyelesaiPembayaran>();
 // --- Foto bukti pekerjaan ---
 builder.Services.AddSingleton<PenyimpanFoto>();
 
+// --- Pemeriksaan kesehatan ---
+//
+// Ditulis sendiri, bukan lewat AddDbContextCheck, supaya tidak menambah satu paket untuk
+// satu panggilan. Yang ditanyakan CanConnectAsync: server yang menyala tapi tidak bisa
+// menghubungi basis datanya tidak bisa melayani satu pun permintaan yang berguna, dan
+// pemeriksa yang cuma menanyakan "prosesnya hidup?" akan melaporkannya sehat.
+builder.Services.AddHealthChecks().AddCheck<PemeriksaBasisData>("basis-data");
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -257,6 +265,18 @@ if (app.Environment.IsDevelopment())
 // mendengarkan, yang di browser terbaca sebagai galat jaringan tanpa sebab yang jelas.
 if (!app.Environment.IsDevelopment())
 {
+    // Urutannya HSTS dulu, baru pengalihan.
+    //
+    // Pengalihan menjawab permintaan http dengan "coba lagi di https", dan permintaan
+    // pertama itu sudah terlanjur berangkat tanpa sandi: siapa pun di jaringan yang sama
+    // sempat melihat alamat yang dituju, dan yang lebih buruk, sempat menjawabnya lebih
+    // dulu. HSTS menutup permintaan-permintaan berikutnya dengan menyuruh browser tidak
+    // pernah lagi mencoba http untuk host ini.
+    //
+    // Tidak berlaku untuk aplikasi Android, yang tidak menyimpan daftar HSTS. Yang dijaga
+    // di sini pemakaian lewat browser: aplikasi versi web saat mengembangkan, dan
+    // dashboard admin yang akan menyusul.
+    app.UseHsts();
     app.UseHttpsRedirection();
 }
 else
@@ -267,6 +287,23 @@ else
 // Urutannya wajib begini: UseAuthentication membaca siapa pemanggilnya, UseAuthorization
 // memutuskan apakah ia boleh. Terbalik, atau yang pertama hilang seperti sebelumnya,
 // membuat setiap [Authorize] gagal dengan "No authenticationScheme was specified".
+// Satu header untuk semua jawaban: jangan menebak jenis isinya.
+//
+// Yang paling membutuhkannya berkas foto bukti, dan controller-nya memang memasangnya
+// sendiri. Dipasang di sini juga supaya berlaku untuk jawaban mana pun, termasuk yang
+// belum ada: penebakan jenis isi pada jawaban JSON yang memuat teks kiriman orang adalah
+// cara lama membuat browser memperlakukannya sebagai HTML.
+//
+// Sengaja cuma satu ini. X-Frame-Options dan Content-Security-Policy menjaga halaman yang
+// digambar browser, dan yang keluar dari sini bukan halaman melainkan JSON untuk aplikasi.
+// Header yang tidak menjaga apa-apa di sini cuma membuat daftar yang panjang, dan daftar
+// panjang yang isinya tidak semuanya berlaku membuat orang berhenti membacanya.
+app.Use(async (konteks, berikutnya) =>
+{
+    konteks.Response.Headers.XContentTypeOptions = "nosniff";
+    await berikutnya();
+});
+
 app.UseAuthentication();
 
 // Di antara keduanya, bukan sesudah UseAuthorization, dan itu penting di dua arah.
@@ -298,6 +335,16 @@ await AdminAwal.PastikanAsync(app.Services);
 // benar.
 app.MapControllers();
 app.MapHub<OrderHub>("/hubs/orders");
+
+// Dikecualikan dari batas laju, sama alasannya dengan webhook pembayaran: pemeriksa
+// kesehatan memanggilnya berulang-ulang menurut jadwalnya sendiri, dan pemeriksa yang
+// dijawab 429 akan menyimpulkan servernya mati lalu menyalakan alarm atau memutar lalu
+// lintas ke tempat lain.
+//
+// Terbuka tanpa token karena yang memanggilnya bukan pengguna. Jawabannya cuma satu kata,
+// tanpa sebab kegagalannya: yang perlu tahu kenapa membaca log, bukan siapa pun yang
+// kebetulan menemukan alamat ini.
+app.MapHealthChecks("/health").AllowAnonymous().DisableRateLimiting();
 
 if (app.Environment.IsDevelopment())
 {
