@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using UpnvjSuruh.Api.Auth;
 using UpnvjSuruh.Api.Contracts;
@@ -39,6 +40,13 @@ public class OrderChatController(AppDbContext db) : ControllerBase
     }
 
     /// <summary>Mengirim satu pesan.</summary>
+    /// <remarks>
+    /// Dibatasi per pengguna. Ruang chat adalah satu-satunya tempat di sistem ini yang
+    /// menerima teks bebas berulang kali dari orang yang sudah masuk, jadi ia juga
+    /// satu-satunya tempat satu akun bisa menumbuhkan tabel tanpa batas hanya dengan
+    /// menekan kirim terus-menerus.
+    /// </remarks>
+    [EnableRateLimiting(BatasLaju.KebijakanTulis)]
     [HttpPost]
     public async Task<ActionResult<OrderMessageResponse>> Kirim(
         Guid id,

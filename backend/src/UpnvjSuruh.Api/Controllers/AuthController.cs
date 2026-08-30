@@ -1,5 +1,7 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using UpnvjSuruh.Api.Auth;
 using UpnvjSuruh.Api.Contracts;
@@ -14,12 +16,14 @@ public class AuthController(
     AppDbContext db,
     ITokenService token,
     IPenyimpanOtp penyimpanOtp,
+    IPembatasOtp pembatasOtp,
     IPembuatKodeOtp pembuatKode,
     IPengirimOtp pengirimOtp) : ControllerBase
 {
     /// <summary>
     /// Mendaftarkan akun baru. Selalu lahir sebagai klien, lihat <see cref="DaftarRequest"/>.
     /// </summary>
+    [EnableRateLimiting(BatasLaju.KebijakanTamu)]
     [HttpPost("daftar")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -76,12 +80,45 @@ public class AuthController(
     /// Selalu menjawab 202, terdaftar maupun tidak. Jawaban yang berbeda untuk nomor yang ada
     /// dan tidak ada mengubah endpoint ini jadi alat memeriksa siapa saja yang punya akun,
     /// cukup dengan mencoba nomor satu per satu.
+    ///
+    /// Dibatasi per nomor HP, bukan cuma per pemanggil. Endpoint inilah yang membuat SMS
+    /// terkirim, dan SMS itu sampai ke ponsel orang lain serta ditagihkan penyedia ke mitra.
+    /// Yang harus dijaga karena itu adalah nomor penerimanya, bukan alamat pengirimnya:
+    /// penyerang berganti IP semudah berpindah jaringan, dan tidak satu pun pergantian itu
+    /// mengubah siapa yang ponselnya berdering.
     /// </remarks>
+    [EnableRateLimiting(BatasLaju.KebijakanTamu)]
     [HttpPost("minta-kode")]
     [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> MintaKode(MintaKodeRequest permintaan, CancellationToken batal)
     {
         var noHp = permintaan.NoHp.Trim();
+
+        // Diperiksa sebelum basis data disentuh, dan berlaku untuk nomor mana pun.
+        //
+        // Membatasi hanya nomor yang terdaftar akan mengembalikan kebocoran yang ditutup
+        // dengan menjawab 202 untuk semua orang: 429 yang cuma muncul pada sebagian nomor
+        // adalah cara memeriksa siapa saja yang punya akun, cukup dengan mencoba nomor satu
+        // per satu sampai ada yang menjawab berbeda.
+        var izin = pembatasOtp.Catat(noHp);
+        if (!izin.Boleh)
+        {
+            // Invariant, bukan budaya mesin. Nilai header HTTP bukan teks untuk dibaca
+            // orang, dan budaya yang memakai pemisah lain akan menghasilkan header yang
+            // tidak bisa diurai klien mana pun.
+            Response.Headers.RetryAfter = ((int)Math.Ceiling(izin.TungguLagi.TotalSeconds))
+                .ToString(CultureInfo.InvariantCulture);
+
+            return StatusCode(StatusCodes.Status429TooManyRequests, new ProblemDetails
+            {
+                Title = "Terlalu sering meminta kode",
+                Detail = "Kode masuk sudah dikirim beberapa kali ke nomor ini. "
+                         + "Tunggu sebentar sebelum meminta lagi.",
+                Status = StatusCodes.Status429TooManyRequests,
+            });
+        }
+
         var terdaftar = await db.Users.AnyAsync(u => u.Phone == noHp, batal);
 
         if (terdaftar)
@@ -97,6 +134,7 @@ public class AuthController(
     /// <summary>
     /// Menukar kode yang benar dengan token.
     /// </summary>
+    [EnableRateLimiting(BatasLaju.KebijakanTamu)]
     [HttpPost("masuk")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

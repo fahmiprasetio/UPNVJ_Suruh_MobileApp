@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using UpnvjSuruh.Api.Auth;
 using UpnvjSuruh.Api.Contracts;
@@ -22,6 +23,7 @@ namespace UpnvjSuruh.Api.Controllers;
 public class JalurBController(AppDbContext db) : ControllerBase
 {
     /// <summary>Klien mengirim permintaan Jalur B. Belum ada harga di sini.</summary>
+    [EnableRateLimiting(BatasLaju.KebijakanTulis)]
     [HttpPost("jalur-b")]
     [Authorize(Roles = Peran.Klien)]
     public async Task<ActionResult<OrderResponse>> BuatPermintaan(

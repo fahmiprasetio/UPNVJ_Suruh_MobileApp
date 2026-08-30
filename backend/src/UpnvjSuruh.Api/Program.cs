@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -71,6 +73,12 @@ builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<IPenyimpanOtp, PenyimpanOtpMemori>();
 builder.Services.AddSingleton<IPembuatKodeOtp, PembuatKodeOtp>();
 
+// Jam sistem, didaftarkan sebagai layanan alih-alih dibaca lewat DateTime.UtcNow di dalam
+// kelas yang membutuhkannya. Aturan yang berjendela satu jam hanya bisa diuji kalau jamnya
+// bisa digeser tes, dan aturan yang tidak pernah diuji baru ketahuan rusaknya saat dipakai.
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<IPembatasOtp, PembatasOtpMemori>();
+
 if (builder.Environment.IsDevelopment())
 {
     builder.Services.AddSingleton<IPengirimOtp, PengirimOtpLog>();
@@ -135,6 +143,80 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
+// --- Batas laju ---
+//
+// Tanpa ini, setiap endpoint di sini boleh dipanggil sesering apa pun oleh siapa pun.
+// Yang paling mahal bukan bebannya melainkan endpoint minta kode: satu skrip sederhana
+// cukup untuk mengirimi satu nomor ribuan SMS, dan setiap SMS itu ditagihkan penyedia ke
+// mitra. Penjagaan per nomor HP untuk hal itu ada di PembatasOtp; yang di sini adalah
+// jaring per pemanggil untuk sisanya.
+//
+// Angkanya semua di BatasLaju, termasuk alasan kenapa batas per alamat IP sengaja longgar.
+builder.Services.AddRateLimiter(opsi =>
+{
+    // Jaring terakhir, berlaku juga untuk permintaan yang tidak menuju controller mana pun,
+    // termasuk berkas foto bukti yang dilayani sebagai berkas statis.
+    opsi.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(konteks =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            BatasLaju.Pemanggil(konteks),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = BatasLaju.UmumPerMenit,
+                Window = BatasLaju.JendelaUmum,
+            }));
+
+    opsi.AddPolicy(BatasLaju.KebijakanTamu, konteks =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            BatasLaju.Pemanggil(konteks),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = BatasLaju.TamuPerJendela,
+                Window = BatasLaju.JendelaTamu,
+            }));
+
+    opsi.AddPolicy(BatasLaju.KebijakanTulis, konteks =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            BatasLaju.Pemanggil(konteks),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = BatasLaju.TulisPerMenit,
+                Window = TimeSpan.FromMinutes(1),
+            }));
+
+    opsi.AddPolicy(BatasLaju.KebijakanUnggah, konteks =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            BatasLaju.Pemanggil(konteks),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = BatasLaju.UnggahPerJam,
+                Window = TimeSpan.FromHours(1),
+            }));
+
+    // Ditolak dengan bentuk yang sama dengan penolakan lain di API ini, yaitu ProblemDetails,
+    // bukan badan kosong. Aplikasi mengambil kalimat yang ditampilkan ke pengguna dari sana,
+    // dan 429 berbadan kosong akan muncul di layar sebagai "server sedang bermasalah", yang
+    // menyuruh orang mencoba lagi persis pada saat mencoba lagi adalah hal yang salah.
+    opsi.OnRejected = async (konteks, batal) =>
+    {
+        var detik = konteks.Lease.TryGetMetadata(MetadataName.RetryAfter, out var jeda)
+            ? (int)Math.Ceiling(jeda.TotalSeconds)
+            : (int)BatasLaju.JendelaUmum.TotalSeconds;
+
+        konteks.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        konteks.HttpContext.Response.Headers.RetryAfter =
+            detik.ToString(CultureInfo.InvariantCulture);
+
+        await konteks.HttpContext.Response.WriteAsJsonAsync(
+            new ProblemDetails
+            {
+                Title = "Terlalu banyak permintaan",
+                Detail = $"Tunggu {detik} detik, lalu coba lagi.",
+                Status = StatusCodes.Status429TooManyRequests,
+            },
+            batal);
+    };
+});
+
 builder.Services.AddSingleton<IKalkulatorTarif, KalkulatorTarif>();
 builder.Services.AddScoped<PenyelesaiPembayaran>();
 
@@ -187,6 +269,16 @@ else
 // memutuskan apakah ia boleh. Terbalik, atau yang pertama hilang seperti sebelumnya,
 // membuat setiap [Authorize] gagal dengan "No authenticationScheme was specified".
 app.UseAuthentication();
+
+// Di antara keduanya, bukan sesudah UseAuthorization, dan itu penting di dua arah.
+//
+// Sesudah UseAuthentication supaya pembatasnya sudah tahu siapa pemanggilnya dan bisa
+// memberi jatah per pengguna alih-alih per alamat IP. Sebelum UseAuthorization supaya
+// permintaan yang ditolak karena tidak berwenang tetap terhitung: kalau urutannya
+// terbalik, endpoint yang butuh token bisa dibanjiri tanpa membawa token sama sekali,
+// karena penolakannya terjadi sebelum ada yang menghitung.
+app.UseRateLimiter();
+
 app.UseAuthorization();
 
 // Dijalankan sebelum permintaan pertama dilayani, dan tidak melakukan apa-apa kalau

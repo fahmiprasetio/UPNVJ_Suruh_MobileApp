@@ -56,6 +56,21 @@ class GalatBentrok extends GalatApi {
   const GalatBentrok(super.pesan);
 }
 
+/// Ditolak karena terlalu sering, bukan karena isinya salah.
+///
+/// Dipisahkan dari [GalatServer] justru karena tindakannya berlawanan. Untuk galat
+/// server, "coba lagi sebentar lagi" adalah saran yang benar; di sini mencoba lagi
+/// adalah persis hal yang membuatnya ditolak. Yang harus disampaikan ke pengguna
+/// adalah menunggu, dan berapa lama.
+///
+/// Pesannya datang dari server, bukan dikarang di sini, karena hanya server yang tahu
+/// batas mana yang tercapai dan berapa lama sisanya.
+class GalatTerlaluSering extends GalatApi {
+  const GalatTerlaluSering([
+    super.pesan = 'Terlalu sering mencoba. Tunggu sebentar, lalu coba lagi.',
+  ]);
+}
+
 /// Server yang bermasalah, bukan permintaannya.
 ///
 /// Pesannya sengaja tidak memuat isi jawaban server. Jejak galat backend yang

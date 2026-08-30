@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using UpnvjSuruh.Api.Auth;
 using UpnvjSuruh.Api.Data;
@@ -21,6 +22,13 @@ namespace UpnvjSuruh.Api.Controllers;
 public class FotoBuktiController(AppDbContext db, PenyimpanFoto penyimpan) : ControllerBase
 {
     /// <summary>Mengunggah satu foto untuk order yang sedang dipegang.</summary>
+    /// <remarks>
+    /// Punya batas lajunya sendiri, terpisah dari penulisan biasa, karena satu permintaan di
+    /// sini jauh lebih mahal daripada satu permintaan di mana pun: delapan megabita yang
+    /// ditulis ke cakram dan tidak pernah dihapus siapa pun. Tanpa batas, satu akun runner
+    /// cukup mengunggah berulang kali untuk memenuhi cakram server.
+    /// </remarks>
+    [EnableRateLimiting(BatasLaju.KebijakanUnggah)]
     [HttpPost]
     [RequestSizeLimit(PenyimpanFoto.BatasUkuranByte)]
     public async Task<ActionResult<FotoBuktiResponse>> Unggah(

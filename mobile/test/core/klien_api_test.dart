@@ -197,6 +197,31 @@ void main() {
       );
     });
 
+    test('429 jadi GalatTerlaluSering dengan pesan dari server', () async {
+      final klien = klienDengan(jawab(429, isi: {
+        'title': 'Terlalu sering meminta kode',
+        'detail': 'Kode masuk sudah dikirim beberapa kali ke nomor ini. '
+            'Tunggu sebentar sebelum meminta lagi.',
+      }));
+
+      await expectLater(
+        klien.post('/api/auth/minta-kode'),
+        throwsA(
+          isA<GalatTerlaluSering>()
+              .having((g) => g.pesan, 'pesan', contains('Tunggu sebentar')),
+        ),
+      );
+    });
+
+    test('429 tanpa badan tetap jadi GalatTerlaluSering, bukan GalatServer', () async {
+      // Bedanya bukan kosmetik: GalatServer menyuruh mencoba lagi sebentar lagi, dan
+      // mencoba lagi adalah persis hal yang membuatnya ditolak tadi.
+      await expectLater(
+        klienDengan(jawab(429)).post('/api/auth/masuk'),
+        throwsA(isA<GalatTerlaluSering>()),
+      );
+    });
+
     test('500 jadi GalatServer dan isinya tidak ikut ke pesan', () async {
       // Jejak galat backend yang sampai ke layar pengguna adalah bocoran gratis
       // tentang bentuk dalam sistem.

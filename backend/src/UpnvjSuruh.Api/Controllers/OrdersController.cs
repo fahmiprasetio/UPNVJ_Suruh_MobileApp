@@ -1,6 +1,7 @@
 using System.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using UpnvjSuruh.Api.Auth;
@@ -23,6 +24,7 @@ public class OrdersController(
     /// <summary>
     /// Klien membuat order Jalur A. Harganya dihitung di sini, bukan diterima dari klien.
     /// </summary>
+    [EnableRateLimiting(BatasLaju.KebijakanTulis)]
     [HttpPost("jalur-a")]
     [Authorize(Roles = Peran.Klien)]
     public async Task<ActionResult<BuatOrderResponse>> BuatJalurA(

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using UpnvjSuruh.Api.Auth;
 using UpnvjSuruh.Api.Contracts;
@@ -18,6 +19,14 @@ namespace UpnvjSuruh.Api.Controllers;
 [ApiController]
 [Route("api/webhooks/pembayaran")]
 [AllowAnonymous]
+// Dikecualikan dari batas laju, termasuk dari jaring umum, dan itu keputusan yang disengaja.
+//
+// Kabar yang ditolak di sini adalah kabar bahwa uang sudah masuk. Gateway memang mengulang
+// kiriman yang gagal, tapi mengandalkan pengulangan itu berarti menunda order yang sudah
+// dibayar karena alasan yang tidak ada hubungannya dengan pembayarannya. Yang menjaga
+// endpoint ini adalah rahasia bersama, dan permintaan tanpa rahasia yang benar sudah
+// ditolak sebelum menyentuh basis data.
+[DisableRateLimiting]
 public class WebhookPembayaranController(
     IOptions<WebhookOptions> opsi,
     PenyelesaiPembayaran penyelesai,

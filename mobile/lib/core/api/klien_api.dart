@@ -141,6 +141,11 @@ class KlienApi {
       403 => const GalatDilarang(),
       404 => const GalatTidakDitemukan(),
       409 => GalatBentrok(pesan ?? 'Data ini bentrok dengan yang sudah ada.'),
+      // Pesannya dipakai apa adanya kalau server mengirimkannya, karena hanya server
+      // yang tahu batas mana yang tercapai dan berapa lama sisanya. Tanpa penanganan
+      // khusus, 429 jatuh ke GalatServer dan layar menyuruh pengguna mencoba lagi
+      // sebentar lagi, yaitu persis hal yang membuatnya ditolak tadi.
+      429 => pesan == null ? const GalatTerlaluSering() : GalatTerlaluSering(pesan),
       _ => const GalatServer(),
     };
   }
