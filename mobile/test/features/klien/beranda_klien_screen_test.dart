@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -10,6 +11,30 @@ import 'package:upnvj_suruh/domain/service_catalog.dart';
 void main() {
   setUpAll(() async {
     await initializeDateFormatting('id_ID');
+  });
+
+  setUp(() {
+    // Beranda satu kolom yang menggulung, dan pintu keduanya memang duduk di
+    // bawah petak layanan. Pada layar tes bawaan yang cuma 600 piksel, pintu itu
+    // ada di pohon widget tapi belum pernah dipasang, jadi tesnya akan gagal
+    // untuk alasan yang tidak ada hubungannya dengan yang sedang diuji.
+    final view = TestWidgetsFlutterBinding
+        .ensureInitialized()
+        .platformDispatcher
+        .views
+        .first;
+    view.physicalSize = const Size(1000, 2400);
+    view.devicePixelRatio = 1;
+  });
+
+  tearDown(() {
+    final view = TestWidgetsFlutterBinding
+        .ensureInitialized()
+        .platformDispatcher
+        .views
+        .first;
+    view.resetPhysicalSize();
+    view.resetDevicePixelRatio();
   });
 
   Future<void> bukaBeranda(WidgetTester tester) async {
@@ -49,6 +74,16 @@ void main() {
     final permintaanLain = serviceInfoOf(ServiceType.permintaanLain);
     expect(permintaanLain.track, OrderTrack.jalurB);
     expect(find.text(permintaanLain.deskripsi), findsOneWidget);
+  });
+
+  testWidgets('layanan yang layarnya belum ada ditandai sebelum ditekan', (
+    tester,
+  ) async {
+    // Petak yang menjanjikan sesuatu lalu menjawab "menyusul" setelah ditekan
+    // membuat pengguna menanggung penemuan yang seharusnya ditanggung layar.
+    await bukaBeranda(tester);
+
+    expect(find.text('Segera'), findsOneWidget);
   });
 
   testWidgets('layanan yang layarnya belum ada memberi tahu apa adanya', (

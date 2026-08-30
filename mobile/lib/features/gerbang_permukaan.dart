@@ -6,7 +6,7 @@ import '../domain/enums.dart';
 import '../providers/peran_providers.dart';
 import '../providers/repository_providers.dart';
 import 'dev/pengalih_akun.dart';
-import 'klien/beranda/beranda_klien_screen.dart';
+import 'klien/cangkang_klien.dart';
 import 'runner/beranda_runner_screen.dart';
 
 /// Penentu permukaan mana yang terbuka setelah masuk.
@@ -38,7 +38,7 @@ class GerbangPermukaan extends ConsumerWidget {
           );
         }
         return switch (ref.watch(peranAktifProvider)) {
-          UserRole.klien => const BerandaKlienScreen(),
+          UserRole.klien => const CangkangKlien(),
           UserRole.runner => const BerandaRunnerScreen(),
           // Peran admin tidak punya permukaan mobile, dan akun yang cuma
           // memegang admin tidak punya peran bawaan sama sekali.

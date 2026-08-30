@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/models/order.dart';
 import '../../providers/runner_providers.dart';
+import '../widgets/bilah_navigasi_bawah.dart';
 import 'order_masuk/order_masuk_screen.dart';
 import 'order_saya/order_saya_runner_screen.dart';
 
@@ -37,10 +38,10 @@ class _BerandaRunnerScreenState extends ConsumerState<BerandaRunnerScreen> {
         index: _tab,
         children: const [OrderMasukScreen(), OrderSayaRunnerScreen()],
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (indeks) => setState(() => _tab = indeks),
-        destinations: [
+      bottomNavigationBar: BilahNavigasiBawah(
+        terpilih: _tab,
+        onPilih: (indeks) => setState(() => _tab = indeks),
+        tujuan: [
           const NavigationDestination(
             icon: Icon(Icons.inbox_outlined),
             selectedIcon: Icon(Icons.inbox),
