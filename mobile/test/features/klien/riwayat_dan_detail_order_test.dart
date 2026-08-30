@@ -83,7 +83,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('0 dari 3 orang'), findsOneWidget);
-    expect(find.text('Menunggu penawaran admin'), findsOneWidget);
+    // Harga yang belum ada ditulis sebesar harga sungguhan di kepala layar,
+    // bukan diringkas jadi baris terakhir di tabel rincian.
+    expect(find.text('Harga menunggu penawaran'), findsOneWidget);
     expect(
       find.text('Admin sedang membaca permintaanmu. Penawaran harga menyusul.'),
       findsOneWidget,

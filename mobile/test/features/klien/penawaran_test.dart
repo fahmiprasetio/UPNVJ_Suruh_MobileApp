@@ -229,7 +229,9 @@ void main() {
     );
     await bukaDetail(tester, tanpaPenawaran);
 
-    expect(find.text('Menunggu penawaran admin'), findsOneWidget);
+    // Harga yang belum ada ditulis sebesar harga sungguhan di kepala layar,
+    // bukan diringkas jadi baris terakhir di tabel rincian.
+    expect(find.text('Harga menunggu penawaran'), findsOneWidget);
     expect(find.text('Penawaran admin'), findsNothing);
     expect(find.text('Rp 175.000'), findsNothing);
     expect(find.text('Setuju & Bayar'), findsNothing);

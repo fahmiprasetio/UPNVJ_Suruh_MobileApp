@@ -24,6 +24,16 @@ class DetailOrderScreen extends ConsumerWidget {
 
   final String orderId;
 
+  /// Tindakan yang bisa ditekan pada status ini, atau `null` kalau tidak ada.
+  Widget? _bilahTindakan(Order? order) {
+    if (order == null) return null;
+    if (order.penawaranMenunggu != null) return _BilahPenawaran(order: order);
+    if (order.status == OrderStatus.menungguPembayaran) {
+      return _BilahBayar(order: order);
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final order = ref.watch(orderProvider(orderId));
@@ -42,9 +52,14 @@ class DetailOrderScreen extends ConsumerWidget {
             ? const Center(child: Text('Order tidak ditemukan.'))
             : _Isi(order: order),
       ),
-      bottomNavigationBar: order.value == null
-          ? null
-          : _BilahTindakan(order: order.value!),
+      // Hanya diisi kalau memang ada yang bisa ditekan.
+      //
+      // Sebelumnya slot ini juga dipakai memajang keterangan status seperti
+      // "Runner sedang mengerjakan ordermu", dan hasilnya kalimat yang
+      // mengambang sendirian di tepi bawah layar, jauh dari isi yang ia
+      // jelaskan. Keterangan itu sekarang duduk di bawah linimasa, tempat
+      // pertanyaannya muncul.
+      bottomNavigationBar: _bilahTindakan(order.value),
     );
   }
 }
@@ -104,6 +119,7 @@ class _Isi extends ConsumerWidget {
                 style: teks.titleMedium?.copyWith(fontWeight: FontWeight.w600),
               ),
             ),
+            const SizedBox(width: AppTheme.spasiKecil),
             LencanaStatus(status: order.status),
           ],
         ),
@@ -112,6 +128,14 @@ class _Isi extends ConsumerWidget {
           'Dibuat ${formatTanggalJam(order.dibuatPada)}',
           style: teks.bodySmall?.copyWith(color: skema.onSurfaceVariant),
         ),
+        const SizedBox(height: AppTheme.spasiSedang),
+        // Harga naik ke kepala layar.
+        //
+        // Sebelumnya ia satu baris di tabel rincian paling bawah, dengan huruf
+        // terkecil di layar dan sering di bawah lipatan. Ini layar yang dibuka
+        // orang untuk memeriksa pesanannya, dan angka yang ia periksa tidak
+        // boleh jadi hal terakhir yang ia temukan.
+        _HargaOrder(order: order),
         const SizedBox(height: AppTheme.spasiBesar),
         Card(
           child: Padding(
@@ -119,6 +143,30 @@ class _Isi extends ConsumerWidget {
             child: LinimasaStatus(order: order),
           ),
         ),
+        // Keterangan status duduk tepat di bawah linimasa, tempat pertanyaan
+        // "lalu sekarang bagaimana" muncul.
+        if (_catatanStatus(order) case final catatan?) ...[
+          const SizedBox(height: AppTheme.spasiSedang),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.info_outline,
+                size: 18,
+                color: skema.onSurfaceVariant,
+              ),
+              const SizedBox(width: AppTheme.spasiKecil),
+              Expanded(
+                child: Text(
+                  catatan,
+                  style: teks.bodyMedium?.copyWith(
+                    color: skema.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
         // Penawaran ditaruh persis di bawah linimasa, di atas segalanya yang
         // lain: selama admin sudah mengirim harga, itulah satu-satunya hal
         // yang sedang ditunggu klien.
@@ -137,7 +185,7 @@ class _Isi extends ConsumerWidget {
           const SizedBox(height: AppTheme.spasiBesar),
           Text(
             'Hasil pekerjaan',
-            style: teks.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+            style: teks.titleMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: AppTheme.spasiKecil),
           KartuBuktiPekerjaan(order: order),
@@ -145,7 +193,7 @@ class _Isi extends ConsumerWidget {
         const SizedBox(height: AppTheme.spasiBesar),
         Text(
           'Rincian',
-          style: teks.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+          style: teks.titleMedium?.copyWith(fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: AppTheme.spasiKecil),
         Card(
@@ -173,13 +221,6 @@ class _Isi extends ConsumerWidget {
                         '${order.runnerIds.length} dari '
                         '${order.jumlahRunnerDibutuhkan} orang',
                   ),
-                _Baris(
-                  label: 'Harga',
-                  nilai: order.harga == null
-                      ? 'Menunggu penawaran admin'
-                      : formatRupiah(order.harga),
-                  tebal: true,
-                ),
               ],
             ),
           ),
@@ -190,11 +231,10 @@ class _Isi extends ConsumerWidget {
 }
 
 class _Baris extends StatelessWidget {
-  const _Baris({required this.label, required this.nilai, this.tebal = false});
+  const _Baris({required this.label, required this.nilai});
 
   final String label;
   final String nilai;
-  final bool tebal;
 
   @override
   Widget build(BuildContext context) {
@@ -214,12 +254,7 @@ class _Baris extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: Text(
-              nilai,
-              style: teks.bodyMedium?.copyWith(
-                fontWeight: tebal ? FontWeight.w700 : FontWeight.w400,
-              ),
-            ),
+            child: Text(nilai, style: teks.bodyMedium),
           ),
         ],
       ),
@@ -227,56 +262,65 @@ class _Baris extends StatelessWidget {
   }
 }
 
-/// Tindakan yang tersedia untuk klien, mengikuti status ordernya.
-class _BilahTindakan extends StatelessWidget {
-  const _BilahTindakan({required this.order});
+/// Keterangan apa yang sedang terjadi pada order ini, atau `null` kalau
+/// statusnya sudah menjelaskan dirinya lewat tindakan yang tersedia.
+///
+/// Kalimatnya menjawab satu pertanyaan: siapa yang sedang berbuat sesuatu, dan
+/// apa yang ditunggu. Status yang cuma dinamai lencana meninggalkan klien
+/// menebak apakah ia sedang menunggu orang lain atau sedang ditunggu.
+String? _catatanStatus(Order order) => switch (order.status) {
+  OrderStatus.permintaan =>
+    'Admin sedang membaca permintaanmu. Penawaran harga menyusul.',
+  OrderStatus.menungguPersetujuanKlien => 'Penawaran ini sudah kamu jawab.',
+  OrderStatus.mencariRunner =>
+    'Ordermu sedang disiarkan ke runner yang tersedia.',
+  OrderStatus.dikerjakan => 'Runner sedang mengerjakan ordermu.',
+  OrderStatus.selesai => 'Order selesai. Terima kasih!',
+  OrderStatus.batal => 'Order ini sudah dibatalkan.',
+  OrderStatus.menungguPembayaran => null,
+};
+
+/// Harga order, sebagai fakta terbesar di layar ini.
+///
+/// Harga yang belum ada ditulis sebesar harga sungguhan dan cuma berbeda
+/// warnanya: order Jalur B memang belum punya angka sebelum penawaran
+/// disepakati, dan itu keadaan yang sah, bukan data hilang yang pantas
+/// diringkas jadi tanda hubung atau nol.
+class _HargaOrder extends StatelessWidget {
+  const _HargaOrder({required this.order});
 
   final Order order;
 
   @override
   Widget build(BuildContext context) {
-    // Penawaran yang menunggu jawaban adalah satu-satunya keadaan dengan lebih
-    // dari satu tindakan, jadi ia punya bilahnya sendiri.
-    if (order.penawaranMenunggu != null) {
-      return _BilahPenawaran(order: order);
-    }
+    final skema = Theme.of(context).colorScheme;
+    final belumBerharga = order.harga == null;
 
-    final (label, keterangan) = switch (order.status) {
-      OrderStatus.menungguPembayaran => ('Bayar Sekarang', null),
-      OrderStatus.permintaan => (
-        null,
-        'Admin sedang membaca permintaanmu. Penawaran harga menyusul.',
+    return Text(
+      belumBerharga ? 'Harga menunggu penawaran' : formatRupiah(order.harga),
+      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+        fontWeight: FontWeight.w700,
+        color: belumBerharga ? skema.onSurfaceVariant : skema.primary,
       ),
-      OrderStatus.menungguPersetujuanKlien => (
-        null,
-        'Penawaran ini sudah kamu jawab.',
-      ),
-      OrderStatus.mencariRunner => (
-        null,
-        'Ordermu sedang disiarkan ke runner yang tersedia.',
-      ),
-      OrderStatus.dikerjakan => (null, 'Runner sedang mengerjakan ordermu.'),
-      OrderStatus.selesai => (null, 'Order selesai. Terima kasih!'),
-      OrderStatus.batal => (null, 'Order ini sudah dibatalkan.'),
-    };
+    );
+  }
+}
 
-    if (label == null && keterangan == null) return const SizedBox.shrink();
+/// Satu-satunya tindakan pada order yang menunggu dibayar.
+class _BilahBayar extends StatelessWidget {
+  const _BilahBayar({required this.order});
 
+  final Order order;
+
+  @override
+  Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(AppTheme.spasiSedang),
-        child: label != null
-            ? FilledButton(
-                onPressed: () => context.push(Rute.bayar(order.id)),
-                child: Text(label),
-              )
-            : Text(
-                keterangan!,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
+        child: FilledButton(
+          onPressed: () => context.push(Rute.bayar(order.id)),
+          child: const Text('Bayar Sekarang'),
+        ),
       ),
     );
   }

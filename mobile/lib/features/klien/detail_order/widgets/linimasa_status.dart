@@ -24,8 +24,20 @@ class LinimasaStatus extends StatelessWidget {
         for (var i = 0; i < tahapan.length; i++)
           _Tahap(
             status: tahapan[i],
-            sudahLewat: order.sudahLewat(tahapan[i]),
-            sedangDi: order.sedangDi(tahapan[i]),
+            // Tahap akhir pada order yang sudah selesai dihitung terlewati,
+            // bukan sedang berjalan.
+            //
+            // Cincin terbuka ada untuk menunjukkan "kamu sedang di sini" dalam
+            // proses yang masih jalan. Pada order yang sudah kelar tidak ada
+            // lagi yang berjalan, dan lingkaran kosong di ujung membuat order
+            // yang tuntas terbaca seperti masih menggantung.
+            sudahLewat:
+                order.sudahLewat(tahapan[i]) ||
+                (order.status == OrderStatus.selesai &&
+                    order.sedangDi(tahapan[i])),
+            sedangDi:
+                order.sedangDi(tahapan[i]) &&
+                order.status != OrderStatus.selesai,
             tahapTerakhir: i == tahapan.length - 1,
           ),
       ],
