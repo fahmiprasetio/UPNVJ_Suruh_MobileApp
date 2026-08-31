@@ -8,6 +8,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../domain/models/order.dart';
 import '../../../providers/order_providers.dart';
 import '../../../providers/ukuran_daftar.dart';
+import '../../widgets/pesan_kosong.dart';
+import '../../widgets/rangka_daftar_order.dart';
 import '../../widgets/tombol_muat_lagi.dart';
 import '../widgets/kartu_order_ringkas.dart';
 
@@ -37,8 +39,8 @@ class RiwayatOrderScreen extends ConsumerWidget {
         // daftar yang sudah tampil berkedip jadi pemuat setiap kali "muat lagi"
         // ditekan, yaitu tepat pada saat orang sedang menatapnya.
         skipLoadingOnReload: true,
-        loading: () => const _RangkaMuat(),
-        error: (galat, _) => _PesanKosong(
+        loading: () => const RangkaDaftarOrder(),
+        error: (galat, _) => PesanKosong(
           ikon: Icons.wifi_off_outlined,
           judul: 'Order gagal dimuat',
           // Kalimat yang sudah ditulis untuk dibaca orang kalau ada; jejak galat
@@ -55,7 +57,7 @@ class RiwayatOrderScreen extends ConsumerWidget {
         data: (halaman) {
           final semua = halaman.isi;
           if (semua.isEmpty) {
-            return _PesanKosong(
+            return PesanKosong(
               ikon: Icons.receipt_long_outlined,
               judul: 'Belum ada order',
               // Mengajari, bukan sekadar memberi tahu bahwa kosong. Ini layar
@@ -126,142 +128,5 @@ class RiwayatOrderScreen extends ConsumerWidget {
           ),
         ),
     ];
-  }
-}
-
-/// Bentuk kasar daftar order selagi isinya diambil.
-///
-/// Bukan pemutar di tengah layar. Yang dinanti pengguna adalah daftar, dan
-/// rangka yang sudah berbentuk daftar membuat isinya terasa sedang datang alih-
-/// alih membuat layarnya terasa berhenti. Hanya muncul pada pengambilan pertama;
-/// pengambilan ulang berkala mempertahankan daftar yang sudah tampil.
-class _RangkaMuat extends StatelessWidget {
-  const _RangkaMuat();
-
-  @override
-  Widget build(BuildContext context) {
-    final skema = Theme.of(context).colorScheme;
-
-    Widget balok(double lebar, double tinggi) => Container(
-      width: lebar,
-      height: tinggi,
-      decoration: BoxDecoration(
-        color: skema.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(AppTheme.spasiKecil / 2),
-      ),
-    );
-
-    return ListView(
-      padding: const EdgeInsets.all(AppTheme.spasiSedang),
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: AppTheme.spasiKecil + 2),
-          child: balok(150, 20),
-        ),
-        for (var i = 0; i < 3; i++)
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppTheme.spasiKecil + 2),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(AppTheme.spasiSedang),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        balok(120, 14),
-                        const Spacer(),
-                        balok(72, 18),
-                      ],
-                    ),
-                    const SizedBox(height: AppTheme.spasiKecil),
-                    balok(160, 12),
-                    const SizedBox(height: AppTheme.spasiSedang),
-                    balok(110, 22),
-                  ],
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-/// Layar tanpa isi: kosong, gagal dimuat, atau belum pernah dipakai.
-///
-/// Selalu menawarkan satu jalan keluar kalau ada. Layar yang cuma menyatakan
-/// keadaan meninggalkan pengguna di jalan buntu, dan jalan buntu di tab yang
-/// baru pertama kali dibuka adalah kesan pertama yang tidak perlu.
-class _PesanKosong extends StatelessWidget {
-  const _PesanKosong({
-    required this.ikon,
-    required this.judul,
-    required this.keterangan,
-    this.labelAksi,
-    this.onAksi,
-  });
-
-  final IconData ikon;
-  final String judul;
-  final String keterangan;
-  final String? labelAksi;
-  final VoidCallback? onAksi;
-
-  @override
-  Widget build(BuildContext context) {
-    final skema = Theme.of(context).colorScheme;
-    final aksi = onAksi;
-    final label = labelAksi;
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spasiBesar),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(AppTheme.spasiSedang),
-              decoration: BoxDecoration(
-                color: skema.surfaceContainerHigh,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(ikon, size: 32, color: skema.onSurfaceVariant),
-            ),
-            const SizedBox(height: AppTheme.spasiSedang),
-            Text(
-              judul,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              keterangan,
-              textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: skema.onSurfaceVariant),
-            ),
-            if (aksi != null && label != null) ...[
-              const SizedBox(height: AppTheme.spasiBesar),
-              FilledButton(
-                onPressed: aksi,
-                // Tidak selebar layar. Tombol di tengah layar kosong yang
-                // membentang penuh terbaca sebagai formulir yang belum selesai;
-                // yang ini sebuah tawaran, bukan langkah wajib.
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(0, 48),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.spasiBesar,
-                  ),
-                ),
-                child: Text(label),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
   }
 }

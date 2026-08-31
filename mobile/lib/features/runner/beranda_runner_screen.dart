@@ -36,7 +36,12 @@ class _BerandaRunnerScreenState extends ConsumerState<BerandaRunnerScreen> {
     return Scaffold(
       body: IndexedStack(
         index: _tab,
-        children: const [OrderMasukScreen(), OrderSayaRunnerScreen()],
+        children: [
+          const OrderMasukScreen(),
+          OrderSayaRunnerScreen(
+            onMintaOrderMasuk: () => setState(() => _tab = 0),
+          ),
+        ],
       ),
       bottomNavigationBar: BilahNavigasiBawah(
         terpilih: _tab,

@@ -96,6 +96,21 @@ void main() {
     expect(find.text('Belum ada order yang kamu pegang'), findsOneWidget);
   });
 
+  testWidgets('layar kosong menawarkan jalan keluar, bukan jalan buntu', (
+    tester,
+  ) async {
+    await bukaOrderSaya(tester, orderAwal: const []);
+
+    await tester.tap(find.text('Lihat Order Masuk'));
+    await tester.pumpAndSettle();
+
+    // Berpindah tab, bukan mendorong rute baru. Kalau suatu saat tombol ini
+    // diganti jadi `context.push`, dua daftar order masuk akan menumpuk di
+    // riwayat navigasi dan tombol kembali akan melewati satu layar hantu.
+    expect(find.widgetWithText(AppBar, 'Order Masuk'), findsOneWidget);
+    expect(find.byType(BackButton), findsNothing);
+  });
+
   testWidgets('tombol selesai mati sampai foto buktinya ada', (tester) async {
     await bukaOrderSaya(tester);
 

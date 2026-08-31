@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/api/galat_api.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/models/order.dart';
@@ -11,6 +12,8 @@ import '../../peran/tombol_ganti_mode.dart';
 import 'widgets/kartu_order_runner.dart';
 import 'widgets/lembar_selesaikan_order.dart';
 import '../../../providers/ukuran_daftar.dart';
+import '../../widgets/pesan_kosong.dart';
+import '../../widgets/rangka_daftar_order.dart';
 import '../../widgets/tombol_muat_lagi.dart';
 
 /// Order yang dipegang runner, yang sedang dikerjakan dan yang sudah kelar.
@@ -19,7 +22,15 @@ import '../../widgets/tombol_muat_lagi.dart';
 /// kelanjutan sama sekali: statusnya "Dikerjakan" selamanya karena tidak ada
 /// tempat untuk menutupnya.
 class OrderSayaRunnerScreen extends ConsumerWidget {
-  const OrderSayaRunnerScreen({super.key});
+  const OrderSayaRunnerScreen({super.key, this.onMintaOrderMasuk});
+
+  /// Dipanggil saat runner yang belum memegang order memilih pergi mencarinya.
+  ///
+  /// Diminta dari luar, bukan diurus sendiri lewat navigasi, karena Order Masuk
+  /// bukan layar yang bisa didorong ke atas layar ini: ia tab sebelah di
+  /// cangkang yang sama, dan mendorongnya sebagai rute baru akan menumpuk dua
+  /// daftar order masuk di riwayat navigasi.
+  final VoidCallback? onMintaOrderMasuk;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -36,21 +47,32 @@ class OrderSayaRunnerScreen extends ConsumerWidget {
           // ulang provider yang sama, dan daftar yang sudah tampil tidak boleh berkedip
           // jadi pemuat karenanya.
           skipLoadingOnReload: true,
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (galat, _) => _PesanKosong(
-            ikon: Icons.error_outline,
+          loading: () =>
+              const RangkaDaftarOrder(jumlah: 2, denganTombol: true),
+          error: (galat, _) => PesanKosong(
+            ikon: Icons.wifi_off_outlined,
             judul: 'Order gagal dimuat',
-            keterangan: '$galat',
+            keterangan: galat is GalatApi
+                ? galat.pesan
+                : 'Sambungan ke server terputus.',
+            labelAksi: 'Coba lagi',
+            onAksi: () => ref.invalidate(orderRunnerProvider),
           ),
           data: (halaman) {
             final semua = halaman.isi;
             if (semua.isEmpty) {
-              return const _PesanKosong(
+              return PesanKosong(
                 ikon: Icons.assignment_outlined,
                 judul: 'Belum ada order yang kamu pegang',
                 keterangan:
                     'Order yang kamu terima dari daftar Order Masuk akan '
                     'muncul di sini.',
+                // Jalan keluarnya tab sebelah, bukan menyegarkan layar ini.
+                // Daftar ini kosong bukan karena gagal dimuat, melainkan karena
+                // runner memang belum mengambil apa pun, dan yang ia butuhkan
+                // adalah tempat mengambilnya.
+                labelAksi: 'Lihat Order Masuk',
+                onAksi: onMintaOrderMasuk,
               );
             }
 
@@ -125,43 +147,5 @@ class OrderSayaRunnerScreen extends ConsumerWidget {
       ..showSnackBar(
         SnackBar(content: Text('Order ${order.kodeOrder} ditandai selesai.')),
       );
-  }
-}
-
-class _PesanKosong extends StatelessWidget {
-  const _PesanKosong({
-    required this.ikon,
-    required this.judul,
-    required this.keterangan,
-  });
-
-  final IconData ikon;
-  final String judul;
-  final String keterangan;
-
-  @override
-  Widget build(BuildContext context) {
-    final skema = Theme.of(context).colorScheme;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spasiBesar),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(ikon, size: 44, color: skema.onSurfaceVariant),
-            const SizedBox(height: AppTheme.spasiSedang),
-            Text(judul, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 4),
-            Text(
-              keterangan,
-              textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: skema.onSurfaceVariant),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
