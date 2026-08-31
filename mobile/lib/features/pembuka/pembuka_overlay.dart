@@ -98,6 +98,17 @@ class _PembukaOverlayState extends ConsumerState<PembukaOverlay>
   /// masuk ke beranda tanpa perlu diminta.
   static const Duration _batasTungguSesi = Duration(seconds: 3);
 
+  /// Jeda diam sesudah gerakan dekoratif berhenti, sebelum lapisannya mulai
+  /// diangkat.
+  ///
+  /// Tanpa ini, begitu putaran dan tulisannya selesai, lapisannya langsung
+  /// terangkat di bingkai berikutnya (lebih cepat lagi kalau sesinya sudah siap
+  /// duluan). Gerakan yang berhenti lalu SEKETIKA disusul gerakan lain terbaca
+  /// tergesa-gesa, seperti animasinya terpotong sebelum selesai betul-betul.
+  /// Sedetik diam ini memberi lencananya waktu untuk benar-benar terlihat utuh
+  /// dan diam, bukan cuma singgah sekilas di keadaan akhirnya.
+  static const Duration _durasiDiam = Duration(seconds: 1);
+
   late final AnimationController _utama = AnimationController(
     vsync: this,
     duration: _durasiUtama,
@@ -105,6 +116,22 @@ class _PembukaOverlayState extends ConsumerState<PembukaOverlay>
   late final AnimationController _angkat = AnimationController(
     vsync: this,
     duration: _durasiAngkat,
+  );
+
+  /// Jeda diamnya dijalankan sebagai pengendali animasi juga, bukan
+  /// [Future.delayed], walaupun tidak ada satu piksel pun yang berubah
+  /// karenanya.
+  ///
+  /// Alasannya bukan gaya penulisan. `Future.delayed` cuma timer polos yang
+  /// tidak menjadwalkan bingkai sama sekali selama ia menunggu, jadi
+  /// `pumpAndSettle` di tes menganggap aplikasinya sudah tenang dan berhenti
+  /// memompa tepat saat jeda ini baru mulai. Akibatnya seluruh tes layar yang
+  /// membuka aplikasi utuh ikut gagal, dengan keluhan timer yang masih menyala.
+  /// Pengendali animasi terus berdetak dan terus menjadwalkan bingkai, jadi
+  /// jedanya terlewati sendiri oleh pemompaan biasa.
+  late final AnimationController _diam = AnimationController(
+    vsync: this,
+    duration: _durasiDiam,
   );
 
   late final Animation<double> _naik = _kurvaUtama(
@@ -159,6 +186,15 @@ class _PembukaOverlayState extends ConsumerState<PembukaOverlay>
     ]);
     if (!mounted) return;
 
+    // Jeda diamnya dilewati sama seperti gerakan dekoratifnya kalau animasi
+    // dimatikan di setelan aksesibilitas: pengguna yang sudah minta gerakan
+    // sesedikit mungkin tidak seharusnya diberi satu detik tambahan cuma untuk
+    // menatap logo yang tidak bergerak.
+    if (!tanpaAnimasi) {
+      await _diam.forward();
+      if (!mounted) return;
+    }
+
     if (tanpaAnimasi) {
       _angkat.value = 1;
     } else {
@@ -178,6 +214,7 @@ class _PembukaOverlayState extends ConsumerState<PembukaOverlay>
   void dispose() {
     _utama.dispose();
     _angkat.dispose();
+    _diam.dispose();
     super.dispose();
   }
 

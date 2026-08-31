@@ -228,10 +228,11 @@ void main() {
       kesiapan: siap.future,
     );
 
-    // Batas tunggu sesinya 3 detik, gerakan dekoratifnya 2,1 detik, angkatnya
-    // 220 milidetik: jalur terpanjang sekitar 3,3 detik. Dipompa sampai 5 detik
-    // tanpa sesinya pernah diselesaikan.
-    for (var i = 0; i < 20; i++) {
+    // Batas tunggu sesinya 3 detik, jeda diamnya 1 detik, angkatnya 220
+    // milidetik: jalur terpanjang sekitar 4,2 detik (gerakan dekoratifnya 2,1
+    // detik sudah lewat sebelum batas tunggu sesi selesai, jadi tidak ikut
+    // menambah). Dipompa sampai 6 detik tanpa sesinya pernah diselesaikan.
+    for (var i = 0; i < 24; i++) {
       await tester.pump(const Duration(milliseconds: 250));
     }
 

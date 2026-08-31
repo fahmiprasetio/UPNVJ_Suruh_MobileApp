@@ -2,3 +2,13 @@
 .idea/
 .DS_Store
 Thumbs.db
+
+# Impeccable (skill desain), dipasang lewat `npx impeccable install`.
+# Tiga salinan identik untuk tiga harness (Claude Code, Gemini, Antigravity),
+# total sekitar 10 MB dan 445 berkas. Ini perkakas, bukan bagian aplikasi, dan
+# siapa pun bisa memasangnya sendiri dengan satu perintah, jadi tidak ikut
+# di-commit supaya repo skripsi tidak membengkak oleh isi yang bukan miliknya.
+.agent/
+.claude/
+.gemini/
+.impeccable/
