@@ -6,10 +6,11 @@ ditinggal, dan tempat melanjutkan.
 
 Bagian 1 sampai 7 dari sesi pertama: cara menyalakan proyek supaya bisa dilihat di browser,
 dan catatan animasi splash screen. Bagian 8 sampai 10 dari sesi 30 Agustus 2026: pengerasan
-keamanan backend dan migrasi sistem desain ke permukaan klien. Bagian 11 sampai 18 dari sesi
-31 Agustus 2026: permukaan runner, chat, layar masuk, dan layar profil.
+keamanan backend dan migrasi sistem desain ke permukaan klien. Bagian 11 sampai 20 dari sesi
+31 Agustus 2026: permukaan runner, chat, layar masuk, layar profil, dan tiga lubang
+fungsional yang ditemukan sambil jalan.
 
-**Kalau sedang mencari tempat melanjutkan, langsung ke bagian 18.**
+**Kalau sedang mencari tempat melanjutkan, langsung ke bagian 20.**
 
 ---
 
@@ -636,14 +637,18 @@ pita keterangan yang berubah jadi peringatan.
 
 # Sesi 31 Agustus 2026: separuh produk yang belum pernah ditata
 
-Tujuh commit, dari `0952301` sampai `1e8c659`. Menutup ketiga hal yang didaftar sesi
-sebelumnya sebagai belum ditata: permukaan runner, chat order, dan layar masuk. Enam dari
-tujuh commit itu tidak menambah fitur sama sekali; yang berubah cuma bagaimana yang sudah
-ada terbaca.
+Sepuluh commit, dari `0952301` sampai `ce113c3`. Menutup ketiga hal yang didaftar sesi
+sebelumnya sebagai belum ditata: permukaan runner, chat order, dan layar masuk. Enam commit
+pertama tidak menambah fitur sama sekali; yang berubah cuma bagaimana yang sudah ada
+terbaca.
 
-Yang satu lagi menambal lubang yang ditemukan sambil menulis catatan ini: tidak ada satu pun
-layar yang memanggil `keluar()`, jadi tidak ada cara keluar dari akun. Ceritanya di bagian
-15.
+Tiga commit terakhir menambal lubang yang ditemukan sambil menata: **tiga kemampuan yang
+sudah ada di bawah, bertes di lapisan data, dan tidak pernah dipanggil dari satu pun layar.**
+`keluar()` (bagian 15), `batalkanOrder()` (bagian 18), dan tombol profil yang tidak pernah
+sampai ke layar gerbang permukaan (bagian 19).
+
+Polanya cukup konsisten untuk dijadikan pemeriksaan berdiri sendiri di sesi berikutnya: cari
+metode publik di `lib/domain/repositories/` yang tidak punya pemanggil di `lib/features/`.
 
 Commit pertamanya sendiri menyelesaikan pekerjaan yang menggantung di direktori kerja sejak
 sesi lalu: jeda diam sedetik di layar pembuka.
@@ -949,26 +954,135 @@ Satu tambahan resep untuk bagian 10: `FakeAuthRepository()` **bawaannya sudah ma
 klien**. Untuk memotret layar masuk, pakai `FakeAuthRepository.belumMasuk()`, kalau tidak
 yang terpotret adalah beranda.
 
-## 18. Keadaan Sekarang dan Tempat Melanjutkan
+## 18. Membatalkan Order (commit `433474b`)
 
-**Kedua suite hijau.** Backend 275 lulus, mobile 280 lulus (dari 271 sebelum sesi ini,
-sembilan kasus baru), `flutter analyze` bersih. Tidak ada tes merah yang ditinggalkan.
+Lubang ketiga yang sepola dengan dua sebelumnya: kemampuannya ada di bawah, pintunya tidak
+pernah dibuat.
+
+`batalkanOrder` sudah ada di kontrak `OrderRepository`, di `ApiOrderRepository`, di
+`FakeOrderRepository`, dan di backend lengkap dengan lima tes endpoint. **Tidak dipanggil
+dari satu pun layar.** Klien yang salah menulis alamat, salah memilih layanan, atau berubah
+pikiran sebelum membayar tidak punya cara menutup ordernya. Ordernya menggantung di
+"Menunggu Pembayaran" atau "Permintaan" selamanya, dan satu-satunya jalan keluar adalah
+mengabaikannya.
+
+Ini juga menjelaskan kenapa `Penyapu` di backend sengaja tidak diberi pembatalan otomatis
+(bagian 8): keputusannya memang belum diambil mitra. Tapi selama pembatalan manual pun tidak
+ada, order terbengkalai tidak punya jalan keluar sama sekali, dari sisi mana pun.
+
+### Keputusan tata letak, dan kenapa bukan yang lain
+
+- **Tombol teks di kaki isi layar, bukan tombol maroon.** Bilah bawah sudah dipakai tindakan
+  utama, Bayar atau Terima Penawaran, dan membatalkan bukan hal yang ingin didorong aplikasi
+  ini kepada siapa pun.
+- **Bukan di balik menu tiga titik.** Orang mencarinya justru saat sedang ragu membayar, dan
+  yang tidak ketemu di aplikasi akan dicari lewat WhatsApp, yaitu kebiasaan yang seluruh
+  produk ini berusaha tinggalkan.
+- **Bukan merah.** Di sistem ini merah berarti satu hal, ada yang harus dibayar, dan tombol
+  batal merah akan bersaing dengan pil "Menunggu Pembayaran" beberapa sentimeter di atasnya.
+  Bobotnya ditaruh di dialog konfirmasinya.
+- **Tombol tolak di dialognya bertuliskan "Jangan", bukan "Batal".** Di dialog pembatalan,
+  tombol bertuliskan "Batal" bisa dibaca sebagai "ya, batalkan ordernya", dan itu persis
+  kesalahan yang paling mahal di layar itu.
+- **Order yang sudah dibayar tetap diberi kalimat**, bukan sekadar disembunyikan tombolnya.
+  Pembatalan yang kadang ada kadang tidak, tanpa aturan yang bisa ditebak, lebih buruk
+  daripada yang mengatakan ke mana harus pergi.
+
+### Yang diperbaiki di backend sekalian
+
+Membatalkan order sekarang **ikut mematikan tagihan yang masih menunggu**.
+
+Belum dibayar tidak berarti belum ditagihkan: begitu klien membuka layar bayar, sebuah
+`Payment` berikut QR-nya sudah dibuat dan berlaku sampai batas waktunya. Membiarkannya hidup
+berarti QR untuk order yang sudah tidak ada masih bisa dipindai.
+
+Uangnya sendiri tidak akan memajukan ordernya, `PenyelesaiPembayaran` sudah memeriksa
+`order.Status != OrderStatus.MenungguPembayaran` dan berhenti di situ. Tapi yang tersisa
+adalah satu baris `LogWarning` yang harus ada orang menemukannya, dan uang yang harus
+dikembalikan. Menutup tagihannya di tempat ordernya dibatalkan lebih murah daripada
+menunggu ada yang membaca log.
+
+Ditandai `Gagal`, bukan `Kedaluwarsa`. Kedaluwarsa berarti waktunya habis sendiri, sedangkan
+ini dihentikan karena ordernya dicabut, dan bedanya yang akan dibaca orang saat menelusuri
+kenapa sebuah tagihan tidak pernah selesai.
+
+### Divergensi tiruan yang disadari
+
+`FakePaymentGateway` dan `FakeOrderRepository` adalah dua objek terpisah yang tidak saling
+kenal, jadi membatalkan order di jalur tiruan **tidak** mematikan transaksi tiruannya.
+Sengaja dibiarkan: menyambungkan keduanya berarti `orderRepositoryProvider` harus membaca
+`paymentGatewayProvider` yang sudah membaca `orderRepositoryProvider`, dan Riverpod tidak
+menerima lingkaran seperti itu. Yang jadi kontrak adalah backend, dan itu yang diuji.
+
+Akibatnya di jalur tiruan: order yang dibatalkan sesudah layar bayar dibuka meninggalkan QR
+tiruan yang masih hidup sampai batas waktunya. Artefak alat penguji, bukan perilaku aplikasi.
+
+## 19. Gerbang Permukaan: Jalan Buntu yang Tidak Bisa Ditinggalkan (commit `ce113c3`)
+
+Akun yang cuma memegang peran admin sampai di `GerbangPermukaan`, membaca bahwa tidak ada
+yang bisa ia kerjakan dari HP, lalu **tidak punya satu pun cara keluar dari akunnya**: tombol
+profil hanya ada di beranda klien dan di kedua bilah atas runner, dan layar ini bukan
+ketiganya.
+
+Jalan buntunya sendiri benar dan disengaja (bagian 14.2: pekerjaan admin tempatnya dashboard
+web). Yang salah adalah jalan buntu yang tidak bisa ditinggalkan.
+
+Tidak ada akun admin saja di `SeedData`, jadi cabang ini tidak pernah terlihat siapa pun
+sepanjang pengembangan. Sekarang ada tesnya, yang membuat akunnya sendiri di dalam tes.
+
+Dua hal lain di berkas yang sama:
+
+- Cabang "belum masuk" tertulis `'Belum masuk. Layar login menyusul.'`, kalimat yang sudah
+  salah sejak layar masuk dipasang. Sekarang layar kosong, karena `redirect` di router
+  mengantar yang belum masuk ke `/masuk` sebelum layar ini sempat digambar, dan kalimat yang
+  terbaca sekejap lalu hilang lebih mengganggu daripada layar yang diam.
+- Cabang galat memajang jejak pengecualian mentah di layar pertama sesudah masuk.
+
+Ketiganya sekarang memakai `PesanKosong` bersama, bukan salinan keempat.
+
+## 20. Keadaan Sekarang dan Tempat Melanjutkan
+
+**Kedua suite hijau.** Backend 276 lulus, mobile 284 lulus (dari 271 dan 275 sebelum sesi
+ini, tiga belas kasus baru), `flutter analyze` bersih. Tidak ada tes merah yang
+ditinggalkan.
 
 **Seluruh permukaan yang ada kini sudah ditata.** Klien: beranda, form Jalur A dan B, Order
 Saya, detail order, layar bayar. Runner: Order Masuk, Order Saya, lembar penyelesaian.
-Bersama: chat order, layar masuk dan daftar, profil.
+Bersama: chat order, layar masuk dan daftar, profil, gerbang permukaan.
 
 Daftar "yang belum ditata" dari sesi lalu **kosong**. Yang tersisa bukan lagi pekerjaan
 merapikan, melainkan pekerjaan membangun dan memutuskan.
 
+### Pemeriksaan yang layak dijalankan lebih dulu di sesi berikutnya
+
+Sesi ini menemukan **tiga** kemampuan yang sudah ada di lapisan bawah, bertes, dan tidak
+pernah dipanggil dari satu pun layar. Ketiganya ditemukan tidak sengaja, sambil mengerjakan
+hal lain, dan itu berarti kemungkinan besar masih ada yang belum ketemu.
+
+Pemeriksaannya murah: daftar metode publik di `lib/domain/repositories/`, lalu cari
+pemanggilnya di `lib/features/`. Yang tidak punya pemanggil adalah kemampuan yang dibangun,
+diuji, dan tidak pernah sampai ke pengguna. Hal yang sama berlaku untuk endpoint backend
+yang tidak punya pemanggil di `lib/data/api/`.
+
+Sudah dijalankan sekali di akhir sesi ini untuk keempat repository. Dari 23 metode, **satu
+yang tersisa tanpa pemanggil: `PaymentGateway.batalkanTransaksi`**, dan itu dibiarkan dengan
+sadar. Gunanya membatalkan tagihan tanpa membatalkan ordernya, supaya klien bisa minta QR
+baru sebelum yang lama kedaluwarsa. Layar bayar sudah menangani QR yang kedaluwarsa dengan
+tombol buat ulang, jadi yang tersisa cuma keinginan mengganti QR yang masih hidup, dan tidak
+ada yang meminta itu. Menambahkannya berarti memberi jalan memproduksi tagihan
+berganti-ganti untuk satu order, dan itu menyulitkan pihak yang nanti mencocokkan uang
+masuk. Kalau suatu saat memang dibutuhkan, endpointnya sudah ada di kedua sisi.
+
 ### Yang belum ada layarnya sama sekali
 
-- **Permukaan admin.** Penawaran Jalur B masih dikerjakan lewat
+- **Dashboard admin.** Penawaran Jalur B masih dikerjakan lewat
   `lib/features/dev/panel_penawaran_admin.dart`, yaitu alat penguji, bukan layar. Endpoint
-  `GET /api/admin/orders` sudah ada sejak sesi 30 Agustus dan belum punya layar yang
-  memakainya. Ini bagian terbesar yang tersisa, dan perlu diputuskan lebih dulu apakah
-  tempatnya memang di aplikasi HP: rencana capstone bagian 14.1 menyebut pekerjaan admin
-  adalah pekerjaan tabel dan angka yang tempatnya dashboard web.
+  `GET /api/admin/orders` sudah ada sejak sesi 30 Agustus dan belum punya satu pun pemakai.
+  Ini bagian terbesar yang tersisa, **dan tempatnya bukan repo ini**: rencana capstone
+  bagian 14.2 sudah memutuskan pekerjaan admin adalah pekerjaan tabel dan angka yang
+  tempatnya dashboard web, dan `GerbangPermukaan` sudah menuliskan keputusan itu di layar
+  kepada akun admin yang membuka aplikasi. Jadi yang dibutuhkan adalah proyek web baru yang
+  memakai API yang sudah ada, bukan layar tambahan di aplikasi ini.
 - **Jastip Makanan.** Satu-satunya petak Jalur A yang belum punya form, dan penyebabnya
   bukan teknis: belum diputuskan siapa yang menalangi harga barangnya (rencana capstone
   bagian 14.7). Petaknya sengaja ditampilkan bertanda "Segera", bukan disembunyikan.
@@ -979,7 +1093,10 @@ merapikan, melainkan pekerjaan membangun dan memutuskan.
 
 Semuanya sudah didaftar di bagian 8 dan tidak berubah:
 
-- Membatalkan order yang lama menunggu pembayaran, tempatnya sudah siap di `Penyapu`
+- Membatalkan **sendiri** order yang lama menunggu pembayaran, tempatnya sudah siap di
+  `Penyapu`. Pembatalan oleh klien sudah ada sejak bagian 18; yang masih menunggu keputusan
+  adalah berapa lama sebuah order dianggap ditinggalkan dan apakah pantas ditutup sendiri
+  tanpa memberi tahu pemesannya
 - Bagi hasil runner, yang membuat kartu siaran menulis "Nilai order" alih-alih "Pendapatanmu"
 - Verifikasi jarak tempuh, risiko pendapatan bukan bug
 - Membuang EXIF dari foto bukti, sebaiknya menunggu pindah ke object storage
