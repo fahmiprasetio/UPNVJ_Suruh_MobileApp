@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:upnvj_suruh/app.dart';
+import 'package:upnvj_suruh/core/config/batas_masukan.dart';
 import 'package:upnvj_suruh/data/fake/fake_auth_repository.dart';
 import 'package:upnvj_suruh/data/fake/fake_order_repository.dart';
 import 'package:upnvj_suruh/data/fake/seed_data.dart';
@@ -21,8 +22,7 @@ void main() {
   });
 
   setUp(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -31,8 +31,7 @@ void main() {
   });
 
   tearDown(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -75,6 +74,33 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testWidgets('layar masuk memperkenalkan aplikasinya, bukan cuma memintanya', (
+    tester,
+  ) async {
+    await bukaBelumMasuk(tester);
+
+    // Ini layar pertama yang dilihat orang baru. Kalau isinya cuma kolom nomor
+    // HP dan tombol, yang dimintanya adalah kepercayaan tanpa memberi satu pun
+    // alasan untuk itu. Lencana, nama, dan satu kalimat tentang apa yang
+    // dikerjakan aplikasi ini adalah alasan yang paling murah.
+    expect(find.byType(Image), findsOneWidget);
+    expect(find.text('UPNVJ Suruh'), findsOneWidget);
+    expect(
+      find.text('Apa pun yang kamu suruh, kami usahakan.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('kolom nama tidak memajang penghitung hurufnya', (tester) async {
+    await bukaBelumMasuk(tester);
+    await tekan(tester, 'Belum punya akun? Daftar');
+
+    // Batasnya tetap ditegakkan validator, cuma angkanya yang tidak dipajang.
+    // "0/100" di bawah kolom nama mengabarkan batas yang tidak akan pernah
+    // didekati siapa pun yang sedang mengetik namanya sendiri.
+    expect(find.text('0/${BatasMasukan.nama}'), findsNothing);
+  });
+
   testWidgets('yang belum masuk diantar ke layar masuk', (tester) async {
     await bukaBelumMasuk(tester);
 
@@ -116,22 +142,23 @@ void main() {
     expect(repo.kodeUntuk(SeedData.klien.noHp), isNotNull);
   });
 
-  testWidgets('kode yang benar memasukkan pengguna dan layar masuk ditinggalkan', (
-    tester,
-  ) async {
-    final repo = await bukaBelumMasuk(tester);
+  testWidgets(
+    'kode yang benar memasukkan pengguna dan layar masuk ditinggalkan',
+    (tester) async {
+      final repo = await bukaBelumMasuk(tester);
 
-    await isi(tester, 'Nomor HP', SeedData.klien.noHp);
-    await tekan(tester, 'Kirim kode');
-    await isi(tester, 'Kode', repo.kodeUntuk(SeedData.klien.noHp)!);
-    await tekan(tester, 'Masuk');
+      await isi(tester, 'Nomor HP', SeedData.klien.noHp);
+      await tekan(tester, 'Kirim kode');
+      await isi(tester, 'Kode', repo.kodeUntuk(SeedData.klien.noHp)!);
+      await tekan(tester, 'Masuk');
 
-    // Yang memindahkan layar adalah berubahnya sesi, bukan layar yang mendorong
-    // dirinya sendiri.
-    expect(find.widgetWithText(TextFormField, 'Kode'), findsNothing);
-    expect(find.text('Kirim kode'), findsNothing);
-    expect(repo.userAktif, SeedData.klien);
-  });
+      // Yang memindahkan layar adalah berubahnya sesi, bukan layar yang mendorong
+      // dirinya sendiri.
+      expect(find.widgetWithText(TextFormField, 'Kode'), findsNothing);
+      expect(find.text('Kirim kode'), findsNothing);
+      expect(repo.userAktif, SeedData.klien);
+    },
+  );
 
   testWidgets('kode yang salah menampilkan galat dan tetap di langkah kode', (
     tester,
@@ -149,7 +176,9 @@ void main() {
     expect(repo.userAktif, isNull);
   });
 
-  testWidgets('kode yang bentuknya salah ditolak sebelum dikirim', (tester) async {
+  testWidgets('kode yang bentuknya salah ditolak sebelum dikirim', (
+    tester,
+  ) async {
     final repo = await bukaBelumMasuk(tester);
 
     await isi(tester, 'Nomor HP', SeedData.klien.noHp);
@@ -188,7 +217,9 @@ void main() {
   });
 
   group('daftar', () {
-    testWidgets('mendaftar lalu langsung diantar ke langkah kode', (tester) async {
+    testWidgets('mendaftar lalu langsung diantar ke langkah kode', (
+      tester,
+    ) async {
       final repo = await bukaBelumMasuk(tester);
 
       await tester.tap(find.text('Belum punya akun? Daftar'));
@@ -273,7 +304,9 @@ void main() {
       expect(repo.userAktif?.nama, SeedData.klien.nama);
     });
 
-    testWidgets('sudah punya akun mengembalikan ke langkah nomor', (tester) async {
+    testWidgets('sudah punya akun mengembalikan ke langkah nomor', (
+      tester,
+    ) async {
       await bukaBelumMasuk(tester);
 
       await tester.tap(find.text('Belum punya akun? Daftar'));
