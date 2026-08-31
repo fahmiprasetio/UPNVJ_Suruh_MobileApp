@@ -12,3 +12,7 @@ Thumbs.db
 .claude/
 .gemini/
 .impeccable/
+
+# Tidak ada dokumentasi markdown yang ikut masuk repo ini, sama sekali. Boleh
+# dipakai dan disimpan lokal, tapi tidak boleh ke-commit.
+*.md
