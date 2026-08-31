@@ -159,6 +159,8 @@ The dark surface ladder is transposed from the carefully tuned navy ladder that 
 
 **The Status Collision Rule.** Making maroon the secondary puts it next door to `error`, and the status badge map currently spends both: `menungguPembayaran` uses `errorContainer` and `mencariRunner` uses `secondaryContainer`. Under the new palette those two read as the same red and the distinction dies. When the theme migrates, `mencariRunner` must move off secondary — to a neutral container or a green container — so that red keeps meaning *"you owe something"* and nothing else.
 
+**Settled.** `mencariRunner` now uses `primaryContainer` and `dikerjakan` full `primary`, and the runner quota badge ("Butuh 3 orang, 1 sudah gabung") moved off `secondaryContainer` for the same reason: at eleven pixels tall it was indistinguishable from `errorContainer`. Red means one thing, that something is owed. The rule stands for every surface still unbuilt: **check whether it spends a secondary role on something that is actually a state.**
+
 ## Typography
 
 **Display / Body / Label Font:** Roboto (Material 3 default, with the platform sans fallback)
@@ -182,6 +184,8 @@ The dark surface ladder is transposed from the carefully tuned navy ladder that 
 
 The spatial model is a single scrolling column with a **16px page inset** and a **16px vertical rhythm**, stepping to 24px between major sections. Screens are `ListView`-based, not sliver-composed.
 
+**The coloured header is for screens that welcome, not screens that finish.** Home and sign-in both carry a full-bleed green panel with rounded bottom corners; every task screen stays calm. Sign-in earns it more than home does, because until it there is nothing on screen to recognise the app by. Its badge sits on a **white disc**, never straight on the green: `lencana.png` is drawn for white and reads as a misplaced sticker on any other ground, which is the same reason the splash overlay is white in both themes. The sign-in panel scrolls with the rest of the page rather than being pinned, so an open keyboard cannot squeeze the field and its error message off a short phone.
+
 **Home is two doors, and the split is spatial.** Six catalogued services sit in a responsive grid (`maxCrossAxisExtent: 220`, fixed `mainAxisExtent: 148`, 12px gutters) — the tiles reflow from two columns on a phone to more on a tablet without a breakpoint being declared anywhere. Below them, a labeled "atau" divider, then the free-form request as a **full-width horizontal bar** rather than a seventh tile. The shape difference is the message: the grid means the price is already known (Track A), the bar means the price comes later through a quote (Track B).
 
 **Forms cap at 420px** and center themselves (`masuk_screen`), so the auth flow does not stretch into an unreadable line length on a tablet or a browser window.
@@ -194,14 +198,14 @@ The spatial model is a single scrolling column with a **16px page inset** and a 
 
 ## Elevation & Depth
 
-**Every surface in the shipping app is `elevation: 0`.** Cards, the app bar, and buttons all sit flat; depth comes entirely from tonal steps in the surface ladder plus a 1px `outlineVariant` hairline around each card. The app bar carries a single exception — `scrolledUnderElevation: 1` — so content scrolling beneath it registers.
+**Every surface sits flat except the primary button.** Cards and the app bar are `elevation: 0`; depth comes from tonal steps in the surface ladder plus a 1px `outlineVariant` hairline around each card. Two exceptions: the app bar's `scrolledUnderElevation: 1`, so content scrolling beneath it registers, and `filledButtonTheme`, which carries `elevation: 3` with a maroon `shadowColor` at 45% so the primary action reads as the destination on its screen. That elevation drops to `0` when the button is disabled, because a grey button that still floats promises something it cannot deliver.
 
 **This flatness is circumstance, not doctrine.** It is how the app landed, and shadows are explicitly permitted going forward. Given the brief's appetite for boldness, a considered shadow vocabulary is one of the available moves — particularly to lift the primary action or a pending quote off the page. What is not permitted is *default* shadow: a stock black `BoxShadow` under a green-tinted card reads as dirt, not depth.
 
-### Shadow Vocabulary (newly established; none in code yet)
-- **Lift** (`0 2px 8px rgba(30, 48, 46, 0.10)`): A resting card that needs to separate from a busy ground.
-- **Action** (`0 4px 16px rgba(139, 35, 49, 0.24)`): Under a maroon primary button, to make the CTA the obvious destination on the screen.
-- **Sheet** (`0 -4px 24px rgba(30, 48, 46, 0.16)`): Bottom sheets and the payment panel, cast upward.
+### Shadow Vocabulary
+- **Lift** (`0 2px 8px rgba(30, 48, 46, 0.10)`): A resting card that needs to separate from a busy ground. Defined as `AppTheme.bayanganAngkat`; no screen spends it yet.
+- **Action**: Under a maroon primary button, to make the CTA the obvious destination on the screen. **Already applied, globally, by `filledButtonTheme`** through `elevation: 3` plus a maroon `shadowColor`, not by a token you attach yourself. Wrapping a `FilledButton` in your own shadow stacks a second one on top of the theme's, and the result does not read as a more important button, it reads as a button with a dirty edge. If a button needs more presence, change the theme.
+- **Sheet** (`0 -4px 24px rgba(30, 48, 46, 0.16)`): Bottom sheets and the payment panel, cast upward. Defined as `AppTheme.bayanganLembar`; no screen spends it yet.
 
 ### Named Rules
 
@@ -213,7 +217,7 @@ The form language is **consistently rounded, with the radius encoding the elemen
 
 - **Cards: 16px** (`radiusKartu`) — the softest corner in the system, used for every container that holds a unit of content.
 - **Controls: 12px** — buttons, inputs, and the icon tile inside a service card. Tighter than cards so a control never reads as a card.
-- **Chat bubbles: 14px** — sitting deliberately between the two.
+- **Chat bubbles: 14px**, sitting deliberately between the two, with the bottom corner facing the sender clipped to **4px**. That clip is the tail: it points at the origin of the message without a drawn triangle that would have to be recoloured and re-clipped against its ground on every theme change.
 - **Pills: 999px** — status badges and quota badges are fully round. Full-round is reserved for *state labels only*; it is how the eye finds status without reading.
 
 **Borders are hairlines, never heavy.** Cards carry a 1px `outlineVariant` stroke; inputs carry the same at rest. Icons are Material's outlined set throughout (`_outlined` suffix), never filled, at 16 / 18 / 20 / 22 / 28px depending on context.
@@ -224,7 +228,8 @@ The form language is **consistently rounded, with the radius encoding the elemen
 - **Shape:** Softly rounded (12px), full-bleed width in forms
 - **Primary (`FilledButton`):** Motor Maroon fill, white label, 52px minimum height, 16px/600 label. In-card variants drop to 46–48px. The runner's accept button uppercases its label ("TERIMA") — the only uppercase button in the system, and it earns it by being the single irreversible race-condition action.
 - **Loading:** The label is replaced in place by a 20px `CircularProgressIndicator` at 2px stroke; the button keeps its footprint so nothing reflows. The button is disabled for the whole in-flight request so one tap cannot send twice.
-- **Text buttons:** Used for every secondary path ("Belum punya akun? Daftar", "Ganti nomor"). No outlined variant exists in the system.
+- **Text buttons:** Used for every secondary path ("Belum punya akun? Daftar", "Ganti nomor", "Chat Klien" inside a runner card). **A secondary action that shares a card with the maroon primary must be a text button, never outlined**: two full-width buttons of equal weight leave the card with no primary action at all, only two competing demands.
+- **Outlined buttons:** Only where nothing else on the surface is competing, such as "Muat N order lagi" standing alone at the foot of a list. Never beside a filled button.
 
 ### Cards / Containers
 - **Corner Style:** 16px
@@ -260,7 +265,8 @@ Not a route — a layer stacked over the whole app by `MaterialApp.router`'s `bu
 ### Do:
 - **Do** source every new color from `lencana.png`. If you cannot point at it in the badge, it does not ship.
 - **Do** make the price the largest, heaviest element on any surface where money appears.
-- **Do** put maroon on the thing you want tapped, and green on the thing that is already true.
+- **Do** put maroon on the thing you want tapped, and green on the thing that is already true. In chat this means green bubbles for messages already sent and a maroon send button; a green send button blurs the two things people most often tell apart on that screen.
+- **Do** move maroon to whichever step is actually live. In the runner's completion sheet the photo button is maroon while there is no photo and Tandai Selesai takes over once there is; two maroon buttons are never live at once.
 - **Do** be visually loud where loudness costs nothing — color blocking, scale contrast, confident containers. Boldness is the brief.
 - **Do** keep the two doors on home shaped differently; the shape is how the user learns which path prices itself.
 - **Do** clip ripples to the card radius (`clipBehavior: Clip.antiAlias` around the `InkWell`).

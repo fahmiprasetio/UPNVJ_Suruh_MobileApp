@@ -5,10 +5,11 @@ ditebak ulang, alasan di balik keputusan yang tidak terbaca dari kode, bagian ya
 ditinggal, dan tempat melanjutkan.
 
 Bagian 1 sampai 7 dari sesi pertama: cara menyalakan proyek supaya bisa dilihat di browser,
-dan catatan animasi splash screen. Bagian 8 dan seterusnya dari sesi 30 Agustus 2026:
-pengerasan keamanan backend dan migrasi sistem desain ke permukaan klien.
+dan catatan animasi splash screen. Bagian 8 sampai 10 dari sesi 30 Agustus 2026: pengerasan
+keamanan backend dan migrasi sistem desain ke permukaan klien. Bagian 11 sampai 18 dari sesi
+31 Agustus 2026: permukaan runner, chat, layar masuk, dan layar profil.
 
-**Kalau sedang mencari tempat melanjutkan, langsung ke bagian 11.**
+**Kalau sedang mencari tempat melanjutkan, langsung ke bagian 18.**
 
 ---
 
@@ -631,26 +632,366 @@ maroon yang tampil merah muda pucat di tema terang, harga yang terkubur di tabel
 tahap akhir order selesai yang terbaca menggantung, segmen terpilih yang berubah merah, dan
 pita keterangan yang berubah jadi peringatan.
 
-## 11. Keadaan Sekarang dan Tempat Melanjutkan
+---
 
-**Kedua suite hijau.** Backend 275 lulus, mobile 271 lulus, `flutter analyze` bersih. Tidak
-ada tes merah yang ditinggalkan.
+# Sesi 31 Agustus 2026: separuh produk yang belum pernah ditata
 
-**Alur klien sudah utuh dan sudah ditata**: beranda, form Jalur A dan B, Order Saya, detail
-order, layar bayar.
+Tujuh commit, dari `0952301` sampai `1e8c659`. Menutup ketiga hal yang didaftar sesi
+sebelumnya sebagai belum ditata: permukaan runner, chat order, dan layar masuk. Enam dari
+tujuh commit itu tidak menambah fitur sama sekali; yang berubah cuma bagaimana yang sudah
+ada terbaca.
 
-**Yang belum ditata** (warnanya sudah benar karena ikut tema, tata letaknya belum):
+Yang satu lagi menambal lubang yang ditemukan sambil menulis catatan ini: tidak ada satu pun
+layar yang memanggil `keluar()`, jadi tidak ada cara keluar dari akun. Ceritanya di bagian
+15.
 
-1. **Permukaan runner** — Order Masuk beserta kartu siaran dan tombol TERIMA, Order Saya
-   runner, lembar penyelesaian. Separuh produk yang belum dapat perhatian sama sekali.
-   TERIMA adalah satu-satunya tombol huruf besar di sistem ini.
-2. **Chat order** — dipakai klien dan runner.
-3. **Layar masuk dan daftar** — kesan pertama, dan satu-satunya layar yang belum pernah
-   disentuh.
+Commit pertamanya sendiri menyelesaikan pekerjaan yang menggantung di direktori kerja sejak
+sesi lalu: jeda diam sedetik di layar pembuka.
 
-**Yang belum dikerjakan di backend** sudah didaftar di bagian 8 sebagai keputusan yang
-sengaja ditunda.
+Yang dicatat di sini cuma hal yang **tidak bisa disimpulkan dari membaca kode**: keputusan
+yang dua-duanya masuk akal dan salah satunya dipilih, cacat yang cuma kelihatan setelah
+dirender, dan aturan yang baru ketahuan salah tulis di DESIGN.md.
 
-**Catatan kecil yang mudah terlupa:** `RINGKASAN_PAPARAN.md`, `PRODUCT.md`, dan `DESIGN.md`
-masih untracked di git. Bagian 10 di `RINGKASAN_PAPARAN.md` sudah diperbarui dengan hasil
-sesi ini, tapi perubahan itu belum ikut ter-commit.
+## 11. Jeda Diam di Pembuka (commit `0952301`)
+
+Sesudah gerakan dekoratif 2,1 detik berhenti, lapisannya dulu langsung terangkat di
+bingkai berikutnya. Yang terbaca bukan animasi yang selesai, melainkan animasi yang
+terpotong. Sekarang ada `_durasiDiam` satu detik di antaranya.
+
+Yang penting dan mudah salah kalau diulang: **jedanya dijalankan sebagai
+`AnimationController`, bukan `Future.delayed`**, walaupun tidak ada satu piksel pun yang
+berubah selama sedetik itu. `Future.delayed` cuma timer polos yang tidak menjadwalkan
+bingkai, jadi `pumpAndSettle` menganggap aplikasinya sudah tenang dan berhenti memompa
+tepat saat jedanya baru mulai. Akibatnya seluruh tes layar yang membuka aplikasi utuh
+gagal dengan keluhan timer yang masih menyala. Pengendali animasi terus berdetak dan terus
+menjadwalkan bingkai, jadi jedanya terlewati sendiri oleh pemompaan biasa.
+
+Jalur terpanjang layar pembuka sekarang: batas tunggu sesi 3 detik, jeda diam 1 detik,
+angkat 220 milidetik, totalnya sekitar 4,2 detik. Gerakan dekoratif 2,1 detiknya tidak ikut
+menambah karena sudah lewat sebelum batas tunggu sesi habis. Angka itu dipakai di kasus
+`'penantian sesi punya batas, tidak menunggu selamanya'`; kalau salah satu durasinya
+berubah, jumlah pompa di tes itu harus ikut dihitung ulang.
+
+## 12. Permukaan Runner (commit `19447d6`, `175e818`, `5966d7d`)
+
+### Harga: aturan yang sama, dua tata letak yang berbeda
+
+Kedua kartu runner mengubur uangnya. Kartu siaran menulis nilai order seukuran nama
+layanan; kartu order yang dipegang menyelipkannya di baris kepala. Keduanya sekarang 20
+piksel tebal warna hijau, skala yang sama dengan kartu order klien.
+
+Yang **berbeda dengan sengaja** adalah tata letaknya, dan ini keputusan yang gampang
+dibalik oleh orang berikutnya kalau alasannya tidak ditulis:
+
+- **Kartu siaran (Order Masuk) tetap padat**, harga dan TERIMA berdampingan di satu baris.
+  Layar itu perlombaan: order yang sama dilihat semua runner pada saat yang sama, dan yang
+  kalah bukan yang salah memilih melainkan yang kalah cepat. Kartu yang lebih tinggi berarti
+  lebih sedikit yang muat di satu layar, dan menggulung untuk melihat pilihan keempat adalah
+  waktu yang benar-benar hilang.
+- **Kartu order yang dipegang (Order Saya) melebar**, harga punya baris sendiri dan
+  tombolnya selebar kartu. Di sana tidak ada lomba, jumlahnya jarang lebih dari beberapa,
+  dan yang dibutuhkan runner bukan memilih melainkan mengerjakan.
+
+### Cacat isi, bukan cacat tampilan: alamat jemput yang hilang
+
+Kartu order yang dipegang dulu cuma menampilkan `alamatTujuan`. Untuk order Anter Jemput
+itu berarti begitu runner menekan TERIMA, alamat jemput yang tadi terbaca jelas di kartu
+siaran **menghilang dari aplikasinya**, tepat pada saat ia mulai membutuhkannya, dan
+satu-satunya jalan mendapatkannya kembali adalah bertanya lewat chat.
+
+Ini lolos dari semua tes yang ada karena tidak ada satu pun yang menanyakannya. Sekarang
+dijaga kasus `'alamat jemput tidak hilang setelah ordernya diterima'` di
+`order_saya_runner_test.dart`.
+
+Rutenya digambar `RuteOrder` (`lib/features/runner/widgets/rute_order.dart`), dipakai kedua
+kartu, dengan kosakata yang sama seperti linimasa status order: cakram kecil disambung garis
+2 piksel. Cincin terbuka untuk titik berangkat, pin untuk tujuan.
+
+Satu jebakan tata letak di dalamnya: garis penghubungnya `Expanded` di dalam `Column`, dan
+kartu ini hidup di dalam `ListView`, jadi tinggi yang diterimanya tak terbatas dan Flutter
+menolaknya. Pembungkusnya `IntrinsicHeight` dengan `CrossAxisAlignment.stretch`. Kalau
+suatu saat `IntrinsicHeight`-nya dicabut karena dianggap mahal, garisnya harus diganti
+tinggi tetap, dan tinggi tetap itu meleset begitu alamatnya membungkus jadi dua baris.
+
+### Tabrakan warna kesekian dari migrasi palet
+
+Lencana kuota ("Butuh 3 orang, 1 sudah gabung") memakai `secondaryContainer`. Sejak maroon
+jadi warna sekunder, itu merah muda yang tidak terbedakan dari `errorContainer` pada pil
+selebar sebelas piksel. Sudah dipindah ke `primaryContainer`.
+
+Ini persis kasus yang diperingatkan bagian 9: **layar yang belum ditata harus diperiksa
+apakah ia memakai peran sekunder untuk sesuatu yang sebenarnya keadaan.** Berapa orang yang
+sudah bergabung adalah keadaan, bukan tagihan dan bukan tombol. Kalau nanti ada permukaan
+lain yang dibangunkan (admin, profil), periksa hal yang sama lebih dulu.
+
+### Bayangan: DESIGN.md salah, temanya sudah mengerjakannya
+
+DESIGN.md menulis kosakata bayangan sebagai "newly established; none in code yet", termasuk
+**Action** `0 4px 16px rgba(139,35,49,0.24)` untuk tombol utama. Berdasarkan itu, TERIMA
+sempat dibungkus `DecoratedBox` berbayang maroon.
+
+Hasilnya salah, dan baru kelihatan setelah dirender: `filledButtonTheme` **sudah** memberi
+setiap `FilledButton` `elevation: 3` dengan `shadowColor` maroon. Yang terjadi adalah dua
+bayangan bertumpuk, dan yang terlihat bukan tombol yang lebih penting melainkan tombol yang
+tepinya kotor. Bungkusnya dicabut lagi, dan token `bayanganAksi` yang sempat ditambahkan ke
+`AppTheme` ikut dicabut supaya tidak ada yang tergoda menumpuknya lagi.
+
+**Jangan tambahkan bayangan sendiri di bawah `FilledButton` mana pun.** Kalau butuh yang
+lebih menonjol, ubah temanya.
+
+`bayanganAngkat` dan `bayanganLembar` di `AppTheme` masih belum dipakai satu pun layar.
+
+### Tombol mati berhenti melayang
+
+Ditemukan lewat lembar penyelesaian: `elevation: 3` berlaku juga saat tombolnya mati, jadi
+"Tandai Selesai" yang sengaja dimatikan sampai foto buktinya ada tetap melayang seperti
+tombol hidup. Sekarang nol saat mati, lewat `copyWith` dan `WidgetStateProperty`, karena
+`styleFrom` cuma menerima satu nilai elevasi untuk semua keadaan tombol.
+
+Berlaku ke seluruh aplikasi, bukan cuma lembar itu.
+
+### Maroon selalu langkah yang sedang hidup
+
+Lembar penyelesaian dulu membuka dengan tombol foto bergaris tipis dan "Tandai Selesai"
+maroon selebar lembar, padahal saat itu Tandai Selesai mati. Yang paling keras bicara adalah
+tombol yang tidak bisa ditekan.
+
+Maroonnya sekarang berpindah mengikuti langkah yang hidup: tombol foto selagi fotonya belum
+ada, Tandai Selesai setelah ada. **Dua tombol maroon tidak pernah hidup bersamaan di lembar
+itu.** Kartu konfirmasi yang menggantikan tombol foto berwarna hijau, karena hijau di sistem
+ini menyatakan sesuatu yang sudah benar.
+
+Lembarnya juga sekarang `SingleChildScrollView` dan punya `showDragHandle: true`. Tanpa
+gulungan, papan ketik yang terbuka untuk kolom catatan meluberkan lembarnya di ponsel
+pendek.
+
+### Layar kosong dan rangka muat jadi milik bersama
+
+Ada tiga salinan `_PesanKosong`: satu di riwayat klien yang sudah ditata, dua di permukaan
+runner yang masih bentuk lama. Sekarang satu, di
+`lib/features/widgets/pesan_kosong.dart`, dan rangka daftar di
+`lib/features/widgets/rangka_daftar_order.dart`.
+
+`RangkaDaftarOrder` punya bendera `denganTombol` karena kartu runner bertombol di kakinya
+dan kartu klien tidak. Menyamakannya justru merusak gunanya: rangka yang bentuknya meleset
+dari isi yang datang menyebabkan lompatan tata letak tepat saat orang mulai membaca.
+
+Daftar Order Saya runner yang kosong sekarang menawarkan tab Order Masuk, lewat callback
+`onMintaOrderMasuk`, **bukan** `context.push`. Pola yang sama dengan `onMintaBeranda` di
+riwayat klien, dan alasannya sama: keduanya tab di cangkang yang sama, dan mendorongnya
+sebagai rute baru menumpuk layar hantu di riwayat navigasi. Dijaga kasus `'layar kosong
+menawarkan jalan keluar, bukan jalan buntu'`.
+
+## 13. Chat Order (commit `1a85652`)
+
+Empat cacat sekaligus, dan tidak satu pun terbaca dari kodenya.
+
+### Daftarnya dibalik
+
+Percakapan pendek dulu mengambang di puncak layar dengan ruang kosong sejengkal antara pesan
+terakhir dan kotak tulisnya. `ListView` sekarang `reverse: true`, jadi menempel ke bawah
+dengan sendirinya.
+
+Untungnya dobel: pada daftar biasa, pesan yang datang saat orang sedang menggulung ke atas
+mendorong isinya dan baris yang sedang dibaca melompat. Pada daftar terbalik, penambahan di
+ujung bawah tidak menggeser apa pun yang sedang dipandang.
+
+Konsekuensi yang harus diingat:
+
+- Nomor barisnya ikut dibalik: `order.messages[order.messages.length - 1 - indeks]`. Salah
+  hitung di situ **tidak menghasilkan galat apa pun**, percakapannya cuma terbaca mundur.
+  Dijaga kasus `'pesan terbaru berdiri di bawah, menempel ke kotak tulis'`.
+- Baris "Muat pesan lama" pindah dari indeks 0 ke indeks terakhir, karena yang terakhir
+  digambar paling atas.
+- `_gulirKeBawah` menuju offset **nol**, bukan `maxScrollExtent`.
+
+### Gelembung sendiri jadi hijau penuh
+
+Dulu `primaryContainer` lawan `surfaceContainerHighest`: dua hijau pucat berselisih tipis,
+dan satu-satunya petunjuk siapa bicara adalah sisi tempat gelembungnya berdiri. Itu bekerja
+selama layarnya diperhatikan, dan berhenti bekerja persis saat orang menyapu percakapan lama
+mencari siapa menjanjikan apa.
+
+Sekarang mengikuti aturan terang/gelap yang sama dengan kepala beranda: **peran berkekuatan
+penuh di tema terang, peran wadahnya di tema gelap.** Jam di dalam gelembung disemir dari
+warna depan gelembungnya sendiri, bukan abu-abu tetap, karena abu-abu di atas hijau penuh
+jatuh di bawah ambang keterbacaan.
+
+Satu sudut bawah tiap gelembung dipangkas ke 4 piksel di sisi yang menghadap pengirimnya.
+Ini pengganti ekor gelembung: menunjuk asal pesan tanpa menggambar segitiga yang harus ikut
+berganti warna dan ikut dipangkas latar setiap kali temanya berubah.
+
+Lebar maksimalnya sekarang pecahan lebar layar (0,78), bukan 320 piksel tetap. Angka tetap
+yang pas di ponsel jadi lajur sempit di tablet.
+
+### Tombol kirim maroon, bukan hijau
+
+Hijau di layar itu sudah dipakai gelembung untuk menyatakan pesan yang sudah terkirim.
+Tombol kirim yang berwarna sama mengaburkan justru dua hal yang paling sering dibedakan
+orang di sana: yang sudah lepas dan yang belum.
+
+### Penghitung huruf muncul belakangan
+
+"0/1000" di bawah kotak kosong mengabarkan batas yang tidak akan pernah didekati siapa pun
+yang sedang menulis "sudah sampai mana?". Lewat `buildCounter`, ia baru muncul di 80 huruf
+terakhir. Pola yang sama dipakai kolom nama di layar masuk.
+
+## 14. Layar Masuk (commit `d2a8c00`)
+
+Layar pertama yang benar-benar dipakai orang baru, dan isinya satu baris teks, satu kolom
+isian, dan satu tombol yang mengambang di tengah kertas kosong. Tidak ada satu pun tanda
+aplikasi ini milik siapa.
+
+### Panel hijau berlencana, dan kenapa itu bukan pelanggaran
+
+Bagian 9 mencatat bahwa kepala hijau adalah pengecualian khusus beranda, karena beranda
+satu-satunya layar yang tugasnya menyambut. Layar masuk masuk kategori yang sama, dan
+alasannya lebih kuat: belum ada apa pun di layar itu yang bisa dipakai orang untuk mengenali
+aplikasinya.
+
+**Lencananya berdiri di atas cakram putih**, bukan langsung di atas hijaunya. `lencana.png`
+digambar untuk latar putih, dan di tema gelap ia terbaca seperti stiker yang salah tempel.
+Ini alasan yang sama dengan kenapa layar pembuka selalu putih di kedua tema (bagian 6).
+
+Kalimatnya, "Apa pun yang kamu suruh, kami usahakan", diambil dari materi promosi mitra
+sendiri, bukan dikarang jadi slogan.
+
+**Seluruhnya satu `ListView` yang menggulung, panelnya ikut.** Panel setinggi sekitar 220
+piksel yang dipaku di kepala layar menyisakan ruang yang tidak cukup untuk kolom isian
+beserta pesan galatnya begitu papan ketik terbuka.
+
+### Kode enam angka
+
+28 piksel, tebal 700, `letterSpacing` 12, di tengah. Bukan gaya-gayaan: angka yang disalin
+dari SMS diketik sambil bolak-balik menengok notifikasi, dan yang dicari mata setiap kali
+kembali adalah sudah sampai angka keberapa. Pada teks 16 piksel yang rapat, menghitung
+"sudah empat atau lima" menuntut memicingkan mata.
+
+Labelnya tetap ada demi pembaca layar, dengan `floatingLabelAlignment: center` supaya tidak
+melayang di kiri sementara isinya di tengah.
+
+### Tombol utama yang diam-diam lebih pendek
+
+`_tombolUtama` menimpa tinggi minimumnya jadi 48, padahal tema menetapkan 52 untuk tombol
+utama. Satu-satunya tombol utama di aplikasi yang lebih pendek daripada tombol utama
+lainnya, di layar yang paling sering dilihat orang baru. Penimpaannya dicabut.
+
+## 15. Layar Profil, dan Lubang yang Ditemukan Sambil Jalan (commit `1e8c659`)
+
+Ini bukan pekerjaan menata, melainkan menambal. Ditemukan saat menulis bagian 18 berkas ini:
+
+**`AuthRepository.keluar()` sudah ada sejak awal, lengkap dengan tesnya di lapisan data, dan
+tidak pernah dipanggil dari satu pun layar.** Satu-satunya pemanggil `keluar()` di seluruh
+repo adalah berkas tes. Artinya sejak layar masuk dipasang, tidak ada cara keluar dari akun
+selain menghapus data aplikasi.
+
+Bukan soal tata letak yang belum rapi. Satu HP yang dipinjamkan sebentar ke teman berarti
+pesanan teman itu tercatat atas nama pemiliknya, dan tidak ada yang bisa dilakukan
+pemiliknya soal itu.
+
+Pintunya pun cuma setengah ada: tombol profil hanya di beranda klien, dan jawabannya "Profil
+belum dibuat, menyusul". Akun runner murni tidak punya pintu sama sekali, dan itu separuh
+pengguna aplikasi ini. `TombolProfil` sekarang di `lib/features/widgets/`, dipakai beranda
+klien dan kedua bilah atas runner.
+
+Isi layarnya sengaja sedikit: siapa yang sedang masuk, peran apa saja yang ia punya, dan satu
+tombol keluar. Mengubah nama dan nomor belum ada, dan mengubah nomor sendiri butuh
+verifikasi kode lagi, jadi ia pekerjaan tersendiri, bukan satu kolom isian tambahan.
+
+Dua hal yang tidak terbaca dari kodenya:
+
+- **Keluar bertanya dulu.** Masuk kembali menuntut menunggu SMS dan mengetik enam angka,
+  jadi salah tekan berbiaya menit, bukan detik, dan bisa jadi tidak mungkin sama sekali kalau
+  sinyalnya buruk.
+- **Tidak ada navigasi setelah keluar**, sama seperti di layar masuk. Yang memindahkan layar
+  adalah router yang menyimak sesi lewat `refreshListenable`. Mendorong sendiri dari sini
+  akan menyisakan layar profil di tumpukan belakang layar masuk, dan tombol kembali membawa
+  pengguna ke profil akun yang sudah tidak ada. Dijaga kasus `'keluar yang dibenarkan
+  mengantar kembali ke layar masuk'`, yang ikut memeriksa tidak ada `BackButton`.
+
+## 16. Jebakan Perkakas: Jangan `dart format lib/`
+
+Kena sekali di sesi ini, dan mahal kalau lolos ke commit.
+
+Repo ini **tidak pernah diformat menyeluruh**. Berkas-berkas lama ditulis dengan gaya
+pemenggalan baris yang berbeda dari `dart format` versi sekarang. Menjalankan
+`dart format lib/` mengubah **27 berkas**, sebagian besar tidak ada hubungannya dengan
+pekerjaan yang sedang dikerjakan, dan salah satunya melanggar
+`curly_braces_in_flow_control_structures` sesudah dipenggal ulang sehingga `flutter analyze`
+jadi merah.
+
+Diff yang isinya dua puluh berkas terformat ulang plus tiga berkas yang benar-benar berubah
+tidak bisa ditinjau siapa pun, termasuk oleh diri sendiri seminggu kemudian.
+
+**Format hanya berkas yang memang disentuh**, sebutkan satu per satu. Kalau suatu saat
+memang diputuskan seluruh repo diformat, lakukan sebagai satu commit sendiri yang tidak
+berisi hal lain.
+
+## 17. Yang Diperiksa Lewat Melihat, Bukan Membaca
+
+Cara di bagian 10 dipakai lagi dan terbukti lagi. Berkas pratinjaunya sudah dihapus seperti
+seharusnya, tapi ini daftar cacat yang **tidak akan ditemukan lewat membaca kode**, sebagai
+alasan untuk mengulangi caranya lain kali:
+
+- Bayangan maroon bertumpuk di tombol TERIMA, karena temanya sudah memberikannya
+- Tombol mati yang tetap melayang di lembar penyelesaian
+- Dua gelembung chat yang di kode jelas berbeda peran warnanya, di layar nyaris kembar
+- "0/1000" dan "0/100" di bawah kolom yang batasnya tidak akan pernah didekati
+- Percakapan pendek yang mengambang di puncak layar, jauh dari kotak tulisnya
+- Layar masuk yang tidak punya identitas apa pun
+
+Yang perlu diingat saat membaca hasil rendernya: **ikon dan label tombol tampil sebagai kotak
+atau balok putih.** Segoe UI tidak punya glyph Material. Itu artefak, bukan cacat. Gambar
+dari `Image.asset` juga kosong di bingkai pertama; lencananya baru muncul di render
+berikutnya.
+
+Satu tambahan resep untuk bagian 10: `FakeAuthRepository()` **bawaannya sudah masuk sebagai
+klien**. Untuk memotret layar masuk, pakai `FakeAuthRepository.belumMasuk()`, kalau tidak
+yang terpotret adalah beranda.
+
+## 18. Keadaan Sekarang dan Tempat Melanjutkan
+
+**Kedua suite hijau.** Backend 275 lulus, mobile 280 lulus (dari 271 sebelum sesi ini,
+sembilan kasus baru), `flutter analyze` bersih. Tidak ada tes merah yang ditinggalkan.
+
+**Seluruh permukaan yang ada kini sudah ditata.** Klien: beranda, form Jalur A dan B, Order
+Saya, detail order, layar bayar. Runner: Order Masuk, Order Saya, lembar penyelesaian.
+Bersama: chat order, layar masuk dan daftar, profil.
+
+Daftar "yang belum ditata" dari sesi lalu **kosong**. Yang tersisa bukan lagi pekerjaan
+merapikan, melainkan pekerjaan membangun dan memutuskan.
+
+### Yang belum ada layarnya sama sekali
+
+- **Permukaan admin.** Penawaran Jalur B masih dikerjakan lewat
+  `lib/features/dev/panel_penawaran_admin.dart`, yaitu alat penguji, bukan layar. Endpoint
+  `GET /api/admin/orders` sudah ada sejak sesi 30 Agustus dan belum punya layar yang
+  memakainya. Ini bagian terbesar yang tersisa, dan perlu diputuskan lebih dulu apakah
+  tempatnya memang di aplikasi HP: rencana capstone bagian 14.1 menyebut pekerjaan admin
+  adalah pekerjaan tabel dan angka yang tempatnya dashboard web.
+- **Jastip Makanan.** Satu-satunya petak Jalur A yang belum punya form, dan penyebabnya
+  bukan teknis: belum diputuskan siapa yang menalangi harga barangnya (rencana capstone
+  bagian 14.7). Petaknya sengaja ditampilkan bertanda "Segera", bukan disembunyikan.
+- **Ubah nama dan nomor di profil.** Nomor butuh verifikasi kode lagi, jadi ia alur, bukan
+  kolom isian.
+
+### Yang menunggu keputusan mitra, bukan menunggu kode
+
+Semuanya sudah didaftar di bagian 8 dan tidak berubah:
+
+- Membatalkan order yang lama menunggu pembayaran, tempatnya sudah siap di `Penyapu`
+- Bagi hasil runner, yang membuat kartu siaran menulis "Nilai order" alih-alih "Pendapatanmu"
+- Verifikasi jarak tempuh, risiko pendapatan bukan bug
+- Membuang EXIF dari foto bukti, sebaiknya menunggu pindah ke object storage
+- Jejak audit perubahan status order
+- `AllowedHosts` masih `*`, diisi saat deploy
+
+### Catatan kecil yang mudah terlupa
+
+- Berkas `tugas p2.docx` di akar repo tidak ada hubungannya dengan proyek ini dan masih
+  untracked. Sebaiknya dipindahkan, bukan di-commit.
+- `.impeccable/` ikut diabaikan `.gitignore` bersama `.agent/`, `.claude/`, dan `.gemini/`.
+- **DESIGN.md sudah diperbaiki di tiga tempat yang tertulis salah**: kosakata bayangan yang
+  mengaku belum ada di kode padahal temanya sudah mengerjakannya, klaim bahwa semua permukaan
+  `elevation: 0`, dan klaim bahwa tidak ada tombol bergaris di sistem ini. Kalau nanti
+  ketemu penyimpangan lain, perbaiki dokumennya, jangan diam-diam mengikuti kodenya.
