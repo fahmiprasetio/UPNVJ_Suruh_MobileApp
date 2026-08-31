@@ -16,6 +16,20 @@ import '../../../../providers/repository_providers.dart';
 /// tombol selesai baru hidup setelah fotonya ada, jadi tidak ada jalan untuk
 /// menutup order lebih dulu dan menyusulkan fotonya nanti.
 ///
+/// ## Yang maroon selalu langkah yang sedang hidup
+///
+/// Sebelumnya tombol foto bergaris tipis dan tombol Tandai Selesai maroon
+/// selebar lembar, padahal saat lembar ini baru dibuka yang bisa dilakukan
+/// justru cuma memotret: Tandai Selesai mati sampai fotonya ada. Yang paling
+/// keras bicara adalah tombol yang tidak bisa ditekan, dan yang harus ditekan
+/// tampil seperti pilihan sampingan. Runner yang menekan tombol besar lalu
+/// tidak terjadi apa-apa akan menyimpulkan aplikasinya rusak, bukan bahwa ada
+/// syarat yang belum ia penuhi.
+///
+/// Sekarang maroonnya berpindah mengikuti langkah yang sedang hidup: tombol
+/// foto selagi fotonya belum ada, Tandai Selesai setelah ada. Dua tombol maroon
+/// tidak pernah hidup bersamaan di lembar ini.
+///
 /// Mengembalikan `true` lewat [Navigator.pop] kalau order berhasil ditutup.
 class LembarSelesaikanOrder extends ConsumerStatefulWidget {
   const LembarSelesaikanOrder({super.key, required this.order});
@@ -47,12 +61,16 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
     final skema = Theme.of(context).colorScheme;
     final sibuk = _sedangAmbilFoto || _sedangMenutup;
 
-    return Padding(
+    // Bisa digulung, karena papan ketik yang terbuka untuk kolom catatan
+    // memakan separuh layar ponsel pendek dan sisanya tidak cukup memuat
+    // lembar ini utuh. Tanpa ini yang muncul adalah pita luber kuning-hitam
+    // tepat saat runner mulai mengetik.
+    return SingleChildScrollView(
       padding: EdgeInsets.only(
         left: AppTheme.spasiSedang,
         right: AppTheme.spasiSedang,
-        top: AppTheme.spasiSedang,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + AppTheme.spasiSedang,
+        top: AppTheme.spasiKecil,
+        bottom: MediaQuery.viewInsetsOf(context).bottom + AppTheme.spasiBesar,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -79,7 +97,7 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
           ),
           const SizedBox(height: AppTheme.spasiSedang),
           if (_fotoBuktiUrl == null)
-            OutlinedButton.icon(
+            FilledButton.icon(
               onPressed: sibuk ? null : _ambilFoto,
               icon: _sedangAmbilFoto
                   ? const SizedBox(
@@ -91,15 +109,9 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
               label: Text(
                 _sedangAmbilFoto ? 'Mengunggah foto...' : 'Ambil Foto Bukti',
               ),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(52),
-              ),
             )
           else
-            _KartuFotoTerkirim(
-              url: _fotoBuktiUrl!,
-              onGanti: sibuk ? null : _ambilFoto,
-            ),
+            _KartuFotoTerkirim(onGanti: sibuk ? null : _ambilFoto),
           if (ref.watch(fotoBuktiTiruanProvider)) ...[
             const SizedBox(height: AppTheme.spasiKecil),
             const _CatatanAlatPenguji(),
@@ -191,28 +203,64 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
   }
 }
 
+/// Bukti yang sudah aman di server, dan satu-satunya jalan menggantinya.
+///
+/// Hijau, bukan maroon: ini pernyataan bahwa satu syarat sudah terpenuhi, dan
+/// hijau di sistem ini memang berarti sesuatu yang sudah benar. Begitu kartu
+/// ini muncul, maroon pindah ke Tandai Selesai di bawahnya.
+///
+/// Yang ditulis di bawah judul bukan lagi alamat berkasnya. Tautan mentah tidak
+/// menjawab satu pun pertanyaan yang mungkin dipunyai runner tentang fotonya,
+/// dan yang ia butuhkan cuma tahu bahwa fotonya sudah aman dan bisa diganti
+/// kalau salah.
 class _KartuFotoTerkirim extends StatelessWidget {
-  const _KartuFotoTerkirim({required this.url, required this.onGanti});
+  const _KartuFotoTerkirim({required this.onGanti});
 
-  final String url;
   final VoidCallback? onGanti;
 
   @override
   Widget build(BuildContext context) {
     final skema = Theme.of(context).colorScheme;
-    return Card(
-      child: ListTile(
-        leading: Icon(Icons.check_circle_outline, color: skema.primary),
-        title: const Text('Foto bukti terkirim'),
-        subtitle: Text(
-          url,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: skema.onSurfaceVariant),
-        ),
-        trailing: TextButton(onPressed: onGanti, child: const Text('Ganti')),
+    final teks = Theme.of(context).textTheme;
+
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.spasiKecil + 4),
+      decoration: BoxDecoration(
+        color: skema.primaryContainer,
+        borderRadius: BorderRadius.circular(AppTheme.radiusKartu),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.check_circle_outline, color: skema.onPrimaryContainer),
+          const SizedBox(width: AppTheme.spasiKecil + 4),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Foto bukti terkirim',
+                  style: teks.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: skema.onPrimaryContainer,
+                  ),
+                ),
+                Text(
+                  'Tersimpan di server, ikut tercatat di order ini.',
+                  style: teks.bodySmall?.copyWith(
+                    color: skema.onPrimaryContainer.withValues(alpha: 0.82),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: onGanti,
+            style: TextButton.styleFrom(
+              foregroundColor: skema.onPrimaryContainer,
+            ),
+            child: const Text('Ganti'),
+          ),
+        ],
       ),
     );
   }

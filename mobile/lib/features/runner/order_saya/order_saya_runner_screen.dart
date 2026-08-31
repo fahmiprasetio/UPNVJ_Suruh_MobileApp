@@ -47,8 +47,7 @@ class OrderSayaRunnerScreen extends ConsumerWidget {
           // ulang provider yang sama, dan daftar yang sudah tampil tidak boleh berkedip
           // jadi pemuat karenanya.
           skipLoadingOnReload: true,
-          loading: () =>
-              const RangkaDaftarOrder(jumlah: 2, denganTombol: true),
+          loading: () => const RangkaDaftarOrder(jumlah: 2, denganTombol: true),
           error: (galat, _) => PesanKosong(
             ikon: Icons.wifi_off_outlined,
             judul: 'Order gagal dimuat',
@@ -138,6 +137,10 @@ class OrderSayaRunnerScreen extends ConsumerWidget {
     final ditutup = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
+      // Pegangan seret bawaan Material, bukan gambar sendiri. Tanpa itu satu-
+      // satunya cara menutup lembar ini adalah menekan latar gelap di atasnya,
+      // dan itu hal yang harus ditebak, bukan hal yang terlihat.
+      showDragHandle: true,
       builder: (context) => LembarSelesaikanOrder(order: order),
     );
 

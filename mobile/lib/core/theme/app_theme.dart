@@ -193,22 +193,41 @@ class AppTheme {
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          // Maroon, bukan hijau. Tombol utama adalah hal yang diminta ditekan,
-          // dan di sistem ini yang meminta ditekan selalu maroon. Hijau
-          // menyatakan sesuatu sudah benar; tombol belum menyatakan apa-apa.
-          backgroundColor: skema.secondary,
-          foregroundColor: skema.onSecondary,
-          // Bayangan yang disemir warna tombolnya sendiri, supaya tindakan
-          // utama jadi tujuan yang jelas di layarnya tanpa perlu diperbesar.
-          elevation: 3,
-          shadowColor: skema.secondary.withValues(alpha: 0.45),
-          minimumSize: const Size.fromHeight(52),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radiusKontrol),
-          ),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
+        style:
+            FilledButton.styleFrom(
+              // Maroon, bukan hijau. Tombol utama adalah hal yang diminta ditekan,
+              // dan di sistem ini yang meminta ditekan selalu maroon. Hijau
+              // menyatakan sesuatu sudah benar; tombol belum menyatakan apa-apa.
+              backgroundColor: skema.secondary,
+              foregroundColor: skema.onSecondary,
+              // Bayangan yang disemir warna tombolnya sendiri, supaya tindakan
+              // utama jadi tujuan yang jelas di layarnya tanpa perlu diperbesar.
+              elevation: 3,
+              shadowColor: skema.secondary.withValues(alpha: 0.45),
+              minimumSize: const Size.fromHeight(52),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(radiusKontrol),
+              ),
+              textStyle: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ).copyWith(
+              // Bayangannya hilang saat tombolnya mati.
+              //
+              // Bayangan di sistem ini menyatakan "ini tujuan layar ini", dan tombol
+              // kelabu yang tetap melayang menjanjikan sesuatu yang tidak bisa
+              // ditepatinya. Yang paling sering kena adalah Tandai Selesai di lembar
+              // penyelesaian, yang memang sengaja mati sampai foto buktinya ada:
+              // runner menekannya, tidak terjadi apa-apa, dan yang ia simpulkan
+              // adalah aplikasinya rusak, bukan bahwa ada syarat yang belum penuh.
+              //
+              // Lewat `copyWith`, bukan `styleFrom`, karena `styleFrom` hanya
+              // menerima satu nilai elevasi untuk semua keadaan tombol.
+              elevation: WidgetStateProperty.resolveWith(
+                (keadaan) => keadaan.contains(WidgetState.disabled) ? 0 : 3,
+              ),
+            ),
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: skema.surfaceContainer,
