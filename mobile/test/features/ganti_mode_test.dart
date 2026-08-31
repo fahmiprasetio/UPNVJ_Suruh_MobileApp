@@ -7,6 +7,7 @@ import 'package:upnvj_suruh/app.dart';
 import '../support/tiruan.dart';
 import 'package:upnvj_suruh/data/fake/fake_auth_repository.dart';
 import 'package:upnvj_suruh/data/fake/seed_data.dart';
+import 'package:upnvj_suruh/domain/enums.dart';
 import 'package:upnvj_suruh/domain/models/app_user.dart';
 import 'package:upnvj_suruh/providers/repository_providers.dart';
 
@@ -21,8 +22,7 @@ void main() {
   });
 
   setUp(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -31,8 +31,7 @@ void main() {
   });
 
   tearDown(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -108,6 +107,31 @@ void main() {
 
     expect(find.text('Order Masuk'), findsWidgets);
     expect(find.byTooltip('Ganti Mode'), findsNothing);
+  });
+
+  testWidgets('akun admin saja diberi keterangan, dan tetap bisa keluar', (
+    tester,
+  ) async {
+    // Admin tidak punya permukaan mobile: pekerjaannya pekerjaan tabel dan
+    // angka yang tempatnya dashboard web (bagian 14.2). Layar ini memang jalan
+    // buntu, dan itu benar. Yang tidak benar adalah jalan buntu yang tidak bisa
+    // ditinggalkan: sebelum ini tombol profil cuma ada di beranda klien dan
+    // bilah atas runner, jadi akun seperti ini tidak punya satu pun cara keluar
+    // dari akunnya.
+    const adminSaja = AppUser(
+      id: 'u-admin-saja',
+      nama: 'Admin Saja',
+      noHp: '081200000000',
+      roles: {UserRole.admin},
+    );
+    await bukaAplikasi(tester, adminSaja);
+
+    expect(find.text('Akun admin'), findsOneWidget);
+    expect(find.textContaining('dashboard web'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Profil'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(FilledButton, 'Keluar'), findsOneWidget);
   });
 
   testWidgets('mode runner tidak terbawa ke akun berikutnya', (tester) async {
