@@ -434,6 +434,30 @@ public class ChatDanPenutupanTests(DatabaseApiFactory pabrik) : IClassFixture<Da
     }
 
     [Fact]
+    public async Task MembatalkanOrderIkutMematikanTagihanYangMasihMenunggu()
+    {
+        // Belum dibayar tidak berarti belum ditagihkan. Begitu klien membuka layar bayar,
+        // sebuah transaksi berikut QR-nya sudah dibuat dan berlaku sampai batas waktunya.
+        // Kalau ia dibiarkan hidup sesudah ordernya dicabut, QR untuk order yang sudah tidak
+        // ada masih bisa dipindai, dan uang yang masuk lewat sana berhenti sebagai baris
+        // peringatan di log yang harus ada orang menemukannya.
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+        var order = await BuatOrderAsync(klien);
+        (await klien.PostAsync($"/api/orders/{order.Id}/pembayaran", null))
+            .EnsureSuccessStatusCode();
+
+        (await klien.PostAsync($"/api/orders/{order.Id}/batal", null))
+            .EnsureSuccessStatusCode();
+
+        using var lingkup = pabrik.Services.CreateScope();
+        var db = lingkup.ServiceProvider.GetRequiredService<AppDbContext>();
+        var pembayaran = db.Payments.Where(p => p.OrderId == order.Id).ToList();
+
+        Assert.NotEmpty(pembayaran);
+        Assert.All(pembayaran, p => Assert.Equal(PaymentStatus.Gagal, p.Status));
+    }
+
+    [Fact]
     public async Task AdminBisaMembatalkanOrderYangBelumDibayar()
     {
         var (klien, _) = await AkunAsync(UserRole.Klien);

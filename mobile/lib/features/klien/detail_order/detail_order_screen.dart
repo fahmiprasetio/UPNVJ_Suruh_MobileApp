@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/config/batas_masukan.dart';
 
+import '../../../core/api/galat_api.dart';
 import '../../../core/format/formatters.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
@@ -41,9 +42,7 @@ class DetailOrderScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(order.value?.kodeOrder ?? 'Detail Order'),
-        actions: [
-          if (order.value != null) _TombolChat(order: order.value!),
-        ],
+        actions: [if (order.value != null) _TombolChat(order: order.value!)],
       ),
       body: order.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -150,11 +149,7 @@ class _Isi extends ConsumerWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                Icons.info_outline,
-                size: 18,
-                color: skema.onSurfaceVariant,
-              ),
+              Icon(Icons.info_outline, size: 18, color: skema.onSurfaceVariant),
               const SizedBox(width: AppTheme.spasiKecil),
               Expanded(
                 child: Text(
@@ -225,8 +220,160 @@ class _Isi extends ConsumerWidget {
             ),
           ),
         ),
+        const SizedBox(height: AppTheme.spasiBesar),
+        _JalanBatal(order: order),
       ],
     );
+  }
+}
+
+/// Membatalkan order, dan kalau sudah tidak bisa, mengatakan ke mana perginya.
+///
+/// ## Kenapa ini baru ada sekarang
+///
+/// `batalkanOrder` sudah ada di kontrak repository dan di backend sejak lama,
+/// dan sampai sebelum ini **tidak dipanggil dari satu pun layar**. Klien yang
+/// salah alamat, salah layanan, atau berubah pikiran sebelum membayar tidak
+/// punya cara membatalkan pesanannya; ordernya menggantung di
+/// "Menunggu Pembayaran" selamanya, dan satu-satunya jalan keluar adalah
+/// mengabaikannya. Itu pola yang sama dengan `keluar()` di layar profil:
+/// kemampuannya ada di bawah, pintunya tidak pernah dibuat.
+///
+/// ## Kenapa tombol teks, bukan tombol maroon
+///
+/// Bilah bawah layar ini sudah dipakai tindakan utama, Bayar atau Terima
+/// Penawaran, dan itu memang yang seharusnya paling menonjol: membatalkan bukan
+/// hal yang ingin didorong aplikasi ini kepada siapa pun. Tapi ia juga tidak
+/// boleh disembunyikan di balik menu tiga titik, karena orang mencarinya
+/// justru pada saat ia sedang ragu membayar, dan yang tidak ketemu di aplikasi
+/// akan dicari lewat WhatsApp, yaitu kebiasaan yang seluruh produk ini berusaha
+/// tinggalkan.
+///
+/// Merah juga tidak dipakai. Di sistem ini merah berarti satu hal, ada yang
+/// harus dibayar, dan tombol batal berwarna merah membuatnya bersaing dengan
+/// pil "Menunggu Pembayaran" yang berdiri beberapa sentimeter di atasnya.
+/// Bobotnya ditaruh di dialog konfirmasinya, bukan di warnanya.
+///
+/// ## Kenapa order yang sudah dibayar tetap diberi kalimat
+///
+/// Menyembunyikan tombolnya begitu saja membuat pembatalan terlihat kadang ada
+/// kadang tidak, tanpa aturan yang bisa ditebak. Backend menolak membatalkan
+/// order yang sudah dibayar karena itu menyangkut pengembalian uang, dan alasan
+/// itu pantas dibaca orang yang sedang mencarinya, lengkap dengan ke mana ia
+/// harus pergi.
+class _JalanBatal extends ConsumerStatefulWidget {
+  const _JalanBatal({required this.order});
+
+  final Order order;
+
+  @override
+  ConsumerState<_JalanBatal> createState() => _JalanBatalState();
+}
+
+class _JalanBatalState extends ConsumerState<_JalanBatal> {
+  bool _sedangMembatalkan = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final order = widget.order;
+    final skema = Theme.of(context).colorScheme;
+
+    // Order yang sudah berakhir tidak menawarkan apa pun, dan tidak perlu
+    // menjelaskan apa pun: tidak ada yang sedang dicari orang di sana.
+    if (!order.status.isAktif) return const SizedBox.shrink();
+
+    if (order.dibayarPada != null) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline, size: 18, color: skema.onSurfaceVariant),
+          const SizedBox(width: AppTheme.spasiKecil),
+          Expanded(
+            child: Text(
+              'Order yang sudah dibayar tidak bisa dibatalkan sendiri, karena '
+              'ada uang yang harus kembali. Tanyakan lewat chat order.',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: skema.onSurfaceVariant),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Center(
+      child: TextButton(
+        onPressed: _sedangMembatalkan ? null : _tanyaLaluBatalkan,
+        child: _sedangMembatalkan
+            ? const SizedBox(
+                height: 18,
+                width: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Text('Batalkan order'),
+      ),
+    );
+  }
+
+  Future<void> _tanyaLaluBatalkan() async {
+    final order = widget.order;
+
+    final jadi = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Batalkan order ini?'),
+        content: Text(
+          'Order ${order.kodeOrder} akan ditutup dan tidak bisa dibuka lagi. '
+          'Kalau nanti berubah pikiran, kamu perlu memesan ulang dari awal.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            // "Jangan", bukan "Batal". Di dialog pembatalan, tombol bertuliskan
+            // "Batal" bisa dibaca sebagai "ya, batalkan ordernya", dan itu
+            // persis kesalahan yang paling mahal di layar ini.
+            child: const Text('Jangan'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Batalkan order'),
+          ),
+        ],
+      ),
+    );
+
+    if (jadi != true || !mounted) return;
+
+    setState(() => _sedangMembatalkan = true);
+    try {
+      await ref.read(orderRepositoryProvider).batalkanOrder(order.id);
+    } catch (galat) {
+      if (!mounted) return;
+      setState(() => _sedangMembatalkan = false);
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              galat is GalatApi ? galat.pesan : 'Order gagal dibatalkan.',
+            ),
+          ),
+        );
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() => _sedangMembatalkan = false);
+
+    // Tidak pindah layar. Ordernya masih ada, cuma berstatus batal, dan
+    // linimasa di layar ini sudah tahu cara menggambarkan keadaan itu.
+    // Melemparkan pengguna kembali ke daftar berarti ia harus mencari sendiri
+    // apakah pembatalannya benar-benar terjadi.
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text('Order ${order.kodeOrder} dibatalkan.')),
+      );
   }
 }
 
@@ -253,9 +400,7 @@ class _Baris extends StatelessWidget {
               style: teks.bodyMedium?.copyWith(color: skema.onSurfaceVariant),
             ),
           ),
-          Expanded(
-            child: Text(nilai, style: teks.bodyMedium),
-          ),
+          Expanded(child: Text(nilai, style: teks.bodyMedium)),
         ],
       ),
     );

@@ -12,8 +12,7 @@ void main() {
   });
 
   setUp(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -22,8 +21,7 @@ void main() {
   });
 
   tearDown(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -32,10 +30,9 @@ void main() {
   });
 
   Future<void> bukaRiwayat(WidgetTester tester) async {
-    await tester.pumpWidget(ProviderScope(
-        overrides: [sumberTiruan],
-        child: const UpnvjSuruhApp(),
-      ));
+    await tester.pumpWidget(
+      ProviderScope(overrides: [sumberTiruan], child: const UpnvjSuruhApp()),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Order Saya'));
     await tester.pumpAndSettle();
@@ -74,20 +71,90 @@ void main() {
     expect(find.text('Permintaan'), findsNothing);
   });
 
-  testWidgets('detail order Jalur B menampilkan kuota runner dan harga kosong', (
+  testWidgets(
+    'detail order Jalur B menampilkan kuota runner dan harga kosong',
+    (tester) async {
+      await bukaRiwayat(tester);
+
+      await tester.tap(find.textContaining('SRH-0409'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('0 dari 3 orang'), findsOneWidget);
+      // Harga yang belum ada ditulis sebesar harga sungguhan di kepala layar,
+      // bukan diringkas jadi baris terakhir di tabel rincian.
+      expect(find.text('Harga menunggu penawaran'), findsOneWidget);
+      expect(
+        find.text(
+          'Admin sedang membaca permintaanmu. Penawaran harga menyusul.',
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('order yang belum dibayar bisa dibatalkan sendiri', (
     tester,
   ) async {
+    // SRH-0409 adalah permintaan Jalur B yang belum berharga, jadi belum
+    // dibayar. Sebelum tombol ini ada, klien yang salah menulis permintaannya
+    // tidak punya cara menutupnya sama sekali; ordernya menggantung selamanya
+    // dan satu-satunya jalan keluar adalah mengabaikannya.
     await bukaRiwayat(tester);
-
     await tester.tap(find.textContaining('SRH-0409'));
     await tester.pumpAndSettle();
 
-    expect(find.text('0 dari 3 orang'), findsOneWidget);
-    // Harga yang belum ada ditulis sebesar harga sungguhan di kepala layar,
-    // bukan diringkas jadi baris terakhir di tabel rincian.
-    expect(find.text('Harga menunggu penawaran'), findsOneWidget);
+    await tester.tap(find.text('Batalkan order'));
+    await tester.pumpAndSettle();
+    expect(find.text('Batalkan order ini?'), findsOneWidget);
+
+    // Dicari di dalam dialognya, karena tombol di halaman di belakangnya
+    // bertuliskan sama persis dan keduanya masih ada di pohon widget.
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.widgetWithText(TextButton, 'Batalkan order'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Order SRH-0409 dibatalkan.'), findsOneWidget);
+    // Tetap di layar yang sama, karena ordernya masih ada, cuma berstatus
+    // batal, dan linimasa di layar ini sudah tahu cara menggambarkannya.
+    expect(find.text('Batal'), findsWidgets);
+  });
+
+  testWidgets('dialog pembatalan bisa ditolak, dan ordernya tetap hidup', (
+    tester,
+  ) async {
+    await bukaRiwayat(tester);
+    await tester.tap(find.textContaining('SRH-0409'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Batalkan order'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Jangan'));
+    await tester.pumpAndSettle();
+
+    // Tombolnya masih ada, artinya ordernya masih bisa dibatalkan, artinya ia
+    // belum dibatalkan.
+    expect(find.text('Batalkan order'), findsOneWidget);
+    expect(find.text('Order SRH-0409 dibatalkan.'), findsNothing);
+  });
+
+  testWidgets('order yang sudah dibayar menjelaskan kenapa tidak ada tombol', (
+    tester,
+  ) async {
+    // SRH-0411 sudah dibayar. Server menolak membatalkannya karena ada uang
+    // yang harus kembali, dan menyembunyikan tombolnya begitu saja membuat
+    // pembatalan terlihat kadang ada kadang tidak tanpa aturan yang bisa
+    // ditebak.
+    await bukaRiwayat(tester);
+    await tester.tap(find.textContaining('SRH-0411'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Batalkan order'), findsNothing);
     expect(
-      find.text('Admin sedang membaca permintaanmu. Penawaran harga menyusul.'),
+      find.textContaining('tidak bisa dibatalkan sendiri'),
       findsOneWidget,
     );
   });

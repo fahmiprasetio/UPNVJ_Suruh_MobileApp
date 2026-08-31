@@ -426,6 +426,7 @@ public class OrdersController(
             .Include(o => o.RunnerAssignments)
             .Include(o => o.Offers)
             .Include(o => o.Client)
+            .Include(o => o.Payments)
             .SingleOrDefaultAsync(o => o.Id == id, batal);
 
         if (order is null) return NotFound();
@@ -455,6 +456,23 @@ public class OrdersController(
         }
 
         order.Status = OrderStatus.Batal;
+
+        // Tagihan yang masih menunggu ikut dimatikan.
+        //
+        // Order yang dibatalkan di sini menurut definisinya belum dibayar, tapi belum dibayar
+        // tidak berarti belum ditagihkan: begitu klien membuka layar bayar, sebuah transaksi
+        // berikut QR-nya sudah dibuat dan berlaku sampai batas waktunya. Membiarkannya hidup
+        // berarti QR untuk order yang sudah tidak ada masih bisa dipindai, dan uang yang masuk
+        // lewat sana berhenti sebagai baris peringatan di log yang harus ada orang menemukan
+        // dan mengembalikannya.
+        //
+        // Gagal, bukan Kedaluwarsa: kedaluwarsa berarti waktunya habis sendiri, sedangkan ini
+        // dihentikan karena ordernya dicabut, dan bedanya yang akan dibaca orang saat
+        // menelusuri kenapa sebuah tagihan tidak pernah selesai.
+        foreach (var pembayaran in order.Payments.Where(p => p.Menunggu))
+        {
+            pembayaran.Status = PaymentStatus.Gagal;
+        }
 
         await db.SaveChangesAsync(batal);
         return Ok(OrderResponse.Dari(
