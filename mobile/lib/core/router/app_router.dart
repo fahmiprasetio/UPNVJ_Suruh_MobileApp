@@ -13,6 +13,7 @@ import '../../features/klien/order_jalur_a/form_jastip_barang_screen.dart';
 import '../../features/klien/order_jalur_b/form_permintaan_screen.dart';
 import '../../features/klien/pembayaran/pembayaran_screen.dart';
 import '../../features/klien/riwayat/riwayat_order_screen.dart';
+import '../../features/profil/profil_screen.dart';
 import '../../domain/enums.dart';
 import '../../domain/models/app_user.dart';
 import '../../domain/repositories/auth_repository.dart';
@@ -26,6 +27,7 @@ class Rute {
   static const String masuk = '/masuk';
   static const String beranda = '/';
   static const String riwayat = '/order';
+  static const String profil = '/profil';
   static const String detailOrderPola = '/order/:orderId';
   static const String bayarPola = '/order/:orderId/bayar';
   static const String chatOrderPola = '/order/:orderId/chat';
@@ -99,6 +101,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Rute.riwayat,
         builder: (context, state) => const RiwayatOrderScreen(),
+      ),
+      GoRoute(
+        path: Rute.profil,
+        builder: (context, state) => const ProfilScreen(),
       ),
       GoRoute(
         path: Rute.detailOrderPola,

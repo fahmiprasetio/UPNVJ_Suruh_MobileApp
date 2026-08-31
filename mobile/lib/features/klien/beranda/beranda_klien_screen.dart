@@ -9,6 +9,7 @@ import '../../../domain/service_catalog.dart';
 import '../../../providers/repository_providers.dart';
 import '../../dev/pengalih_akun.dart';
 import '../../peran/tombol_ganti_mode.dart';
+import '../../widgets/tombol_profil.dart';
 import 'widgets/kartu_layanan.dart';
 
 /// Beranda klien, layar pertama, dua pintu.
@@ -68,7 +69,7 @@ class BerandaKlienScreen extends ConsumerWidget {
         actions: const [
           TombolGantiMode(),
           PengalihAkun(),
-          _TombolProfil(),
+          TombolProfil(),
         ],
       ),
       body: Column(
@@ -159,19 +160,6 @@ void belumTersedia(BuildContext context, String namaLayar) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text('$namaLayar belum dibuat, menyusul.')));
-}
-
-class _TombolProfil extends StatelessWidget {
-  const _TombolProfil();
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      onPressed: () => belumTersedia(context, 'Profil'),
-      icon: const Icon(Icons.person_outline),
-      tooltip: 'Profil',
-    );
-  }
 }
 
 /// Panel sapaan: penutup bawah blok hijau di kepala layar.
