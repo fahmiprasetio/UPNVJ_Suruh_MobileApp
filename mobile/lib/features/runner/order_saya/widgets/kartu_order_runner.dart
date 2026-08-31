@@ -4,12 +4,37 @@ import '../../../../core/format/formatters.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../domain/models/order.dart';
 import '../../../../domain/service_catalog.dart';
+import '../../widgets/rute_order.dart';
 
 /// Satu order yang dipegang runner.
 ///
 /// Bentuknya berubah menurut keadaan order: yang sedang dikerjakan menawarkan
 /// tindakan, yang sudah selesai memperlihatkan bukti yang tertinggal. Kartu
 /// ini tidak pernah kosong tindakan sekaligus kosong keterangan.
+///
+/// ## Kenapa kartunya boleh tinggi, tidak seperti kartu siaran
+///
+/// Kartu siaran di Order Masuk sengaja dipadatkan supaya lebih banyak yang muat
+/// di satu layar, karena di sana runner sedang berlomba dan setiap gulungan
+/// adalah waktu yang hilang. Di sini tidak ada lomba: ordernya sudah miliknya,
+/// jumlahnya jarang lebih dari beberapa, dan yang ia butuhkan bukan memilih
+/// melainkan mengerjakan. Karena itu alamat ditulis lengkap, harga diberi baris
+/// sendiri, dan tombolnya selebar kartu.
+///
+/// ## Kenapa alamat jemputnya ikut, padahal dulu tidak
+///
+/// Sebelumnya kartu ini hanya menampilkan alamat tujuan. Untuk order antar
+/// jemput itu berarti begitu runner menekan TERIMA, alamat jemput yang tadi
+/// terbaca jelas di kartu siaran menghilang dari aplikasinya, tepat pada saat
+/// ia mulai membutuhkannya. Rutenya sekarang digambar dengan widget yang sama
+/// dengan kartu siaran, jadi yang ia lihat sebelum dan sesudah menerima
+/// benar-benar bentuk yang sama.
+///
+/// ## Kenapa tidak ada lencana status
+///
+/// Daftarnya sudah berjudul "Sedang dikerjakan" dan "Sudah selesai", dan setiap
+/// kartu selalu berada di bawah salah satunya. Pil status di sini akan
+/// mengulang kata yang sudah tertulis dua sentimeter di atasnya.
 class KartuOrderRunner extends StatelessWidget {
   const KartuOrderRunner({
     super.key,
@@ -33,6 +58,7 @@ class KartuOrderRunner extends StatelessWidget {
     final layanan = serviceInfoOf(order.serviceType);
     final teks = Theme.of(context).textTheme;
     final skema = Theme.of(context).colorScheme;
+    final adaRute = order.alamatJemput != null || order.alamatTujuan != null;
 
     return Card(
       child: Padding(
@@ -50,43 +76,35 @@ class KartuOrderRunner extends StatelessWidget {
                     style: teks.titleSmall?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
-                  ),
-                ),
-                Text(
-                  formatRupiah(order.harga),
-                  style: teks.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: skema.primary,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: AppTheme.spasiKecil),
+            const SizedBox(height: 2),
             Text(
               '${order.kodeOrder} · ${order.namaKlien}',
               style: teks.bodySmall?.copyWith(color: skema.onSurfaceVariant),
             ),
-            if (order.alamatTujuan != null) ...[
-              const SizedBox(height: AppTheme.spasiKecil),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.place_outlined,
-                    size: 16,
-                    color: skema.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: AppTheme.spasiKecil),
-                  Expanded(
-                    child: Text(order.alamatTujuan!, style: teks.bodySmall),
-                  ),
-                ],
-              ),
-            ],
             if (order.deskripsi != null) ...[
               const SizedBox(height: AppTheme.spasiKecil),
               Text(order.deskripsi!, style: teks.bodyMedium),
             ],
+            if (adaRute) ...[
+              const SizedBox(height: AppTheme.spasiSedang),
+              RuteOrder(jemput: order.alamatJemput, tujuan: order.alamatTujuan),
+            ],
+            const SizedBox(height: AppTheme.spasiSedang),
+            Text(
+              formatRupiah(order.harga),
+              style: TextStyle(
+                fontSize: 20,
+                height: 1.2,
+                fontWeight: FontWeight.w700,
+                color: skema.primary,
+              ),
+            ),
             const SizedBox(height: AppTheme.spasiSedang),
             if (onSelesaikan != null)
               FilledButton.icon(
@@ -94,23 +112,29 @@ class KartuOrderRunner extends StatelessWidget {
                 icon: const Icon(Icons.task_alt_outlined),
                 label: const Text('Selesaikan Order'),
                 style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(46),
+                  minimumSize: const Size.fromHeight(48),
                 ),
               )
             else
               _RingkasanPenyelesaian(order: order),
             if (onChat != null) ...[
-              const SizedBox(height: AppTheme.spasiKecil),
-              OutlinedButton.icon(
-                onPressed: onChat,
-                icon: const Icon(Icons.forum_outlined),
-                label: Text(
-                  order.jumlahPesan == 0
-                      ? 'Chat Klien'
-                      : 'Chat Klien (${order.jumlahPesan})',
-                ),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(46),
+              const SizedBox(height: 4),
+              // Tombol teks, bukan tombol bergaris. Bergaris membuatnya
+              // seukuran dan sekeras tombol maroon di atasnya, dan kartu dengan
+              // dua tombol selebar penuh yang sama kerasnya tidak punya tindakan
+              // utama lagi, cuma dua pilihan yang sama-sama menuntut. Chat
+              // memang jalan sampingan; bentuknya sekarang mengaku begitu.
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: onChat,
+                  icon: const Icon(Icons.forum_outlined, size: 18),
+                  label: Text(
+                    order.jumlahPesan == 0
+                        ? 'Chat Klien'
+                        : 'Chat Klien (${order.jumlahPesan})',
+                  ),
+                  style: TextButton.styleFrom(minimumSize: const Size(0, 44)),
                 ),
               ),
             ],

@@ -17,8 +17,7 @@ void main() {
   });
 
   setUp(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -27,8 +26,7 @@ void main() {
   });
 
   tearDown(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -43,7 +41,8 @@ void main() {
   }) async {
     final orderRepo = FakeOrderRepository(
       pemanggil: () => SeedData.runner.id,
-      orderAwal: orderAwal);
+      orderAwal: orderAwal,
+    );
     addTearDown(orderRepo.dispose);
 
     await tester.pumpWidget(
@@ -86,6 +85,27 @@ void main() {
     expect(find.text('Sedang dikerjakan (1)'), findsOneWidget);
     expect(find.text('Sudah selesai (1)'), findsOneWidget);
     expect(find.text('Selesaikan Order'), findsOneWidget);
+  });
+
+  testWidgets('alamat jemput tidak hilang setelah ordernya diterima', (
+    tester,
+  ) async {
+    // Order antar jemput yang sudah dipegang runner ini. Di kartu siaran kedua
+    // alamatnya terbaca jelas; kalau setelah TERIMA yang tersisa cuma alamat
+    // tujuan, runner kehilangan setengah rutenya tepat ketika ia mulai
+    // membutuhkannya, dan satu-satunya jalan mendapatkannya kembali adalah
+    // bertanya lewat chat.
+    final anterJemput = SeedData.orderAwal().first.copyWith(
+      status: OrderStatus.dikerjakan,
+      runnerIds: [SeedData.runner.id],
+    );
+    await bukaOrderSaya(tester, orderAwal: [anterJemput]);
+
+    expect(
+      find.text('Kos Melati, Jl. Pondok Labu Raya No. 12'),
+      findsOneWidget,
+    );
+    expect(find.text('Gedung Fakultas Ilmu Komputer UPNVJ'), findsOneWidget);
   });
 
   testWidgets('runner tanpa order sama sekali diberi keterangan', (
