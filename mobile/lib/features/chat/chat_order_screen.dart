@@ -12,6 +12,7 @@ import '../../domain/service_catalog.dart';
 import '../../providers/order_providers.dart';
 import '../../providers/repository_providers.dart';
 import '../../providers/ukuran_pesan.dart';
+import '../widgets/pesan_kosong.dart';
 
 /// Ruang chat yang menempel pada satu order.
 ///
@@ -124,10 +125,13 @@ class _ChatOrderScreenState extends ConsumerState<ChatOrderScreen> {
     _gulirKeBawah();
   }
 
+  /// Daftarnya terbalik, jadi ujung terbaru ada di offset nol, bukan di
+  /// [ScrollPosition.maxScrollExtent]. Ini juga sebabnya tidak perlu lagi
+  /// menambahkan angka sembarang supaya "cukup ke bawah": nol memang ujungnya.
   void _gulirKeBawah() {
     if (!_scrollController.hasClients) return;
     _scrollController.animateTo(
-      _scrollController.position.maxScrollExtent + 120,
+      0,
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeOut,
     );
@@ -153,7 +157,7 @@ class _JudulOrder extends StatelessWidget {
       child: Align(
         alignment: Alignment.centerLeft,
         child: Text(
-          '${order.kodeOrder} - ${serviceInfoOf(order.serviceType).nama}',
+          '${order.kodeOrder} \u00b7 ${serviceInfoOf(order.serviceType).nama}',
           style: Theme.of(
             context,
           ).textTheme.bodySmall?.copyWith(color: skema.onSurfaceVariant),
@@ -188,13 +192,28 @@ class _DaftarPesan extends ConsumerWidget {
       return _ChatKosong(order: order, pengirim: pengirim);
     }
 
+    // Terbalik: baris ke-0 digambar paling bawah, dan daftarnya menempel ke
+    // bawah dengan sendirinya.
+    //
+    // Sebelumnya percakapan pendek mengambang di puncak layar dengan ruang
+    // kosong sejengkal di antara pesan terakhir dan kotak tulisnya, dan yang
+    // terbaca adalah dua bagian yang tidak saling berhubungan. Percakapan
+    // dibaca dari yang paling baru, dan yang paling baru seharusnya berdiri
+    // tepat di atas tempat balasannya diketik.
+    //
+    // Membalik daftar juga menghilangkan satu kelas cacat: pada daftar biasa,
+    // pesan yang datang saat orang sedang membaca ke atas mendorong isinya, dan
+    // baris yang sedang dibaca melompat. Pada daftar terbalik, penambahan di
+    // ujung bawah tidak menggeser apa pun yang sedang dipandang.
     return ListView.builder(
       controller: scroll,
+      reverse: true,
       padding: const EdgeInsets.all(AppTheme.spasiSedang),
-      // Satu baris tambahan di paling atas, tempat percakapan yang lebih lama berada.
+      // Satu baris tambahan di ujung daftar, yang karena terbalik jatuh di
+      // paling atas: tempat percakapan yang lebih lama berada.
       itemCount: order.messages.length + 1,
       itemBuilder: (context, indeks) {
-        if (indeks == 0) {
+        if (indeks == order.messages.length) {
           return _MuatPesanLama(
             orderId: order.id,
             adaYangLebihLama: _adaYangLebihLama,
@@ -202,7 +221,7 @@ class _DaftarPesan extends ConsumerWidget {
         }
 
         return _GelembungPesan(
-          pesan: order.messages[indeks - 1],
+          pesan: order.messages[order.messages.length - 1 - indeks],
           pembaca: pengirim,
         );
       },
@@ -231,7 +250,7 @@ class _MuatPesanLama extends ConsumerWidget {
     final jendela = ref.watch(ukuranPesanProvider.notifier);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppTheme.spasiSedang),
+      padding: const EdgeInsets.only(bottom: AppTheme.spasiKecil),
       child: Center(
         child: jendela.bisaDiperbesar(orderId)
             ? TextButton(
@@ -250,6 +269,29 @@ class _MuatPesanLama extends ConsumerWidget {
   }
 }
 
+/// Satu pesan.
+///
+/// ## Kenapa gelembung sendiri hijau penuh
+///
+/// Sebelumnya pesan sendiri memakai `primaryContainer` dan pesan orang lain
+/// `surfaceContainerHighest`. Keduanya hijau pucat dengan selisih terang yang
+/// tipis, dan pada percakapan yang isinya balas-membalas cepat satu-satunya
+/// petunjuk siapa bicara adalah sisi tempat gelembungnya berdiri. Itu bekerja
+/// selama layarnya diperhatikan, dan berhenti bekerja persis saat orang
+/// menyapu percakapan lama mencari siapa yang menjanjikan apa.
+///
+/// Sekarang gelembung sendiri memakai hijau berkekuatan penuh di tema terang
+/// dan wadahnya di tema gelap, mengikuti aturan yang sama dengan kepala beranda:
+/// peran penuh pada tema gelap adalah hijau muda yang dibuat untuk teks, dan
+/// bidang selebar gelembung dengan warna itu menyilaukan di tengah malam.
+///
+/// ## Sudut yang dipangkas
+///
+/// Satu sudut bawah tiap gelembung dipangkas ke 4 piksel, di sisi yang
+/// menghadap pengirimnya. Ini pengganti ekor gelembung yang biasa digambar
+/// aplikasi chat: bentuknya menunjuk asal pesan tanpa perlu menggambar segitiga
+/// yang harus ikut berganti warna dan ikut dipangkas latar setiap kali temanya
+/// berubah.
 class _GelembungPesan extends StatelessWidget {
   const _GelembungPesan({required this.pesan, required this.pembaca});
 
@@ -263,19 +305,45 @@ class _GelembungPesan extends StatelessWidget {
   Widget build(BuildContext context) {
     final skema = Theme.of(context).colorScheme;
     final teks = Theme.of(context).textTheme;
+    final gelap = Theme.of(context).brightness == Brightness.dark;
     final milikSendiri = pesan.pengirim == pembaca;
+
+    final Color latar;
+    final Color depan;
+    if (!milikSendiri) {
+      latar = skema.surfaceContainerHighest;
+      depan = skema.onSurface;
+    } else if (gelap) {
+      latar = skema.primaryContainer;
+      depan = skema.onPrimaryContainer;
+    } else {
+      latar = skema.primary;
+      depan = skema.onPrimary;
+    }
+
+    const bulat = Radius.circular(14);
+    const pangkas = Radius.circular(4);
 
     return Align(
       alignment: milikSendiri ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: AppTheme.spasiKecil),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        constraints: const BoxConstraints(maxWidth: 320),
+        constraints: BoxConstraints(
+          // Pecahan lebar layar, bukan angka piksel tetap. Angka tetap yang pas
+          // di ponsel jadi lajur sempit di tablet, dan gelembung selebar 320
+          // piksel di ponsel terkecil menyisakan ruang yang terlalu tipis untuk
+          // membedakan sisi kanan dari sisi kiri.
+          maxWidth: MediaQuery.sizeOf(context).width * 0.78,
+        ),
         decoration: BoxDecoration(
-          color: milikSendiri
-              ? skema.primaryContainer
-              : skema.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(14),
+          color: latar,
+          borderRadius: BorderRadius.only(
+            topLeft: bulat,
+            topRight: bulat,
+            bottomLeft: milikSendiri ? bulat : pangkas,
+            bottomRight: milikSendiri ? pangkas : bulat,
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -288,18 +356,19 @@ class _GelembungPesan extends StatelessWidget {
                   color: skema.onSurfaceVariant,
                 ),
               ),
-            Text(
-              pesan.isi,
-              style: teks.bodyMedium?.copyWith(
-                color: milikSendiri
-                    ? skema.onPrimaryContainer
-                    : skema.onSurface,
-              ),
-            ),
+            Text(pesan.isi, style: teks.bodyMedium?.copyWith(color: depan)),
             const SizedBox(height: 2),
-            Text(
-              formatJam(pesan.dikirimPada),
-              style: teks.labelSmall?.copyWith(color: skema.onSurfaceVariant),
+            // Jamnya disemir dari warna depan gelembungnya sendiri, bukan dari
+            // abu-abu tetap. Abu-abu di atas hijau penuh jatuh di bawah ambang
+            // keterbacaan, dan yang tersisa cuma noda di pojok gelembung.
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                formatJam(pesan.dikirimPada),
+                style: teks.labelSmall?.copyWith(
+                  color: depan.withValues(alpha: 0.72),
+                ),
+              ),
             ),
           ],
         ),
@@ -317,9 +386,6 @@ class _ChatKosong extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final skema = Theme.of(context).colorScheme;
-    final teks = Theme.of(context).textTheme;
-
     // Runner dan klien membuka ruang yang sama untuk urusan yang berbeda:
     // runner mengabari, klien bertanya. Di sisi klien, Jalur B memang menunggu
     // admin membaca dan bertanya, sedangkan Jalur A biasanya tidak perlu
@@ -338,28 +404,13 @@ class _ChatKosong extends StatelessWidget {
             'Percakapannya menempel pada order, jadi tidak tercecer.',
     };
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spasiBesar),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.forum_outlined,
-              size: 44,
-              color: skema.onSurfaceVariant,
-            ),
-            const SizedBox(height: AppTheme.spasiSedang),
-            Text('Belum ada percakapan', style: teks.titleMedium),
-            const SizedBox(height: 4),
-            Text(
-              keterangan,
-              textAlign: TextAlign.center,
-              style: teks.bodyMedium?.copyWith(color: skema.onSurfaceVariant),
-            ),
-          ],
-        ),
-      ),
+    // Widget kosong yang sama dengan daftar order, bukan salinan sendiri.
+    // Tidak ada tombol jalan keluar: jalan keluar dari chat kosong adalah
+    // menulis, dan kotak tulisnya sudah berdiri di bawah layar ini.
+    return PesanKosong(
+      ikon: Icons.forum_outlined,
+      judul: 'Belum ada percakapan',
+      keterangan: keterangan,
     );
   }
 }
@@ -377,6 +428,14 @@ class _KotakKirim extends StatelessWidget {
   final bool sedangMengirim;
   final VoidCallback onKirim;
 
+  /// Sisa ruang saat penghitung huruf mulai ditampilkan.
+  ///
+  /// Penghitung yang selalu menyala memajang "0/1000" di bawah kotak kosong,
+  /// dan yang dikabarkannya adalah batas yang tidak akan pernah didekati
+  /// siapa pun yang sedang menulis "sudah sampai mana?". Ia baru berguna
+  /// ketika batasnya benar-benar terasa, jadi ia baru muncul di situ.
+  static const int _sisaMulaiDihitung = 80;
+
   @override
   Widget build(BuildContext context) {
     final skema = Theme.of(context).colorScheme;
@@ -386,17 +445,31 @@ class _KotakKirim extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(AppTheme.spasiSedang),
         color: skema.surfaceContainerHighest,
-        child: Text(
-          'Order ini sudah ditutup, jadi chatnya ikut ditutup.',
-          textAlign: TextAlign.center,
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: skema.onSurfaceVariant),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.lock_outline, size: 16, color: skema.onSurfaceVariant),
+            const SizedBox(width: AppTheme.spasiKecil),
+            Flexible(
+              child: Text(
+                'Order ini sudah ditutup, jadi chatnya ikut ditutup.',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: skema.onSurfaceVariant),
+              ),
+            ),
+          ],
         ),
       );
     }
 
-    return Padding(
+    return Container(
+      decoration: BoxDecoration(
+        color: skema.surface,
+        // Garis rambut di atas kotak tulis, supaya gelembung terakhir tidak
+        // terbaca menempel pada kolom isian saat percakapannya sudah panjang.
+        border: Border(top: BorderSide(color: skema.outlineVariant)),
+      ),
       padding: const EdgeInsets.all(AppTheme.spasiKecil),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -405,6 +478,24 @@ class _KotakKirim extends StatelessWidget {
             child: TextField(
               controller: controller,
               maxLength: BatasMasukan.pesanChat,
+              buildCounter:
+                  (
+                    context, {
+                    required currentLength,
+                    required isFocused,
+                    required maxLength,
+                  }) {
+                    if (maxLength == null ||
+                        maxLength - currentLength > _sisaMulaiDihitung) {
+                      return null;
+                    }
+                    return Text(
+                      '$currentLength/$maxLength',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: skema.onSurfaceVariant,
+                      ),
+                    );
+                  },
               textCapitalization: TextCapitalization.sentences,
               maxLines: 4,
               minLines: 1,
@@ -414,8 +505,19 @@ class _KotakKirim extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppTheme.spasiKecil),
+          // Maroon, bukan hijau. Ini tombol, dan di sistem ini yang meminta
+          // ditekan selalu maroon; hijau dipakai gelembung di atasnya untuk
+          // menyatakan pesan yang sudah terkirim. Tombol kirim yang berwarna
+          // sama dengan pesan terkirim mengaburkan justru dua hal yang paling
+          // sering dibedakan orang di layar ini: yang sudah lepas dan yang
+          // belum.
           IconButton.filled(
             onPressed: sedangMengirim ? null : onKirim,
+            style: IconButton.styleFrom(
+              backgroundColor: skema.secondary,
+              foregroundColor: skema.onSecondary,
+              minimumSize: const Size(48, 48),
+            ),
             icon: sedangMengirim
                 ? const SizedBox(
                     height: 18,

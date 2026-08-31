@@ -21,8 +21,7 @@ void main() {
   });
 
   setUp(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -31,8 +30,7 @@ void main() {
   });
 
   tearDown(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -45,7 +43,8 @@ void main() {
     String kodeOrder, {
     List<Order>? orderAwal,
   }) async {
-    await tester.pumpWidget(ProviderScope(
+    await tester.pumpWidget(
+      ProviderScope(
         overrides: [
           sumberTiruan,
           if (orderAwal != null)
@@ -56,7 +55,8 @@ void main() {
             }),
         ],
         child: const UpnvjSuruhApp(),
-      ));
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.byTooltip('Order Saya'));
@@ -76,6 +76,31 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Admin'), findsOneWidget);
+  });
+
+  testWidgets('pesan terbaru berdiri di bawah, menempel ke kotak tulis', (
+    tester,
+  ) async {
+    await bukaChat(tester, 'SRH-0409');
+
+    // Daftarnya digambar terbalik supaya percakapan pendek menempel ke bawah
+    // alih-alih mengambang di puncak layar. Membalik daftar berarti nomor
+    // barisnya juga harus dibalik, dan salah hitung di situ tidak menghasilkan
+    // galat apa pun: percakapannya cuma terbaca mundur, jawaban lebih dulu
+    // daripada pertanyaannya, dan tidak ada yang menyadarinya sampai ada yang
+    // membaca ulang untuk mencari siapa menjanjikan apa.
+    final tanya = tester.getCenter(
+      find.textContaining('kosnya di lantai berapa'),
+    );
+    final jawab = tester.getCenter(
+      find.text('Kos lama lantai 2, tangga. Kos baru lantai 1.'),
+    );
+    expect(tanya.dy, lessThan(jawab.dy));
+
+    // Dan yang terbaru benar-benar di bawah, bukan sekadar urut: jaraknya ke
+    // kotak tulis harus lebih dekat daripada ke tepi atas layar.
+    final kotakTulis = tester.getTopLeft(find.byType(TextField)).dy;
+    expect(jawab.dy, greaterThan(kotakTulis / 2));
   });
 
   testWidgets('chat menempel pada ordernya, bukan berdiri sendiri', (
