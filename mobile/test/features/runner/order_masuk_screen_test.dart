@@ -129,15 +129,38 @@ void main() {
     expect(find.text('Mau disuruh apa hari ini?'), findsNothing);
   });
 
-  testWidgets('hanya order yang sedang mencari runner yang disiarkan', (
+  testWidgets(
+    'order yang sudah dibayar dan Jalur B yang masih menunggu tawaran disiarkan',
+    (tester) async {
+      await bukaSebagaiRunner(tester);
+
+      // Dari data contoh: SRH-0411 sudah dibayar dan mencari runner (Jalur A).
+      // SRH-0409 adalah permintaan Jalur B yang belum ditawari siapa pun, jadi
+      // ikut disiarkan sebagai kesempatan menawar, bukan pekerjaan siap kerja.
+      // SRH-0410 sudah dikerjakan runner lain, jadi tidak ikut disiarkan.
+      expect(find.textContaining('SRH-0411'), findsOneWidget);
+      expect(find.textContaining('SRH-0409'), findsOneWidget);
+      expect(find.textContaining('SRH-0410'), findsNothing);
+    },
+  );
+
+  testWidgets('permintaan Jalur B yang masih menunggu tawaran memakai tombol ajukan tawaran', (
     tester,
   ) async {
     await bukaSebagaiRunner(tester);
 
-    // Dari data contoh: SRH-0411 mencari runner, sisanya tidak.
-    expect(find.textContaining('SRH-0411'), findsOneWidget);
-    expect(find.textContaining('SRH-0410'), findsNothing);
-    expect(find.textContaining('SRH-0409'), findsNothing);
+    final kartuSrh0409 = find.ancestor(
+      of: find.textContaining('SRH-0409'),
+      matching: find.byType(Card),
+    );
+    expect(
+      find.descendant(of: kartuSrh0409, matching: find.text('AJUKAN TAWARAN')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: kartuSrh0409, matching: find.text('TERIMA')),
+      findsNothing,
+    );
   });
 
   testWidgets('daftar kosong menjelaskan keadaannya, bukan diam', (

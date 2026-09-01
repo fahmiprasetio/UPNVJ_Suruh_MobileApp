@@ -82,6 +82,7 @@ void main() {
         serviceType: ServiceType.bersihKos,
         deskripsi: panjang(BatasMasukan.deskripsi + 1),
         jadwalMulai: DateTime.now().add(const Duration(days: 1)),
+        hargaUsulan: 150000,
       ),
       throwsStateError,
     );
@@ -89,11 +90,12 @@ void main() {
 
   test('alasan nego yang melewati batas ditolak', () async {
     final order = orderAktif().copyWith(
-      status: OrderStatus.menungguPersetujuanKlien,
+      status: OrderStatus.permintaan,
       offers: [
         OrderOffer(
           id: 'p-1',
           orderId: 'o-uji',
+          runnerId: 'u-runner-1',
           harga: 50000,
           estimasiDurasi: const Duration(hours: 2),
           jadwalMulai: DateTime.now().add(const Duration(days: 1)),
@@ -108,6 +110,7 @@ void main() {
     await expectLater(
       repo.ajukanNego(
         orderId: 'o-uji',
+        penawaranId: 'p-1',
         alasan: panjang(BatasMasukan.alasanNego + 1),
       ),
       throwsStateError,

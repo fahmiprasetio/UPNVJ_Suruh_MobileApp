@@ -84,9 +84,7 @@ void main() {
       // bukan diringkas jadi baris terakhir di tabel rincian.
       expect(find.text('Harga menunggu penawaran'), findsOneWidget);
       expect(
-        find.text(
-          'Admin sedang membaca permintaanmu. Penawaran harga menyusul.',
-        ),
+        find.text('Menunggu runner yang tersedia mengajukan tawaran.'),
         findsOneWidget,
       );
     },

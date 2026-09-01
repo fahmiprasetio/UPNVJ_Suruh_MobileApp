@@ -10,6 +10,7 @@ import 'package:upnvj_suruh/domain/enums.dart';
 import 'package:upnvj_suruh/data/fake/seed_data.dart';
 import 'package:upnvj_suruh/domain/models/order.dart';
 import 'package:upnvj_suruh/domain/models/order_message.dart';
+import 'package:upnvj_suruh/domain/models/order_offer.dart';
 import 'package:upnvj_suruh/providers/repository_providers.dart';
 import 'package:upnvj_suruh/core/config/batas_halaman.dart';
 import 'package:upnvj_suruh/providers/order_providers.dart';
@@ -67,21 +68,104 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('percakapan order Jalur B terbaca lengkap', (tester) async {
-    await bukaChat(tester, 'SRH-0409');
+  /// Order Jalur B dengan satu tawaran runner yang masih pending, lengkap
+  /// dengan jalur obrolan pribadi antara klien dan runner itu.
+  ///
+  /// Beda dari SRH-0409 di data contoh (yang sengaja belum ditawari siapa
+  /// pun, dipakai tes lain untuk membuktikan keadaan "menunggu tawaran"):
+  /// order ini sudah punya satu runner yang menawar, jadi chatnya bisa
+  /// dibuka lewat kartu tawarannya, bukan lewat tombol chat umum di kepala
+  /// layar (tombol itu sengaja tidak ada selama Jalur B masih menerima
+  /// tawaran, karena tidak ada satu jalur obrolan umum yang berarti di sana).
+  Order orderJalurBDenganTawaran() {
+    final sekarang = DateTime.now();
+    return Order(
+      id: 'o-tawar-uji',
+      kodeOrder: 'SRH-9200',
+      klienId: SeedData.klien.id,
+      namaKlien: SeedData.klien.nama,
+      serviceType: ServiceType.bantuPindahKos,
+      status: OrderStatus.permintaan,
+      dibuatPada: sekarang.subtract(const Duration(hours: 3)),
+      deskripsi: 'Pindah dari kos lama ke kos baru, sekitar 2 km.',
+      jadwalMulai: sekarang.add(const Duration(days: 2)),
+      jumlahRunnerDibutuhkan: 1,
+      hargaUsulan: 150000,
+      offers: [
+        OrderOffer(
+          id: 'p-tawar-uji',
+          orderId: 'o-tawar-uji',
+          runnerId: SeedData.runner.id,
+          harga: 150000,
+          estimasiDurasi: const Duration(hours: 2),
+          jadwalMulai: sekarang.add(const Duration(days: 2)),
+          dibuatPada: sekarang.subtract(const Duration(hours: 2, minutes: 45)),
+          status: OfferStatus.pending,
+        ),
+      ],
+      messages: [
+        OrderMessage(
+          id: 'm-1',
+          orderId: 'o-tawar-uji',
+          runnerId: SeedData.runner.id,
+          pengirim: MessageSender.runner,
+          isi:
+              'Halo, kosnya di lantai berapa ya? Ada lift atau tangga saja? '
+              'Ini yang paling menentukan berapa lama pengerjaannya.',
+          dikirimPada: sekarang.subtract(const Duration(hours: 2, minutes: 40)),
+        ),
+        OrderMessage(
+          id: 'm-2',
+          orderId: 'o-tawar-uji',
+          runnerId: SeedData.runner.id,
+          pengirim: MessageSender.klien,
+          isi: 'Kos lama lantai 2, tangga. Kos baru lantai 1.',
+          dikirimPada: sekarang.subtract(const Duration(hours: 2, minutes: 30)),
+        ),
+      ],
+      jumlahPesan: 2,
+    );
+  }
+
+  Future<void> bukaChatTawaran(WidgetTester tester, Order order) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sumberTiruan,
+          orderRepositoryProvider.overrideWith((ref) {
+            final repo = FakeOrderRepository(orderAwal: [order]);
+            ref.onDispose(repo.dispose);
+            return repo;
+          }),
+        ],
+        child: const UpnvjSuruhApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Order Saya'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining(order.kodeOrder));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Chat dengan runner ini'));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('percakapan tawaran Jalur B terbaca lengkap', (tester) async {
+    await bukaChatTawaran(tester, orderJalurBDenganTawaran());
 
     expect(find.textContaining('kosnya di lantai berapa'), findsOneWidget);
     expect(
       find.text('Kos lama lantai 2, tangga. Kos baru lantai 1.'),
       findsOneWidget,
     );
-    expect(find.text('Admin'), findsOneWidget);
+    expect(find.text('Runner'), findsOneWidget);
   });
 
   testWidgets('pesan terbaru berdiri di bawah, menempel ke kotak tulis', (
     tester,
   ) async {
-    await bukaChat(tester, 'SRH-0409');
+    await bukaChatTawaran(tester, orderJalurBDenganTawaran());
 
     // Daftarnya digambar terbalik supaya percakapan pendek menempel ke bawah
     // alih-alih mengambang di puncak layar. Membalik daftar berarti nomor
@@ -106,11 +190,11 @@ void main() {
   testWidgets('chat menempel pada ordernya, bukan berdiri sendiri', (
     tester,
   ) async {
-    await bukaChat(tester, 'SRH-0409');
+    await bukaChatTawaran(tester, orderJalurBDenganTawaran());
 
     // Kode order ikut tertulis di kepala layar supaya percakapan tidak pernah
     // kehilangan konteks.
-    expect(find.textContaining('SRH-0409'), findsWidgets);
+    expect(find.textContaining('SRH-9200'), findsWidgets);
   });
 
   testWidgets('order tanpa percakapan menjelaskan gunanya', (tester) async {

@@ -3,8 +3,15 @@ import 'models/order.dart';
 
 /// Urutan status yang dilewati sebuah order, per jalur layanan.
 ///
-/// Cerminan state machine di rencana capstone bagian 4. Jalur A melewati dua
-/// status pertama karena harganya sudah pasti sejak awal.
+/// Jalur A melewati dua tahap pertama karena harganya sudah pasti sejak
+/// awal. Jalur B tidak lagi melewati [OrderStatus.menungguPersetujuanKlien]:
+/// order tetap berstatus [OrderStatus.permintaan] selama masih menerima
+/// tawaran dari runner mana pun (bisa lebih dari satu tawaran sekaligus),
+/// dan langsung lompat ke [OrderStatus.menungguPembayaran] begitu klien
+/// menyetujui salah satunya, tanpa ada tahap "menunggu persetujuan" yang
+/// benar-benar disinggahi. Status itu dibiarkan ada di enumnya (lihat
+/// `Domain.OrderStatus` di backend) supaya nilainya tidak bergeser, tapi
+/// tidak dipakai di sini karena tidak pernah benar-benar terjadi lagi.
 ///
 /// [OrderStatus.batal] sengaja tidak ada di daftar mana pun: pembatalan bukan
 /// tahap yang dilalui, melainkan keluar dari alur.
@@ -17,7 +24,6 @@ const List<OrderStatus> _alurJalurA = [
 
 const List<OrderStatus> _alurJalurB = [
   OrderStatus.permintaan,
-  OrderStatus.menungguPersetujuanKlien,
   OrderStatus.menungguPembayaran,
   OrderStatus.mencariRunner,
   OrderStatus.dikerjakan,

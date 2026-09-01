@@ -158,6 +158,7 @@ void main() {
           {
             'id': 'c1111111-1111-1111-1111-111111111111',
             'orderId': orderJson['id'],
+            'runnerId': 'c2222222-2222-2222-2222-222222222222',
             'harga': 150000,
             'estimasiDurasiMenit': 180,
             'jadwalMulai': '2026-08-30T02:00:00Z',
@@ -174,7 +175,7 @@ void main() {
       expect(order.offers.single.harga, 150000);
       expect(order.offers.single.estimasiDurasi, const Duration(minutes: 180));
       expect(order.offers.single.status, OfferStatus.pending);
-      expect(order.penawaranMenunggu, isNotNull);
+      expect(order.penawaranPending, hasLength(1));
     });
 
     test('status yang tidak dikenal melempar, bukan diam-diam jadi status lain', () async {
@@ -218,6 +219,7 @@ void main() {
         serviceType: ServiceType.bersihKos,
         deskripsi: 'Kos dua kamar',
         jadwalMulai: DateTime(2026, 8, 30, 9),
+        hargaUsulan: 150000,
       );
       final badan = jsonDecode(uji.dikirim.first.body) as Map<String, dynamic>;
       expect(badan['jadwalMulai'], endsWith('Z'));

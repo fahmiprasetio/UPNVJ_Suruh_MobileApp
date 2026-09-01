@@ -137,7 +137,7 @@ class _LencanaSegera extends StatelessWidget {
 ///
 /// Sengaja melebar dan berbeda bentuk dari petak layanan, karena ini pintu yang
 /// berbeda sifatnya: masuk lewat sini berarti harganya belum diketahui dan harus
-/// lewat penawaran admin (Jalur B). Bedanya bentuk itu satu-satunya tempat
+/// lewat tawar-menawar dengan runner (Jalur B). Bedanya bentuk itu satu-satunya tempat
 /// pengguna belajar bahwa ada dua jalan, jadi ia tidak boleh dilebur jadi petak
 /// ketujuh di petak atas.
 ///

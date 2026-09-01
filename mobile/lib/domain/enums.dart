@@ -24,7 +24,8 @@ enum OrderTrack {
   /// Cepat dan terkatalogkan, harga dihitung otomatis dari isian form.
   jalurA,
 
-  /// Terjadwal dan lewat penawaran, harga ditentukan admin.
+  /// Terjadwal dan lewat tawar-menawar, harga ditentukan runner yang menawar,
+  /// bukan admin.
   jalurB,
 }
 

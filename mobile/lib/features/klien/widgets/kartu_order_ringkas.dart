@@ -31,7 +31,8 @@ class KartuOrderRingkas extends StatelessWidget {
     final skema = Theme.of(context).colorScheme;
 
     // Harga yang belum ada bukan data hilang, melainkan keadaan yang sah: order
-    // Jalur B memang belum punya angka sebelum penawaran admin disepakati.
+    // Jalur B memang belum punya angka sebelum salah satu penawaran runner
+    // disepakati.
     // Karena itu ia ditulis sebesar harga sungguhan, bukan diringkas jadi tanda
     // hubung atau nol, dan yang membedakannya cuma warna: abu, bukan hijau,
     // karena belum ada yang pasti untuk dinyatakan.

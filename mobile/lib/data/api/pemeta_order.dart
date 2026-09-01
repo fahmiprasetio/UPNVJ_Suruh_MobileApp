@@ -28,6 +28,7 @@ class PemetaOrder {
       alamatJemput: isi['alamatJemput'] as String?,
       alamatTujuan: isi['alamatTujuan'] as String?,
       harga: _rupiah(isi['harga']),
+      hargaUsulan: _rupiah(isi['hargaUsulan']),
       estimasiDurasi: _menit(isi['estimasiDurasiMenit']),
       jadwalMulai: _waktu(isi, 'jadwalMulai'),
       jumlahRunnerDibutuhkan: (isi['jumlahRunnerDibutuhkan'] as num?)?.toInt() ?? 1,
@@ -55,6 +56,7 @@ class PemetaOrder {
   static OrderOffer penawaran(Map<String, dynamic> isi) => OrderOffer(
     id: _teks(isi, 'id'),
     orderId: _teks(isi, 'orderId'),
+    runnerId: _teks(isi, 'runnerId'),
     harga: _rupiah(isi['harga']) ?? 0,
     estimasiDurasi: _menit(isi['estimasiDurasiMenit']) ?? Duration.zero,
     jadwalMulai: _waktu(isi, 'jadwalMulai')!,
@@ -66,6 +68,7 @@ class PemetaOrder {
   static OrderMessage pesanChat(Map<String, dynamic> isi) => OrderMessage(
     id: _teks(isi, 'id'),
     orderId: _teks(isi, 'orderId'),
+    runnerId: isi['runnerId'] as String?,
     pengirim: _enum(MessageSender.values, isi['peranPengirim'], 'peran pengirim'),
     isi: (isi['isi'] as String?) ?? '',
     dikirimPada: _waktu(isi, 'dikirimPada')!,

@@ -14,6 +14,7 @@ import '../../features/klien/order_jalur_b/form_permintaan_screen.dart';
 import '../../features/klien/pembayaran/pembayaran_screen.dart';
 import '../../features/klien/riwayat/riwayat_order_screen.dart';
 import '../../features/profil/profil_screen.dart';
+import '../../features/runner/ajukan_tawaran/ajukan_tawaran_screen.dart';
 import '../../domain/enums.dart';
 import '../../domain/models/app_user.dart';
 import '../../domain/repositories/auth_repository.dart';
@@ -35,10 +36,20 @@ class Rute {
   static const String formAnterJemput = '/buat/anter-jemput';
   static const String formJastipBarang = '/buat/jastip-barang';
   static const String formPermintaanPola = '/buat/permintaan/:layanan';
+  static const String ajukanTawaranPola = '/runner/order/:orderId/tawar';
+
+  static String ajukanTawaran(String orderId) => '/runner/order/$orderId/tawar';
 
   static String detailOrder(String orderId) => '/order/$orderId';
   static String bayar(String orderId) => '/order/$orderId/bayar';
-  static String chatOrder(String orderId) => '/order/$orderId/chat';
+
+  /// [runnerId] cuma berarti selama order Jalur B masih menerima tawaran:
+  /// jalur obrolan pribadi runner mana yang mau dilihat, karena bisa ada
+  /// beberapa runner menawar bersamaan. Diabaikan begitu order sudah punya
+  /// runner tetap.
+  static String chatOrder(String orderId, {String? runnerId}) => runnerId == null
+      ? '/order/$orderId/chat'
+      : '/order/$orderId/chat?runnerId=$runnerId';
 
   /// Ruang chat yang sama, dibuka dari sisi runner. Jalurnya dipisah supaya
   /// peran penulis pesan ditentukan rute, bukan ditebak dari isi layar.
@@ -118,8 +129,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: Rute.chatOrderPola,
-        builder: (context, state) =>
-            ChatOrderScreen(orderId: state.pathParameters['orderId']!),
+        builder: (context, state) => ChatOrderScreen(
+          orderId: state.pathParameters['orderId']!,
+          runnerId: state.uri.queryParameters['runnerId'],
+        ),
       ),
       GoRoute(
         path: Rute.chatOrderRunnerPola,
@@ -149,6 +162,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           );
           return FormPermintaanScreen(serviceType: layanan);
         },
+      ),
+      GoRoute(
+        path: Rute.ajukanTawaranPola,
+        builder: (context, state) =>
+            AjukanTawaranScreen(orderId: state.pathParameters['orderId']!),
       ),
     ],
   );

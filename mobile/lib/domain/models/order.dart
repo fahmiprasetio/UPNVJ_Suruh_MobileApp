@@ -23,6 +23,7 @@ class Order {
     this.alamatJemput,
     this.alamatTujuan,
     this.harga,
+    this.hargaUsulan,
     this.estimasiDurasi,
     this.jadwalMulai,
     this.jumlahRunnerDibutuhkan = 1,
@@ -53,14 +54,19 @@ class Order {
 
   /// Rupiah penuh. `null` selama harga belum disepakati (Jalur B).
   final int? harga;
+
+  /// Harga yang disanggupi klien saat membuat permintaan Jalur B, sebelum ada
+  /// runner yang menawar. Bukan harga order, cuma titik awal tawar-menawar
+  /// yang dipajang ke runner yang menimbang permintaan ini.
+  final int? hargaUsulan;
   final Duration? estimasiDurasi;
 
   /// Kapan pekerjaannya dijadwalkan mulai.
   ///
   /// Jalur A tidak memakainya, ordernya dikerjakan sekarang juga. Jalur B
   /// mengisinya dua kali: waktu yang diminta klien ketika menulis
-  /// permintaan, lalu waktu yang disepakati begitu penawaran admin
-  /// disetujui.
+  /// permintaan, lalu waktu yang disepakati begitu salah satu penawaran
+  /// runner disetujui.
   final DateTime? jadwalMulai;
 
   /// Pindah kos bisa butuh 2-3 runner sekaligus (bagian 5).
@@ -93,16 +99,29 @@ class Order {
   int get sisaKuotaRunner =>
       (jumlahRunnerDibutuhkan - runnerIds.length).clamp(0, jumlahRunnerDibutuhkan);
 
-  /// Penawaran terbaru dari admin, kalau ada.
-  OrderOffer? get penawaranTerakhir => offers.isEmpty ? null : offers.last;
-
-  /// Penawaran yang sedang menunggu jawaban klien, kalau ada.
+  /// Seluruh penawaran yang masih menunggu jawaban klien, dari runner mana pun.
   ///
-  /// Hanya penawaran terakhir yang boleh menunggu jawaban: penawaran lama
-  /// sudah pasti sudah disetujui, ditolak, atau diminta ditinjau ulang.
-  OrderOffer? get penawaranMenunggu {
-    final terakhir = penawaranTerakhir;
-    return terakhir?.status == OfferStatus.pending ? terakhir : null;
+  /// Bisa lebih dari satu: beberapa runner boleh menawar order Jalur B yang
+  /// sama secara bersamaan, mirip tawar-menawar di aplikasi ojek daring.
+  /// Diurutkan termurah dulu, supaya klien langsung melihat tawaran paling
+  /// menarik di atas.
+  List<OrderOffer> get penawaranPending {
+    final pending = offers
+        .where((o) => o.status == OfferStatus.pending)
+        .toList();
+    pending.sort((a, b) => a.harga.compareTo(b.harga));
+    return pending;
+  }
+
+  /// Penawaran terakhir yang diajukan satu runner tertentu pada order ini,
+  /// atau `null` kalau ia belum pernah menawar.
+  ///
+  /// Dipakai runner untuk melihat status tawarannya sendiri: menunggu,
+  /// disetujui, ditolak, ditutup (klien memilih runner lain), atau diminta
+  /// nego ulang.
+  OrderOffer? penawaranMilikRunner(String runnerId) {
+    final milik = offers.where((o) => o.runnerId == runnerId).toList();
+    return milik.isEmpty ? null : milik.last;
   }
 
   Order copyWith({
@@ -111,6 +130,7 @@ class Order {
     String? alamatJemput,
     String? alamatTujuan,
     int? harga,
+    int? hargaUsulan,
     Duration? estimasiDurasi,
     DateTime? jadwalMulai,
     int? jumlahRunnerDibutuhkan,
@@ -135,6 +155,7 @@ class Order {
       alamatJemput: alamatJemput ?? this.alamatJemput,
       alamatTujuan: alamatTujuan ?? this.alamatTujuan,
       harga: harga ?? this.harga,
+      hargaUsulan: hargaUsulan ?? this.hargaUsulan,
       estimasiDurasi: estimasiDurasi ?? this.estimasiDurasi,
       jadwalMulai: jadwalMulai ?? this.jadwalMulai,
       jumlahRunnerDibutuhkan:

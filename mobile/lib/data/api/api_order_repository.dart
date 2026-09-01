@@ -20,7 +20,7 @@ import 'pemeta_order.dart';
 ///   - Setiap perubahan yang **dibuat aplikasi ini sendiri** menabuh [_perubahan],
 ///     dan setiap aliran yang sedang dibuka langsung mengambil ulang. Jadi menekan
 ///     TERIMA atau mengirim pesan terlihat hasilnya seketika, tanpa menunggu.
-///   - Perubahan yang dibuat **orang lain** (admin mengirim penawaran, runner lain
+///   - Perubahan yang dibuat **orang lain** (runner lain mengirim penawaran atau
 ///     mengambil order, uang masuk) tidak terkabar ke sini, jadi ada pengambilan
 ///     berkala sebagai jaring pengaman.
 ///
@@ -191,6 +191,7 @@ class ApiOrderRepository implements OrderRepository {
     required ServiceType serviceType,
     required String deskripsi,
     required DateTime jadwalMulai,
+    required int hargaUsulan,
     String? alamatTujuan,
     int jumlahRunnerDibutuhkan = 1,
   }) async {
@@ -202,6 +203,7 @@ class ApiOrderRepository implements OrderRepository {
         'jadwalMulai': jadwalMulai.toUtc().toIso8601String(),
         'alamatTujuan': ?alamatTujuan,
         'jumlahRunnerDibutuhkan': jumlahRunnerDibutuhkan,
+        'hargaUsulan': hargaUsulan,
       },
     );
 
@@ -209,22 +211,46 @@ class ApiOrderRepository implements OrderRepository {
     return PemetaOrder.order(jawaban);
   }
 
-  // --- Menjawab penawaran ---
+  // --- Menawar (runner) & menjawab penawaran (klien) ---
 
   @override
-  Future<Order> setujuiPenawaran(String orderId) =>
-      _tindakan('/api/orders/$orderId/penawaran/setujui');
+  Future<Order> buatPenawaran({
+    required String orderId,
+    required int harga,
+    required Duration estimasiDurasi,
+    required DateTime jadwalMulai,
+    String? catatan,
+  }) => _tindakan(
+    '/api/orders/$orderId/penawaran',
+    badan: {
+      'harga': harga,
+      'estimasiDurasiMenit': estimasiDurasi.inMinutes,
+      'jadwalMulai': jadwalMulai.toUtc().toIso8601String(),
+      'catatan': ?catatan,
+    },
+  );
 
   @override
-  Future<Order> tolakPenawaran(String orderId) =>
-      _tindakan('/api/orders/$orderId/penawaran/tolak');
+  Future<Order> setujuiPenawaran({
+    required String orderId,
+    required String penawaranId,
+  }) => _tindakan('/api/orders/$orderId/penawaran/$penawaranId/setujui');
 
   @override
-  Future<Order> ajukanNego({required String orderId, required String alasan}) =>
-      _tindakan(
-        '/api/orders/$orderId/penawaran/nego',
-        badan: {'alasan': alasan},
-      );
+  Future<Order> tolakPenawaran({
+    required String orderId,
+    required String penawaranId,
+  }) => _tindakan('/api/orders/$orderId/penawaran/$penawaranId/tolak');
+
+  @override
+  Future<Order> ajukanNego({
+    required String orderId,
+    required String penawaranId,
+    required String alasan,
+  }) => _tindakan(
+    '/api/orders/$orderId/penawaran/$penawaranId/nego',
+    badan: {'alasan': alasan},
+  );
 
   // --- Runner ---
 
@@ -259,8 +285,12 @@ class ApiOrderRepository implements OrderRepository {
   Future<Order> kirimPesan({
     required String orderId,
     required String isi,
+    String? runnerId,
   }) async {
-    await _klien.post('/api/orders/$orderId/pesan', badan: {'isi': isi});
+    await _klien.post(
+      '/api/orders/$orderId/pesan',
+      badan: {'isi': isi, 'runnerId': ?runnerId},
+    );
     _tandaiBerubah();
 
     // Server menjawab dengan pesannya, bukan ordernya, sementara kontrak ini

@@ -122,22 +122,6 @@ final fotoBuktiTiruanProvider = Provider<bool>((ref) {
   return ref.watch(fotoBuktiRepositoryProvider) is FakeFotoBuktiRepository;
 });
 
-/// Tiruan repository, kalau panel penawaran admin masih boleh dipakai.
-///
-/// Mengembalikan repositorynya sendiri, bukan sekadar penanda benar atau salah,
-/// karena `buatPenawaran` sengaja bukan bagian dari kontrak `OrderRepository`:
-/// menawar adalah pekerjaan admin, dan aplikasi ini tidak punya permukaan admin.
-///
-/// Sejak sumber datanya bisa berupa API, penjagaan tipe di sini akhirnya punya
-/// gigi: panel berdiri hanya di jalur tiruan, dan pada jalur API ia menghilang
-/// sendiri tanpa ada layar yang perlu diubah. Penawaran sungguhan datang dari
-/// admin lewat endpoint `/api/orders/{id}/penawaran`.
-final simulatorPenawaranProvider = Provider<FakeOrderRepository?>((ref) {
-  if (!ref.watch(modeDebugProvider)) return null;
-  final repo = ref.watch(orderRepositoryProvider);
-  return repo is FakeOrderRepository ? repo : null;
-});
-
 /// User yang sedang masuk, `null` kalau belum.
 final userAktifProvider = StreamProvider<AppUser?>((ref) {
   return ref.watch(authRepositoryProvider).watchUserAktif();

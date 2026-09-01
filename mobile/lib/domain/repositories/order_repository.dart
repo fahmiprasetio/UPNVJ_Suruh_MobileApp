@@ -19,7 +19,7 @@ import '../models/order.dart';
 /// punya tempat untuk menyebutkannya. Aturan yang tidak bisa diucapkan tidak bisa
 /// dilanggar.
 ///
-/// ## Dua hal yang sengaja tidak ada di sini
+/// ## Satu hal yang sengaja tidak ada di sini
 ///
 /// **Menandai order lunas.** Uang yang masuk adalah kejadian di luar aplikasi, jadi
 /// yang boleh mengabarkannya adalah pihak yang menerima uangnya, bukan pihak yang
@@ -27,13 +27,13 @@ import '../models/order.dart';
 /// sana. Selama gateway sungguhan belum terpasang, tiruannya menyediakan tombol
 /// simulasi yang hanya hidup di build debug.
 ///
-/// **Membuat penawaran.** Itu pekerjaan admin, dan admin bekerja lewat dashboard
-/// web (rencana capstone bagian 14.2). Aplikasi ini tidak punya permukaan admin,
-/// jadi tidak punya alasan bisa menawar. Panel alat penguji yang berdiri di tempat
-/// dashboard itu memanggil tiruannya langsung, bukan lewat kontrak ini.
+/// ## Membuat penawaran memang bagian dari kontrak ini sekarang
 ///
-/// Keduanya bukan kelupaan. Menambahkannya kembali ke sini, walau cuma "supaya
-/// gampang dites", membuka lagi persis lubang yang ditutup.
+/// Jalur B pindah dari "admin mengirim satu penawaran lewat dashboard" jadi
+/// tawar-menawar ala aplikasi ojek daring: klien mengusulkan harga, dan setiap
+/// runner yang tersedia boleh langsung menyanggupinya atau menawar balik lewat
+/// [buatPenawaran]. Ini pekerjaan runner sungguhan, bukan alat penguji, jadi
+/// harus ada di kontrak ini, bukan menyelinap lewat implementasi tiruan.
 abstract interface class OrderRepository {
   /// Order milik klien yang sedang masuk, terbaru di atas.
   Stream<Halaman<Order>> watchOrderKlien({required int ukuran});
@@ -65,6 +65,32 @@ abstract interface class OrderRepository {
   /// tidak menarik seluruh isi chat.
   Future<Order?> getOrder(String orderId, {int ukuranPesan = BatasHalaman.bawaan});
 
+  /// Jalur B: harga sudah ada, order lahir sebagai permintaan dengan
+  /// [hargaUsulan] sebagai titik awal tawar-menawar, lalu disiarkan ke seluruh
+  /// runner yang tersedia.
+  Future<Order> buatPermintaanJalurB({
+    required ServiceType serviceType,
+    required String deskripsi,
+    required DateTime jadwalMulai,
+    required int hargaUsulan,
+    String? alamatTujuan,
+    int jumlahRunnerDibutuhkan = 1,
+  });
+
+  /// Seorang runner mengajukan penawaran untuk satu permintaan Jalur B.
+  ///
+  /// Runner boleh mengirim harga persis sama dengan harga usulan klien kalau
+  /// setuju apa adanya, atau angka lain kalau mau menawar balik. Beberapa
+  /// runner boleh punya penawaran yang sama-sama menunggu jawaban pada order
+  /// yang sama; klien yang memilih satu di antaranya lewat [setujuiPenawaran].
+  Future<Order> buatPenawaran({
+    required String orderId,
+    required int harga,
+    required Duration estimasiDurasi,
+    required DateTime jadwalMulai,
+    String? catatan,
+  });
+
   /// Jalur A: harga dihitung server dari jenis layanan dan jarak.
   ///
   /// [jarakKm] adalah perkiraan yang diisi klien, konsekuensi dari memakai alamat
@@ -81,34 +107,37 @@ abstract interface class OrderRepository {
     String? alamatTujuan,
   });
 
-  /// Jalur B: harga belum ada, order lahir sebagai permintaan dan menunggu
-  /// penawaran admin.
-  Future<Order> buatPermintaanJalurB({
-    required ServiceType serviceType,
-    required String deskripsi,
-    required DateTime jadwalMulai,
-    String? alamatTujuan,
-    int jumlahRunnerDibutuhkan = 1,
+  /// Klien menyetujui satu penawaran tertentu.
+  ///
+  /// Di sinilah harga, estimasi durasi, dan jadwal penawaran itu pindah menjadi
+  /// milik ordernya, lalu order lanjut ke menunggu pembayaran. Seluruh
+  /// penawaran lain yang masih menunggu pada order yang sama otomatis
+  /// [OfferStatus.ditutup].
+  Future<Order> setujuiPenawaran({
+    required String orderId,
+    required String penawaranId,
   });
 
-  /// Klien menyetujui penawaran yang sedang menunggu.
+  /// Klien menolak satu penawaran tertentu.
   ///
-  /// Di sinilah harga, estimasi durasi, dan jadwal penawaran pindah menjadi milik
-  /// ordernya, lalu order lanjut ke menunggu pembayaran.
-  Future<Order> setujuiPenawaran(String orderId);
+  /// Menolak satu penawaran tidak mengakhiri ordernya, dan tidak menyentuh
+  /// penawaran runner lain yang masih menunggu pada order yang sama. Klien
+  /// yang mau membatalkan permintaannya sama sekali memakai [batalkanOrder].
+  Future<Order> tolakPenawaran({
+    required String orderId,
+    required String penawaranId,
+  });
 
-  /// Klien menolak penawaran.
+  /// Klien meminta satu penawaran tertentu ditinjau ulang, disertai alasannya.
   ///
-  /// Penolakan mengakhiri ordernya, bukan mengembalikannya ke antrean admin. Klien
-  /// yang masih berminat dengan harga lain memakai [ajukanNego]; yang menekan tolak
-  /// memang sudah tidak berminat.
-  Future<Order> tolakPenawaran(String orderId);
-
-  /// Klien meminta penawaran ditinjau ulang, disertai alasannya.
-  ///
-  /// Ordernya kembali ke antrean admin, dan [alasan] ditulis sebagai pesan di chat
-  /// ordernya, karena tempat menjawabnya memang chat.
-  Future<Order> ajukanNego({required String orderId, required String alasan});
+  /// [alasan] ditulis sebagai pesan di jalur obrolan pribadi klien dengan
+  /// runner pengaju penawaran itu, karena tempat menjawabnya memang chat.
+  /// Runner itu bebas mengirim penawaran baru sesudahnya.
+  Future<Order> ajukanNego({
+    required String orderId,
+    required String penawaranId,
+    required String alasan,
+  });
 
   /// Runner menekan TERIMA.
   ///
@@ -145,5 +174,15 @@ abstract interface class OrderRepository {
   /// Peran penulisnya tidak disebutkan di sini. Dulu iya, dan akibatnya rute yang
   /// dibuka menentukan atas nama siapa pesan itu tertulis. Sekarang perannya
   /// diturunkan dari hubungan pengirim dengan ordernya.
-  Future<Order> kirimPesan({required String orderId, required String isi});
+  ///
+  /// [runnerId] cuma dipakai klien, dan cuma berarti selama order Jalur B
+  /// masih menerima penawaran: menyebutkan runner mana yang sedang diajak
+  /// bicara, karena tiap runner punya jalur obrolannya sendiri dengan klien.
+  /// Runner sendiri tidak perlu mengisi ini; jalur obrolannya ditentukan dari
+  /// hubungannya sendiri dengan order, bukan dari apa yang ia sebutkan.
+  Future<Order> kirimPesan({
+    required String orderId,
+    required String isi,
+    String? runnerId,
+  });
 }

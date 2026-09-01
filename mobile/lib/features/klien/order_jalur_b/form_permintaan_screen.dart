@@ -37,6 +37,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
   final _formKey = GlobalKey<FormState>();
   final _kebutuhanController = TextEditingController();
   final _alamatController = TextEditingController();
+  final _hargaController = TextEditingController();
 
   int _jumlahRunner = 1;
   bool _sedangMengirim = false;
@@ -58,6 +59,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
   void dispose() {
     _kebutuhanController.dispose();
     _alamatController.dispose();
+    _hargaController.dispose();
     super.dispose();
   }
 
@@ -93,9 +95,30 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
               ),
               const SizedBox(height: AppTheme.spasiKecil),
               Text(
-                'Semakin jelas ceritanya, semakin cepat admin bisa memberi '
-                'harga.',
+                'Semakin jelas ceritanya, semakin mudah runner menghitung '
+                'penawarannya.',
                 style: teks.bodySmall?.copyWith(color: skema.onSurfaceVariant),
+              ),
+              const SizedBox(height: AppTheme.spasiBesar),
+              Text(
+                'Berapa kamu mau bayar?',
+                style: teks.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Ini titik awal tawar-menawar, bukan harga pasti. Runner bisa '
+                'langsung menyanggupi angka ini, atau menawar balik.',
+                style: teks.bodySmall?.copyWith(color: skema.onSurfaceVariant),
+              ),
+              const SizedBox(height: AppTheme.spasiKecil),
+              TextFormField(
+                controller: _hargaController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Harga yang kamu sanggupi',
+                  prefixText: 'Rp ',
+                ),
+                validator: _validasiHarga,
               ),
               const SizedBox(height: AppTheme.spasiSedang),
               TextFormField(
@@ -184,6 +207,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
             jadwalMulai: _jadwal,
             alamatTujuan: _alamatController.text.trim(),
             jumlahRunnerDibutuhkan: _jumlahRunner,
+            hargaUsulan: int.parse(_hargaController.text.trim()),
           );
     } catch (galat) {
       if (!mounted) return;
@@ -204,7 +228,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
       ..showSnackBar(
         SnackBar(
           content: Text(
-            'Permintaan ${order.kodeOrder} terkirim. Tunggu penawaran admin.',
+            'Permintaan ${order.kodeOrder} terkirim. Menunggu tawaran runner.',
           ),
         ),
       );
@@ -248,6 +272,14 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
       return 'Ceritakan lebih lengkap, admin tidak bisa memberi harga dari '
           'satu kalimat pendek';
     }
+    return null;
+  }
+
+  static String? _validasiHarga(String? nilai) {
+    final bersih = nilai?.trim() ?? '';
+    if (bersih.isEmpty) return 'Sebutkan harga yang kamu sanggupi';
+    final angka = int.tryParse(bersih);
+    if (angka == null || angka <= 0) return 'Masukkan angka yang masuk akal';
     return null;
   }
 
@@ -303,9 +335,10 @@ class _PitaCaraKerja extends StatelessWidget {
           const SizedBox(width: AppTheme.spasiKecil),
           Expanded(
             child: Text(
-              'Layanan ini tidak punya harga tetap. Kamu menulis kebutuhan, '
-              'admin membacanya, lalu mengirim penawaran harga. Kamu bayar '
-              'hanya kalau penawarannya kamu setujui.',
+              'Layanan ini tidak punya harga tetap. Kamu menulis kebutuhan '
+              'dan mengusulkan harga, lalu runner yang tersedia bisa '
+              'menyanggupinya atau menawar balik. Kamu bayar hanya kalau '
+              'salah satu tawarannya kamu setujui.',
               style: Theme.of(
                 context,
               ).textTheme.bodySmall?.copyWith(color: skema.onPrimaryContainer),

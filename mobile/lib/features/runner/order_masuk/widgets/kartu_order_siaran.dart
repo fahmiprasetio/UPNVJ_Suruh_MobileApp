@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/format/formatters.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../domain/enums.dart';
 import '../../../../domain/models/order.dart';
 import '../../../../domain/service_catalog.dart';
 import '../../widgets/rute_order.dart';
@@ -118,13 +121,15 @@ class KartuOrderSiaran extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Nilai order',
+                        _menungguTawaran ? 'Usulan klien' : 'Nilai order',
                         style: teks.bodySmall?.copyWith(
                           color: skema.onSurfaceVariant,
                         ),
                       ),
                       Text(
-                        formatRupiah(order.harga),
+                        formatRupiah(
+                          _menungguTawaran ? order.hargaUsulan : order.harga,
+                        ),
                         style: TextStyle(
                           fontSize: 20,
                           height: 1.2,
@@ -140,14 +145,46 @@ class KartuOrderSiaran extends StatelessWidget {
                 // angka yang belum disepakati akan lebih menyesatkan daripada
                 // tidak menuliskannya.
                 const SizedBox(width: AppTheme.spasiSedang),
-                _TombolTerima(
-                  sedangDiproses: sedangDiproses,
-                  onTerima: onTerima,
-                ),
+                _menungguTawaran
+                    ? _TombolTawar(orderId: order.id)
+                    : _TombolTerima(
+                        sedangDiproses: sedangDiproses,
+                        onTerima: onTerima,
+                      ),
               ],
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Order Jalur B yang masih menerima tawaran, bukan pekerjaan siap kerja.
+  ///
+  /// Yang "diklaim" runner di sini kesempatan menawar, bukan pekerjaannya
+  /// sendiri: order ini belum dibayar, dan harganya belum pasti.
+  bool get _menungguTawaran =>
+      order.track == OrderTrack.jalurB && order.status == OrderStatus.permintaan;
+}
+
+/// Tombol untuk order Jalur B yang masih menerima tawaran.
+///
+/// Beda dari TERIMA: menekannya tidak langsung menjanjikan pekerjaan ke
+/// runner ini. Ia cuma membuka layar untuk mengajukan harga, dan runner lain
+/// masih tetap bisa mengajukan tawarannya sendiri sesudahnya.
+class _TombolTawar extends StatelessWidget {
+  const _TombolTawar({required this.orderId});
+
+  final String orderId;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 148,
+      child: OutlinedButton(
+        onPressed: () => context.push(Rute.ajukanTawaran(orderId)),
+        style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+        child: const Text('AJUKAN TAWARAN'),
       ),
     );
   }

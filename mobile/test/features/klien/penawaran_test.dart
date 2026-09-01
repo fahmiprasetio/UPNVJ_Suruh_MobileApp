@@ -12,7 +12,8 @@ import 'package:upnvj_suruh/domain/models/order.dart';
 import 'package:upnvj_suruh/domain/models/order_offer.dart';
 import 'package:upnvj_suruh/providers/repository_providers.dart';
 
-/// Tes sisi klien untuk penawaran admin (rencana capstone bagian 3).
+/// Tes sisi klien untuk tawaran runner Jalur B: tawar-menawar ala aplikasi
+/// ojek daring, bukan satu penawaran tunggal dari admin.
 void main() {
   setUpAll(() async {
     await initializeDateFormatting('id_ID');
@@ -39,6 +40,7 @@ void main() {
   });
 
   final jadwalDiminta = DateTime(2026, 9, 5, 9);
+  const runnerId = 'u-runner-uji';
 
   Order orderDenganPenawaran({
     DateTime? jadwalPenawaran,
@@ -51,18 +53,20 @@ void main() {
       klienId: SeedData.klien.id,
       namaKlien: SeedData.klien.nama,
       serviceType: ServiceType.bantuPindahKos,
-      status: status == OfferStatus.pending
-          ? OrderStatus.menungguPersetujuanKlien
-          : OrderStatus.permintaan,
+      // Order Jalur B tetap Permintaan selama masih menerima tawaran, tidak
+      // peduli sudah ada berapa tawaran yang menunggu di dalamnya.
+      status: OrderStatus.permintaan,
       dibuatPada: DateTime.now().subtract(const Duration(hours: 1)),
       deskripsi: 'Pindah kos, barang sekitar satu pikap.',
       alamatTujuan: 'Kos Anggrek, Jl. RS Fatmawati',
       jadwalMulai: jadwalDiminta,
       jumlahRunnerDibutuhkan: 3,
+      hargaUsulan: 160000,
       offers: [
         OrderOffer(
           id: 'p-uji',
           orderId: 'o-uji',
+          runnerId: runnerId,
           harga: 175000,
           estimasiDurasi: const Duration(hours: 2),
           jadwalMulai: jadwalPenawaran ?? jadwalDiminta,
@@ -109,19 +113,30 @@ void main() {
     return repo;
   }
 
-  testWidgets('penawaran menyebut harga, jadwal, dan lamanya', (tester) async {
+  testWidgets('tawaran menyebut harga, jadwal, dan lamanya', (tester) async {
     // Klien tidak bisa menyetujui apa yang tidak ia lihat. Ketiga angka ini
     // harus ada sebelum tombol setuju berarti apa-apa.
     await bukaDetail(tester, orderDenganPenawaran());
 
-    expect(find.text('Penawaran admin'), findsOneWidget);
+    expect(find.text('Tawaran runner'), findsOneWidget);
     expect(find.text('Rp 175.000'), findsOneWidget);
     expect(find.textContaining('Sabtu, 5 September 2026'), findsWidgets);
     expect(find.text('2 jam'), findsOneWidget);
   });
 
+  testWidgets('tawaran yang sama dengan harga usulan diberi label khusus', (
+    tester,
+  ) async {
+    await bukaDetail(
+      tester,
+      orderDenganPenawaran().copyWith(hargaUsulan: 175000),
+    );
+
+    expect(find.text('Runner menyanggupi harga usulanmu'), findsOneWidget);
+  });
+
   testWidgets('tiga jalan keluar tersedia sekaligus', (tester) async {
-    // Nego yang disembunyikan membuat klien menekan tolak, dan order yang
+    // Nego yang disembunyikan membuat klien menekan tolak, dan tawaran yang
     // sebenarnya masih bisa jadi hilang begitu saja.
     await bukaDetail(tester, orderDenganPenawaran());
 
@@ -130,7 +145,7 @@ void main() {
     expect(find.text('Tolak'), findsOneWidget);
   });
 
-  testWidgets('jadwal yang digeser admin diberitahukan, bukan dibiarkan', (
+  testWidgets('jadwal yang digeser runner diberitahukan, bukan dibiarkan', (
     tester,
   ) async {
     await bukaDetail(
@@ -145,7 +160,7 @@ void main() {
     );
   });
 
-  testWidgets('setuju mengantar klien ke pembayaran dengan harga penawaran', (
+  testWidgets('setuju mengantar klien ke pembayaran dengan harga tawaran', (
     tester,
   ) async {
     final repo = await bukaDetail(tester, orderDenganPenawaran());
@@ -160,7 +175,9 @@ void main() {
     expect(order.harga, 175000);
   });
 
-  testWidgets('nego mengirim alasannya ke chat order', (tester) async {
+  testWidgets('nego mengirim alasannya ke jalur obrolan pribadi runner itu', (
+    tester,
+  ) async {
     final repo = await bukaDetail(tester, orderDenganPenawaran());
 
     await tester.tap(find.text('Minta Ditinjau Ulang'));
@@ -178,6 +195,7 @@ void main() {
     expect(order.status, OrderStatus.permintaan);
     expect(order.messages.single.isi, contains('2 koper'));
     expect(order.messages.single.pengirim, MessageSender.klien);
+    expect(order.messages.single.runnerId, runnerId);
   });
 
   testWidgets('nego tanpa alasan tidak bisa dikirim', (tester) async {
@@ -192,37 +210,38 @@ void main() {
     expect(kirim.onPressed, isNull);
   });
 
-  testWidgets('tolak meminta kepastian dulu sebelum membatalkan order', (
+  testWidgets('tolak meminta kepastian, dan cuma menutup tawaran itu', (
     tester,
   ) async {
+    // Beda dari alur admin lama: menolak satu tawaran tidak lagi
+    // membatalkan ordernya.
     final repo = await bukaDetail(tester, orderDenganPenawaran());
 
     await tester.tap(find.text('Tolak'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Tolak penawaran ini?'), findsOneWidget);
+    expect(find.text('Tolak tawaran ini?'), findsOneWidget);
 
     await tester.tap(find.text('Batal'));
     await tester.pumpAndSettle();
 
-    expect(
-      (await bacaOrder(repo)).status,
-      OrderStatus.menungguPersetujuanKlien,
-    );
+    expect((await bacaOrder(repo)).status, OrderStatus.permintaan);
 
     await tester.tap(find.text('Tolak'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Tolak & Batalkan'));
+    await tester.tap(find.text('Tolak Tawaran'));
     await tester.pumpAndSettle();
 
-    expect((await bacaOrder(repo)).status, OrderStatus.batal);
+    final order = await bacaOrder(repo);
+    expect(order.status, OrderStatus.permintaan);
+    expect(order.offers.single.status, OfferStatus.ditolak);
   });
 
   testWidgets('permintaan yang belum ditawari tidak memajang angka apa pun', (
     tester,
   ) async {
-    // Aturan yang sama dengan form Jalur B (bagian 20.2): tidak ada harga
-    // sebelum ada yang menyetujuinya.
+    // Aturan yang sama dengan form Jalur B: tidak ada harga sebelum ada yang
+    // disetujui.
     final tanpaPenawaran = orderDenganPenawaran().copyWith(
       status: OrderStatus.permintaan,
       offers: const [],
@@ -232,50 +251,42 @@ void main() {
     // Harga yang belum ada ditulis sebesar harga sungguhan di kepala layar,
     // bukan diringkas jadi baris terakhir di tabel rincian.
     expect(find.text('Harga menunggu penawaran'), findsOneWidget);
-    expect(find.text('Penawaran admin'), findsNothing);
+    expect(find.text('Tawaran runner'), findsNothing);
     expect(find.text('Rp 175.000'), findsNothing);
     expect(find.text('Setuju & Bayar'), findsNothing);
   });
 
-  testWidgets('panel alat penguji berdiri di tempat dashboard admin', (
+  testWidgets('beberapa tawaran dari runner berbeda tampil sekaligus', (
     tester,
   ) async {
-    // Admin bekerja di dashboard web (bagian 14.2), jadi bagi aplikasi ini
-    // penawaran datang dari luar. Panel ini yang menggantikannya sekarang, dan
-    // ia harus mengaku sebagai alat penguji, bukan menyamar jadi fitur.
-    final tanpaPenawaran = orderDenganPenawaran().copyWith(
-      status: OrderStatus.permintaan,
-      offers: const [],
+    final duaPenawaran = orderDenganPenawaran().copyWith(
+      offers: [
+        OrderOffer(
+          id: 'p-satu',
+          orderId: 'o-uji',
+          runnerId: 'u-runner-satu',
+          harga: 175000,
+          estimasiDurasi: const Duration(hours: 2),
+          jadwalMulai: jadwalDiminta,
+          dibuatPada: DateTime.now(),
+          status: OfferStatus.pending,
+        ),
+        OrderOffer(
+          id: 'p-dua',
+          orderId: 'o-uji',
+          runnerId: 'u-runner-dua',
+          harga: 150000,
+          estimasiDurasi: const Duration(hours: 3),
+          jadwalMulai: jadwalDiminta,
+          dibuatPada: DateTime.now(),
+          status: OfferStatus.pending,
+        ),
+      ],
     );
-    final repo = await bukaDetail(tester, tanpaPenawaran);
+    await bukaDetail(tester, duaPenawaran);
 
-    expect(find.text('ALAT PENGUJI'), findsOneWidget);
-
-    await tester.enterText(find.byType(TextField).first, '200000');
-    await tester.tap(find.text('Simulasikan penawaran admin'));
-    await tester.pumpAndSettle();
-
-    final order = await bacaOrder(repo);
-    expect(order.status, OrderStatus.menungguPersetujuanKlien);
-    expect(order.penawaranMenunggu!.harga, 200000);
-    expect(find.text('Setuju & Bayar'), findsOneWidget);
-  });
-
-  testWidgets('panel penawaran tidak muncul di order Jalur A', (tester) async {
-    // Harga Jalur A sudah pasti sejak order dibuat, tidak ada yang perlu
-    // ditawarkan di sana.
-    final jalurA = Order(
-      id: 'o-uji',
-      kodeOrder: 'SRH-9005',
-      klienId: SeedData.klien.id,
-      namaKlien: SeedData.klien.nama,
-      serviceType: ServiceType.anterJemput,
-      status: OrderStatus.menungguPembayaran,
-      dibuatPada: DateTime.now(),
-      harga: 11000,
-    );
-    await bukaDetail(tester, jalurA);
-
-    expect(find.text('ALAT PENGUJI'), findsNothing);
+    expect(find.text('Rp 175.000'), findsOneWidget);
+    expect(find.text('Rp 150.000'), findsOneWidget);
+    expect(find.text('Setuju & Bayar'), findsNWidgets(2));
   });
 }

@@ -9,11 +9,9 @@ import 'package:upnvj_suruh/providers/repository_providers.dart';
 /// Penjagaannya dua lapis, dan sejak backend sungguhan terpasang keduanya
 /// benar-benar bekerja sendiri-sendiri:
 ///
-///   - **Mode build.** Di rilis, ketiganya hilang apa pun sumber datanya.
-///   - **Sumber data.** Di jalur API, pengalih akun dan panel penawaran hilang
-///     walau buildnya debug, karena keduanya memang tidak punya arti di sana:
-///     berpindah akun menuntut kode masuk sungguhan, dan penawaran datang dari
-///     admin lewat endpointnya.
+///   - **Mode build.** Di rilis, keduanya hilang apa pun sumber datanya.
+///   - **Sumber data.** Di jalur API, pengalih akun hilang walau buildnya
+///     debug, karena berpindah akun menuntut kode masuk sungguhan di sana.
 ///
 /// Sebelum penukaran ini, lapis kedua belum punya gigi: repositorynya selalu
 /// tiruan, jadi yang benar-benar menjaga cuma mode build.
@@ -49,25 +47,14 @@ void main() {
         isNull,
       );
     });
-
-    test('tidak ada panel penawaran admin', () {
-      expect(
-        wadah(
-          debug: false,
-          sumber: SumberData.api,
-        ).read(simulatorPenawaranProvider),
-        isNull,
-      );
-    });
   });
 
   group('build debug di atas tiruan', () {
-    test('ketiga alat penguji tersedia', () {
+    test('kedua alat penguji tersedia', () {
       final container = wadah(debug: true);
 
       expect(container.read(akunUjiProvider), isNotNull);
       expect(container.read(simulatorPembayaranProvider), isNotNull);
-      expect(container.read(simulatorPenawaranProvider), isNotNull);
     });
   });
 
@@ -91,16 +78,6 @@ void main() {
           sumber: SumberData.api,
         ).read(simulatorPembayaranProvider),
         isNotNull,
-      );
-    });
-
-    test('panel penawaran admin hilang walau buildnya debug', () {
-      expect(
-        wadah(
-          debug: true,
-          sumber: SumberData.api,
-        ).read(simulatorPenawaranProvider),
-        isNull,
       );
     });
   });

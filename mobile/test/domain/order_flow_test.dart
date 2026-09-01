@@ -32,9 +32,14 @@ void main() {
     test('Jalur B dimulai dari permintaan tanpa harga', () {
       final alur = alurStatus(OrderTrack.jalurB);
 
-      expect(alur, hasLength(6));
+      // Tidak lagi enam tahap: order Jalur B tetap Permintaan selama masih
+      // menerima tawaran (bisa dari beberapa runner sekaligus), lalu langsung
+      // lompat ke MenungguPembayaran begitu klien menyetujui salah satunya.
+      // Tidak ada tahap "menunggu persetujuan" yang benar-benar disinggahi.
+      expect(alur, hasLength(5));
       expect(alur.first, OrderStatus.permintaan);
-      expect(alur[1], OrderStatus.menungguPersetujuanKlien);
+      expect(alur[1], OrderStatus.menungguPembayaran);
+      expect(alur, isNot(contains(OrderStatus.menungguPersetujuanKlien)));
     });
 
     test('batal bukan tahap di alur mana pun', () {

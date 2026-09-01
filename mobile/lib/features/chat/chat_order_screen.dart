@@ -32,12 +32,20 @@ class ChatOrderScreen extends ConsumerStatefulWidget {
     super.key,
     required this.orderId,
     this.pengirim = MessageSender.klien,
+    this.runnerId,
   });
 
   final String orderId;
 
   /// Peran yang sedang membuka layar, dipakai sebagai penulis pesan baru.
   final MessageSender pengirim;
+
+  /// Untuk klien: runner mana yang jalur obrolannya mau dilihat, kalau order
+  /// Jalur B masih menerima tawaran dan lebih dari satu runner sedang
+  /// menawar. Diabaikan untuk runner yang membuka jalurnya sendiri: jalur
+  /// itu ditentukan dari hubungannya sendiri dengan order, bukan dari
+  /// parameter ini.
+  final String? runnerId;
 
   @override
   ConsumerState<ChatOrderScreen> createState() => _ChatOrderScreenState();
@@ -54,6 +62,26 @@ class _ChatOrderScreenState extends ConsumerState<ChatOrderScreen> {
     _pesanController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  /// Jalur obrolan mana yang berlaku di layar ini: `null` untuk obrolan
+  /// umum, atau id runner pemilik jalur obrolan pribadi Jalur B.
+  ///
+  /// Seorang runner yang masih menawar (belum diterima) selalu memakai
+  /// jalurnya sendiri, tidak peduli apa yang diminta lewat [ChatOrderScreen.runnerId]
+  /// (parameter itu memang tidak pernah diisi untuknya). Klien memakai jalur
+  /// yang diminta. Runner yang sudah diterima dan Jalur A selalu memakai
+  /// obrolan umum.
+  String? _jalurObrolan(Order order) {
+    final user = ref.read(userAktifProvider).value;
+    final pengirimId = user?.id;
+    if (widget.pengirim == MessageSender.runner &&
+        pengirimId != null &&
+        !order.runnerIds.contains(pengirimId)) {
+      return pengirimId;
+    }
+    if (widget.pengirim == MessageSender.klien) return widget.runnerId;
+    return null;
   }
 
   @override
@@ -78,11 +106,16 @@ class _ChatOrderScreenState extends ConsumerState<ChatOrderScreen> {
             if (order == null) {
               return const Center(child: Text('Order tidak ditemukan.'));
             }
+            final jalur = _jalurObrolan(order);
+            final pesanJalur = order.messages
+                .where((p) => p.runnerId == jalur)
+                .toList();
             return Column(
               children: [
                 Expanded(
                   child: _DaftarPesan(
                     order: order,
+                    pesan: pesanJalur,
                     scroll: _scrollController,
                     pengirim: widget.pengirim,
                   ),
@@ -109,7 +142,7 @@ class _ChatOrderScreenState extends ConsumerState<ChatOrderScreen> {
     try {
       await ref
           .read(orderRepositoryProvider)
-          .kirimPesan(orderId: order.id, isi: isi);
+          .kirimPesan(orderId: order.id, isi: isi, runnerId: _jalurObrolan(order));
     } catch (galat) {
       if (!mounted) return;
       setState(() => _sedangMengirim = false);
@@ -170,25 +203,33 @@ class _JudulOrder extends StatelessWidget {
 class _DaftarPesan extends ConsumerWidget {
   const _DaftarPesan({
     required this.order,
+    required this.pesan,
     required this.scroll,
     required this.pengirim,
   });
 
   final Order order;
+
+  /// Pesan yang sudah disaring ke jalur obrolan yang sedang dibuka layar
+  /// ini: seluruhnya untuk obrolan umum, atau cuma milik satu runner selama
+  /// Jalur B masih menerima tawaran.
+  final List<OrderMessage> pesan;
+
   final ScrollController scroll;
   final MessageSender pengirim;
 
-  /// Benar kalau masih ada pesan lama yang belum terbawa.
+  /// Benar kalau masih ada pesan lama yang belum terbawa dari server.
   ///
-  /// Dibandingkan dengan [Order.jumlahPesan], yang menyebut seluruh pesan yang boleh
-  /// dibaca pembacanya. Untuk runner angka itu sudah menyempit di server sejak ia cuma
-  /// berhak membaca percakapan sejak ia bergabung, jadi perbandingan ini tidak pernah
-  /// menawarkan memuat pesan yang memang tidak akan pernah dikirim kepadanya.
+  /// Dibandingkan dengan [Order.jumlahPesan], yang menyebut seluruh pesan yang
+  /// boleh dibaca pembacanya lintas jalur obrolan. Untuk runner angka itu
+  /// sudah menyempit di server sejak ia cuma berhak membaca percakapan sejak
+  /// ia bergabung, jadi perbandingan ini tidak pernah menawarkan memuat pesan
+  /// yang memang tidak akan pernah dikirim kepadanya.
   bool get _adaYangLebihLama => order.messages.length < order.jumlahPesan;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (order.messages.isEmpty) {
+    if (pesan.isEmpty) {
       return _ChatKosong(order: order, pengirim: pengirim);
     }
 
@@ -211,9 +252,9 @@ class _DaftarPesan extends ConsumerWidget {
       padding: const EdgeInsets.all(AppTheme.spasiSedang),
       // Satu baris tambahan di ujung daftar, yang karena terbalik jatuh di
       // paling atas: tempat percakapan yang lebih lama berada.
-      itemCount: order.messages.length + 1,
+      itemCount: pesan.length + 1,
       itemBuilder: (context, indeks) {
-        if (indeks == order.messages.length) {
+        if (indeks == pesan.length) {
           return _MuatPesanLama(
             orderId: order.id,
             adaYangLebihLama: _adaYangLebihLama,
@@ -221,7 +262,7 @@ class _DaftarPesan extends ConsumerWidget {
         }
 
         return _GelembungPesan(
-          pesan: order.messages[order.messages.length - 1 - indeks],
+          pesan: pesan[pesan.length - 1 - indeks],
           pembaca: pengirim,
         );
       },

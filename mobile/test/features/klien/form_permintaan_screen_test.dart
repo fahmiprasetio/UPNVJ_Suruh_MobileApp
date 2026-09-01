@@ -63,10 +63,15 @@ void main() {
         'Pindah dari Kos Melati ke Kos Anggrek, sekitar 2 km. Barang: lemari '
         'plastik, 2 koper, dan sekardus buku. Maunya Sabtu pagi.',
     String alamat = 'Kos Anggrek, Jl. RS Fatmawati',
+    String harga = '150000',
   }) async {
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Ceritakan kebutuhanmu'),
       kebutuhan,
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Harga yang kamu sanggupi'),
+      harga,
     );
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Alamat'),
@@ -93,12 +98,11 @@ void main() {
   testWidgets('form Jalur B tidak menjanjikan harga apa pun', (tester) async {
     await bukaForm(tester, namaLayanan: 'Bersih-Bersih Kos');
 
-    // Tidak ada total, tidak ada tombol bayar. Harga baru ada setelah admin
-    // mengirim penawaran.
+    // Tidak ada total, tidak ada tombol bayar. Harga order baru ada setelah
+    // klien menyetujui salah satu tawaran runner.
     expect(find.textContaining('Total'), findsNothing);
-    expect(find.textContaining('Rp'), findsNothing);
     expect(
-      find.textContaining('admin membacanya, lalu mengirim penawaran harga'),
+      find.textContaining('runner yang tersedia bisa menyanggupinya'),
       findsOneWidget,
     );
   });
@@ -127,13 +131,14 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Tunggu penawaran admin'), findsOneWidget);
+    expect(find.textContaining('Menunggu tawaran runner'), findsOneWidget);
 
     final orders = (await repo.watchOrderKlienUntuk('u-klien-1').first).isi;
     expect(orders, hasLength(1));
     expect(orders.single.status, OrderStatus.permintaan);
     expect(orders.single.serviceType, ServiceType.bantuPindahKos);
     expect(orders.single.harga, isNull);
+    expect(orders.single.hargaUsulan, 150000);
     expect(orders.single.jumlahRunnerDibutuhkan, 1);
   });
 
