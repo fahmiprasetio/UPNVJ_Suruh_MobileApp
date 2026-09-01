@@ -132,9 +132,19 @@ public class OrdersController(
     /// Order yang sedang disiarkan, dilihat dari sudut pandang runner yang sedang masuk.
     /// </summary>
     /// <remarks>
-    /// Order milik sendiri tidak pernah ikut disiarkan, dan order yang sudah dipegang runner
-    /// ini juga tidak. Penyaringan ada di sini, bukan di tampilan: daftar yang cuma dipangkas
-    /// tampilan tetap terkirim utuh ke perangkatnya, dan isinya nama serta alamat orang.
+    /// Dua jenis siaran berbeda tercampur di sini, dan itu disengaja. Jalur A (dan sisa
+    /// kuota Jalur B setelah pemenang tawaran mengisi satu slot) sudah dibayar dan
+    /// disiarkan menunggu klaim: <see cref="OrderStatus.MencariRunner"/>. Jalur B yang
+    /// masih menerima tawaran disiarkan lebih awal, sejak permintaan dibuat, berstatus
+    /// <see cref="OrderStatus.Permintaan"/> — status itu eksklusif milik Jalur B, karena
+    /// Jalur A langsung lahir di <see cref="OrderStatus.MenungguPembayaran"/>. Runner yang
+    /// penawarannya masih menunggu jawaban tidak perlu ditawarkan lagi order yang sama;
+    /// yang sudah ditolak/ditutup/dinego boleh menawar ulang.
+    ///
+    /// Order milik sendiri tidak pernah ikut disiarkan, dan order yang sudah dipegang
+    /// runner ini (atau sudah pernah ia tawar) juga tidak. Penyaringan ada di sini, bukan
+    /// di tampilan: daftar yang cuma dipangkas tampilan tetap terkirim utuh ke
+    /// perangkatnya, dan isinya nama serta alamat orang.
     /// </remarks>
     [HttpGet("tersiar")]
     [Authorize(Roles = Peran.Runner)]
@@ -145,11 +155,14 @@ public class OrdersController(
         var runnerId = User.Id();
 
         return Ok(await HalamanAsync(
-            db.Orders
-                .Where(o => o.Status == OrderStatus.MencariRunner)
-                .Where(o => o.ClientId != runnerId)
-                .Where(o => !o.RunnerAssignments.Any(a => a.RunnerId == runnerId))
-                .Where(o => o.RunnerAssignments.Count < o.RequiredRunnerCount),
+            db.Orders.Where(o =>
+                o.ClientId != runnerId &&
+                ((o.Status == OrderStatus.MencariRunner
+                        && !o.RunnerAssignments.Any(a => a.RunnerId == runnerId)
+                        && o.RunnerAssignments.Count < o.RequiredRunnerCount)
+                    || (o.Status == OrderStatus.Permintaan
+                        && !o.Offers.Any(f =>
+                            f.CreatedByRunnerId == runnerId && f.Status == OfferStatus.Pending)))),
             permintaan,
             batal));
     }

@@ -299,6 +299,90 @@ public class OrderEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
         Assert.Equal(HttpStatusCode.Forbidden, jawaban.StatusCode);
     }
 
+    // --- Siaran Jalur B (menunggu tawaran) ---
+
+    [Fact]
+    public async Task PermintaanJalurBYangMasihMenungguTawaranIkutTersiar()
+    {
+        // Beda dari Jalur A: Jalur B disiarkan sejak permintaan dibuat, bukan
+        // sejak dibayar, karena yang disiarkan adalah kesempatan menawar.
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+        var (runner, _) = await AkunAsync(UserRole.Runner);
+
+        var dibuat = await klien.PostAsJsonAsync("/api/orders/jalur-b", new
+        {
+            ServiceType = nameof(ServiceType.BersihKos),
+            Deskripsi = "Kos dua kamar, sudah lama tidak dibersihkan.",
+            JadwalMulai = DateTime.UtcNow.AddDays(1),
+            HargaUsulan = 100000m,
+        });
+        dibuat.EnsureSuccessStatusCode();
+        var order = (await dibuat.Content.ReadFromJsonAsync<OrderResponse>())!;
+
+        var tersiar = await DaftarAsync(runner, "/api/orders/tersiar");
+
+        Assert.Contains(tersiar, o => o.Id == order.Id);
+    }
+
+    [Fact]
+    public async Task RunnerYangPenawarannyaMasihMenungguTidakMelihatLagiOrderItu()
+    {
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+        var (runner, _) = await AkunAsync(UserRole.Runner);
+
+        var dibuat = await klien.PostAsJsonAsync("/api/orders/jalur-b", new
+        {
+            ServiceType = nameof(ServiceType.BersihKos),
+            Deskripsi = "Kos dua kamar, sudah lama tidak dibersihkan.",
+            JadwalMulai = DateTime.UtcNow.AddDays(1),
+            HargaUsulan = 100000m,
+        });
+        dibuat.EnsureSuccessStatusCode();
+        var order = (await dibuat.Content.ReadFromJsonAsync<OrderResponse>())!;
+
+        (await runner.PostAsJsonAsync($"/api/orders/{order.Id}/penawaran", new
+        {
+            Harga = 100000m,
+            EstimasiDurasiMenit = 120,
+            JadwalMulai = DateTime.UtcNow.AddDays(1),
+        })).EnsureSuccessStatusCode();
+
+        var tersiar = await DaftarAsync(runner, "/api/orders/tersiar");
+
+        Assert.DoesNotContain(tersiar, o => o.Id == order.Id);
+    }
+
+    [Fact]
+    public async Task RunnerLainMasihMelihatPermintaanJalurBYangSudahDitawarRunnerLain()
+    {
+        // Bukan tabrakan: beberapa runner boleh menawar order Jalur B yang sama
+        // secara bersamaan.
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+        var (runnerSatu, _) = await AkunAsync(UserRole.Runner);
+        var (runnerDua, _) = await AkunAsync(UserRole.Runner);
+
+        var dibuat = await klien.PostAsJsonAsync("/api/orders/jalur-b", new
+        {
+            ServiceType = nameof(ServiceType.BersihKos),
+            Deskripsi = "Kos dua kamar, sudah lama tidak dibersihkan.",
+            JadwalMulai = DateTime.UtcNow.AddDays(1),
+            HargaUsulan = 100000m,
+        });
+        dibuat.EnsureSuccessStatusCode();
+        var order = (await dibuat.Content.ReadFromJsonAsync<OrderResponse>())!;
+
+        (await runnerSatu.PostAsJsonAsync($"/api/orders/{order.Id}/penawaran", new
+        {
+            Harga = 100000m,
+            EstimasiDurasiMenit = 120,
+            JadwalMulai = DateTime.UtcNow.AddDays(1),
+        })).EnsureSuccessStatusCode();
+
+        var tersiar = await DaftarAsync(runnerDua, "/api/orders/tersiar");
+
+        Assert.Contains(tersiar, o => o.Id == order.Id);
+    }
+
     // --- Kuota runner ---
 
     [Fact]
