@@ -5,12 +5,12 @@ using UpnvjSuruh.Api.Domain;
 namespace UpnvjSuruh.Api.Contracts;
 
 /// <summary>
-/// Permintaan Jalur B: klien menuliskan kebutuhannya, harganya menyusul.
+/// Permintaan Jalur B: klien menuliskan kebutuhannya, sekaligus mengusulkan harga.
 ///
-/// PERHATIKAN TIDAK ADA HARGA DI SINI, dan itu bukan kelupaan. Yang membedakan Jalur B
-/// dari Jalur A justru tidak adanya harga di ujung form: pekerjaannya belum dilihat
-/// siapa pun, jadi belum ada yang bisa menghitungnya. Angka baru muncul lewat penawaran
-/// admin.
+/// <see cref="HargaUsulan"/> BUKAN harga order. Itu cuma titik awal tawar-menawar yang
+/// dipajang ke runner yang menimbang permintaan ini, sama seperti mengetik "saya mau bayar
+/// segini" di aplikasi ojek daring. Harga order sungguhan tetap hanya bisa datang dari
+/// penawaran runner yang disetujui klien nantinya, bukan dari sini.
 /// </summary>
 public record BuatPermintaanJalurBRequest
 {
@@ -30,14 +30,20 @@ public record BuatPermintaanJalurBRequest
 
     [Range(1, 10)]
     public int JumlahRunnerDibutuhkan { get; init; } = 1;
+
+    [Range(1, 100_000_000)]
+    public decimal HargaUsulan { get; init; }
 }
 
 /// <summary>
-/// Penawaran admin.
+/// Penawaran seorang runner: menyanggupi harga usulan klien apa adanya, atau mengajukan
+/// angkanya sendiri.
 ///
-/// Id adminnya diambil dari token, tidak diterima di sini. Penawaran adalah dokumen yang
+/// Id runnernya diambil dari token, tidak diterima di sini. Penawaran adalah dokumen yang
 /// menyebut siapa yang menawarkan, dan penyebutan itu tidak boleh berasal dari pihak
-/// yang menulisnya.
+/// yang menulisnya. Tidak ada bidang terpisah untuk "setuju harga klien": runner yang
+/// setuju cukup mengirim penawaran dengan <see cref="Harga"/> yang sama dengan usulan
+/// klien, itu tetap penawaran yang sah dan bisa langsung dipilih.
 /// </summary>
 public record BuatPenawaranRequest
 {
@@ -56,7 +62,7 @@ public record BuatPenawaranRequest
     public string? Catatan { get; init; }
 }
 
-/// <summary>Klien meminta penawaran dihitung ulang, disertai alasannya.</summary>
+/// <summary>Klien meminta satu penawaran tertentu dihitung ulang, disertai alasannya.</summary>
 public record NegoPenawaranRequest
 {
     [Required(AllowEmptyStrings = false)]
@@ -67,6 +73,7 @@ public record NegoPenawaranRequest
 public record OrderOfferResponse(
     Guid Id,
     Guid OrderId,
+    Guid RunnerId,
     decimal Harga,
     int EstimasiDurasiMenit,
     DateTime JadwalMulai,
@@ -78,6 +85,7 @@ public record OrderOfferResponse(
     public static OrderOfferResponse Dari(OrderOffer offer) => new(
         offer.Id,
         offer.OrderId,
+        offer.CreatedByRunnerId,
         offer.Price,
         (int)offer.EstimatedDuration.TotalMinutes,
         offer.ScheduledStart,

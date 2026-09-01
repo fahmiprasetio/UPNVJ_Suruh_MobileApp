@@ -11,12 +11,11 @@ using UpnvjSuruh.Api.Domain;
 namespace UpnvjSuruh.Api.Tests;
 
 /// <summary>
-/// Daftar order admin, yang menutup alur Jalur B.
+/// Daftar order dari sudut pandang admin.
 ///
-/// Admin sudah bisa mengirim penawaran sejak lama, tapi belum punya satu pun cara menemukan
-/// permintaan yang perlu ditawari: ia cuma bisa membuka order yang id-nya sudah ia ketahui,
-/// dan tidak ada yang memberitahunya id itu. Yang diuji di sini karena itu bukan cuma bentuk
-/// jawabannya, melainkan bahwa antreannya benar-benar bisa dikerjakan dari ujung ke ujung.
+/// Admin tidak lagi menentukan harga Jalur B, itu sekarang tawar-menawar langsung antara
+/// klien dan runner. Yang tersisa untuk admin murni memantau: melihat semua order yang
+/// berjalan tanpa perlu tahu id-nya lebih dulu, disaring statusnya kalau perlu.
 /// </summary>
 public class AdminOrderTests(DatabaseApiFactory pabrik) : IClassFixture<DatabaseApiFactory>
 {
@@ -58,6 +57,7 @@ public class AdminOrderTests(DatabaseApiFactory pabrik) : IClassFixture<Database
             ServiceType = nameof(ServiceType.BersihKos),
             Deskripsi = "Kos dua kamar, sudah lama tidak disapu.",
             JadwalMulai = DateTime.UtcNow.AddDays(1),
+            HargaUsulan = 100000m,
         });
         jawaban.EnsureSuccessStatusCode();
         return (await jawaban.Content.ReadFromJsonAsync<OrderResponse>())!;
@@ -90,10 +90,10 @@ public class AdminOrderTests(DatabaseApiFactory pabrik) : IClassFixture<Database
         Assert.Equal(HttpStatusCode.Forbidden, jawaban.StatusCode);
     }
 
-    // --- Antrean penawaran ---
+    // --- Daftar pemantauan ---
 
     [Fact]
-    public async Task PermintaanJalurBMunculDiAntreanPenawaran()
+    public async Task PermintaanJalurBMunculDiDaftarAdmin()
     {
         var klien = await AkunAsync(UserRole.Klien);
         var admin = await AkunAsync(UserRole.Admin);
@@ -105,41 +105,50 @@ public class AdminOrderTests(DatabaseApiFactory pabrik) : IClassFixture<Database
     }
 
     [Fact]
-    public async Task AdminBisaMenawarOrderYangDitemukannyaDiDaftar()
+    public async Task OrderTetapDiPermintaanSelamaBelumAdaTawaranYangDisetujui()
     {
-        // Inti berkas ini: alurnya utuh tanpa ada yang perlu tahu id order dari tempat lain.
-        // Admin membuka antreannya, mengambil id dari sana, lalu menawar.
+        // Beda dari alur admin yang lama: order Jalur B tetap berstatus Permintaan selama
+        // masih menerima tawaran, tidak peduli sudah berapa banyak runner yang menawar.
+        // Statusnya cuma berubah begitu klien menyetujui salah satu tawaran itu.
         var klien = await AkunAsync(UserRole.Klien);
+        var runner = await AkunAsync(UserRole.Runner);
         var admin = await AkunAsync(UserRole.Admin);
         var order = await PermintaanJalurBAsync(klien);
 
-        var halaman = await DaftarAsync(admin, $"status={nameof(OrderStatus.Permintaan)}&ukuran=100");
-        var dariAntrean = halaman!.Isi.Single(o => o.Id == order.Id);
-
-        var ditawar = await admin.PostAsJsonAsync($"/api/orders/{dariAntrean.Id}/penawaran", new
-        {
-            Harga = 150000m,
-            EstimasiDurasiMenit = 120,
-            JadwalMulai = DateTime.UtcNow.AddDays(1),
-        });
-
-        Assert.Equal(HttpStatusCode.OK, ditawar.StatusCode);
-    }
-
-    [Fact]
-    public async Task OrderYangSudahDitawariKeluarDariAntrean()
-    {
-        // Kalau tidak, antreannya tumbuh terus dan admin menawar order yang sama dua kali.
-        var klien = await AkunAsync(UserRole.Klien);
-        var admin = await AkunAsync(UserRole.Admin);
-        var order = await PermintaanJalurBAsync(klien);
-
-        (await admin.PostAsJsonAsync($"/api/orders/{order.Id}/penawaran", new
+        (await runner.PostAsJsonAsync($"/api/orders/{order.Id}/penawaran", new
         {
             Harga = 150000m,
             EstimasiDurasiMenit = 120,
             JadwalMulai = DateTime.UtcNow.AddDays(1),
         })).EnsureSuccessStatusCode();
+
+        var halaman = await DaftarAsync(admin, $"status={nameof(OrderStatus.Permintaan)}&ukuran=100");
+
+        Assert.Contains(halaman!.Isi, o => o.Id == order.Id);
+    }
+
+    [Fact]
+    public async Task OrderYangSudahDisetujuiKeluarDariDaftarPermintaan()
+    {
+        // Begitu klien memilih satu tawaran, ordernya pindah status dan tidak lagi muncul
+        // di saringan "menunggu tawaran".
+        var klien = await AkunAsync(UserRole.Klien);
+        var runner = await AkunAsync(UserRole.Runner);
+        var admin = await AkunAsync(UserRole.Admin);
+        var order = await PermintaanJalurBAsync(klien);
+
+        var ditawar = await runner.PostAsJsonAsync($"/api/orders/{order.Id}/penawaran", new
+        {
+            Harga = 150000m,
+            EstimasiDurasiMenit = 120,
+            JadwalMulai = DateTime.UtcNow.AddDays(1),
+        });
+        ditawar.EnsureSuccessStatusCode();
+        var penawaranId = (await ditawar.Content.ReadFromJsonAsync<OrderResponse>())!
+            .Penawaran.Single().Id;
+
+        (await klien.PostAsync($"/api/orders/{order.Id}/penawaran/{penawaranId}/setujui", null))
+            .EnsureSuccessStatusCode();
 
         var halaman = await DaftarAsync(admin, $"status={nameof(OrderStatus.Permintaan)}&ukuran=100");
 

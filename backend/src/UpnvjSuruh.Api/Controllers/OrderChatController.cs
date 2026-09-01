@@ -26,11 +26,17 @@ public class OrderChatController(AppDbContext db) : ControllerBase
     /// <remarks>
     /// Dua hal yang membatasi jawabannya, dan keduanya bukan hal yang sama.
     ///
-    /// Yang pertama siapa pemanggilnya. Runner melihat percakapan sejak ia menerima ordernya,
-    /// tidak lebih awal, karena tawar-menawar harga antara klien dan admin di Jalur B terjadi
-    /// jauh sebelum ia bergabung dan bukan bagian dari pekerjaannya. Aturannya ada di
-    /// <see cref="PesanTerlihat"/>, dipakai bersama penghitung jumlah pesan, supaya tidak
-    /// pernah ada penanda "ada 12 pesan" pada percakapan yang isinya tiga.
+    /// Yang pertama siapa pemanggilnya, dan jalur obrolan mana yang ia minta lewat
+    /// <paramref name="runnerId"/>. Selama order Jalur B masih menerima penawaran, tiap
+    /// runner punya jalur obrolan pribadinya sendiri dengan klien; runner selalu melihat
+    /// jalurnya sendiri saja (parameter ini diabaikan untuknya), sementara klien harus
+    /// menyebutkan runner mana yang mau dilihat obrolannya kalau ada lebih dari satu yang
+    /// sedang menawar. Begitu order sudah punya runner tetap, semua ini tidak lagi berarti:
+    /// yang tersisa cuma satu jalur obrolan umum, dan runner melihatnya sejak ia diterima,
+    /// tidak lebih awal, karena tawar-menawar sebelum ia terpilih bukan bagian dari
+    /// pekerjaannya. Aturannya ada di <see cref="PesanTerlihat"/>, dipakai bersama
+    /// penghitung jumlah pesan, supaya tidak pernah ada penanda "ada 12 pesan" pada
+    /// percakapan yang isinya tiga.
     ///
     /// Yang kedua panjangnya. Percakapan cuma bertambah, dan aplikasi mengambilnya ulang
     /// setiap lima belas detik selama layar chat terbuka; tanpa batas, satu order yang ramai
@@ -50,6 +56,7 @@ public class OrderChatController(AppDbContext db) : ControllerBase
     [HttpGet]
     public async Task<ActionResult<HalamanResponse<OrderMessageResponse>>> Daftar(
         Guid id,
+        [FromQuery] Guid? runnerId,
         [FromQuery] PermintaanHalaman permintaan,
         CancellationToken batal)
     {
@@ -57,9 +64,11 @@ public class OrderChatController(AppDbContext db) : ControllerBase
         var pemanggil = User.Id();
         if (order is null || !AksesOrder.BolehLihat(order, pemanggil, User)) return NotFound();
 
+        var jalurObrolan = JalurObrolan(order, pemanggil, runnerId);
+
         var terlihat = db
             .PesanUntuk(pemanggil, User.Punya(Peran.Admin))
-            .Where(m => m.OrderId == id);
+            .Where(m => m.OrderId == id && m.RunnerPenawarId == jalurObrolan);
 
         var total = await terlihat.CountAsync(batal);
 
@@ -123,6 +132,7 @@ public class OrderChatController(AppDbContext db) : ControllerBase
         var pesan = new OrderMessage
         {
             OrderId = order.Id,
+            RunnerPenawarId = JalurObrolan(order, pemanggil, permintaan.RunnerId),
             SenderId = pemanggil,
             SenderRole = peran.Value,
             Text = permintaan.Isi.Trim(),
@@ -134,7 +144,36 @@ public class OrderChatController(AppDbContext db) : ControllerBase
         return Ok(OrderMessageResponse.Dari(pesan));
     }
 
+    /// <summary>
+    /// Jalur obrolan mana yang berlaku untuk satu pemanggil pada satu order: <c>null</c>
+    /// untuk obrolan umum, atau id runner pemilik jalur obrolan pribadi Jalur B.
+    /// </summary>
+    /// <remarks>
+    /// Runner yang belum diterima (masih menawar) selalu memakai jalurnya sendiri, dan
+    /// parameter <paramref name="diminta"/> tidak pernah dipercaya untuknya. Kalau
+    /// dipercaya, satu runner bisa menyebut runner lain sebagai jalurnya lalu membaca atau
+    /// menulis di obrolan pribadi orang itu dengan klien.
+    ///
+    /// Klien memakai jalur yang diminta, karena ialah satu-satunya pihak yang boleh
+    /// berbicara di lebih dari satu jalur pada order yang sama (satu per runner yang
+    /// menawar).
+    ///
+    /// Runner yang sudah diterima, admin, dan seluruh order Jalur A selalu memakai obrolan
+    /// umum, tidak peduli apa yang diminta: begitu ada runner tetap, tidak ada lagi jalur
+    /// pribadi yang perlu dipisahkan.
+    /// </remarks>
+    private static Guid? JalurObrolan(Order order, Guid pemanggil, Guid? diminta)
+    {
+        var sudahDiterima = order.RunnerAssignments.Any(a => a.RunnerId == pemanggil);
+        var sedangMenawar = !sudahDiterima && order.Offers.Any(f => f.CreatedByRunnerId == pemanggil);
+
+        if (sedangMenawar) return pemanggil;
+        if (order.ClientId == pemanggil) return diminta;
+        return null;
+    }
+
     private Task<Order?> Muat(Guid id, CancellationToken batal) => db.Orders
         .Include(o => o.RunnerAssignments)
+        .Include(o => o.Offers)
         .SingleOrDefaultAsync(o => o.Id == id, batal);
 }

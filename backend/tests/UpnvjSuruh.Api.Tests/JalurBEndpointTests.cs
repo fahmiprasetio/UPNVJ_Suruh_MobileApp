@@ -12,9 +12,11 @@ using UpnvjSuruh.Api.Domain;
 namespace UpnvjSuruh.Api.Tests;
 
 /// <summary>
-/// Jalur B adalah tawar-menawar, dan tawar-menawar punya dua sisi yang tidak boleh
-/// tertukar: yang menyebut harga adalah admin, yang menjawabnya adalah pemesan. Sebagian
-/// besar tes di sini menjaga pemisahan itu.
+/// Jalur B adalah tawar-menawar ala aplikasi ojek daring: klien mengusulkan harga, banyak
+/// runner boleh menawar sekaligus untuk order yang sama, dan klien memilih satu di antaranya.
+/// Sebagian besar tes di sini menjaga bahwa runner yang tidak terpilih tidak pernah bisa
+/// merebut apa yang sudah dipilih klien untuk runner lain, dan bahwa Admin tidak lagi
+/// terlibat sama sekali dalam urusan harga.
 /// </summary>
 public class JalurBEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<DatabaseApiFactory>
 {
@@ -49,43 +51,42 @@ public class JalurBEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Data
         return (klien, user.Id);
     }
 
-    private static async Task<OrderResponse> BuatPermintaanAsync(HttpClient klien)
-    {
-        var jawaban = await klien.PostAsJsonAsync("/api/orders/jalur-b", new
+    private static async Task<OrderResponse> BuatPermintaanAsync(
+        HttpClient klien, decimal hargaUsulan = 150000) =>
+        (await (await klien.PostAsJsonAsync("/api/orders/jalur-b", new
         {
             ServiceType = nameof(ServiceType.BersihKos),
             Deskripsi = "Kos dua kamar, sudah lama tidak dibersihkan.",
             JadwalMulai = DateTime.UtcNow.AddDays(2),
-            JumlahRunnerDibutuhkan = 2,
-        });
-        jawaban.EnsureSuccessStatusCode();
-        return (await jawaban.Content.ReadFromJsonAsync<OrderResponse>())!;
-    }
+            JumlahRunnerDibutuhkan = 1,
+            HargaUsulan = hargaUsulan,
+        })).EnsureSuccessStatusCode().Content.ReadFromJsonAsync<OrderResponse>())!;
 
-    private static Task<HttpResponseMessage> TawarkanAsync(
-        HttpClient admin,
+    private static Task<HttpResponseMessage> TawarAsync(
+        HttpClient runner,
         Guid orderId,
         decimal harga = 150000) =>
-        admin.PostAsJsonAsync($"/api/orders/{orderId}/penawaran", new
+        runner.PostAsJsonAsync($"/api/orders/{orderId}/penawaran", new
         {
             Harga = harga,
             EstimasiDurasiMenit = 180,
             JadwalMulai = DateTime.UtcNow.AddDays(2),
-            Catatan = "Dikerjakan dua orang.",
+            Catatan = "Dikerjakan sendirian.",
         });
 
     // --- Membuat permintaan ---
 
     [Fact]
-    public async Task PermintaanLahirTanpaHarga()
+    public async Task PermintaanLahirTanpaHargaOrderTapiPunyaHargaUsulan()
     {
-        // Itu yang membedakan Jalur B dari Jalur A. Menampilkan angka apa pun di sini akan
-        // menjanjikan sesuatu yang belum tentu disetujui admin.
+        // Harga order belum ada karena belum ada satu pun tawaran yang disepakati. Harga
+        // usulan sudah ada, karena itu titik awal tawar-menawarnya, bukan harga final.
         var (klien, _) = await AkunAsync(UserRole.Klien);
 
-        var order = await BuatPermintaanAsync(klien);
+        var order = await BuatPermintaanAsync(klien, hargaUsulan: 150000);
 
         Assert.Null(order.Harga);
+        Assert.Equal(150000m, order.HargaUsulan);
         Assert.Equal(nameof(OrderStatus.Permintaan), order.Status);
         Assert.Equal(nameof(OrderTrack.JalurB), order.Track);
         Assert.Empty(order.Penawaran);
@@ -101,6 +102,7 @@ public class JalurBEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Data
             ServiceType = nameof(ServiceType.AnterJemput),
             Deskripsi = "Antar ke kampus",
             JadwalMulai = DateTime.UtcNow.AddDays(1),
+            HargaUsulan = 20000m,
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, jawaban.StatusCode);
@@ -116,6 +118,23 @@ public class JalurBEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Data
             ServiceType = nameof(ServiceType.BersihKos),
             Deskripsi = "",
             JadwalMulai = DateTime.UtcNow.AddDays(1),
+            HargaUsulan = 100000m,
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, jawaban.StatusCode);
+    }
+
+    [Fact]
+    public async Task HargaUsulanNolAtauNegatifDitolak()
+    {
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+
+        var jawaban = await klien.PostAsJsonAsync("/api/orders/jalur-b", new
+        {
+            ServiceType = nameof(ServiceType.BersihKos),
+            Deskripsi = "Kos dua kamar.",
+            JadwalMulai = DateTime.UtcNow.AddDays(1),
+            HargaUsulan = 0m,
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, jawaban.StatusCode);
@@ -131,87 +150,107 @@ public class JalurBEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Data
             ServiceType = nameof(ServiceType.BersihKos),
             Deskripsi = "Titip bersih-bersih",
             JadwalMulai = DateTime.UtcNow.AddDays(1),
+            HargaUsulan = 100000m,
         });
 
         Assert.Equal(HttpStatusCode.Forbidden, jawaban.StatusCode);
     }
 
-    // --- Penawaran admin ---
+    // --- Penawaran runner ---
 
     [Fact]
-    public async Task AdminMenawarDanOrderMenungguPersetujuanKlien()
+    public async Task RunnerMenawarDanOrderTetapPermintaan()
     {
+        // Beda dari alur admin yang lama: status ordernya tidak berubah begitu ada satu
+        // tawaran masuk, karena runner lain masih boleh menawar juga.
         var (klien, _) = await AkunAsync(UserRole.Klien);
-        var (admin, adminId) = await AkunAsync(UserRole.Admin);
+        var (runner, runnerId) = await AkunAsync(UserRole.Runner);
         var order = await BuatPermintaanAsync(klien);
 
-        var jawaban = await TawarkanAsync(admin, order.Id);
+        var jawaban = await TawarAsync(runner, order.Id);
         jawaban.EnsureSuccessStatusCode();
         var sesudah = (await jawaban.Content.ReadFromJsonAsync<OrderResponse>())!;
 
-        Assert.Equal(nameof(OrderStatus.MenungguPersetujuanKlien), sesudah.Status);
+        Assert.Equal(nameof(OrderStatus.Permintaan), sesudah.Status);
         Assert.Single(sesudah.Penawaran);
         Assert.Equal(150000m, sesudah.Penawaran[0].Harga);
+        Assert.Equal(runnerId, sesudah.Penawaran[0].RunnerId);
 
         // Harga penawaran belum jadi harga order. Order yang memajang harga yang belum
         // disepakati akan terbaca sebagai tagihan.
         Assert.Null(sesudah.Harga);
-
-        using var lingkup = pabrik.Services.CreateScope();
-        var db = lingkup.ServiceProvider.GetRequiredService<AppDbContext>();
-        var tersimpan = await db.OrderOffers.SingleAsync(f => f.OrderId == order.Id);
-        Assert.Equal(adminId, tersimpan.CreatedByAdminId);
     }
 
     [Fact]
-    public async Task KlienTidakBisaMenawarOrdernyaSendiri()
+    public async Task KlienYangJugaRunnerTidakBisaMenawarOrdernyaSendiri()
     {
-        // Kalau bisa, klien tinggal menawar dirinya sendiri seharga satu rupiah lalu
-        // menyetujuinya.
+        // Kalau bisa, satu akun tinggal menawar pesanannya sendiri seharga satu rupiah lalu
+        // menyetujuinya sendiri.
+        var (klien, _) = await AkunAsync(UserRole.Klien, UserRole.Runner);
+        var order = await BuatPermintaanAsync(klien);
+
+        var jawaban = await TawarAsync(klien, order.Id, harga: 1);
+
+        Assert.Equal(HttpStatusCode.BadRequest, jawaban.StatusCode);
+    }
+
+    [Fact]
+    public async Task KlienTanpaPeranRunnerTidakBisaMenawar()
+    {
         var (klien, _) = await AkunAsync(UserRole.Klien);
         var order = await BuatPermintaanAsync(klien);
 
-        var jawaban = await TawarkanAsync(klien, order.Id, harga: 1);
+        var jawaban = await TawarAsync(klien, order.Id);
 
         Assert.Equal(HttpStatusCode.Forbidden, jawaban.StatusCode);
     }
 
     [Fact]
-    public async Task RunnerTidakBisaMenawar()
+    public async Task DuaRunnerBerbedaBolehMenawarBersamaanUntukOrderYangSama()
     {
+        // Inti dari desain tawar-menawar ini. Dua orang berbeda menawar order yang sama pada
+        // saat yang sama bukan tabrakan, itu memang tawar-menawar.
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+        var (runnerSatu, idSatu) = await AkunAsync(UserRole.Runner);
+        var (runnerDua, idDua) = await AkunAsync(UserRole.Runner);
+        var order = await BuatPermintaanAsync(klien);
+
+        var jawabanSatu = await TawarAsync(runnerSatu, order.Id, harga: 150000);
+        var jawabanDua = await TawarAsync(runnerDua, order.Id, harga: 120000);
+
+        jawabanSatu.EnsureSuccessStatusCode();
+        jawabanDua.EnsureSuccessStatusCode();
+        var sesudah = (await jawabanDua.Content.ReadFromJsonAsync<OrderResponse>())!;
+
+        Assert.Equal(2, sesudah.Penawaran.Count);
+        Assert.Contains(sesudah.Penawaran, p => p.RunnerId == idSatu && p.Harga == 150000m);
+        Assert.Contains(sesudah.Penawaran, p => p.RunnerId == idDua && p.Harga == 120000m);
+    }
+
+    [Fact]
+    public async Task RunnerYangSamaTidakBisaMenawarDuaKaliSementaraYangPertamaMenunggu()
+    {
+        // Beda dari dua runner berbeda menawar bersamaan (itu sah). Ini satu runner mencoba
+        // menawar dua kali untuk order yang sama, dan itu yang ditahan index unik.
         var (klien, _) = await AkunAsync(UserRole.Klien);
         var (runner, _) = await AkunAsync(UserRole.Runner);
         var order = await BuatPermintaanAsync(klien);
 
-        var jawaban = await TawarkanAsync(runner, order.Id);
+        (await TawarAsync(runner, order.Id)).EnsureSuccessStatusCode();
+        var kedua = await TawarAsync(runner, order.Id, harga: 90000);
 
-        Assert.Equal(HttpStatusCode.Forbidden, jawaban.StatusCode);
-    }
-
-    [Fact]
-    public async Task PenawaranKeduaDitolakSelamaYangPertamaMasihMenunggu()
-    {
-        // Tanpa ini, penawaran kedua diam-diam menimpa yang sedang dibaca klien, dan klien
-        // menekan setuju untuk harga yang berbeda dari yang tampil di layarnya.
-        var (klien, _) = await AkunAsync(UserRole.Klien);
-        var (admin, _) = await AkunAsync(UserRole.Admin);
-        var order = await BuatPermintaanAsync(klien);
-
-        (await TawarkanAsync(admin, order.Id)).EnsureSuccessStatusCode();
-        var kedua = await TawarkanAsync(admin, order.Id, harga: 90000);
-
-        Assert.Equal(HttpStatusCode.BadRequest, kedua.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, kedua.StatusCode);
     }
 
     [Fact]
     public async Task HargaNolAtauNegatifDitolak()
     {
         var (klien, _) = await AkunAsync(UserRole.Klien);
-        var (admin, _) = await AkunAsync(UserRole.Admin);
+        var (runner, _) = await AkunAsync(UserRole.Runner);
         var order = await BuatPermintaanAsync(klien);
 
-        Assert.Equal(HttpStatusCode.BadRequest, (await TawarkanAsync(admin, order.Id, 0)).StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await TawarkanAsync(admin, order.Id, -5000)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await TawarAsync(runner, order.Id, 0)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await TawarAsync(runner, order.Id, -5000)).StatusCode);
     }
 
     [Fact]
@@ -220,7 +259,7 @@ public class JalurBEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Data
         // Harganya sudah tertulis di layar klien sejak awal. Mengizinkan penawaran di sana
         // berarti membuka jalan mengubahnya.
         var (klien, _) = await AkunAsync(UserRole.Klien);
-        var (admin, _) = await AkunAsync(UserRole.Admin);
+        var (runner, _) = await AkunAsync(UserRole.Runner);
 
         var buat = await klien.PostAsJsonAsync("/api/orders/jalur-a", new
         {
@@ -229,35 +268,79 @@ public class JalurBEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Data
         });
         var jalurA = (await buat.Content.ReadFromJsonAsync<BuatOrderResponse>())!.Order;
 
-        var jawaban = await TawarkanAsync(admin, jalurA.Id);
+        var jawaban = await TawarAsync(runner, jalurA.Id);
+
+        Assert.Equal(HttpStatusCode.BadRequest, jawaban.StatusCode);
+    }
+
+    [Fact]
+    public async Task RunnerTidakBisaMenawarOrderYangSudahDisetujui()
+    {
+        // Begitu klien memilih satu runner, tawar-menawarnya selesai. Runner lain yang
+        // terlambat tidak boleh menyusul menawar order yang sama.
+        var (klien, _, _, _, order, penawaranId) = await SiapDitawariAsync();
+        await klien.PostAsync($"/api/orders/{order.Id}/penawaran/{penawaranId}/setujui", null);
+
+        var (terlambat, _) = await AkunAsync(UserRole.Runner);
+        var jawaban = await TawarAsync(terlambat, order.Id);
 
         Assert.Equal(HttpStatusCode.BadRequest, jawaban.StatusCode);
     }
 
     // --- Jawaban klien ---
 
-    private async Task<(HttpClient Klien, HttpClient Admin, OrderResponse Order)> SiapDitawariAsync()
+    private async Task<(HttpClient Klien, Guid RunnerId, HttpClient Runner, Guid KlienId, OrderResponse Order, Guid PenawaranId)>
+        SiapDitawariAsync()
     {
-        var (klien, _) = await AkunAsync(UserRole.Klien);
-        var (admin, _) = await AkunAsync(UserRole.Admin);
+        var (klien, klienId) = await AkunAsync(UserRole.Klien);
+        var (runner, runnerId) = await AkunAsync(UserRole.Runner);
         var order = await BuatPermintaanAsync(klien);
-        (await TawarkanAsync(admin, order.Id)).EnsureSuccessStatusCode();
-        return (klien, admin, order);
+        var ditawar = await TawarAsync(runner, order.Id);
+        ditawar.EnsureSuccessStatusCode();
+        var penawaranId = (await ditawar.Content.ReadFromJsonAsync<OrderResponse>())!
+            .Penawaran.Single().Id;
+        return (klien, runnerId, runner, klienId, order, penawaranId);
     }
 
     [Fact]
     public async Task MenyetujuiMemindahkanHargaPenawaranKeOrder()
     {
-        var (klien, _, order) = await SiapDitawariAsync();
+        var (klien, _, _, _, order, penawaranId) = await SiapDitawariAsync();
 
-        var jawaban = await klien.PostAsync($"/api/orders/{order.Id}/penawaran/setujui", null);
+        var jawaban = await klien.PostAsync($"/api/orders/{order.Id}/penawaran/{penawaranId}/setujui", null);
         jawaban.EnsureSuccessStatusCode();
         var sesudah = (await jawaban.Content.ReadFromJsonAsync<OrderResponse>())!;
 
         Assert.Equal(150000m, sesudah.Harga);
         Assert.Equal(180, sesudah.EstimasiDurasiMenit);
         Assert.Equal(nameof(OrderStatus.MenungguPembayaran), sesudah.Status);
-        Assert.Equal(nameof(OfferStatus.Disetujui), sesudah.Penawaran[0].Status);
+        Assert.Equal(nameof(OfferStatus.Disetujui), sesudah.Penawaran.Single(p => p.Id == penawaranId).Status);
+    }
+
+    [Fact]
+    public async Task MenyetujuiMenutupPenawaranRunnerLainOtomatis()
+    {
+        // Runner yang tidak terpilih tidak menggantung tanpa kabar.
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+        var (runnerSatu, _) = await AkunAsync(UserRole.Runner);
+        var (runnerDua, _) = await AkunAsync(UserRole.Runner);
+        var order = await BuatPermintaanAsync(klien);
+
+        var ditawarSatu = await TawarAsync(runnerSatu, order.Id, harga: 150000);
+        ditawarSatu.EnsureSuccessStatusCode();
+        var penawaranSatu = (await ditawarSatu.Content.ReadFromJsonAsync<OrderResponse>())!
+            .Penawaran.Single(p => p.Harga == 150000m).Id;
+        await TawarAsync(runnerDua, order.Id, harga: 120000);
+
+        var jawaban = await klien.PostAsync(
+            $"/api/orders/{order.Id}/penawaran/{penawaranSatu}/setujui", null);
+        jawaban.EnsureSuccessStatusCode();
+        var sesudah = (await jawaban.Content.ReadFromJsonAsync<OrderResponse>())!;
+
+        Assert.Equal(nameof(OfferStatus.Disetujui), sesudah.Penawaran.Single(p => p.Id == penawaranSatu).Status);
+        Assert.Equal(
+            nameof(OfferStatus.Ditutup),
+            sesudah.Penawaran.Single(p => p.Id != penawaranSatu).Status);
     }
 
     [Fact]
@@ -265,10 +348,10 @@ public class JalurBEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Data
     {
         // Peran klien saja tidak cukup. Tanpa pemeriksaan pemilik, klien mana pun bisa
         // menyetujui penawaran di order orang lain cukup dengan menebak idnya.
-        var (_, _, order) = await SiapDitawariAsync();
+        var (_, _, _, _, order, penawaranId) = await SiapDitawariAsync();
         var (orangLain, _) = await AkunAsync(UserRole.Klien);
 
-        var jawaban = await orangLain.PostAsync($"/api/orders/{order.Id}/penawaran/setujui", null);
+        var jawaban = await orangLain.PostAsync($"/api/orders/{order.Id}/penawaran/{penawaranId}/setujui", null);
 
         Assert.Equal(HttpStatusCode.NotFound, jawaban.StatusCode);
     }
@@ -276,99 +359,121 @@ public class JalurBEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Data
     [Fact]
     public async Task KlienLainTidakBisaMenolakPenawaranOrangLain()
     {
-        var (_, _, order) = await SiapDitawariAsync();
+        var (_, _, _, _, order, penawaranId) = await SiapDitawariAsync();
         var (orangLain, _) = await AkunAsync(UserRole.Klien);
 
-        var jawaban = await orangLain.PostAsync($"/api/orders/{order.Id}/penawaran/tolak", null);
+        var jawaban = await orangLain.PostAsync($"/api/orders/{order.Id}/penawaran/{penawaranId}/tolak", null);
 
         Assert.Equal(HttpStatusCode.NotFound, jawaban.StatusCode);
     }
 
     [Fact]
-    public async Task MenolakMengakhiriOrder()
+    public async Task MenolakHanyaMenutupPenawaranItuSendiriBukanSeluruhOrder()
     {
-        // Bukan mengembalikannya ke antrean admin. Yang masih berminat dengan harga lain
-        // memakai nego; yang menekan tolak memang sudah tidak berminat.
-        var (klien, _, order) = await SiapDitawariAsync();
+        // Beda dari alur admin yang lama: menolak satu tawaran tidak lagi membatalkan
+        // ordernya. Klien yang masih berminat cukup menunggu tawaran lain, atau nego.
+        var (klien, _, _, _, order, penawaranId) = await SiapDitawariAsync();
 
-        var jawaban = await klien.PostAsync($"/api/orders/{order.Id}/penawaran/tolak", null);
+        var jawaban = await klien.PostAsync($"/api/orders/{order.Id}/penawaran/{penawaranId}/tolak", null);
         jawaban.EnsureSuccessStatusCode();
         var sesudah = (await jawaban.Content.ReadFromJsonAsync<OrderResponse>())!;
 
-        Assert.Equal(nameof(OrderStatus.Batal), sesudah.Status);
-        Assert.Equal(nameof(OfferStatus.Ditolak), sesudah.Penawaran[0].Status);
+        Assert.Equal(nameof(OrderStatus.Permintaan), sesudah.Status);
+        Assert.Equal(nameof(OfferStatus.Ditolak), sesudah.Penawaran.Single().Status);
         Assert.Null(sesudah.Harga);
     }
 
     [Fact]
-    public async Task NegoMengembalikanOrderKeAntreanAdminDanMenulisAlasannyaDiChat()
+    public async Task SetelahDitolakRunnerLainMasihBisaMenawarOrderItu()
     {
-        var (klien, _, order) = await SiapDitawariAsync();
+        var (klien, _, _, _, order, penawaranId) = await SiapDitawariAsync();
+        await klien.PostAsync($"/api/orders/{order.Id}/penawaran/{penawaranId}/tolak", null);
+
+        var (runnerLain, _) = await AkunAsync(UserRole.Runner);
+        var jawaban = await TawarAsync(runnerLain, order.Id, harga: 130000);
+
+        jawaban.EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task NegoMenulisAlasannyaDiJalurObrolanPribadiRunnerItu()
+    {
+        var (klien, klienId, runnerId, _, order, penawaranId) = await SiapDitawariNamaLengkapAsync();
 
         var jawaban = await klien.PostAsJsonAsync(
-            $"/api/orders/{order.Id}/penawaran/nego",
+            $"/api/orders/{order.Id}/penawaran/{penawaranId}/nego",
             new { Alasan = "Bisa kurang sedikit? Kamarnya kecil." });
         jawaban.EnsureSuccessStatusCode();
         var sesudah = (await jawaban.Content.ReadFromJsonAsync<OrderResponse>())!;
 
         Assert.Equal(nameof(OrderStatus.Permintaan), sesudah.Status);
-        Assert.Equal(nameof(OfferStatus.DinegoUlang), sesudah.Penawaran[0].Status);
+        Assert.Equal(nameof(OfferStatus.DinegoUlang), sesudah.Penawaran.Single().Status);
 
         using var lingkup = pabrik.Services.CreateScope();
         var db = lingkup.ServiceProvider.GetRequiredService<AppDbContext>();
         var pesan = await db.OrderMessages.SingleAsync(m => m.OrderId == order.Id);
         Assert.Equal("Bisa kurang sedikit? Kamarnya kecil.", pesan.Text);
-        Assert.Equal(sesudah.KlienId, pesan.SenderId);
+        Assert.Equal(klienId, pesan.SenderId);
+        Assert.Equal(runnerId, pesan.RunnerPenawarId);
+    }
+
+    /// <summary>Sama seperti <see cref="SiapDitawariAsync"/>, tapi mengembalikan id klien juga.</summary>
+    private async Task<(HttpClient Klien, Guid KlienId, Guid RunnerId, HttpClient Runner, OrderResponse Order, Guid PenawaranId)>
+        SiapDitawariNamaLengkapAsync()
+    {
+        var (klien, runnerId, runner, klienId, order, penawaranId) = await SiapDitawariAsync();
+        return (klien, klienId, runnerId, runner, order, penawaranId);
     }
 
     [Fact]
     public async Task NegoTanpaAlasanDitolak()
     {
-        // Admin tidak punya bahan untuk menghitung ulang.
-        var (klien, _, order) = await SiapDitawariAsync();
+        // Runner tidak punya bahan untuk menghitung ulang.
+        var (klien, _, _, _, order, penawaranId) = await SiapDitawariAsync();
 
         var jawaban = await klien.PostAsJsonAsync(
-            $"/api/orders/{order.Id}/penawaran/nego",
+            $"/api/orders/{order.Id}/penawaran/{penawaranId}/nego",
             new { Alasan = "" });
 
         Assert.Equal(HttpStatusCode.BadRequest, jawaban.StatusCode);
     }
 
     [Fact]
-    public async Task SesudahNegoAdminBisaMenawarLagi()
+    public async Task SesudahNegoRunnerYangSamaBisaMenawarLagi()
     {
-        var (klien, admin, order) = await SiapDitawariAsync();
+        var (klien, _, runner, _, order, penawaranId) = await SiapDitawariAsync();
         await klien.PostAsJsonAsync(
-            $"/api/orders/{order.Id}/penawaran/nego",
+            $"/api/orders/{order.Id}/penawaran/{penawaranId}/nego",
             new { Alasan = "Bisa kurang?" });
 
-        var kedua = await TawarkanAsync(admin, order.Id, harga: 120000);
+        var kedua = await TawarAsync(runner, order.Id, harga: 120000);
         kedua.EnsureSuccessStatusCode();
         var sesudah = (await kedua.Content.ReadFromJsonAsync<OrderResponse>())!;
 
         Assert.Equal(2, sesudah.Penawaran.Count);
-        Assert.Equal(nameof(OrderStatus.MenungguPersetujuanKlien), sesudah.Status);
+        Assert.Equal(nameof(OrderStatus.Permintaan), sesudah.Status);
     }
 
     [Fact]
     public async Task PenawaranYangSudahDijawabTidakBisaDijawabLagi()
     {
-        var (klien, _, order) = await SiapDitawariAsync();
-        (await klien.PostAsync($"/api/orders/{order.Id}/penawaran/setujui", null))
+        var (klien, _, _, _, order, penawaranId) = await SiapDitawariAsync();
+        (await klien.PostAsync($"/api/orders/{order.Id}/penawaran/{penawaranId}/setujui", null))
             .EnsureSuccessStatusCode();
 
-        var lagi = await klien.PostAsync($"/api/orders/{order.Id}/penawaran/setujui", null);
+        var lagi = await klien.PostAsync($"/api/orders/{order.Id}/penawaran/{penawaranId}/setujui", null);
 
         Assert.Equal(HttpStatusCode.BadRequest, lagi.StatusCode);
     }
 
     [Fact]
-    public async Task MenjawabOrderYangBelumPernahDitawariDitolak()
+    public async Task MenjawabPenawaranYangTidakPernahAdaDitolak()
     {
         var (klien, _) = await AkunAsync(UserRole.Klien);
         var order = await BuatPermintaanAsync(klien);
 
-        var jawaban = await klien.PostAsync($"/api/orders/{order.Id}/penawaran/setujui", null);
+        var jawaban = await klien.PostAsync(
+            $"/api/orders/{order.Id}/penawaran/{Guid.NewGuid()}/setujui", null);
 
         Assert.Equal(HttpStatusCode.BadRequest, jawaban.StatusCode);
     }
@@ -378,6 +483,7 @@ public class JalurBEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Data
     {
         var tanpaToken = pabrik.CreateClient();
         var id = Guid.NewGuid();
+        var offerId = Guid.NewGuid();
 
         Assert.Equal(
             HttpStatusCode.Unauthorized,
@@ -387,6 +493,6 @@ public class JalurBEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Data
             (await tanpaToken.PostAsJsonAsync($"/api/orders/{id}/penawaran", new { })).StatusCode);
         Assert.Equal(
             HttpStatusCode.Unauthorized,
-            (await tanpaToken.PostAsync($"/api/orders/{id}/penawaran/setujui", null)).StatusCode);
+            (await tanpaToken.PostAsync($"/api/orders/{id}/penawaran/{offerId}/setujui", null)).StatusCode);
     }
 }

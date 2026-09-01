@@ -31,31 +31,39 @@ delivery, item delivery. The client sees the total before ordering, and the job 
 broadcast as soon as it is paid.
 
 **Track B** covers work that a form cannot price on its own, along with every free form
-request. The client describes what they need, an admin reads it and asks questions in the
-order's own chat, then sends a quote with a price, an estimated duration, and a schedule
-the team can commit to. The client can accept, ask for it to be recalculated with a stated
-reason, or decline and cancel. A request for recalculation lands in the order's chat, so
-the answer sits in the same place as the question.
+request, and it works like a ride-hailing bidding flow rather than a single centralized
+quote. The client describes what they need and names a price they're willing to pay, and
+the request broadcasts to every available runner. Any runner who's interested can either
+accept the client's suggested price outright or submit a counter-offer of their own — an
+order can have several offers pending at once, one per runner, and each runner negotiates
+with the client in their own private thread, invisible to every other runner bidding on the
+same request. The client can accept one offer, reject it, or ask for a recalculation with a
+stated reason (which lands in that same private thread); accepting one offer immediately
+closes every other pending offer on that order, and the winning runner is the one who does
+the job — there's no separate hand-off to someone else afterward. Admin no longer sets
+Track B prices at all; its role is purely monitoring and reconciliation now.
 
-Prices never come from the client on either track. They are computed and held server side.
+Prices never come from the client alone on either track — a client-suggested price on
+Track B is just the opening bid, not a binding number, and the price that actually sticks
+still only ever comes from a runner's offer the client accepts, computed and held server
+side exactly as before.
 
 ## Order lifecycle
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Request: Track B submitted
+    [*] --> Request: Track B submitted, with a suggested price
     [*] --> AwaitingPayment: Track A placed
 
-    Request --> AwaitingApproval: admin sends a quote
-    AwaitingApproval --> Request: client asks for a recalculation
-    AwaitingApproval --> AwaitingPayment: client accepts
-    AwaitingApproval --> Cancelled: client declines
+    Request --> Request: runners submit competing offers
+    Request --> AwaitingPayment: client accepts one offer (the rest auto-close)
+    Request --> Cancelled
 
-    AwaitingPayment --> FindingRunner: gateway confirms payment
+    AwaitingPayment --> InProgress: Track B, quota of one already met by the winning bidder
+    AwaitingPayment --> FindingRunner: Track A, or Track B still short of its runner quota
     FindingRunner --> InProgress: runner quota filled
     InProgress --> Done: runner closes with photo evidence
 
-    Request --> Cancelled
     AwaitingPayment --> Cancelled
     Done --> [*]
     Cancelled --> [*]
@@ -67,10 +75,13 @@ client. There is no way for the app to declare itself paid.
 A paid order cannot be cancelled through the cancel endpoint, because cancelling it means
 money has to go back, and a refund should not happen as the side effect of one button.
 
-Jobs that need more than one person stay broadcast until the quota is filled. When two
-runners accept at the same moment, one wins and the other is told the job was taken. That
-race is settled in the database, under a serializable transaction with optimistic
-concurrency, rather than in the interface.
+Jobs that need more than one person stay broadcast until the quota is filled. On Track B,
+the runner whose offer got accepted fills one slot the moment payment clears — no race
+there, the client already chose them. Any slots still open after that (a multi-runner job
+like a move-out needs more hands than the one who bid) get broadcast exactly like Track A,
+and when two runners accept the same slot at the same moment, one wins and the other is
+told the job was taken. That race is settled in the database, under a serializable
+transaction with optimistic concurrency, rather than in the interface.
 
 ## Layout
 
@@ -143,12 +154,23 @@ test that passes because the provider enforces nothing is worse than no test at 
 
 ## Status
 
-Working end to end: registration and sign in, both order tracks, quotes, payment,
+Working end to end on the backend, covered by its test suite (279 passing against a real
+Postgres instance, not an in-memory stand-in): registration and sign in, Track A pricing,
+Track B's multi-runner bidding (suggested price, competing offers, per-runner private
+threads, accept-closes-the-rest, direct assignment of the winning bidder), payment,
 broadcasting and claiming jobs, order chat, completion with photo evidence, and role
 assignment.
 
 Not built yet:
 
+- **The mobile app's Track B screens.** They still reflect the old design (a single
+  centralized admin quote) — there's an admin-offer panel and offer card built around one
+  quote per order, and the API client calls the old single-offer routes. None of that
+  matches the backend anymore: the runner-bidding endpoints, multi-offer responses, and
+  per-runner chat threads described above need their own mobile-side rework (new
+  runner-facing "make an offer" screen, a client-facing screen to compare and choose among
+  several runners' offers, and a chat screen that can address one runner's thread out of
+  several). Track A screens are unaffected.
 - The admin dashboard. Its endpoints exist, the web surface does not.
 - Live updates. The app still polls; the SignalR hub is in place but not yet consumed.
 - Object storage for photo evidence, which starts to matter once there is more than one

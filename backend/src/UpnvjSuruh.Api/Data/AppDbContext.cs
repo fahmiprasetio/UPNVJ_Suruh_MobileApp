@@ -105,10 +105,14 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             entity.Property(f => f.Note).HasMaxLength(BatasMasukan.Deskripsi);
 
-            // Satu order tidak boleh punya dua penawaran yang sama-sama menunggu jawaban.
-            // Tanpa ini, penawaran kedua diam-diam menimpa yang sedang dibaca klien, dan
-            // klien menekan setuju untuk harga yang berbeda dari yang tampil di layarnya.
-            entity.HasIndex(f => f.OrderId)
+            // Satu runner tidak boleh punya dua penawaran yang sama-sama menunggu jawaban
+            // pada order yang sama. Tanpa ini, penawaran kedua dari runner itu sendiri diam-
+            // diam menimpa yang sedang dibaca klien, dan klien menekan setuju untuk harga
+            // yang berbeda dari yang tampil di layarnya. Runner LAIN tetap boleh punya
+            // penawaran pending miliknya sendiri pada order yang sama persis pada saat
+            // bersamaan, itu bukan tabrakan, itu memang tawar-menawar; makanya kuncinya
+            // pasangan (OrderId, CreatedByRunnerId), bukan OrderId sendirian seperti dulu.
+            entity.HasIndex(f => new { f.OrderId, f.CreatedByRunnerId })
                 .IsUnique()
                 .HasFilter($"\"Status\" = {(int)OfferStatus.Pending}");
 

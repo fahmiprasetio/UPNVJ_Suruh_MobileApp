@@ -27,6 +27,16 @@ public enum OrderTrack
 public enum OrderStatus
 {
     Permintaan,
+
+    /// <summary>
+    /// Tidak lagi diproduksi sejak Jalur B pindah ke tawar-menawar banyak-runner: order
+    /// tetap <see cref="Permintaan"/> selama masih menerima penawaran, karena bisa ada lebih
+    /// dari satu penawaran menunggu sekaligus, bukan satu penawaran tunggal yang menggantung
+    /// jawaban klien. Dibiarkan di enum ini (bukan dihapus) supaya nilai numerik anggota
+    /// sesudahnya, yang sudah tersimpan di baris-baris lama, tidak ikut bergeser artinya, dan
+    /// supaya sisi mobile yang masih menyebut nilai ini tidak perlu ikut diubah dalam
+    /// perbaikan ini.
+    /// </summary>
     MenungguPersetujuanKlien,
     MenungguPembayaran,
     MencariRunner,
@@ -40,7 +50,17 @@ public enum OfferStatus
     Pending,
     Disetujui,
     Ditolak,
-    DinegoUlang
+    DinegoUlang,
+
+    /// <summary>
+    /// Ditutup otomatis oleh sistem karena klien memilih penawaran runner lain.
+    ///
+    /// Beda dari <see cref="Ditolak"/>: yang itu klien sendiri yang menolak penawaran ini
+    /// secara spesifik. Ini terjadi tanpa klien menyentuh penawaran ini sama sekali, jadi
+    /// runner yang bersangkutan perlu tahu bedanya, "kamu ditolak" dan "klien sudah pilih
+    /// orang lain" adalah kabar yang beda.
+    /// </summary>
+    Ditutup
 }
 
 public enum PaymentStatus

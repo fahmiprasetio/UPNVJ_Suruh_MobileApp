@@ -192,8 +192,10 @@ public class PesanTerlihatTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
     [Fact]
     public async Task RunnerKeduaMelihatSejakIaSendiriBergabung()
     {
-        // Pada order yang dipegang beberapa runner, pembandingnya penugasan masing-masing,
-        // bukan penugasan yang paling awal.
+        // Pada order yang butuh beberapa runner, pemenang tawaran mengisi satu slot
+        // langsung begitu dibayar, dan sisa slotnya tetap disiarkan persis seperti Jalur A.
+        // Pembanding visibilitasnya penugasan masing-masing, bukan penugasan yang paling
+        // awal.
         var klien = await AkunAsync(UserRole.Klien);
         var pertama = await AkunAsync(UserRole.Runner);
         var kedua = await AkunAsync(UserRole.Runner);
@@ -204,26 +206,27 @@ public class PesanTerlihatTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
             Deskripsi = "Pindahan satu kamar kos.",
             JadwalMulai = DateTime.UtcNow.AddDays(1),
             JumlahRunnerDibutuhkan = 2,
+            HargaUsulan = 150000m,
         });
         dibuat.EnsureSuccessStatusCode();
         var order = (await dibuat.Content.ReadFromJsonAsync<OrderResponse>())!;
         Assert.Equal(2, order.JumlahRunnerDibutuhkan);
 
-        var admin = await AkunAsync(UserRole.Admin);
-        (await admin.PostAsJsonAsync($"/api/orders/{order.Id}/penawaran", new
+        var ditawar = await pertama.PostAsJsonAsync($"/api/orders/{order.Id}/penawaran", new
         {
             Harga = 150000m,
             EstimasiDurasiMenit = 120,
             JadwalMulai = DateTime.UtcNow.AddDays(1),
-        })).EnsureSuccessStatusCode();
-        (await klien.PostAsync($"/api/orders/{order.Id}/penawaran/setujui", null))
+        });
+        ditawar.EnsureSuccessStatusCode();
+        var penawaranId = (await ditawar.Content.ReadFromJsonAsync<OrderResponse>())!
+            .Penawaran.Single().Id;
+
+        (await klien.PostAsync($"/api/orders/{order.Id}/penawaran/{penawaranId}/setujui", null))
             .EnsureSuccessStatusCode();
         await BayarAsync(order.Id, 150000m);
 
-        var terimaPertama = await pertama.PostAsync($"/api/orders/{order.Id}/terima", null);
-        Assert.True(
-            (await terimaPertama.Content.ReadFromJsonAsync<TerimaOrderResponse>())!.Dapat,
-            "runner pertama gagal mengambil order");
+        // Pertama sudah otomatis terpasang begitu dibayar, tidak perlu menekan terima.
         await KirimAsync(klien, order.Id, "runner pertama sudah jalan");
         var terimaKedua = await kedua.PostAsync($"/api/orders/{order.Id}/terima", null);
         var hasilKedua = (await terimaKedua.Content.ReadFromJsonAsync<TerimaOrderResponse>())!;

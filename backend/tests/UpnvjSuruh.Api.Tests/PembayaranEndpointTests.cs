@@ -177,6 +177,7 @@ public class PembayaranEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<
             ServiceType = nameof(ServiceType.BersihKos),
             Deskripsi = "Kos dua kamar",
             JadwalMulai = DateTime.UtcNow.AddDays(2),
+            HargaUsulan = 100000m,
         });
         var order = (await buat.Content.ReadFromJsonAsync<OrderResponse>())!;
 

@@ -50,6 +50,19 @@ public class Order
     /// <summary>Jadwal mulai untuk Jalur B, dan untuk Jalur A tetap null.</summary>
     public DateTime? ScheduledStart { get; set; }
 
+    /// <summary>
+    /// Harga yang disanggupi klien saat membuat permintaan Jalur B, sebelum ada runner yang
+    /// menawar.
+    ///
+    /// Bukan harga order: cuma titik awal tawar-menawar, dipajang ke runner yang menimbang
+    /// permintaan ini supaya mereka tahu ekspektasi klien sebelum menyanggupi angka itu atau
+    /// mengajukan angka sendiri. Harga order sungguhan tetap hanya bisa datang dari
+    /// <see cref="OrderOffer"/> yang disetujui klien, persis seperti Jalur B sebelumnya, jadi
+    /// aturan "klien tidak pernah menentukan harga order sendiri" tidak berubah oleh kolom
+    /// ini.
+    /// </summary>
+    public decimal? SuggestedPrice { get; set; }
+
     public decimal? Price { get; set; }
     public TimeSpan? EstimatedDuration { get; set; }
 

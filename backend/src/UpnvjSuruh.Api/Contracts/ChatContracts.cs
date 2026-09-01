@@ -11,17 +11,27 @@ namespace UpnvjSuruh.Api.Contracts;
 /// perannya diturunkan server dari hubungannya dengan order ini. Peran yang disebutkan
 /// pemanggil berarti siapa pun bisa menulis atas nama admin, dan pesan yang tampak dari
 /// admin adalah pesan yang dipercaya orang.
+///
+/// <see cref="RunnerId"/> cuma dipakai klien, dan cuma berarti selama order Jalur B masih
+/// menerima penawaran (bisa ada beberapa runner menawar bersamaan): menyebutkan runner
+/// mana yang sedang diajak bicara, karena tiap runner punya jalur obrolannya sendiri
+/// dengan klien. Runner sendiri tidak perlu mengisi ini; server selalu memakai jalur
+/// obrolan miliknya sendiri, tidak pernah mempercayai runner lain yang disebutkan
+/// pemanggil.
 /// </summary>
 public record KirimPesanRequest
 {
     [Required(AllowEmptyStrings = false)]
     [MaxLength(BatasMasukan.PesanChat)]
     public string Isi { get; init; } = string.Empty;
+
+    public Guid? RunnerId { get; init; }
 }
 
 public record OrderMessageResponse(
     Guid Id,
     Guid OrderId,
+    Guid? RunnerId,
     Guid PengirimId,
     string PeranPengirim,
     string? Isi,
@@ -30,6 +40,7 @@ public record OrderMessageResponse(
     public static OrderMessageResponse Dari(OrderMessage pesan) => new(
         pesan.Id,
         pesan.OrderId,
+        pesan.RunnerPenawarId,
         pesan.SenderId,
         pesan.SenderRole.ToString(),
         pesan.Text,

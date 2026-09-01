@@ -12,17 +12,20 @@ namespace UpnvjSuruh.Api.Controllers;
 /// <summary>
 /// Jalur B: pekerjaan yang harganya tidak bisa dihitung sebelum dilihat.
 ///
-/// Alurnya tawar-menawar, bukan pesan-langsung-bayar. Klien menuliskan kebutuhannya, admin
-/// membalas dengan penawaran, klien menyetujui, menolak, atau meminta dihitung ulang.
-/// Selama belum disetujui, angka di penawaran belum jadi harga order, karena order yang
-/// memajang harga yang belum disepakati akan terbaca sebagai tagihan.
+/// Alurnya tawar-menawar, mirip aplikasi ojek daring, bukan penawaran tunggal dari satu
+/// admin. Klien menuliskan kebutuhannya sekaligus mengusulkan harga, lalu permintaan itu
+/// terbuka untuk ditawar seluruh runner yang tersedia. Beberapa runner boleh punya
+/// penawaran yang sama-sama menunggu jawaban klien pada order yang sama; klien memilih
+/// satu, sisanya otomatis ditutup. Selama belum dipilih, angka di penawaran mana pun belum
+/// jadi harga order, karena order yang memajang harga yang belum disepakati akan terbaca
+/// sebagai tagihan.
 /// </summary>
 [ApiController]
 [Route("api/orders")]
 [Authorize]
 public class JalurBController(AppDbContext db) : ControllerBase
 {
-    /// <summary>Klien mengirim permintaan Jalur B. Belum ada harga di sini.</summary>
+    /// <summary>Klien mengirim permintaan Jalur B, sekaligus mengusulkan harga.</summary>
     [EnableRateLimiting(BatasLaju.KebijakanTulis)]
     [HttpPost("jalur-b")]
     [Authorize(Roles = Peran.Klien)]
@@ -49,12 +52,13 @@ public class JalurBController(AppDbContext db) : ControllerBase
             ClientId = klienId,
             ServiceType = permintaan.ServiceType,
             // Lahir sebagai permintaan, bukan menunggu pembayaran. Belum ada yang bisa
-            // dibayar sampai admin menyebut angkanya.
+            // dibayar sampai satu penawaran runner disetujui klien.
             Status = OrderStatus.Permintaan,
             Description = permintaan.Deskripsi.Trim(),
             DestinationAddress = permintaan.AlamatTujuan?.Trim(),
             ScheduledStart = permintaan.JadwalMulai.ToUniversalTime(),
             RequiredRunnerCount = permintaan.JumlahRunnerDibutuhkan,
+            SuggestedPrice = permintaan.HargaUsulan,
         };
 
         db.Orders.Add(order);
@@ -68,15 +72,20 @@ public class JalurBController(AppDbContext db) : ControllerBase
     }
 
     /// <summary>
-    /// Admin mengirim penawaran harga untuk satu permintaan.
+    /// Seorang runner mengirim penawaran harga untuk satu permintaan.
     /// </summary>
     /// <remarks>
     /// Hanya Jalur B yang punya penawaran. Harga Jalur A dihitung dari isian form sejak
     /// awal, dan mengizinkan penawaran di sana berarti membuka jalan mengubah harga yang
     /// sudah tertulis di layar klien.
+    ///
+    /// Runner boleh mengirim harga persis sama dengan <see cref="Order.SuggestedPrice"/>
+    /// kalau ia setuju dengan usulan klien apa adanya, atau angka lain kalau ia mau menawar
+    /// balik. Keduanya penawaran yang sah dan sama-sama bisa dipilih klien; tidak ada jalur
+    /// "setuju" yang terpisah dari mengirim penawaran.
     /// </remarks>
     [HttpPost("{id:guid}/penawaran")]
-    [Authorize(Roles = Peran.Admin)]
+    [Authorize(Roles = Peran.Runner)]
     public async Task<ActionResult<OrderResponse>> BuatPenawaran(
         Guid id,
         BuatPenawaranRequest permintaan,
@@ -90,20 +99,31 @@ public class JalurBController(AppDbContext db) : ControllerBase
             return Salah("Bukan Jalur B", "Harga order ini sudah pasti sejak dibuat.");
         }
 
-        // Hanya permintaan yang belum punya penawaran menunggu yang boleh ditawari. Tanpa
-        // syarat ini, penawaran kedua diam-diam menimpa penawaran yang sedang dibaca klien,
-        // dan klien menekan setuju untuk harga yang berbeda dari yang tampil di layarnya.
+        var runnerId = User.Id();
+
+        // Klien yang akun yang sama juga menyandang peran Runner tidak boleh menawar
+        // ordernya sendiri. Tanpa ini, satu akun bisa "memenangkan" pesanannya sendiri
+        // dengan harga berapa pun yang ia mau.
+        if (order.ClientId == runnerId)
+        {
+            return Salah("Tidak bisa menawar order sendiri", "Order ini milik Anda sebagai klien.");
+        }
+
+        // Order yang masih menerima penawaran selalu berstatus Permintaan, tidak peduli
+        // sudah ada berapa banyak penawaran pending di dalamnya. Status berubah hanya
+        // ketika klien sudah memilih satu, jadi ini juga yang menahan runner menawar order
+        // yang penawarannya sudah dipilih atau dibatalkan.
         if (order.Status != OrderStatus.Permintaan)
         {
             return Salah(
-                "Bukan permintaan yang menunggu penawaran",
+                "Bukan permintaan yang menerima penawaran",
                 $"Order ini sedang berstatus {order.Status}.");
         }
 
         var penawaran = new OrderOffer
         {
             OrderId = order.Id,
-            CreatedByAdminId = User.Id(),
+            CreatedByRunnerId = runnerId,
             Price = permintaan.Harga,
             EstimatedDuration = TimeSpan.FromMinutes(permintaan.EstimasiDurasiMenit),
             ScheduledStart = permintaan.JadwalMulai.ToUniversalTime(),
@@ -121,9 +141,9 @@ public class JalurBController(AppDbContext db) : ControllerBase
         // `order.Offers` begitu terlacak, dan penawarannya jadi muncul dua kali di jawaban.
         db.OrderOffers.Add(penawaran);
 
-        // Harga ordernya sengaja tidak diisi di sini. Angka itu masih usulan sampai klien
-        // menyetujuinya.
-        order.Status = OrderStatus.MenungguPersetujuanKlien;
+        // Status ordernya sengaja tidak berubah di sini. Runner lain masih boleh menawar
+        // selama klien belum memilih siapa pun, dan harga ordernya baru terisi begitu
+        // klien menyetujui satu penawaran, bukan begitu penawaran pertama masuk.
 
         try
         {
@@ -131,10 +151,12 @@ public class JalurBController(AppDbContext db) : ControllerBase
         }
         catch (DbUpdateException galat) when (GalatDb.Bentrok(galat))
         {
-            // Dua admin menawar order yang sama pada saat yang sama. Index unik parsial pada
-            // penawaran yang masih menunggu yang menahannya, bukan pemeriksaan status di atas,
-            // karena keduanya membaca sebelum ada yang menulis.
-            return Konflik("Order ini baru saja ditawari admin lain.");
+            // Runner yang sama mengirim dua penawaran sekaligus untuk order yang sama.
+            // Index unik parsial pada pasangan (OrderId, CreatedByRunnerId) yang menahannya,
+            // bukan pemeriksaan status di atas, karena keduanya membaca sebelum ada yang
+            // menulis. Runner LAIN yang menawar order ini pada saat bersamaan tidak kena
+            // konflik ini sama sekali, itu memang tawar-menawar, bukan tabrakan.
+            return Konflik("Anda sudah punya penawaran yang menunggu jawaban untuk order ini.");
         }
 
         return Ok(OrderResponse.Dari(
@@ -142,17 +164,21 @@ public class JalurBController(AppDbContext db) : ControllerBase
     }
 
     /// <summary>
-    /// Klien menyetujui penawaran yang sedang menunggu.
+    /// Klien menyetujui satu penawaran tertentu.
     /// </summary>
     /// <remarks>
-    /// Di sinilah harga, estimasi durasi, dan jadwal penawaran pindah menjadi milik ordernya,
-    /// lalu order lanjut ke menunggu pembayaran.
+    /// Di sinilah harga, estimasi durasi, dan jadwal penawaran itu pindah menjadi milik
+    /// ordernya, lalu order lanjut ke menunggu pembayaran. Seluruh penawaran lain yang
+    /// masih menunggu pada order yang sama otomatis ditutup: runner yang tidak terpilih
+    /// tidak menggantung tanpa kabar, dan tidak ada dua penawaran yang bisa disetujui untuk
+    /// order yang sama.
     /// </remarks>
-    [HttpPost("{id:guid}/penawaran/setujui")]
+    [HttpPost("{id:guid}/penawaran/{offerId:guid}/setujui")]
     [Authorize(Roles = Peran.Klien)]
-    public async Task<ActionResult<OrderResponse>> Setujui(Guid id, CancellationToken batal)
+    public async Task<ActionResult<OrderResponse>> Setujui(
+        Guid id, Guid offerId, CancellationToken batal)
     {
-        var (order, penawaran, galat) = await MuatUntukKlien(id, batal);
+        var (order, penawaran, galat) = await MuatPenawaranUntukKlien(id, offerId, batal);
         if (galat is not null) return galat;
 
         order!.Price = penawaran!.Price;
@@ -161,59 +187,69 @@ public class JalurBController(AppDbContext db) : ControllerBase
         order.Status = OrderStatus.MenungguPembayaran;
         Jawab(penawaran, OfferStatus.Disetujui);
 
+        foreach (var lainnya in order.Offers.Where(f => f.Id != penawaran.Id && f.Status == OfferStatus.Pending))
+        {
+            Jawab(lainnya, OfferStatus.Ditutup);
+        }
+
         await db.SaveChangesAsync(batal);
         return Ok(OrderResponse.Dari(
             order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, User.Id(), User.Punya(Peran.Admin), batal)));
     }
 
     /// <summary>
-    /// Klien menolak penawaran.
+    /// Klien menolak satu penawaran tertentu.
     /// </summary>
     /// <remarks>
-    /// Penolakan mengakhiri ordernya, bukan mengembalikannya ke antrean admin. Klien yang
-    /// masih berminat dengan harga lain memakai nego; yang menekan tolak memang sudah tidak
-    /// berminat.
+    /// Menolak satu penawaran tidak mengakhiri ordernya, dan tidak menyentuh penawaran
+    /// runner lain yang masih menunggu pada order yang sama. Klien yang mau membatalkan
+    /// permintaannya sama sekali memakai endpoint pembatalan order, bukan ini: ini cuma
+    /// urusan satu penawaran dari satu runner.
     /// </remarks>
-    [HttpPost("{id:guid}/penawaran/tolak")]
+    [HttpPost("{id:guid}/penawaran/{offerId:guid}/tolak")]
     [Authorize(Roles = Peran.Klien)]
-    public async Task<ActionResult<OrderResponse>> Tolak(Guid id, CancellationToken batal)
+    public async Task<ActionResult<OrderResponse>> Tolak(
+        Guid id, Guid offerId, CancellationToken batal)
     {
-        var (order, penawaran, galat) = await MuatUntukKlien(id, batal);
+        var (order, penawaran, galat) = await MuatPenawaranUntukKlien(id, offerId, batal);
         if (galat is not null) return galat;
 
-        order!.Status = OrderStatus.Batal;
         Jawab(penawaran!, OfferStatus.Ditolak);
 
         await db.SaveChangesAsync(batal);
         return Ok(OrderResponse.Dari(
-            order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, User.Id(), User.Punya(Peran.Admin), batal)));
+            order!, order!.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, User.Id(), User.Punya(Peran.Admin), batal)));
     }
 
     /// <summary>
-    /// Klien meminta penawaran ditinjau ulang, disertai alasannya.
+    /// Klien meminta satu penawaran tertentu ditinjau ulang, disertai alasannya.
     /// </summary>
     /// <remarks>
-    /// Ordernya kembali ke antrean admin, dan alasannya ditulis sebagai pesan di chat
-    /// ordernya. Alasan itu tidak disimpan di dalam penawaran karena tempat menjawabnya
-    /// memang chat: admin membaca, bertanya kalau perlu, lalu mengirim penawaran baru.
+    /// Bukan dikembalikan ke antrean admin seperti dulu, karena tidak ada lagi antrean
+    /// admin di Jalur B: alasannya ditulis di jalur obrolan pribadi klien dengan runner
+    /// yang bersangkutan, dan runner itu bebas mengirim penawaran baru begitu penawaran
+    /// lamanya berstatus DinegoUlang (bukan lagi Pending), tanpa menyentuh runner lain
+    /// yang mungkin sedang menawar order yang sama.
     /// </remarks>
-    [HttpPost("{id:guid}/penawaran/nego")]
+    [HttpPost("{id:guid}/penawaran/{offerId:guid}/nego")]
     [Authorize(Roles = Peran.Klien)]
     public async Task<ActionResult<OrderResponse>> Nego(
         Guid id,
+        Guid offerId,
         NegoPenawaranRequest permintaan,
         CancellationToken batal)
     {
-        var (order, penawaran, galat) = await MuatUntukKlien(id, batal);
+        var (order, penawaran, galat) = await MuatPenawaranUntukKlien(id, offerId, batal);
         if (galat is not null) return galat;
 
-        // Kembali ke antrean admin, bukan batal: klien masih berminat.
-        order!.Status = OrderStatus.Permintaan;
         Jawab(penawaran!, OfferStatus.DinegoUlang);
 
         db.OrderMessages.Add(new OrderMessage
         {
-            OrderId = order.Id,
+            OrderId = order!.Id,
+            // Ditandai ke jalur obrolan pribadi runner ini, bukan chat umum, supaya runner
+            // lain yang sedang menawar order yang sama tidak ikut membaca alasan nego ini.
+            RunnerPenawarId = penawaran!.CreatedByRunnerId,
             // Pengirimnya diambil dari token. Peran penulis pesan tidak pernah datang dari
             // badan permintaan, karena kalau begitu siapa pun bisa menulis atas nama admin.
             SenderId = User.Id(),
@@ -233,14 +269,15 @@ public class JalurBController(AppDbContext db) : ControllerBase
         .SingleOrDefaultAsync(o => o.Id == id, batal);
 
     /// <summary>
-    /// Memuat order beserta penawaran yang menunggu, sambil memastikan pemanggilnya memang
-    /// pemesan order itu.
+    /// Memuat order beserta satu penawaran tertentu yang masih menunggu jawaban, sambil
+    /// memastikan pemanggilnya memang pemesan order itu.
     ///
     /// Peran klien saja tidak cukup. Tanpa pemeriksaan pemilik, klien mana pun bisa
-    /// menyetujui atau menolak penawaran di order orang lain, cukup dengan menebak idnya.
+    /// menjawab penawaran di order orang lain, cukup dengan menebak idnya.
     /// </summary>
-    private async Task<(Order? Order, OrderOffer? Penawaran, ActionResult? Galat)> MuatUntukKlien(
+    private async Task<(Order? Order, OrderOffer? Penawaran, ActionResult? Galat)> MuatPenawaranUntukKlien(
         Guid id,
+        Guid offerId,
         CancellationToken batal)
     {
         var order = await Muat(id, batal);
@@ -250,12 +287,12 @@ public class JalurBController(AppDbContext db) : ControllerBase
         // bahwa ordernya ada.
         if (order.ClientId != User.Id()) return (null, null, NotFound());
 
-        var penawaran = order.Offers.SingleOrDefault(f => f.Status == OfferStatus.Pending);
-        if (penawaran is null || order.Status != OrderStatus.MenungguPersetujuanKlien)
+        var penawaran = order.Offers.SingleOrDefault(f => f.Id == offerId && f.Status == OfferStatus.Pending);
+        if (penawaran is null)
         {
             return (null, null, Salah(
-                "Tidak ada penawaran yang menunggu jawaban",
-                $"Order ini sedang berstatus {order.Status}."));
+                "Tidak ada penawaran yang menunggu jawaban dengan id itu",
+                "Penawaran ini mungkin sudah dijawab, ditutup, atau tidak pernah ada."));
         }
 
         return (order, penawaran, null);

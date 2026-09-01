@@ -13,15 +13,19 @@ namespace UpnvjSuruh.Api.Auth;
 public static class AksesOrder
 {
     /// <summary>
-    /// Pemesannya, runner yang memegangnya, dan admin. Selain itu tidak ada.
+    /// Pemesannya, runner yang memegangnya, runner yang sedang menawar di order Jalur B ini,
+    /// dan admin. Selain itu tidak ada.
     ///
-    /// Runner lain sengaja tidak termasuk, walaupun ia melihat order ini di daftar siaran.
-    /// Yang tampil di siaran cuma secukupnya untuk memutuskan mau ambil atau tidak; alamat
-    /// dan percakapannya baru terbuka setelah ia benar-benar memegang ordernya.
+    /// Runner yang cuma melihat order ini di daftar siaran (belum pernah menawar atau
+    /// dipegang) sengaja tidak termasuk. Yang tampil di siaran cuma secukupnya untuk
+    /// memutuskan mau menawar atau tidak; alamat lengkap dan percakapannya baru terbuka
+    /// setelah ia benar-benar mengajukan penawaran atau memegang ordernya. Membutuhkan
+    /// <c>order.Offers</c> ikut dimuat oleh pemanggil, sama seperti <c>RunnerAssignments</c>.
     /// </summary>
     public static bool BolehLihat(Order order, Guid pemanggil, ClaimsPrincipal pengguna) =>
         order.ClientId == pemanggil
         || order.RunnerAssignments.Any(a => a.RunnerId == pemanggil)
+        || order.Offers.Any(f => f.CreatedByRunnerId == pemanggil)
         || pengguna.Punya(Peran.Admin);
 
     /// <summary>
@@ -37,6 +41,7 @@ public static class AksesOrder
     {
         if (order.ClientId == pemanggil) return UserRole.Klien;
         if (order.RunnerAssignments.Any(a => a.RunnerId == pemanggil)) return UserRole.Runner;
+        if (order.Offers.Any(f => f.CreatedByRunnerId == pemanggil)) return UserRole.Runner;
         if (pengguna.Punya(Peran.Admin)) return UserRole.Admin;
         return null;
     }

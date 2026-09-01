@@ -49,6 +49,7 @@ public class PenyelesaiPembayaran(
     {
         var order = await db.Orders
             .Include(o => o.Payments)
+            .Include(o => o.Offers)
             .SingleOrDefaultAsync(o => o.Id == orderId, batal);
 
         if (order is null) return HasilPenyelesaian.TidakDitemukan;
@@ -150,6 +151,47 @@ public class PenyelesaiPembayaran(
         var sekarang = DateTime.UtcNow;
         pembayaran.SettledAt = sekarang;
         order.PaidAt = sekarang;
+
+        if (order.Track == OrderTrack.JalurB)
+        {
+            // Jalur B sudah punya pemenang tawaran pertamanya sejak klien menyetujui satu
+            // penawaran runner, jauh sebelum pembayaran ini terjadi. Runner itu langsung
+            // diberi satu slot penugasan di sini, tanpa rebutan.
+            var penawaranDisetujui = order.Offers.SingleOrDefault(f => f.Status == OfferStatus.Disetujui);
+            if (penawaranDisetujui is null)
+            {
+                // Tidak seharusnya terjadi: order Jalur B cuma bisa sampai MenungguPembayaran
+                // lewat JalurBController.Setujui, dan itu selalu meninggalkan tepat satu
+                // penawaran berstatus Disetujui. Dicatat, bukan dilempar, karena uangnya
+                // sudah terlanjur masuk dan harus tetap tercatat lunas.
+                log.LogError(
+                    "Order Jalur B {OrderId} lunas tapi tidak ada penawaran yang disetujui.",
+                    order.Id);
+                await db.SaveChangesAsync(batal);
+                return HasilPenyelesaian.Dicatat;
+            }
+
+            db.OrderRunnerAssignments.Add(new OrderRunnerAssignment
+            {
+                OrderId = order.Id,
+                RunnerId = penawaranDisetujui.CreatedByRunnerId,
+            });
+
+            if (order.RequiredRunnerCount <= 1)
+            {
+                // Satu slot yang dibutuhkan sudah terisi oleh pemenang tawaran itu sendiri.
+                // Tidak ada yang perlu disiarkan lagi.
+                order.Status = OrderStatus.Dikerjakan;
+                await db.SaveChangesAsync(batal);
+                return HasilPenyelesaian.Lunas;
+            }
+
+            // Order butuh lebih dari satu orang (misal pindahan kos), dan pemenang tawaran
+            // baru mengisi satu slot. Sisa slotnya disiarkan persis seperti Jalur A di
+            // bawah, dengan slot yang sudah terisi ini ikut terhitung begitu runner lain
+            // menekan terima.
+        }
+
         order.Status = OrderStatus.MencariRunner;
 
         await db.SaveChangesAsync(batal);

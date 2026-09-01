@@ -65,6 +65,7 @@ public class PenjagaanKecilTests(DatabaseApiFactory pabrik) : IClassFixture<Data
             ServiceType = nameof(ServiceType.BersihKos),
             Deskripsi = "Kos dua kamar.",
             JadwalMulai = DateTime.UtcNow.AddDays(-1),
+            HargaUsulan = 100000m,
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, jawaban.StatusCode);
@@ -82,6 +83,7 @@ public class PenjagaanKecilTests(DatabaseApiFactory pabrik) : IClassFixture<Data
             ServiceType = nameof(ServiceType.BersihKos),
             Deskripsi = "Kos dua kamar.",
             JadwalMulai = DateTime.UtcNow.AddDays(1),
+            HargaUsulan = 100000m,
         });
 
         Assert.Equal(HttpStatusCode.Created, jawaban.StatusCode);
@@ -101,29 +103,31 @@ public class PenjagaanKecilTests(DatabaseApiFactory pabrik) : IClassFixture<Data
             ServiceType = nameof(ServiceType.BersihKos),
             Deskripsi = "Kos dua kamar.",
             JadwalMulai = DateTime.UtcNow.AddMinutes(-2),
+            HargaUsulan = 100000m,
         });
 
         Assert.Equal(HttpStatusCode.Created, jawaban.StatusCode);
     }
 
     [Fact]
-    public async Task PenawaranAdminBerjadwalMasaLaluDitolak()
+    public async Task PenawaranRunnerBerjadwalMasaLaluDitolak()
     {
-        // Aturan yang sama berlaku untuk admin. Jadwal yang mengikat kedua pihak tidak jadi
-        // lebih masuk akal cuma karena yang mengetiknya admin.
+        // Aturan yang sama berlaku untuk runner. Jadwal yang mengikat kedua pihak tidak jadi
+        // lebih masuk akal cuma karena yang mengetiknya runner.
         var klien = await AkunAsync(UserRole.Klien);
-        var admin = await AkunAsync(UserRole.Admin);
+        var runner = await AkunAsync(UserRole.Runner);
 
         var dibuat = await klien.PostAsJsonAsync("/api/orders/jalur-b", new
         {
             ServiceType = nameof(ServiceType.BersihKos),
             Deskripsi = "Kos dua kamar.",
             JadwalMulai = DateTime.UtcNow.AddDays(1),
+            HargaUsulan = 100000m,
         });
         dibuat.EnsureSuccessStatusCode();
         var order = (await dibuat.Content.ReadFromJsonAsync<OrderResponse>())!;
 
-        var jawaban = await admin.PostAsJsonAsync($"/api/orders/{order.Id}/penawaran", new
+        var jawaban = await runner.PostAsJsonAsync($"/api/orders/{order.Id}/penawaran", new
         {
             Harga = 150000m,
             EstimasiDurasiMenit = 120,

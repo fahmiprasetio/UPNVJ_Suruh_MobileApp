@@ -1,12 +1,14 @@
 namespace UpnvjSuruh.Api.Domain;
 
 /// <summary>
-/// Penawaran harga dari admin untuk order Jalur B.
+/// Penawaran harga dari seorang runner untuk order Jalur B.
 ///
-/// Penawaran adalah usulan, bukan keputusan. Selama statusnya <see cref="OfferStatus.Pending"/>,
-/// angka di dalamnya belum boleh dianggap harga order: harga baru pindah ke ordernya ketika
-/// klien menyetujuinya. Order yang memajang harga yang belum disepakati akan terbaca sebagai
-/// tagihan, dan itu janji yang belum tentu ditepati.
+/// Beberapa penawaran boleh menunggu jawaban klien secara bersamaan untuk order yang sama,
+/// satu per runner yang berminat, mirip tawar-menawar di aplikasi ojek daring. Penawaran
+/// adalah usulan, bukan keputusan. Selama statusnya <see cref="OfferStatus.Pending"/>, angka
+/// di dalamnya belum boleh dianggap harga order: harga baru pindah ke ordernya ketika klien
+/// menyetujui salah satu penawaran. Order yang memajang harga yang belum disepakati akan
+/// terbaca sebagai tagihan, dan itu janji yang belum tentu ditepati.
 /// </summary>
 public class OrderOffer
 {
@@ -14,7 +16,7 @@ public class OrderOffer
     public required Guid OrderId { get; set; }
     public Order? Order { get; set; }
 
-    public required Guid CreatedByAdminId { get; set; }
+    public required Guid CreatedByRunnerId { get; set; }
 
     public decimal Price { get; set; }
     public TimeSpan EstimatedDuration { get; set; }

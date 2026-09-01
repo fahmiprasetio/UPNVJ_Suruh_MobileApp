@@ -60,6 +60,7 @@ public class BerkasBuktiController(AppDbContext db, PenyimpanFoto penyimpan) : C
         // menyentuh basis data sama sekali. Nama karangan tidak perlu sampai jadi kueri.
         var order = await db.Orders
             .Include(o => o.RunnerAssignments)
+            .Include(o => o.Offers)
             .SingleOrDefaultAsync(o => o.Id == orderId.Value, batal);
 
         if (order is null) return NotFound();

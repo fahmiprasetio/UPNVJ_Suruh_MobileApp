@@ -73,13 +73,15 @@ enum OfferStatus {
   pending,
   disetujui,
   ditolak,
-  dinegoUlang;
+  dinegoUlang,
+  ditutup;
 
   String get label => switch (this) {
     OfferStatus.pending => 'Menunggu jawabanmu',
     OfferStatus.disetujui => 'Disetujui',
     OfferStatus.ditolak => 'Ditolak',
     OfferStatus.dinegoUlang => 'Diminta ditinjau ulang',
+    OfferStatus.ditutup => 'Klien sudah pilih runner lain',
   };
 }
 

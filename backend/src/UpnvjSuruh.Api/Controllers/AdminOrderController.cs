@@ -12,10 +12,11 @@ namespace UpnvjSuruh.Api.Controllers;
 /// Daftar order dari sudut pandang admin.
 /// </summary>
 /// <remarks>
-/// Ini yang menutup alur Jalur B. Admin sudah punya endpoint untuk mengirim penawaran, tapi
-/// belum punya satu pun cara menemukan permintaan yang perlu ditawari: ia cuma bisa membuka
-/// order yang id-nya sudah ia ketahui, dan tidak ada yang memberitahunya id itu. Sebuah
-/// antrean pekerjaan yang tidak bisa dilihat sama saja dengan tidak ada antreannya.
+/// Admin tidak lagi menentukan harga Jalur B, itu sekarang urusan tawar-menawar langsung
+/// antara klien dan runner. Yang tersisa untuk admin murni memantau: melihat semua order
+/// yang berjalan, disaring statusnya, tanpa perlu tahu id-nya lebih dulu, supaya order yang
+/// macet atau penawaran yang janggal tetap kelihatan tanpa admin harus menebak-nebak id
+/// mana yang perlu diperiksa.
 ///
 /// Terpisah dari OrdersController karena pertanyaannya memang berbeda. Yang di sana selalu
 /// "order milik siapa": pemesannya melihat ordernya sendiri, runner melihat yang ia pegang.

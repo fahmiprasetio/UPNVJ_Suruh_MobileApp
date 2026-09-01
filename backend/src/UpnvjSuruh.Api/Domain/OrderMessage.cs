@@ -16,6 +16,19 @@ public class OrderMessage
     public required Guid SenderId { get; set; }
 
     /// <summary>
+    /// Jalur obrolan pribadi milik runner ini pada tahap tawar-menawar Jalur B, atau
+    /// <c>null</c> kalau pesan ini bukan bagian dari tawar-menawar (chat umum Jalur A, atau
+    /// chat Jalur B sesudah satu runner terpilih).
+    ///
+    /// Selama beberapa runner menawar bersamaan pada order yang sama, masing-masing punya
+    /// obrolannya sendiri dengan klien; nilai ini yang memisahkannya, supaya runner satu
+    /// tidak pernah membaca tawar-menawar runner lain pada order yang sama. Klien boleh
+    /// melihat semuanya karena ialah yang memilih di antaranya; runner cuma boleh melihat
+    /// miliknya sendiri, dijaga di <see cref="Data.PesanTerlihat"/>.
+    /// </summary>
+    public Guid? RunnerPenawarId { get; set; }
+
+    /// <summary>
     /// Peran pengirim pada order ini, saat pesannya dikirim.
     ///
     /// Diturunkan server dari hubungannya dengan order, tidak pernah diterima dari badan
