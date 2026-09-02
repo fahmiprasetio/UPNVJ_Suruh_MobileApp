@@ -6,6 +6,7 @@ import 'package:upnvj_suruh/app.dart';
 
 import '../../support/tiruan.dart';
 import 'package:upnvj_suruh/core/config/tarif_config.dart';
+import 'package:upnvj_suruh/domain/models/tarif.dart';
 import 'package:upnvj_suruh/domain/pricing/kalkulator_tarif.dart';
 
 void main() {
@@ -71,7 +72,7 @@ void main() {
 
   group('KalkulatorTarif.jastipBarang', () {
     test('menjumlahkan ongkos jasa titip dengan ongkos jarak', () {
-      final hasil = KalkulatorTarif.jastipBarang(jarakKm: 2);
+      final hasil = KalkulatorTarif.jastipBarang(jarakKm: 2, tarif: Tarif.bawaan);
 
       expect(hasil.total, 14000); // 10.000 + (2 x 2.000)
       expect(hasil.rincian.first.label, 'Ongkos jasa titip');
@@ -83,7 +84,7 @@ void main() {
       // Rumusnya hanya punya dua komponen: jasa dan jarak. Kalau nanti mitra
       // memutuskan harga barang ikut ditagih, tes ini yang harus berubah
       // lebih dulu (bagian 14.7a).
-      final hasil = KalkulatorTarif.jastipBarang(jarakKm: 5);
+      final hasil = KalkulatorTarif.jastipBarang(jarakKm: 5, tarif: Tarif.bawaan);
 
       expect(hasil.rincian, hasLength(2));
       expect(
@@ -93,7 +94,7 @@ void main() {
     });
 
     test('jarak di atas batas ditahan di maksimal', () {
-      final hasil = KalkulatorTarif.jastipBarang(jarakKm: 100);
+      final hasil = KalkulatorTarif.jastipBarang(jarakKm: 100, tarif: Tarif.bawaan);
 
       expect(hasil.rincian.last.label, 'Jarak 15 km');
     });

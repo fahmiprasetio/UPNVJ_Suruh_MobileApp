@@ -8,6 +8,7 @@ import '../../domain/models/halaman.dart';
 import '../../domain/models/order.dart';
 import '../../domain/models/order_message.dart';
 import '../../domain/models/order_offer.dart';
+import '../../domain/models/tarif.dart';
 import '../../domain/pricing/kalkulator_tarif.dart';
 import '../../domain/repositories/order_repository.dart';
 import 'seed_data.dart';
@@ -247,7 +248,7 @@ class FakeOrderRepository implements OrderRepository {
     // Harganya dihitung di sini, bukan diterima dari pemanggil, sama seperti di
     // server. Tiruan yang menerima harga jadi akan membuat layar dibangun dengan
     // asumsi yang tidak berlaku di sana.
-    final tarif = KalkulatorTarif.hitung(serviceType, jarakKm);
+    final tarif = KalkulatorTarif.hitung(serviceType, jarakKm, Tarif.bawaan);
 
     final klienId = _pemanggil();
     final order = Order(

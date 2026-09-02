@@ -7,15 +7,19 @@ import '../core/config/sumber_data.dart';
 import '../data/api/api_auth_repository.dart';
 import '../data/api/api_foto_bukti_repository.dart';
 import '../data/api/api_order_repository.dart';
+import '../data/api/api_tarif_repository.dart';
 import '../data/api/sesi_token.dart';
 import '../data/fake/fake_auth_repository.dart';
 import '../data/fake/fake_foto_bukti_repository.dart';
 import '../data/fake/fake_order_repository.dart';
+import '../data/fake/fake_tarif_repository.dart';
 import '../data/fake/seed_data.dart';
 import '../domain/models/app_user.dart';
+import '../domain/models/tarif.dart';
 import '../domain/repositories/auth_repository.dart';
 import '../domain/repositories/foto_bukti_repository.dart';
 import '../domain/repositories/order_repository.dart';
+import '../domain/repositories/tarif_repository.dart';
 
 /// Benar hanya di build debug.
 ///
@@ -66,6 +70,29 @@ final klienApiProvider = Provider<KlienApi>((ref) {
   );
   ref.onDispose(klien.dispose);
   return klien;
+});
+
+/// Titik tukar backend untuk tarif Jalur A.
+final tarifRepositoryProvider = Provider<TarifRepository>((ref) {
+  if (ref.watch(sumberDataProvider) == SumberData.tiruan) {
+    return FakeTarifRepository();
+  }
+  return ApiTarifRepository(klien: ref.watch(klienApiProvider));
+});
+
+/// Tarif yang sedang berlaku, diambil sekali dan disimpan Riverpod selama
+/// providernya masih diawasi.
+///
+/// Bukan `StreamProvider` yang diambil ulang berkala seperti daftar order:
+/// tarif jarang berubah, dan form isian harga menghitung ulang setiap
+/// ketikan. Kalau admin mengubah tarif lewat dashboard web, klien yang
+/// sedang membuka form akan tetap melihat angka lama sampai formnya dibuka
+/// ulang (`FutureProvider` diambil ulang setiap providernya dipasang lagi,
+/// misalnya saat kembali ke layar ini). Itu batas yang sengaja diterima:
+/// mengejar perubahan tarif secara langsung berarti menambah jalur realtime
+/// lagi untuk sesuatu yang berubahnya jarang sekali.
+final tarifProvider = FutureProvider<Tarif>((ref) {
+  return ref.watch(tarifRepositoryProvider).ambilTarif();
 });
 
 /// Titik tukar backend untuk order.

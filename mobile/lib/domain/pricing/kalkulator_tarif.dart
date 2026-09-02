@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
-import '../../core/config/tarif_config.dart';
 import '../enums.dart';
+import '../models/tarif.dart';
 
 /// Satu baris rincian pembentuk harga.
 ///
@@ -27,21 +27,25 @@ class HasilTarif {
 /// Kalkulator harga Jalur A.
 ///
 /// Fungsi murni tanpa ketergantungan ke Flutter maupun jaringan, supaya bisa
-/// diuji langsung dan dipindahkan ke backend apa adanya nanti. Semua angkanya
-/// datang dari [TarifConfig], jangan pernah menulis angka tarif di layar.
+/// diuji langsung dan dipindahkan ke backend apa adanya nanti. Kembaran
+/// `KalkulatorTarif.Hitung` di server, dan bentuknya sengaja sama supaya
+/// perbedaan hasil antara keduanya ketahuan sebagai perbedaan angka, bukan
+/// sebagai perbedaan cara memanggil.
+///
+/// [Tarif] diterima sebagai parameter wajib di setiap fungsi, bukan dibaca
+/// dari konstanta statis: angkanya sekarang datang dari server dan bisa
+/// diubah admin. Tidak ada nilai bawaan untuk parameter ini dengan sengaja —
+/// layar yang lupa mengambil tarif dari [tarifProvider] akan gagal saat
+/// dikompilasi, bukan diam-diam menghitung dengan angka yang salah.
 class KalkulatorTarif {
   const KalkulatorTarif._();
 
   /// Harga satu layanan Jalur A.
   ///
-  /// Satu pintu untuk semua layanan, kembaran `KalkulatorTarif.Hitung` di server,
-  /// dan bentuknya sengaja sama supaya perbedaan hasil antara keduanya ketahuan
-  /// sebagai perbedaan angka, bukan sebagai perbedaan cara memanggil.
-  ///
   /// Yang mengikat tetap hitungan server. Hitungan di sini gunanya menampilkan
   /// rincian sebelum klien memesan, supaya ia tidak perlu menekan tombol dulu
   /// untuk tahu berapa yang akan ditagih.
-  static HasilTarif hitung(ServiceType serviceType, double? jarakKm) {
+  static HasilTarif hitung(ServiceType serviceType, double? jarakKm, Tarif tarif) {
     if (serviceType.track != OrderTrack.jalurA) {
       throw StateError(
         '${serviceType.name} adalah Jalur B, harganya ditentukan admin lewat '
@@ -52,11 +56,13 @@ class KalkulatorTarif {
     return switch (serviceType) {
       ServiceType.anterJemput => anterJemput(
         jarakKm: _wajibJarak(serviceType, jarakKm),
+        tarif: tarif,
       ),
       ServiceType.jastipBarang => jastipBarang(
         jarakKm: _wajibJarak(serviceType, jarakKm),
+        tarif: tarif,
       ),
-      ServiceType.jastipMakanan => jastipMakanan(),
+      ServiceType.jastipMakanan => jastipMakanan(tarif: tarif),
       _ => throw StateError('${serviceType.name} belum punya rumus tarif'),
     };
   }
@@ -76,14 +82,11 @@ class KalkulatorTarif {
   /// Tidak bergantung jarak, jadi tidak menerima jarak sama sekali. Parameter yang
   /// diterima lalu diabaikan akan dibaca orang berikutnya sebagai sesuatu yang
   /// berpengaruh.
-  static HasilTarif jastipMakanan() => const HasilTarif(
+  static HasilTarif jastipMakanan({required Tarif tarif}) => HasilTarif(
     rincian: [
-      RincianTarif(
-        label: 'Ongkos jasa titip',
-        nominal: TarifConfig.jastipMakananFee,
-      ),
+      RincianTarif(label: 'Ongkos jasa titip', nominal: tarif.jastipMakananFee),
     ],
-    total: TarifConfig.jastipMakananFee,
+    total: tarif.jastipMakananFee,
   );
 
   /// Anter jemput: tarif dasar + ongkos jarak.
@@ -92,25 +95,22 @@ class KalkulatorTarif {
   /// keputusan memakai alamat teks bebas, bukan pin peta (rencana capstone
   /// bagian 14.8), tanpa peta, sistem tidak punya cara menghitung jarak
   /// sendiri. Selisih kecil diselesaikan runner dan klien di lapangan.
-  static HasilTarif anterJemput({required double jarakKm}) {
+  static HasilTarif anterJemput({required double jarakKm, required Tarif tarif}) {
     final jarakDipakai = jarakKm.clamp(
-      TarifConfig.anjemJarakMinimalKm,
-      TarifConfig.anjemJarakMaksimalKm,
+      tarif.anjemJarakMinimalKm,
+      tarif.anjemJarakMaksimalKm,
     );
-    final ongkosJarak = (jarakDipakai * TarifConfig.anjemTarifPerKm).round();
+    final ongkosJarak = (jarakDipakai * tarif.anjemTarifPerKm).round();
 
     return HasilTarif(
       rincian: [
-        const RincianTarif(
-          label: 'Tarif dasar',
-          nominal: TarifConfig.anjemTarifDasar,
-        ),
+        RincianTarif(label: 'Tarif dasar', nominal: tarif.anjemTarifDasar),
         RincianTarif(
           label: 'Jarak ${_formatJarak(jarakDipakai)} km',
           nominal: ongkosJarak,
         ),
       ],
-      total: TarifConfig.anjemTarifDasar + ongkosJarak,
+      total: tarif.anjemTarifDasar + ongkosJarak,
     );
   }
 
@@ -124,26 +124,22 @@ class KalkulatorTarif {
   ///
   /// Batas jarak untuk sementara memakai batas anter jemput, karena mitra
   /// belum memberi angka sendiri untuk jastip.
-  static HasilTarif jastipBarang({required double jarakKm}) {
+  static HasilTarif jastipBarang({required double jarakKm, required Tarif tarif}) {
     final jarakDipakai = jarakKm.clamp(
-      TarifConfig.anjemJarakMinimalKm,
-      TarifConfig.anjemJarakMaksimalKm,
+      tarif.anjemJarakMinimalKm,
+      tarif.anjemJarakMaksimalKm,
     );
-    final ongkosJarak = (jarakDipakai * TarifConfig.jastipBarangTarifPerKm)
-        .round();
+    final ongkosJarak = (jarakDipakai * tarif.jastipBarangTarifPerKm).round();
 
     return HasilTarif(
       rincian: [
-        const RincianTarif(
-          label: 'Ongkos jasa titip',
-          nominal: TarifConfig.jastipBarangFee,
-        ),
+        RincianTarif(label: 'Ongkos jasa titip', nominal: tarif.jastipBarangFee),
         RincianTarif(
           label: 'Jarak ${_formatJarak(jarakDipakai)} km',
           nominal: ongkosJarak,
         ),
       ],
-      total: TarifConfig.jastipBarangFee + ongkosJarak,
+      total: tarif.jastipBarangFee + ongkosJarak,
     );
   }
 

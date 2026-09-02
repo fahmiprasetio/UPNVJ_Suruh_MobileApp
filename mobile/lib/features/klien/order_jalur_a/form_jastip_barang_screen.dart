@@ -3,16 +3,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/api/galat_api.dart';
 import '../../../core/config/batas_masukan.dart';
-
-import '../../../core/config/tarif_config.dart';
 import '../../../core/format/formatters.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/enums.dart';
 import '../../../domain/models/order.dart';
+import '../../../domain/models/tarif.dart';
 import '../../../domain/pricing/kalkulator_tarif.dart';
 import '../../../providers/repository_providers.dart';
+import '../../widgets/pesan_kosong.dart';
 import 'widgets/ringkasan_harga.dart';
 
 /// Form Jalur A untuk Jastip Barang.
@@ -51,112 +52,136 @@ class _FormJastipBarangScreenState
   }
 
   /// `null` selama jarak belum diisi dengan angka yang masuk akal.
-  HasilTarif? get _hasilTarif {
+  HasilTarif? _hasilTarif(Tarif tarif) {
     final jarak = _bacaJarak(_jarakController.text);
     if (jarak == null) return null;
-    return KalkulatorTarif.jastipBarang(jarakKm: jarak);
+    return KalkulatorTarif.jastipBarang(jarakKm: jarak, tarif: tarif);
   }
 
   @override
   Widget build(BuildContext context) {
-    final hasil = _hasilTarif;
-    final skema = Theme.of(context).colorScheme;
+    final tarifAsync = ref.watch(tarifProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Jastip Barang')),
-      body: SafeArea(
-        child: Form(
-          key: _formKey,
-          onChanged: () => setState(() {}),
-          child: ListView(
-            padding: const EdgeInsets.all(AppTheme.spasiSedang),
-            children: [
-              TextFormField(
-                controller: _barangController,
-                maxLength: BatasMasukan.deskripsi,
-                textCapitalization: TextCapitalization.sentences,
-                maxLines: 3,
-                minLines: 2,
-                decoration: const InputDecoration(
-                  counterText: '',
-                  labelText: 'Barang apa yang dititip?',
-                  hintText:
-                      'Ambil paket di Indomaret Pondok Labu, atas nama Dina',
-                  prefixIcon: Icon(Icons.inventory_2_outlined),
-                ),
-                validator: _validasiBarang,
-              ),
-              const SizedBox(height: AppTheme.spasiSedang),
-              TextFormField(
-                controller: _ambilController,
-                maxLength: BatasMasukan.alamat,
-                textCapitalization: TextCapitalization.sentences,
-                maxLines: 2,
-                minLines: 1,
-                decoration: const InputDecoration(
-                  counterText: '',
-                  labelText: 'Diambil di mana?',
-                  hintText: 'Indomaret Pondok Labu',
-                  prefixIcon: Icon(Icons.store_outlined),
-                ),
-                validator: (nilai) => _wajibAlamat(nilai, 'pengambilan'),
-              ),
-              const SizedBox(height: AppTheme.spasiSedang),
-              TextFormField(
-                controller: _tujuanController,
-                maxLength: BatasMasukan.alamat,
-                textCapitalization: TextCapitalization.sentences,
-                maxLines: 2,
-                minLines: 1,
-                decoration: const InputDecoration(
-                  counterText: '',
-                  labelText: 'Diantar ke mana?',
-                  hintText: 'Kos Melati kamar 7',
-                  prefixIcon: Icon(Icons.place_outlined),
-                ),
-                validator: (nilai) => _wajibAlamat(nilai, 'tujuan'),
-              ),
-              const SizedBox(height: AppTheme.spasiSedang),
-              TextFormField(
-                controller: _jarakController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-                ],
-                decoration: const InputDecoration(
-                  counterText: '',
-                  labelText: 'Perkiraan jarak',
-                  suffixText: 'km',
-                  prefixIcon: Icon(Icons.straighten_outlined),
-                ),
-                validator: _validasiJarak,
-              ),
-              const SizedBox(height: AppTheme.spasiKecil),
-              Text(
-                'Perkiraan saja, runner dan kamu bisa sesuaikan di lapangan '
-                'kalau meleset jauh.',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: skema.onSurfaceVariant),
-              ),
-              const SizedBox(height: AppTheme.spasiBesar),
-              if (hasil == null)
-                const _HargaBelumBisaDihitung()
-              else ...[
-                RingkasanHarga(hasil: hasil),
-                const SizedBox(height: AppTheme.spasiKecil),
-                const _CatatanHargaBarang(),
-              ],
-            ],
-          ),
+      body: tarifAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (galat, _) => PesanKosong(
+          ikon: Icons.wifi_off_outlined,
+          judul: 'Tarif gagal dimuat',
+          keterangan: galat is GalatApi
+              ? galat.pesan
+              : 'Tidak bisa menghitung harga tanpa tarif. Coba lagi.',
+          labelAksi: 'Coba lagi',
+          onAksi: () => ref.invalidate(tarifProvider),
         ),
+        data: (tarif) => _buildForm(context, tarif),
       ),
-      bottomNavigationBar: _BilahBuatOrder(
-        total: hasil?.total,
-        sedangMengirim: _sedangMengirim,
-        onTekan: hasil == null ? null : _buatOrder,
+      bottomNavigationBar: tarifAsync.maybeWhen(
+        data: (tarif) {
+          final hasil = _hasilTarif(tarif);
+          return _BilahBuatOrder(
+            total: hasil?.total,
+            sedangMengirim: _sedangMengirim,
+            onTekan: hasil == null ? null : _buatOrder,
+          );
+        },
+        orElse: () => null,
+      ),
+    );
+  }
+
+  Widget _buildForm(BuildContext context, Tarif tarif) {
+    final hasil = _hasilTarif(tarif);
+    final skema = Theme.of(context).colorScheme;
+
+    return SafeArea(
+      child: Form(
+        key: _formKey,
+        onChanged: () => setState(() {}),
+        child: ListView(
+          padding: const EdgeInsets.all(AppTheme.spasiSedang),
+          children: [
+            TextFormField(
+              controller: _barangController,
+              maxLength: BatasMasukan.deskripsi,
+              textCapitalization: TextCapitalization.sentences,
+              maxLines: 3,
+              minLines: 2,
+              decoration: const InputDecoration(
+                counterText: '',
+                labelText: 'Barang apa yang dititip?',
+                hintText:
+                    'Ambil paket di Indomaret Pondok Labu, atas nama Dina',
+                prefixIcon: Icon(Icons.inventory_2_outlined),
+              ),
+              validator: _validasiBarang,
+            ),
+            const SizedBox(height: AppTheme.spasiSedang),
+            TextFormField(
+              controller: _ambilController,
+              maxLength: BatasMasukan.alamat,
+              textCapitalization: TextCapitalization.sentences,
+              maxLines: 2,
+              minLines: 1,
+              decoration: const InputDecoration(
+                counterText: '',
+                labelText: 'Diambil di mana?',
+                hintText: 'Indomaret Pondok Labu',
+                prefixIcon: Icon(Icons.store_outlined),
+              ),
+              validator: (nilai) => _wajibAlamat(nilai, 'pengambilan'),
+            ),
+            const SizedBox(height: AppTheme.spasiSedang),
+            TextFormField(
+              controller: _tujuanController,
+              maxLength: BatasMasukan.alamat,
+              textCapitalization: TextCapitalization.sentences,
+              maxLines: 2,
+              minLines: 1,
+              decoration: const InputDecoration(
+                counterText: '',
+                labelText: 'Diantar ke mana?',
+                hintText: 'Kos Melati kamar 7',
+                prefixIcon: Icon(Icons.place_outlined),
+              ),
+              validator: (nilai) => _wajibAlamat(nilai, 'tujuan'),
+            ),
+            const SizedBox(height: AppTheme.spasiSedang),
+            TextFormField(
+              controller: _jarakController,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+              ],
+              decoration: const InputDecoration(
+                counterText: '',
+                labelText: 'Perkiraan jarak',
+                suffixText: 'km',
+                prefixIcon: Icon(Icons.straighten_outlined),
+              ),
+              validator: (nilai) => _validasiJarak(nilai, tarif),
+            ),
+            const SizedBox(height: AppTheme.spasiKecil),
+            Text(
+              'Perkiraan saja, runner dan kamu bisa sesuaikan di lapangan '
+              'kalau meleset jauh.',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: skema.onSurfaceVariant),
+            ),
+            const SizedBox(height: AppTheme.spasiBesar),
+            if (hasil == null)
+              const _HargaBelumBisaDihitung()
+            else ...[
+              RingkasanHarga(hasil: hasil),
+              const SizedBox(height: AppTheme.spasiKecil),
+              const _CatatanHargaBarang(),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -218,13 +243,13 @@ class _FormJastipBarangScreenState
     return null;
   }
 
-  static String? _validasiJarak(String? nilai) {
+  static String? _validasiJarak(String? nilai, Tarif tarif) {
     final bersih = nilai?.trim() ?? '';
     if (bersih.isEmpty) return 'Perkiraan jarak wajib diisi';
     final jarak = _bacaJarak(bersih);
     if (jarak == null) return 'Isi dengan angka, misalnya 2,5';
-    if (jarak > TarifConfig.anjemJarakMaksimalKm) {
-      return 'Di atas ${TarifConfig.anjemJarakMaksimalKm.round()} km belum '
+    if (jarak > tarif.anjemJarakMaksimalKm) {
+      return 'Di atas ${tarif.anjemJarakMaksimalKm.round()} km belum '
           'dilayani, pakai Permintaan Lain';
     }
     return null;

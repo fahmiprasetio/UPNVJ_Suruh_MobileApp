@@ -3,16 +3,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/api/galat_api.dart';
 import '../../../core/config/batas_masukan.dart';
-
-import '../../../core/config/tarif_config.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/format/formatters.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/enums.dart';
 import '../../../domain/models/order.dart';
+import '../../../domain/models/tarif.dart';
 import '../../../domain/pricing/kalkulator_tarif.dart';
 import '../../../providers/repository_providers.dart';
+import '../../widgets/pesan_kosong.dart';
 import 'widgets/ringkasan_harga.dart';
 
 /// Form Jalur A untuk Anter Jemput.
@@ -48,107 +49,138 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
 
   /// `null` selama jarak belum diisi dengan angka yang masuk akal, harga
   /// memang belum bisa dihitung, dan menampilkan Rp 0 akan menyesatkan.
-  HasilTarif? get _hasilTarif {
+  HasilTarif? _hasilTarif(Tarif tarif) {
     final jarak = _bacaJarak(_jarakController.text);
     if (jarak == null) return null;
-    return KalkulatorTarif.anterJemput(jarakKm: jarak);
+    return KalkulatorTarif.anterJemput(jarakKm: jarak, tarif: tarif);
   }
 
   @override
   Widget build(BuildContext context) {
-    final hasil = _hasilTarif;
-    final skema = Theme.of(context).colorScheme;
+    final tarifAsync = ref.watch(tarifProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Anter Jemput')),
-      body: SafeArea(
-        child: Form(
-          key: _formKey,
-          onChanged: () => setState(() {}),
-          child: ListView(
-            padding: const EdgeInsets.all(AppTheme.spasiSedang),
-            children: [
-              TextFormField(
-                controller: _jemputController,
-                maxLength: BatasMasukan.alamat,
-                textCapitalization: TextCapitalization.sentences,
-                maxLines: 2,
-                minLines: 1,
-                decoration: const InputDecoration(
-                  counterText: '',
-                  labelText: 'Dijemput di mana?',
-                  hintText: 'Kos Melati, Jl. Pondok Labu Raya No. 12',
-                  prefixIcon: Icon(Icons.my_location_outlined),
-                ),
-                validator: (nilai) => _wajibAlamat(nilai, 'jemput'),
-              ),
-              const SizedBox(height: AppTheme.spasiSedang),
-              TextFormField(
-                controller: _tujuanController,
-                maxLength: BatasMasukan.alamat,
-                textCapitalization: TextCapitalization.sentences,
-                maxLines: 2,
-                minLines: 1,
-                decoration: const InputDecoration(
-                  counterText: '',
-                  labelText: 'Diantar ke mana?',
-                  hintText: 'Gedung Fakultas Ilmu Komputer UPNVJ',
-                  prefixIcon: Icon(Icons.place_outlined),
-                ),
-                validator: (nilai) => _wajibAlamat(nilai, 'tujuan'),
-              ),
-              const SizedBox(height: AppTheme.spasiSedang),
-              TextFormField(
-                controller: _jarakController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-                ],
-                decoration: const InputDecoration(
-                  counterText: '',
-                  labelText: 'Perkiraan jarak',
-                  suffixText: 'km',
-                  prefixIcon: Icon(Icons.straighten_outlined),
-                ),
-                validator: _validasiJarak,
-              ),
-              const SizedBox(height: AppTheme.spasiKecil),
-              Text(
-                'Perkiraan saja, runner dan kamu bisa sesuaikan di lapangan '
-                'kalau meleset jauh.',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: skema.onSurfaceVariant),
-              ),
-              const SizedBox(height: AppTheme.spasiSedang),
-              TextFormField(
-                controller: _catatanController,
-                maxLength: BatasMasukan.deskripsi,
-                textCapitalization: TextCapitalization.sentences,
-                maxLines: 3,
-                minLines: 1,
-                decoration: const InputDecoration(
-                  counterText: '',
-                  labelText: 'Catatan untuk runner (opsional)',
-                  hintText: 'Tunggu di gerbang depan, pakai jaket merah',
-                  prefixIcon: Icon(Icons.sticky_note_2_outlined),
-                ),
-              ),
-              const SizedBox(height: AppTheme.spasiBesar),
-              if (hasil == null)
-                const _HargaBelumBisaDihitung()
-              else
-                RingkasanHarga(hasil: hasil),
-            ],
-          ),
+      // Tarif diambil sekali dari server (tarifProvider), bukan dihitung dari
+      // konstanta yang ditulis mati di aplikasi: admin bisa mengubahnya lewat
+      // dashboard web, dan pratinjau harga di sini harus mengikuti angka yang
+      // sedang berlaku, bukan angka yang ikut ter-commit bertahun-tahun lalu.
+      body: tarifAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (galat, _) => PesanKosong(
+          ikon: Icons.wifi_off_outlined,
+          judul: 'Tarif gagal dimuat',
+          keterangan: galat is GalatApi
+              ? galat.pesan
+              : 'Tidak bisa menghitung harga tanpa tarif. Coba lagi.',
+          labelAksi: 'Coba lagi',
+          onAksi: () => ref.invalidate(tarifProvider),
         ),
+        data: (tarif) => _buildForm(context, tarif),
       ),
-      bottomNavigationBar: _BilahBuatOrder(
-        total: hasil?.total,
-        sedangMengirim: _sedangMengirim,
-        onTekan: hasil == null ? null : _buatOrder,
+      bottomNavigationBar: tarifAsync.maybeWhen(
+        data: (tarif) {
+          final hasil = _hasilTarif(tarif);
+          return _BilahBuatOrder(
+            total: hasil?.total,
+            sedangMengirim: _sedangMengirim,
+            onTekan: hasil == null ? null : _buatOrder,
+          );
+        },
+        // Belum ada tarif untuk dihitung: bilah bawah ikut hilang sampai
+        // tarifnya berhasil dimuat, sama seperti tombolnya mati saat harga
+        // belum bisa dihitung.
+        orElse: () => null,
+      ),
+    );
+  }
+
+  Widget _buildForm(BuildContext context, Tarif tarif) {
+    final hasil = _hasilTarif(tarif);
+    final skema = Theme.of(context).colorScheme;
+
+    return SafeArea(
+      child: Form(
+        key: _formKey,
+        onChanged: () => setState(() {}),
+        child: ListView(
+          padding: const EdgeInsets.all(AppTheme.spasiSedang),
+          children: [
+            TextFormField(
+              controller: _jemputController,
+              maxLength: BatasMasukan.alamat,
+              textCapitalization: TextCapitalization.sentences,
+              maxLines: 2,
+              minLines: 1,
+              decoration: const InputDecoration(
+                counterText: '',
+                labelText: 'Dijemput di mana?',
+                hintText: 'Kos Melati, Jl. Pondok Labu Raya No. 12',
+                prefixIcon: Icon(Icons.my_location_outlined),
+              ),
+              validator: (nilai) => _wajibAlamat(nilai, 'jemput'),
+            ),
+            const SizedBox(height: AppTheme.spasiSedang),
+            TextFormField(
+              controller: _tujuanController,
+              maxLength: BatasMasukan.alamat,
+              textCapitalization: TextCapitalization.sentences,
+              maxLines: 2,
+              minLines: 1,
+              decoration: const InputDecoration(
+                counterText: '',
+                labelText: 'Diantar ke mana?',
+                hintText: 'Gedung Fakultas Ilmu Komputer UPNVJ',
+                prefixIcon: Icon(Icons.place_outlined),
+              ),
+              validator: (nilai) => _wajibAlamat(nilai, 'tujuan'),
+            ),
+            const SizedBox(height: AppTheme.spasiSedang),
+            TextFormField(
+              controller: _jarakController,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+              ],
+              decoration: const InputDecoration(
+                counterText: '',
+                labelText: 'Perkiraan jarak',
+                suffixText: 'km',
+                prefixIcon: Icon(Icons.straighten_outlined),
+              ),
+              validator: (nilai) => _validasiJarak(nilai, tarif),
+            ),
+            const SizedBox(height: AppTheme.spasiKecil),
+            Text(
+              'Perkiraan saja, runner dan kamu bisa sesuaikan di lapangan '
+              'kalau meleset jauh.',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: skema.onSurfaceVariant),
+            ),
+            const SizedBox(height: AppTheme.spasiSedang),
+            TextFormField(
+              controller: _catatanController,
+              maxLength: BatasMasukan.deskripsi,
+              textCapitalization: TextCapitalization.sentences,
+              maxLines: 3,
+              minLines: 1,
+              decoration: const InputDecoration(
+                counterText: '',
+                labelText: 'Catatan untuk runner (opsional)',
+                hintText: 'Tunggu di gerbang depan, pakai jaket merah',
+                prefixIcon: Icon(Icons.sticky_note_2_outlined),
+              ),
+            ),
+            const SizedBox(height: AppTheme.spasiBesar),
+            if (hasil == null)
+              const _HargaBelumBisaDihitung()
+            else
+              RingkasanHarga(hasil: hasil),
+          ],
+        ),
       ),
     );
   }
@@ -207,13 +239,13 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
     return null;
   }
 
-  static String? _validasiJarak(String? nilai) {
+  static String? _validasiJarak(String? nilai, Tarif tarif) {
     final bersih = nilai?.trim() ?? '';
     if (bersih.isEmpty) return 'Perkiraan jarak wajib diisi';
     final jarak = _bacaJarak(bersih);
     if (jarak == null) return 'Isi dengan angka, misalnya 2,5';
-    if (jarak > TarifConfig.anjemJarakMaksimalKm) {
-      return 'Di atas ${TarifConfig.anjemJarakMaksimalKm.round()} km belum '
+    if (jarak > tarif.anjemJarakMaksimalKm) {
+      return 'Di atas ${tarif.anjemJarakMaksimalKm.round()} km belum '
           'dilayani, pakai Permintaan Lain';
     }
     return null;
