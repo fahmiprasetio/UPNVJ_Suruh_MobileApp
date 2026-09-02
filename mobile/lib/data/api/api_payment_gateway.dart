@@ -14,9 +14,11 @@ import 'pemeta_transaksi.dart';
 ///
 /// ## Kenapa mengintip berkala, bukan menunggu dikabari
 ///
-/// Kabar bahwa uang sudah masuk mendarat di server sebagai webhook, dan server
-/// belum punya jalan meneruskannya ke aplikasi selain hub SignalR yang belum
-/// tersambung. Sampai itu ada, layar bayar menanyakan keadaannya berulang kali.
+/// Kabar bahwa uang sudah masuk mendarat di server sebagai webhook. `OrderHub`
+/// (lihat `OrderHubClient`) sekarang tersambung, tapi cuma menyiarkan ke grup
+/// runner (order berbayar yang butuh diambil) — bukan ke klien yang sedang
+/// menunggu tagihannya sendiri lunas, karena itu butuh saluran per-order yang
+/// belum ada. Sampai itu ada, layar bayar menanyakan keadaannya berulang kali.
 ///
 /// Jedanya lebih rapat daripada penyegaran daftar order, dan itu disengaja: di
 /// layar ini pengguna sedang menatap layarnya sambil menunggu, jadi basi lima

@@ -21,23 +21,33 @@ import 'pemeta_order.dart';
 ///     dan setiap aliran yang sedang dibuka langsung mengambil ulang. Jadi menekan
 ///     TERIMA atau mengirim pesan terlihat hasilnya seketika, tanpa menunggu.
 ///   - Perubahan yang dibuat **orang lain** (runner lain mengirim penawaran atau
-///     mengambil order, uang masuk) tidak terkabar ke sini, jadi ada pengambilan
-///     berkala sebagai jaring pengaman.
+///     mengambil order, uang masuk) datang lewat [perubahanLuar], kalau
+///     terpasang, yaitu aliran [OrderHubClient.perubahan]. Selain itu ada
+///     pengambilan berkala sebagai jaring pengaman.
 ///
-/// Pengambilan berkala itu memang boros dan memang sementara. Server sudah punya
-/// hub SignalR yang menyiarkan order berbayar ke runner; menyambungkannya akan
-/// menggantikan jaring ini dengan kabar yang datang tepat saat ada yang berubah.
-/// Sampai itu ada, lebih baik boros daripada layar yang diam-diam basi, karena
-/// runner yang melihat order sudah diambil orang lain masih bisa menekan TERIMA
-/// dan cuma bingung kenapa gagal.
+/// Pengambilan berkala tetap dipertahankan sebagai jaring pengaman, sekalipun
+/// [perubahanLuar] terpasang: hub yang putus sesaat (jaringan kampus yang goyah,
+/// tab lama tidak difokuskan) tidak boleh membuat layar diam-diam basi selamanya
+/// menunggu koneksi pulih. Yang berubah begitu hub tersambung cuma seberapa cepat
+/// perubahan orang lain terlihat, bukan hilangnya jaring pengaman itu.
 class ApiOrderRepository implements OrderRepository {
-  ApiOrderRepository({required KlienApi klien, Duration? jedaSegarkan})
-    : _klien = klien,
-      _jedaSegarkan = jedaSegarkan ?? KonfigurasiApi.jedaSegarkan;
+  ApiOrderRepository({
+    required KlienApi klien,
+    Duration? jedaSegarkan,
+    Stream<void>? perubahanLuar,
+  }) : _klien = klien,
+       _jedaSegarkan = jedaSegarkan ?? KonfigurasiApi.jedaSegarkan {
+    // Kabar dari hub SignalR diperlakukan sama seperti perubahan yang dibuat
+    // aplikasi ini sendiri: menabuh [_perubahan] supaya aliran yang sedang
+    // dibuka langsung mengambil ulang. Isi pesannya sendiri tidak pernah dibaca
+    // di sini, lihat alasannya di [OrderHubClient.perubahan].
+    _langgananLuar = perubahanLuar?.listen((_) => _tandaiBerubah());
+  }
 
   final KlienApi _klien;
   final Duration _jedaSegarkan;
   final StreamController<void> _perubahan = StreamController<void>.broadcast();
+  StreamSubscription<void>? _langgananLuar;
 
   /// Mengubah satu pengambilan jadi aliran yang menyegarkan diri.
   ///
@@ -317,5 +327,8 @@ class ApiOrderRepository implements OrderRepository {
   static String _namaServer(String nama) =>
       nama[0].toUpperCase() + nama.substring(1);
 
-  void dispose() => _perubahan.close();
+  void dispose() {
+    _langgananLuar?.cancel();
+    _perubahan.close();
+  }
 }

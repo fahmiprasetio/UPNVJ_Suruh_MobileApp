@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/api/klien_api.dart';
 import '../core/api/konfigurasi_api.dart';
 import '../core/config/sumber_data.dart';
+import '../core/realtime/order_hub_client.dart';
 import '../data/api/api_auth_repository.dart';
 import '../data/api/api_foto_bukti_repository.dart';
 import '../data/api/api_order_repository.dart';
@@ -102,6 +103,38 @@ final tarifProvider = FutureProvider<Tarif>((ref) {
 /// dari `authRepository.userAktif`, bukan dari `userAktifProvider`: provider itu
 /// beraliran dan otomatis dibuang saat tidak ada yang mengawasinya, sementara
 /// `userAktif` adalah getter serentak yang selalu menjawab keadaan sekarang.
+/// Koneksi SignalR ke `OrderHub`, dipakai [orderRepositoryProvider] sebagai
+/// jaring penyegar tambahan (lihat [OrderHubClient] dan bagian "Bagaimana
+/// aliran dibuat" di [ApiOrderRepository]).
+///
+/// `null` di jalur tiruan, alat penguji tidak punya server untuk disambungi.
+///
+/// Hub-nya mensyaratkan `[Authorize]` di seluruh permukaannya, jadi koneksinya
+/// mengikuti status masuk, bukan disambungkan sekali saat aplikasi dibuka:
+/// [mulai] dipanggil ulang tiap kali [userAktifProvider] berpindah dari kosong
+/// ke terisi (baru masuk, atau sesi lama pulih), dan [berhenti] dipanggil saat
+/// berpindah ke kosong (keluar), supaya koneksi lama tidak terus menerima
+/// siaran dengan identitas akun yang sudah ditinggalkan.
+final orderHubClientProvider = Provider<OrderHubClient?>((ref) {
+  if (ref.watch(sumberDataProvider) == SumberData.tiruan) return null;
+
+  final client = OrderHubClient(
+    baseUrl: ref.watch(alamatApiProvider),
+    token: () => ref.read(sesiTokenProvider).nilai,
+  );
+  ref.onDispose(client.dispose);
+
+  ref.listen(userAktifProvider, (_, sekarang) {
+    if (sekarang.value != null) {
+      client.mulai();
+    } else {
+      client.berhenti();
+    }
+  }, fireImmediately: true);
+
+  return client;
+});
+
 final orderRepositoryProvider = Provider<OrderRepository>((ref) {
   if (ref.watch(sumberDataProvider) == SumberData.tiruan) {
     final repo = FakeOrderRepository(
@@ -111,7 +144,10 @@ final orderRepositoryProvider = Provider<OrderRepository>((ref) {
     return repo;
   }
 
-  final repo = ApiOrderRepository(klien: ref.watch(klienApiProvider));
+  final repo = ApiOrderRepository(
+    klien: ref.watch(klienApiProvider),
+    perubahanLuar: ref.watch(orderHubClientProvider)?.perubahan,
+  );
   ref.onDispose(repo.dispose);
   return repo;
 });

@@ -70,8 +70,10 @@ class KonfigurasiApi {
   /// belasan detik cuma membuat runner menekan tombol yang gagal, sementara
   /// mengambil ulang tiap detik menguras baterai dan kuota sepanjang hari.
   ///
-  /// Hilang begitu hub SignalR tersambung, karena sejak itu kabarnya datang tepat
-  /// saat ada yang berubah.
+  /// Tetap dipakai sekalipun hub SignalR tersambung (`OrderHubClient`), sebagai
+  /// jaring pengaman untuk koneksi hub yang putus sesaat. Yang berubah begitu hub
+  /// tersambung cuma seberapa cepat perubahan orang lain terlihat, jedanya sendiri
+  /// tetap dipertahankan.
   static const Duration jedaSegarkan = Duration(seconds: 15);
 
   /// Melengkapi alamat berkas yang dikirim server sebagai jalur relatif.

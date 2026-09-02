@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -50,6 +51,7 @@ void main() {
     Object? Function(http.Request permintaan) jawab, {
     int status = 200,
     Duration? jedaSegarkan,
+    Stream<void>? perubahanLuar,
   }) {
     final dikirim = <http.Request>[];
     final klien = KlienApi(
@@ -68,6 +70,7 @@ void main() {
       // Panjang, supaya pengambilan berkala tidak ikut campur di tes yang tidak
       // sedang mengujinya.
       jedaSegarkan: jedaSegarkan ?? const Duration(hours: 1),
+      perubahanLuar: perubahanLuar,
     );
     addTearDown(repo.dispose);
     return (repo: repo, dikirim: dikirim);
@@ -281,6 +284,26 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(jumlahAmbil, greaterThan(sebelum));
       await langganan.cancel();
+    });
+
+    test('kabar dari hub SignalR (perubahanLuar) memicu pengambilan ulang', () async {
+      // Runner lain menerima order yang sama, dan hub mengabarkannya lewat
+      // OrderTaken. Layar yang sedang terbuka harus melihatnya tanpa menunggu
+      // jeda pengambilan berkala, sama seperti perubahan yang dibuat sendiri.
+      var jumlahAmbil = 0;
+      final kabarHub = StreamController<void>();
+      final uji = buat((p) {
+        if (p.method == 'GET') jumlahAmbil++;
+        return jawabanUmum(p);
+      }, perubahanLuar: kabarHub.stream);
+      final langganan = uji.repo.watchOrderTersiar(ukuran: 20).listen((_) {});
+      await Future<void>.delayed(Duration.zero);
+      final sebelum = jumlahAmbil;
+      kabarHub.add(null);
+      await Future<void>.delayed(Duration.zero);
+      expect(jumlahAmbil, greaterThan(sebelum));
+      await langganan.cancel();
+      await kabarHub.close();
     });
 
     test('pengambilan berkala berhenti begitu tidak ada yang mendengarkan', () async {
