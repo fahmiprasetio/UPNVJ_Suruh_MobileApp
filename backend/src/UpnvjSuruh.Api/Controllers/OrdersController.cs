@@ -41,10 +41,15 @@ public class OrdersController(
             });
         }
 
+        // Baris tunggal, disemai lewat migrasi, tidak pernah null dalam keadaan normal.
+        // Kalau sampai hilang, itu basis data yang rusak, bukan sesuatu yang layak
+        // ditangkap dan dijawab 400 seolah-olah kesalahan pemanggil.
+        var pengaturanTarif = await db.TarifSettings.SingleAsync(t => t.Id == TarifSetting.SatuSatunyaId, batal);
+
         HasilTarif tarif;
         try
         {
-            tarif = kalkulator.Hitung(permintaan.ServiceType, permintaan.JarakKm);
+            tarif = kalkulator.Hitung(permintaan.ServiceType, permintaan.JarakKm, pengaturanTarif);
         }
         catch (ArgumentException galat)
         {

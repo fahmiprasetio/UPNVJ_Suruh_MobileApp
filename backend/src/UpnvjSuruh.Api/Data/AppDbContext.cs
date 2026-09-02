@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using UpnvjSuruh.Api.Domain;
+using UpnvjSuruh.Api.Pricing;
 
 namespace UpnvjSuruh.Api.Data;
 
@@ -12,6 +13,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<OrderRunnerAssignment> OrderRunnerAssignments => Set<OrderRunnerAssignment>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<UserRoleChange> UserRoleChanges => Set<UserRoleChange>();
+    public DbSet<TarifSetting> TarifSettings => Set<TarifSetting>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -163,5 +165,24 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .WithMany(o => o.Payments)
             .HasForeignKey(p => p.OrderId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<TarifSetting>(entity =>
+        {
+            // Baris awalnya persis angka Pricing.TarifConfig, dijaga tetap sama dengan
+            // aplikasi mobile oleh TarifSelarasDenganMobileTests. Sesudah baris ini ada,
+            // yang berikutnya menyunting isinya, bukan menambah baris baru, jadi migrasi
+            // ini satu-satunya tempat HasData untuk entitas ini akan pernah muncul.
+            entity.HasData(new TarifSetting
+            {
+                Id = TarifSetting.SatuSatunyaId,
+                AnjemTarifDasar = TarifConfig.AnjemTarifDasar,
+                AnjemTarifPerKm = TarifConfig.AnjemTarifPerKm,
+                AnjemJarakMinimalKm = TarifConfig.AnjemJarakMinimalKm,
+                AnjemJarakMaksimalKm = TarifConfig.AnjemJarakMaksimalKm,
+                JastipMakananFee = TarifConfig.JastipMakananFee,
+                JastipBarangFee = TarifConfig.JastipBarangFee,
+                JastipBarangTarifPerKm = TarifConfig.JastipBarangTarifPerKm,
+            });
+        });
     }
 }
