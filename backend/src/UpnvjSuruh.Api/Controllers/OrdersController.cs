@@ -2,11 +2,13 @@ using System.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using UpnvjSuruh.Api.Auth;
 using UpnvjSuruh.Api.Contracts;
 using UpnvjSuruh.Api.Data;
+using UpnvjSuruh.Api.Hubs;
 using UpnvjSuruh.Api.Media;
 using UpnvjSuruh.Api.Domain;
 using UpnvjSuruh.Api.Pricing;
@@ -19,7 +21,8 @@ namespace UpnvjSuruh.Api.Controllers;
 public class OrdersController(
     AppDbContext db,
     IKalkulatorTarif kalkulator,
-    PenyimpanFoto penyimpanFoto) : ControllerBase
+    PenyimpanFoto penyimpanFoto,
+    IHubContext<OrderHub> hub) : ControllerBase
 {
     /// <summary>
     /// Klien membuat order Jalur A. Harganya dihitung di sini, bukan diterima dari klien.
@@ -340,6 +343,15 @@ public class OrdersController(
 
         await db.SaveChangesAsync(batal);
         await transaksi.CommitAsync(batal);
+
+        // Runner lain yang masih menatap kartu siaran ini di layarnya harus tahu kuotanya
+        // baru saja bergeser, tanpa menunggu jeda pengambilan ulang berkala. "Selesai" cuma
+        // menandai kuotanya penuh (kartunya boleh hilang dari siaran); order yang masih
+        // butuh runner lain tetap disiarkan, cuma jumlahnya yang berubah.
+        await hub.Clients.Group(OrderHub.RunnersGroup).SendAsync(
+            "OrderTaken",
+            new { OrderId = order.Id, Selesai = order.Status == OrderStatus.Dikerjakan },
+            batal);
 
         return Ok(new TerimaOrderResponse(true, "Order jadi milikmu."));
     }
