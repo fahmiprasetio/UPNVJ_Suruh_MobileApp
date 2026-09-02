@@ -4,6 +4,7 @@ import { PerluAdmin } from './auth/penjaga_admin';
 import { PenyediaSesi } from './auth/sesi';
 import { Rangka } from './komponen/rangka';
 import { HalamanDetailOrder } from './halaman/detail_order';
+import { HalamanKelolaPeran } from './halaman/kelola_peran';
 import { HalamanMasuk } from './halaman/masuk';
 import { HalamanPantauanOrder } from './halaman/pantauan_order';
 
@@ -32,6 +33,7 @@ export function App() {
         >
           <Route path="/order" element={<HalamanPantauanOrder />} />
           <Route path="/order/:id" element={<HalamanDetailOrder />} />
+          <Route path="/pengguna" element={<HalamanKelolaPeran />} />
         </Route>
 
         {/* Beranda dashboard adalah pantauan order, bukan halaman sambutan. Yang membuka

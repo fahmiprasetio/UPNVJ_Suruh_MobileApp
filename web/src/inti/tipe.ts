@@ -114,3 +114,22 @@ export interface Halaman<T> {
   ukuranHalaman: number;
   totalHalaman: number;
 }
+
+/**
+ * Satu baris riwayat perubahan peran, dari `PerubahanPeranResponse` di backend.
+ *
+ * `sebelum` dan `sesudah` datang sebagai teks (`p.RolesBefore.Select(r => r.ToString())`),
+ * bukan sebagai `Peran[]`. Dibiarkan sebagai `string[]` di sini juga, bukan dipaksa jadi
+ * union: baris riwayat lama bisa jadi menyimpan nilai yang berbeda dari tiga peran yang
+ * berlaku sekarang kalau `UserRole` pernah berubah, dan riwayat audit tidak boleh diam-diam
+ * membuang nilai yang tidak dikenalinya.
+ */
+export interface PerubahanPeran {
+  id: string;
+  userId: string;
+  diubahOlehAdminId: string;
+  sebelum: string[];
+  sesudah: string[];
+  alasan: string;
+  diubahPada: string;
+}

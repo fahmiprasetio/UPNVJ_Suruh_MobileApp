@@ -1,5 +1,14 @@
 import type { KlienApi } from './klien_api';
-import type { Halaman, HasilMasuk, Order, Pengguna, Pesan, StatusOrder } from './tipe';
+import type {
+  Halaman,
+  HasilMasuk,
+  Order,
+  Pengguna,
+  Peran,
+  PerubahanPeran,
+  Pesan,
+  StatusOrder,
+} from './tipe';
 
 /**
  * Endpoint yang dipakai dashboard admin, satu fungsi satu endpoint.
@@ -91,5 +100,64 @@ export function kirimPesan(api: KlienApi, orderId: string, isi: string): Promise
   return api.minta<Pesan>(`/api/orders/${orderId}/pesan`, {
     metode: 'POST',
     badan: { isi },
+  });
+}
+
+/**
+ * Mencari pengguna untuk diangkat atau diturunkan perannya.
+ *
+ * Backend menolak kata kunci di bawah 3 huruf (lihat `AdminPenggunaController.Cari`) dan
+ * tidak menyediakan cara mengambil seluruh daftar; kata kunci di sini karena itu wajib,
+ * bukan opsional, sama seperti di sana. Layar pemanggil yang memutuskan kapan permintaan
+ * ini layak dikirim (biasanya menunggu pengetikan berhenti sejenak), bukan fungsi ini.
+ */
+export function cariPengguna(
+  api: KlienApi,
+  kataKunci: string,
+  sinyal?: AbortSignal,
+): Promise<Pengguna[]> {
+  return api.minta<Pengguna[]>('/api/admin/pengguna', {
+    kueri: { q: kataKunci },
+    sinyal,
+  });
+}
+
+export interface PenyaringHalaman {
+  halaman?: number;
+  ukuran?: number;
+}
+
+export function riwayatPeran(
+  api: KlienApi,
+  userId: string,
+  penyaring: PenyaringHalaman = {},
+  sinyal?: AbortSignal,
+): Promise<Halaman<PerubahanPeran>> {
+  return api.minta<Halaman<PerubahanPeran>>(`/api/admin/pengguna/${userId}/peran/riwayat`, {
+    kueri: { halaman: penyaring.halaman, ukuran: penyaring.ukuran },
+    sinyal,
+  });
+}
+
+/**
+ * Menetapkan peran seseorang.
+ *
+ * Menetapkan, bukan menambah atau mengurangi satu peran: yang dikirim adalah daftar peran
+ * yang seharusnya dipegang orang itu sesudahnya (lihat `TetapkanPeranRequest` di backend),
+ * dan pemanggil di sini mengikuti bentuk yang sama, bukan menyediakan `tambahkanPeran` atau
+ * `cabutPeran` yang menyembunyikan bahwa keduanya sebenarnya operasi yang sama.
+ *
+ * `alasan` wajib diisi di backend; validasi panjang kosongnya sengaja tidak diulang di
+ * sini, biar satu-satunya sumber kebenaran soal apa yang diterima tetap di server.
+ */
+export function tetapkanPeran(
+  api: KlienApi,
+  userId: string,
+  roles: Peran[],
+  alasan: string,
+): Promise<Pengguna> {
+  return api.minta<Pengguna>(`/api/admin/pengguna/${userId}/peran`, {
+    metode: 'PUT',
+    badan: { roles, alasan },
   });
 }
