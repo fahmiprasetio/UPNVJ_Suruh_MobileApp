@@ -116,6 +116,24 @@ export interface Halaman<T> {
 }
 
 /**
+ * Tarif Jalur A yang sedang berlaku, dari `TarifResponse` di backend.
+ *
+ * Order yang sudah dibuat menyimpan harganya sendiri, tidak menghitung ulang dari sini.
+ * Mengubah tarif lewat layar Kelola Tarif tidak mengubah harga order lama, cuma harga
+ * order baru sejak perubahan itu disimpan.
+ */
+export interface Tarif {
+  anjemTarifDasar: number;
+  anjemTarifPerKm: number;
+  anjemJarakMinimalKm: number;
+  anjemJarakMaksimalKm: number;
+  jastipMakananFee: number;
+  jastipBarangFee: number;
+  jastipBarangTarifPerKm: number;
+  diubahPada: string | null;
+}
+
+/**
  * Satu baris riwayat perubahan peran, dari `PerubahanPeranResponse` di backend.
  *
  * `sebelum` dan `sesudah` datang sebagai teks (`p.RolesBefore.Select(r => r.ToString())`),

@@ -8,6 +8,7 @@ import type {
   PerubahanPeran,
   Pesan,
   StatusOrder,
+  Tarif,
 } from './tipe';
 
 /**
@@ -178,5 +179,33 @@ export function tetapkanPeran(
   return api.minta<Pengguna>(`/api/admin/pengguna/${userId}/peran`, {
     metode: 'PUT',
     badan: { roles, alasan },
+  });
+}
+
+/**
+ * Tarif Jalur A yang sedang berlaku.
+ *
+ * Endpoint bacanya `[Authorize]` biasa di backend, bukan khusus admin (siapa pun yang
+ * sudah masuk boleh membacanya), tapi dashboard ini cuma dipakai admin, jadi pemanggilnya
+ * di sini selalu membawa token admin.
+ */
+export function ambilTarif(api: KlienApi, sinyal?: AbortSignal): Promise<Tarif> {
+  return api.minta<Tarif>('/api/tarif', { sinyal });
+}
+
+/**
+ * Mengubah tarif Jalur A.
+ *
+ * Seluruh tujuh angka dikirim sekaligus, mengikuti bentuk `PerbaruiTarifRequest` di
+ * backend: layar mengisi form dari keadaan sekarang, lalu mengirim keadaan yang
+ * diinginkan secara utuh, bukan satu per satu.
+ */
+export function perbaruiTarif(
+  api: KlienApi,
+  tarif: Omit<Tarif, 'diubahPada'>,
+): Promise<Tarif> {
+  return api.minta<Tarif>('/api/tarif', {
+    metode: 'PUT',
+    badan: tarif,
   });
 }

@@ -31,6 +31,9 @@ export function Rangka() {
           <NavLink to="/pengguna" className={({ isActive }) => (isActive ? 'aktif' : '')}>
             Kelola Peran
           </NavLink>
+          <NavLink to="/tarif" className={({ isActive }) => (isActive ? 'aktif' : '')}>
+            Kelola Tarif
+          </NavLink>
         </nav>
 
         <div className="rangka__akun">

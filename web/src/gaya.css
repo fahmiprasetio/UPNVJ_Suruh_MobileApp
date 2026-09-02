@@ -822,3 +822,87 @@ input {
   gap: var(--jeda);
   margin-top: var(--jeda);
 }
+
+/* --- Kelola tarif --- */
+
+.kelola-tarif__keterangan {
+  margin: 4px 0 calc(var(--jeda) * 2);
+  color: var(--tinta-samar);
+  max-width: 60ch;
+}
+
+.kelola-tarif__form {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--jeda) * 2);
+  max-width: 480px;
+}
+
+.kelola-tarif__form fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--jeda);
+}
+
+.kelola-tarif__form legend {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--tinta-samar);
+  padding: 0 0 var(--jeda);
+  width: 100%;
+  border-bottom: 1px solid var(--garis);
+  margin-bottom: 4px;
+}
+
+.kelola-tarif__catatan {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: var(--tinta-samar);
+}
+
+.kelola-tarif__kolom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--jeda) * 2);
+}
+
+.kelola-tarif__kolom span {
+  color: var(--tinta-samar);
+  font-size: 13px;
+}
+
+.kelola-tarif__kolom input {
+  width: 160px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.kelola-tarif__kaki {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--jeda) * 2);
+  padding-top: var(--jeda);
+  border-top: 1px solid var(--garis);
+}
+
+.kelola-tarif__diubah {
+  margin: 0;
+  font-size: 12px;
+  color: var(--tinta-samar);
+}
+
+.kelola-tarif__berhasil {
+  margin: 0;
+  padding: var(--jeda) calc(var(--jeda) * 1.5);
+  border-radius: var(--lengkung);
+  background: color-mix(in srgb, var(--patch-green) 12%, var(--kartu));
+  color: var(--keadaan);
+  font-size: 13px;
+}
