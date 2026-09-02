@@ -28,5 +28,19 @@ public class Payment
 
     public DateTime? SettledAt { get; set; }
 
+    /// <summary>
+    /// Kapan pengembaliannya dicatat, admin mana yang mencatatnya, dan kenapa.
+    ///
+    /// Ketiganya cuma terisi bersamaan dengan <see cref="Status"/> berpindah ke
+    /// <see cref="PaymentStatus.Dikembalikan"/>, lewat <c>AdminOrderController.Batalkan</c>.
+    /// Tidak ada endpoint lain yang mengisinya, dan itu disengaja: pengembalian dana adalah
+    /// tindakan admin yang harus disertai alasan, bukan efek samping transisi status lain.
+    /// </summary>
+    public DateTime? RefundedAt { get; set; }
+
+    public Guid? RefundedByAdminId { get; set; }
+
+    public string? RefundReason { get; set; }
+
     public bool Menunggu => Status == PaymentStatus.Pending;
 }

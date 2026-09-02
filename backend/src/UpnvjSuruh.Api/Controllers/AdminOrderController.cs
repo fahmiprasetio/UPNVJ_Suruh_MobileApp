@@ -28,7 +28,7 @@ namespace UpnvjSuruh.Api.Controllers;
 [ApiController]
 [Route("api/admin/orders")]
 [Authorize(Roles = Peran.Admin)]
-public class AdminOrderController(AppDbContext db) : ControllerBase
+public class AdminOrderController(AppDbContext db, ILogger<AdminOrderController> log) : ControllerBase
 {
     /// <summary>Order yang ada di sistem, disaring status dan dipotong per halaman.</summary>
     [HttpGet]
@@ -78,5 +78,100 @@ public class AdminOrderController(AppDbContext db) : ControllerBase
             total,
             permintaan.Halaman,
             permintaan.Ukuran));
+    }
+
+    /// <summary>
+    /// Membatalkan order yang sudah dibayar, sekaligus mencatat pengembalian dananya.
+    /// </summary>
+    /// <remarks>
+    /// Ini bukan endpoint batal yang sudah ada di <c>OrdersController</c>. Yang di sana
+    /// sengaja menolak order yang <c>PaidAt</c>-nya sudah terisi, persis dengan pesan
+    /// "harus lewat admin" — inilah jalur itu. Order yang BELUM dibayar tetap dibatalkan
+    /// lewat endpoint klien biasa; endpoint ini menjawab 400 kalau dipanggil untuk order
+    /// yang belum ada uangnya, supaya admin tidak menduga ada dua jalan pembatalan yang
+    /// tumpang tindih.
+    ///
+    /// Pengembaliannya cuma catatan pembukuan (lihat <see cref="PaymentStatus.Dikembalikan"/>),
+    /// bukan panggilan ke gateway sungguhan: capstone ini berjalan di sandbox (rencana bagian
+    /// 6), jadi tidak ada uang sungguhan yang perlu ditarik balik lewat API mana pun. Begitu
+    /// mitra mengaktifkan mode produksi, di sinilah panggilan refund gateway sungguhan akan
+    /// ditambahkan, tanpa mengubah bentuk endpoint ini.
+    /// </remarks>
+    [HttpPost("{id:guid}/batalkan")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<OrderResponse>> Batalkan(
+        Guid id,
+        BatalkanOrderRequest permintaan,
+        CancellationToken batal)
+    {
+        var order = await db.Orders
+            .Include(o => o.Payments)
+            .Include(o => o.RunnerAssignments)
+            .Include(o => o.Offers)
+            .Include(o => o.Client)
+            .SingleOrDefaultAsync(o => o.Id == id, batal);
+
+        if (order is null) return NotFound();
+
+        if (!order.Status.Aktif())
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Order sudah berakhir",
+                Detail = $"Order ini sudah {order.Status}.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        if (order.PaidAt is null)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Order ini belum dibayar",
+                Detail = "Order yang belum dibayar dibatalkan lewat endpoint order biasa "
+                         + "(POST /api/orders/{id}/batal), bukan lewat sini. Endpoint ini "
+                         + "khusus order yang sudah ada uangnya, dan karena itu perlu "
+                         + "dicatat pengembaliannya.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        var pembayaranLunas = order.Payments.SingleOrDefault(p => p.Status == PaymentStatus.Berhasil);
+        if (pembayaranLunas is null)
+        {
+            // Tidak seharusnya terjadi: PaidAt cuma diisi PenyelesaiPembayaran bersamaan
+            // dengan menandai satu transaksi Berhasil. Dicatat, bukan dilempar, karena
+            // ordernya tetap harus bisa dibatalkan biar tidak menggantung selamanya sambil
+            // menunggu data yang sudah janggal ini diperiksa.
+            log.LogError(
+                "Order {OrderId} punya PaidAt tapi tidak ada transaksi Berhasil.", order.Id);
+        }
+        else
+        {
+            pembayaranLunas.Status = PaymentStatus.Dikembalikan;
+            pembayaranLunas.RefundedAt = DateTime.UtcNow;
+            pembayaranLunas.RefundedByAdminId = User.Id();
+            pembayaranLunas.RefundReason = permintaan.Alasan.Trim();
+        }
+
+        // Transaksi lain yang masih menunggu (mustahil dalam keadaan normal karena index
+        // unik parsial di Payments membatasi satu order ke satu transaksi Pending sekaligus,
+        // tapi order yang sudah lunas bisa saja punya percobaan lama yang belum sempat
+        // hangus) ikut dimatikan, sama seperti pembatalan order biasa.
+        foreach (var pembayaran in order.Payments.Where(p => p.Menunggu))
+        {
+            pembayaran.Status = PaymentStatus.Gagal;
+        }
+
+        order.Status = OrderStatus.Batal;
+
+        await db.SaveChangesAsync(batal);
+
+        return Ok(OrderResponse.Dari(
+            order,
+            order.Client?.Name ?? "Klien",
+            await db.JumlahPesanAsync(order.Id, User.Id(), User.Punya(Peran.Admin), batal)));
     }
 }

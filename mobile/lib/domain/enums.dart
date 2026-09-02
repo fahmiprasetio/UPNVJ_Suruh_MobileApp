@@ -95,7 +95,20 @@ enum OfferStatus {
 ///
 /// [jumlahTidakCocok] berarti uangnya masuk tapi bukan sebesar yang ditagihkan.
 /// Ordernya sengaja tidak maju: selisihnya harus diselesaikan orang lebih dulu.
-enum PaymentStatus { pending, berhasil, gagal, kedaluwarsa, jumlahTidakCocok }
+///
+/// [dikembalikan] berarti uangnya sempat lunas, lalu dikembalikan karena admin
+/// membatalkan ordernya lewat dashboard web. Bukan [gagal]: gagal berarti
+/// uangnya tidak pernah sampai, sedangkan ini sempat sampai lalu ditarik balik,
+/// dan [TransaksiPembayaran.dibayarPada] tetap terisi supaya jejak "ini pernah
+/// lunas" tidak ikut hilang.
+enum PaymentStatus {
+  pending,
+  berhasil,
+  gagal,
+  kedaluwarsa,
+  jumlahTidakCocok,
+  dikembalikan,
+}
 
 /// Siapa penulis satu pesan di dalam ruang chat sebuah order.
 ///

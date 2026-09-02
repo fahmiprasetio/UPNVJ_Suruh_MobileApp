@@ -138,6 +138,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             entity.Property(p => p.GatewayReference).HasMaxLength(BatasMasukan.ReferensiGateway);
             entity.Property(p => p.QrPayload).HasMaxLength(BatasMasukan.QrPayload);
+            entity.Property(p => p.RefundReason).HasMaxLength(BatasMasukan.Deskripsi);
 
             // Satu order tidak boleh punya dua transaksi yang sama-sama menunggu. Membuka
             // ulang layar bayar tidak melahirkan QR baru, dan dua QR untuk satu order berarti

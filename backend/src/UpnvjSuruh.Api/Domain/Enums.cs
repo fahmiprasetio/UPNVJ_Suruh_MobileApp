@@ -82,7 +82,23 @@ public enum PaymentStatus
     /// basis data, jadi menyisipkan anggota baru di tengah akan mengubah arti setiap baris
     /// yang sudah ada tanpa ada yang menyentuhnya.
     /// </summary>
-    JumlahTidakCocok
+    JumlahTidakCocok,
+
+    /// <summary>
+    /// Uangnya sudah diterima, lalu dikembalikan lewat pembatalan admin atas order yang
+    /// sudah dibayar.
+    ///
+    /// Bukan Gagal: transaksi yang gagal berarti uangnya tidak pernah sampai, dan boleh
+    /// ditagihkan ulang begitu saja lewat transaksi baru. Di sini uangnya sungguh pernah
+    /// masuk (<see cref="Payment.SettledAt"/> tetap terisi, tidak dikosongkan), lalu
+    /// dikembalikan; keduanya adalah dua kejadian berbeda yang harus tetap kelihatan
+    /// terpisah kalau ada yang menelusuri kenapa order ini batal padahal sudah lunas.
+    ///
+    /// Pengembaliannya sendiri catatan pembukuan, bukan panggilan ke gateway pembayaran:
+    /// selama capstone ini berjalan di sandbox (rencana bagian 6), tidak ada uang sungguhan
+    /// yang berpindah untuk dikembalikan lewat API mana pun.
+    /// </summary>
+    Dikembalikan
 }
 
 public static class OrderStatusExtensions

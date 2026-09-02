@@ -61,3 +61,18 @@ public record PermintaanDaftarOrder : PermintaanHalaman
 {
     public OrderStatus? Status { get; init; }
 }
+
+/// <summary>
+/// Admin membatalkan order yang sudah dibayar.
+/// </summary>
+/// <remarks>
+/// Alasan wajib diisi, mengikuti pola yang sama dengan <see cref="TetapkanPeranRequest"/>:
+/// catatan tanpa alasan cuma memberi tahu bahwa sesuatu terjadi, bukan kenapa, dan uang yang
+/// dikembalikan tanpa alasan tercatat adalah pertanyaan yang menunggu ditanyakan belakangan.
+/// </remarks>
+public record BatalkanOrderRequest
+{
+    [Required(AllowEmptyStrings = false)]
+    [MaxLength(BatasMasukan.Deskripsi)]
+    public string Alasan { get; init; } = string.Empty;
+}
