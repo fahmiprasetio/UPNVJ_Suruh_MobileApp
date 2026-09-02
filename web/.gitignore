@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# Alamat backend milik masing-masing mesin. Yang ikut ter-commit cuma contohnya.
+.env
+.env.local

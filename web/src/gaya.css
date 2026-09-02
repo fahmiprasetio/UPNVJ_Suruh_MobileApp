@@ -1,0 +1,628 @@
+/*
+ * Gaya dashboard admin.
+ *
+ * Warnanya diambil apa adanya dari DESIGN.md, berkas yang sama yang mengatur aplikasi
+ * mobile, termasuk aturan "hijau menceritakan keadaan, maroon meminta tindakan" dan
+ * "merah cuma berarti ada yang belum dibayar". Nilainya disalin sebagai token di sini
+ * alih-alih ditulis langsung di setiap aturan, supaya saat tema itu berubah yang perlu
+ * disunting cuma satu blok.
+ *
+ * Ditulis sebagai CSS biasa, tanpa kerangka kerja gaya apa pun. Alasannya bukan selera:
+ * satu-satunya orang yang memakai dashboard ini duduk di depan laptop, halamannya cuma
+ * beberapa, dan menambah satu perkakas lagi berarti satu perkakas lagi yang harus
+ * dipasang, dipelajari, dan dijelaskan saat sidang.
+ */
+
+:root {
+  /* --- Palet, dari DESIGN.md --- */
+  --patch-green: #4b7043;
+  --patch-green-tint: #8fbf80;
+  --motor-maroon: #8b2331;
+  --motor-maroon-tint: #e8909a;
+  --dirt-road-sand: #c8b080;
+
+  --paper: #f5f8f4;
+  --paper-card: #ffffff;
+  --paper-container: #e9f0e7;
+  --paper-outline: #d3dfd0;
+  --paper-outline-strong: #6f8577;
+  --paper-on: #17231c;
+  --paper-on-variant: #4a5a50;
+
+  /* --- Peran, bukan warna. Yang dipakai aturan di bawah selalu yang ini. --- */
+  --ground: var(--paper);
+  --kartu: var(--paper-card);
+  --wadah: var(--paper-container);
+  --garis: var(--paper-outline);
+  --garis-tegas: var(--paper-outline-strong);
+  --tinta: var(--paper-on);
+  --tinta-samar: var(--paper-on-variant);
+  --aksi: var(--motor-maroon);
+  --aksi-tinta: #ffffff;
+  --keadaan: var(--patch-green);
+
+  --jeda: 8px;
+  --lengkung: 10px;
+  --bayang: 0 1px 2px rgba(30, 48, 46, 0.06);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ground: #13211a;
+    --kartu: #253b31;
+    --wadah: #1f3229;
+    --garis: #395648;
+    --garis-tegas: #5e8271;
+    --tinta: #eaf1ee;
+    --tinta-samar: #b2c8be;
+    /* Maroon dan hijau penuh keduanya jatuh di bawah ambang keterbacaan di atas dasar
+       gelap; DESIGN.md menyediakan versi tint justru untuk ini. */
+    --aksi: var(--motor-maroon-tint);
+    --aksi-tinta: #13211a;
+    --keadaan: var(--patch-green-tint);
+    --bayang: none;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--tinta);
+  font-family: Roboto, 'Segoe UI', system-ui, sans-serif;
+  /* 14px/20px, "Body" di DESIGN.md. Dashboard ini pekerjaan tabel, dan tabel yang
+     hurufnya besar memaksa menggulir untuk hal yang seharusnya terbaca sekali lihat. */
+  font-size: 14px;
+  line-height: 20px;
+}
+
+h1 {
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
+  margin: 0;
+}
+
+h2 {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  margin: 0 0 calc(var(--jeda) * 1.5);
+}
+
+a {
+  color: var(--keadaan);
+}
+
+code {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 12px;
+  background: var(--wadah);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+.tersembunyi {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* --- Rangka --- */
+
+.rangka {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.rangka__kepala {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--jeda) * 3);
+  padding: calc(var(--jeda) * 1.5) calc(var(--jeda) * 3);
+  background: var(--wadah);
+  border-bottom: 1px solid var(--garis);
+}
+
+.rangka__merek {
+  display: flex;
+  flex-direction: column;
+}
+
+.rangka__judul {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.rangka__anak-judul {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tinta-samar);
+}
+
+.rangka__nav {
+  display: flex;
+  gap: var(--jeda);
+  flex: 1;
+}
+
+.rangka__nav a {
+  padding: 6px 12px;
+  border-radius: var(--lengkung);
+  color: var(--tinta-samar);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.rangka__nav a.aktif {
+  background: var(--kartu);
+  color: var(--tinta);
+}
+
+.rangka__akun {
+  display: flex;
+  align-items: center;
+  gap: var(--jeda);
+  color: var(--tinta-samar);
+}
+
+.rangka__isi {
+  flex: 1;
+  padding: calc(var(--jeda) * 3);
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.rangka__kaki {
+  padding: var(--jeda) calc(var(--jeda) * 3);
+  border-top: 1px solid var(--garis);
+  color: var(--tinta-samar);
+  font-size: 12px;
+}
+
+/* --- Kartu --- */
+
+.kartu {
+  background: var(--kartu);
+  /* Di tema terang, jarak warna kartu dan dasarnya cuma 1,07:1; yang benar-benar
+     membentuk kartu adalah garis tepinya, bukan isiannya. Ini disengaja, mengikuti
+     DESIGN.md, bukan kekurangan yang perlu ditambal bayangan tebal. */
+  border: 1px solid var(--garis);
+  border-radius: var(--lengkung);
+  box-shadow: var(--bayang);
+  padding: calc(var(--jeda) * 2);
+  margin-bottom: calc(var(--jeda) * 2);
+}
+
+/* --- Tombol --- */
+
+.tombol {
+  font: inherit;
+  font-weight: 600;
+  font-size: 16px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: var(--lengkung);
+  background: var(--aksi);
+  color: var(--aksi-tinta);
+  cursor: pointer;
+}
+
+.tombol:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tombol--halus {
+  background: transparent;
+  color: var(--tinta);
+  border: 1px solid var(--garis-tegas);
+  font-size: 14px;
+  padding: 6px 14px;
+}
+
+.cip {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--garis);
+  background: var(--kartu);
+  color: var(--tinta-samar);
+  cursor: pointer;
+}
+
+.cip--aktif {
+  background: var(--keadaan);
+  border-color: var(--keadaan);
+  color: var(--kartu);
+}
+
+@media (prefers-color-scheme: dark) {
+  .cip--aktif {
+    color: #13211a;
+  }
+}
+
+/* --- Lencana status --- */
+
+.lencana {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.lencana--utang {
+  background: color-mix(in srgb, var(--motor-maroon) 14%, var(--kartu));
+  border-color: var(--motor-maroon);
+  color: var(--motor-maroon);
+}
+
+.lencana--proses {
+  background: color-mix(in srgb, var(--patch-green) 14%, var(--kartu));
+  border-color: var(--keadaan);
+  color: var(--keadaan);
+}
+
+.lencana--jalan {
+  background: var(--keadaan);
+  color: var(--kartu);
+}
+
+.lencana--selesai {
+  border-color: var(--keadaan);
+  color: var(--keadaan);
+}
+
+.lencana--akhir,
+.lencana--jalur {
+  background: var(--wadah);
+  border-color: var(--garis);
+  color: var(--tinta-samar);
+}
+
+@media (prefers-color-scheme: dark) {
+  .lencana--utang {
+    color: var(--motor-maroon-tint);
+    border-color: var(--motor-maroon-tint);
+  }
+
+  .lencana--jalan {
+    color: #13211a;
+  }
+}
+
+.tanda-macet {
+  margin-left: var(--jeda);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--motor-maroon);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+@media (prefers-color-scheme: dark) {
+  .tanda-macet {
+    color: var(--motor-maroon-tint);
+  }
+}
+
+/* --- Tabel --- */
+
+.tabel {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--kartu);
+  border: 1px solid var(--garis);
+  border-radius: var(--lengkung);
+  overflow: hidden;
+}
+
+.tabel th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--tinta-samar);
+  background: var(--wadah);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--garis);
+}
+
+.tabel td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--garis);
+  vertical-align: top;
+}
+
+.tabel tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.tabel__angka {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Baris order yang menganggur terlalu lama. Ditandai lewat garis di tepi kiri, bukan
+   lewat mewarnai seluruh barisnya: baris berwarna penuh membuat tulisan di dalamnya
+   ikut kehilangan kontras, dan yang perlu menonjol cuma keberadaannya. */
+.tabel__baris--macet td:first-child {
+  box-shadow: inset 3px 0 0 var(--motor-maroon);
+}
+
+.tabel--rapat td,
+.tabel--rapat th {
+  padding: 6px 10px;
+}
+
+.tautan-kode {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Pantauan --- */
+
+.pantauan__kepala {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--jeda) * 2);
+  margin-bottom: calc(var(--jeda) * 2);
+}
+
+.pantauan__hitungan {
+  margin: 0;
+  color: var(--tinta-samar);
+}
+
+.pantauan__penyaring {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--jeda);
+  margin-bottom: calc(var(--jeda) * 2);
+}
+
+.halaman-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--jeda) * 2);
+  padding: calc(var(--jeda) * 2) 0;
+  color: var(--tinta-samar);
+}
+
+/* --- Detail order --- */
+
+.detail__jejak {
+  margin-bottom: var(--jeda);
+}
+
+.detail__kepala {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: calc(var(--jeda) * 2);
+  margin-bottom: calc(var(--jeda) * 2);
+}
+
+.detail__ringkas {
+  margin: 4px 0 0;
+  color: var(--tinta-samar);
+}
+
+.detail__lencana {
+  display: flex;
+  gap: var(--jeda);
+}
+
+.detail__kolom {
+  display: grid;
+  /* Dua kolom di layar laptop, satu kolom di layar sempit. Chat ditaruh di kolom kanan
+     yang tetap terlihat sambil rinciannya dibaca, karena keduanya dipakai bersamaan:
+     admin menjawab pertanyaan klien sambil melihat isi ordernya. */
+  grid-template-columns: minmax(0, 3fr) minmax(320px, 2fr);
+  gap: calc(var(--jeda) * 2);
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .detail__kolom {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.rincian {
+  display: grid;
+  grid-template-columns: minmax(120px, auto) 1fr;
+  gap: 6px calc(var(--jeda) * 2);
+  margin: 0;
+}
+
+.rincian dt {
+  color: var(--tinta-samar);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.rincian dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.detail__bukti {
+  margin: calc(var(--jeda) * 2) 0 0;
+  color: var(--tinta-samar);
+  font-size: 12px;
+}
+
+/* --- Chat --- */
+
+.kartu--chat {
+  position: sticky;
+  top: calc(var(--jeda) * 2);
+}
+
+.chat__keterangan {
+  margin: 0 0 calc(var(--jeda) * 1.5);
+  font-size: 12px;
+  color: var(--tinta-samar);
+}
+
+.chat {
+  list-style: none;
+  margin: 0 0 calc(var(--jeda) * 2);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--jeda);
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.gelembung {
+  background: var(--wadah);
+  border-radius: var(--lengkung);
+  padding: var(--jeda) calc(var(--jeda) * 1.5);
+}
+
+.gelembung p {
+  margin: 2px 0;
+  overflow-wrap: anywhere;
+}
+
+.gelembung__peran {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--tinta-samar);
+}
+
+.gelembung--admin {
+  background: color-mix(in srgb, var(--patch-green) 12%, var(--kartu));
+}
+
+.gelembung time {
+  font-size: 11px;
+  color: var(--tinta-samar);
+}
+
+.chat__kirim {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jeda);
+}
+
+.chat__ditutup {
+  margin: 0;
+  font-size: 12px;
+  color: var(--tinta-samar);
+}
+
+textarea,
+input {
+  font: inherit;
+  color: var(--tinta);
+  background: var(--wadah);
+  border: 1px solid var(--garis-tegas);
+  border-radius: var(--lengkung);
+  padding: 10px 12px;
+  width: 100%;
+  resize: vertical;
+}
+
+/* --- Keadaan --- */
+
+.keadaan {
+  margin: calc(var(--jeda) * 2) 0;
+  padding: calc(var(--jeda) * 1.5);
+  border-radius: var(--lengkung);
+  background: var(--wadah);
+  color: var(--tinta-samar);
+}
+
+.keadaan--galat {
+  background: color-mix(in srgb, var(--motor-maroon) 10%, var(--kartu));
+  border: 1px solid var(--motor-maroon);
+  color: var(--tinta);
+}
+
+.keadaan--galat button {
+  margin-top: var(--jeda);
+  font: inherit;
+  font-weight: 600;
+  background: transparent;
+  border: 1px solid var(--garis-tegas);
+  border-radius: var(--lengkung);
+  padding: 6px 14px;
+  color: var(--tinta);
+  cursor: pointer;
+}
+
+/* --- Halaman masuk --- */
+
+.halaman-masuk,
+.halaman-pesan {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--jeda) * 3);
+  text-align: center;
+}
+
+.halaman-pesan p {
+  max-width: 46ch;
+  color: var(--tinta-samar);
+}
+
+.kartu--masuk {
+  width: 100%;
+  max-width: 360px;
+  text-align: left;
+}
+
+.halaman-masuk__keterangan {
+  margin: 4px 0 calc(var(--jeda) * 3);
+  color: var(--tinta-samar);
+}
+
+.halaman-masuk form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jeda);
+}
+
+.halaman-masuk label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tinta-samar);
+}
+
+.halaman-masuk__catatan {
+  margin: calc(var(--jeda) * 2) 0 0;
+  font-size: 12px;
+  color: var(--tinta-samar);
+  border-top: 1px dashed var(--garis);
+  padding-top: var(--jeda);
+}
