@@ -804,3 +804,21 @@ input {
   font-size: 11px;
   color: var(--tinta-samar);
 }
+
+/* --- Pembatalan --- */
+
+.kartu--pembatalan {
+  border-color: var(--garis-tegas);
+}
+
+.pembatalan__keterangan {
+  margin: 0 0 calc(var(--jeda) * 1.5);
+  color: var(--tinta-samar);
+  font-size: 13px;
+}
+
+.pembatalan__tombol {
+  display: flex;
+  gap: var(--jeda);
+  margin-top: var(--jeda);
+}

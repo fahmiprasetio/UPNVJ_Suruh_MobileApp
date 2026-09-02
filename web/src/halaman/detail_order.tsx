@@ -2,7 +2,7 @@ import { useCallback, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { useSesi } from '../auth/sesi';
-import { ambilOrder, daftarPesan, kirimPesan } from '../inti/api_admin';
+import { ambilOrder, batalkanOrder, daftarPesan, kirimPesan } from '../inti/api_admin';
 import {
   formatDurasi,
   formatJadwal,
@@ -19,15 +19,15 @@ import { LencanaJalur, LencanaStatus } from '../komponen/lencana';
 /**
  * Satu order, dibaca admin.
  *
- * Layar ini menampilkan, tidak memutuskan. Admin tidak lagi menentukan harga Jalur B (itu
- * pindah jadi tawar-menawar antara klien dan runner), dan pembatalan beserta pengembalian
- * dana belum punya endpoint di backend sama sekali. Jadi yang ada di sini cuma dua: seluruh
- * keterangan order supaya admin bisa menjawab pertanyaan tentangnya, dan chat supaya ia
- * bisa turun tangan saat ordernya macet.
+ * Layar ini menampilkan dan, untuk satu hal, memutuskan: order yang sudah dibayar bisa
+ * dibatalkan lewat sini, sekalian mencatat pengembalian dananya (lihat `PanelPembatalan`
+ * di bawah). Admin tidak lagi menentukan harga Jalur B sama sekali; itu sudah pindah jadi
+ * tawar-menawar antara klien dan runner.
  *
- * Tombol yang tidak ada sengaja tidak dipalsukan. Tombol batalkan yang selalu dijawab 404
- * lebih buruk daripada tidak ada tombol sama sekali: yang pertama membuat orang mengira
- * pekerjaannya sudah selesai.
+ * Tombol yang tidak ada sengaja tidak dipalsukan. Rekap bayaran runner dan kelola tarif
+ * belum punya endpoint di backend, jadi tidak ada tombolnya di sini: tombol yang selalu
+ * dijawab 404 lebih buruk daripada tidak ada tombol sama sekali, karena yang pertama
+ * membuat orang mengira pekerjaannya sudah selesai.
  */
 export function HalamanDetailOrder() {
   const { id = '' } = useParams();
@@ -63,6 +63,7 @@ export function HalamanDetailOrder() {
         <div className="detail__utama">
           <RincianOrder order={order} />
           <DaftarPenawaran order={order} />
+          <PanelPembatalan order={order} onDibatalkan={muatUlang} />
         </div>
         <PanelChat order={order} />
       </div>
@@ -179,6 +180,108 @@ function labelStatusPenawaran(status: StatusPenawaran): string {
     case 'Ditutup':
       return 'Gugur, klien pilih runner lain';
   }
+}
+
+/**
+ * Membatalkan order yang sudah dibayar, sekaligus mencatat pengembalian dananya.
+ *
+ * Muncul cuma untuk order yang layak dibatalkan lewat sini: masih aktif (bukan Selesai atau
+ * Batal) dan sudah ada uangnya (`dibayarPada` terisi). Order yang belum dibayar tetap
+ * dibatalkan klien sendiri lewat aplikasi, bukan lewat sini — backend juga menolaknya kalau
+ * dicoba, panel ini cuma tidak menawarkannya dari awal.
+ *
+ * Konfirmasi dua langkah (buka form dulu, baru tombol kirim yang sungguhan membatalkan),
+ * bukan satu tombol yang langsung jalan: ini tindakan yang tidak bisa dibatalkan baliknya
+ * dari dashboard, order yang sudah Batal tidak bisa dibatalkan lagi.
+ */
+function PanelPembatalan({
+  order,
+  onDibatalkan,
+}: {
+  order: Order;
+  onDibatalkan: () => void;
+}) {
+  const { api } = useSesi();
+  const [terbuka, setTerbuka] = useState(false);
+  const [alasan, setAlasan] = useState('');
+  const [sibuk, setSibuk] = useState(false);
+  const [galat, setGalat] = useState<unknown>(null);
+
+  const sudahBerakhir = order.status === 'Selesai' || order.status === 'Batal';
+  if (sudahBerakhir || order.dibayarPada === null) return null;
+
+  async function batalkan(peristiwa: FormEvent) {
+    peristiwa.preventDefault();
+    setSibuk(true);
+    setGalat(null);
+    try {
+      await batalkanOrder(api, order.id, alasan.trim());
+      onDibatalkan();
+    } catch (salah) {
+      setGalat(salah);
+      setSibuk(false);
+    }
+  }
+
+  return (
+    <article className="kartu kartu--pembatalan">
+      <h2>Batalkan &amp; kembalikan dana</h2>
+
+      {!terbuka ? (
+        <>
+          <p className="pembatalan__keterangan">
+            Order ini sudah dibayar. Membatalkannya di sini mencatat uangnya sebagai
+            dikembalikan, lalu menutup order.
+          </p>
+          <button type="button" className="tombol" onClick={() => setTerbuka(true)}>
+            Batalkan order ini
+          </button>
+        </>
+      ) : (
+        <form onSubmit={batalkan}>
+          <label htmlFor="alasanBatal">Alasan pembatalan</label>
+          <textarea
+            id="alasanBatal"
+            rows={2}
+            maxLength={2000}
+            required
+            autoFocus
+            value={alasan}
+            disabled={sibuk}
+            placeholder="Misal: klien komplain barang rusak saat diterima."
+            onChange={(e) => setAlasan(e.target.value)}
+          />
+          <div className="pembatalan__tombol">
+            <button
+              type="submit"
+              className="tombol"
+              disabled={sibuk || alasan.trim().length === 0}
+            >
+              {sibuk ? 'Membatalkan...' : 'Ya, batalkan dan catat pengembalian'}
+            </button>
+            <button
+              type="button"
+              className="tombol tombol--halus"
+              disabled={sibuk}
+              onClick={() => {
+                setTerbuka(false);
+                setAlasan('');
+                setGalat(null);
+              }}
+            >
+              Urungkan
+            </button>
+          </div>
+        </form>
+      )}
+
+      {galat !== null && (
+        <p className="keadaan keadaan--galat" role="alert">
+          {pesanGalat(galat)}
+        </p>
+      )}
+    </article>
+  );
 }
 
 function PanelChat({ order }: { order: Order }) {

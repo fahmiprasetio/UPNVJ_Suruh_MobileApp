@@ -75,6 +75,25 @@ export function ambilOrder(api: KlienApi, id: string, sinyal?: AbortSignal): Pro
 }
 
 /**
+ * Membatalkan order yang sudah dibayar, sekaligus mencatat pengembalian dananya.
+ *
+ * Bukan endpoint batal biasa (`POST /api/orders/{id}/batal`) yang dipakai klien: itu
+ * sengaja menolak order yang sudah dibayar dengan pesan "harus lewat admin", dan inilah
+ * jalur itu (lihat `AdminOrderController.Batalkan` di backend). Order yang belum dibayar
+ * tetap ditolak endpoint ini — layar pemanggil yang memutuskan kapan tombolnya boleh
+ * ditampilkan, bukan fungsi ini, tapi backend tetap menolak juga kalau ada yang mencoba.
+ *
+ * Pengembaliannya cuma catatan pembukuan: backend berjalan di sandbox pembayaran, jadi
+ * tidak ada panggilan gateway sungguhan di baliknya.
+ */
+export function batalkanOrder(api: KlienApi, orderId: string, alasan: string): Promise<Order> {
+  return api.minta<Order>(`/api/admin/orders/${orderId}/batalkan`, {
+    metode: 'POST',
+    badan: { alasan },
+  });
+}
+
+/**
  * Obrolan umum sebuah order.
  *
  * Admin selalu mendapat obrolan umum, tidak pernah jalur pribadi antara klien dan seorang
