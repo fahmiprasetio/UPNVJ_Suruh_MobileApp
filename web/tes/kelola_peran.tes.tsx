@@ -6,6 +6,7 @@ import { PenyediaSesi } from '../src/auth/sesi';
 import { HalamanKelolaPeran } from '../src/halaman/kelola_peran';
 import { KlienApi } from '../src/inti/klien_api';
 import type { Pengguna } from '../src/inti/tipe';
+import { buatTiruanHub } from './dukungan_hub';
 
 /**
  * Tes ini menembus jalur admin mengangkat runner: mencari akun, mencentang perannya,
@@ -40,7 +41,7 @@ function pasang(ambil: ReturnType<typeof vi.fn>) {
 
   return render(
     <MemoryRouter>
-      <PenyediaSesi buatKlien={buatKlien}>
+      <PenyediaSesi buatKlien={buatKlien} buatHub={buatTiruanHub}>
         <HalamanKelolaPeran />
       </PenyediaSesi>
     </MemoryRouter>,

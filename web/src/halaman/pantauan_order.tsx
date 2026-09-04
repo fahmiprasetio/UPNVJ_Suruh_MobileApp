@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { useSesi } from '../auth/sesi';
@@ -50,7 +50,7 @@ const penyaringStatus: { nilai: StatusOrder | undefined; label: string }[] = [
 const AMBANG_MACET_MENIT = 10;
 
 export function HalamanPantauanOrder() {
-  const { api } = useSesi();
+  const { api, hub } = useSesi();
   const [status, setStatus] = useState<StatusOrder | undefined>(undefined);
   const [halaman, setHalaman] = useState(1);
 
@@ -60,6 +60,13 @@ export function HalamanPantauanOrder() {
   );
 
   const { data, memuat, galat, muatUlang } = gunakanMuat(ambil, { segarkanBerkala: true });
+
+  // Jaring penyegar tambahan, bukan pengganti `segarkanBerkala` di atas. Begitu ada order
+  // yang berubah, dashboard ini biasanya tahu dalam hitungan detik, bukan menunggu sampai
+  // lima belas detik habis; kalau sambungan hub-nya putus untuk suatu sebab (jaringan
+  // kampus yang goyah, tab yang lama tidak difokuskan), pengambilan berkala tadi tetap
+  // menjaga layar ini tidak basi selamanya.
+  useEffect(() => hub.onPerubahan(muatUlang), [hub, muatUlang]);
 
   const labelPenyaringAktif = penyaringStatus.find((p) => p.nilai === status)?.label;
 

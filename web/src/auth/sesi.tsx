@@ -12,16 +12,21 @@ import {
 import { masuk as masukApi, saya as sayaApi } from '../inti/api_admin';
 import { GalatTidakBerwenang } from '../inti/galat_api';
 import { KlienApi } from '../inti/klien_api';
+import { OrderHubClient, type KontrakOrderHub } from '../inti/order_hub_client';
 import type { Pengguna } from '../inti/tipe';
 import { bacaToken, hapusToken, simpanToken } from './penyimpanan_token';
 
 /**
- * Siapa yang sedang memakai dashboard, dan satu klien API yang sudah membawa tokennya.
+ * Siapa yang sedang memakai dashboard, satu klien API yang sudah membawa tokennya, dan
+ * satu sambungan hub yang siklus hidupnya mengikuti sesi.
  *
- * Keduanya disatukan di sini dengan sengaja. Kalau token disimpan di satu tempat dan klien
- * API dibuat di tempat lain, akan selalu ada layar yang memegang klien API dari sebelum
- * seseorang keluar, dan layar itu tetap bisa mengambil data atas nama akun yang sudah
- * ditinggalkan.
+ * Ketiganya disatukan di sini dengan sengaja. Kalau token disimpan di satu tempat dan
+ * klien API dibuat di tempat lain, akan selalu ada layar yang memegang klien API dari
+ * sebelum seseorang keluar, dan layar itu tetap bisa mengambil data atas nama akun yang
+ * sudah ditinggalkan. Sambungan hub ikut aturan yang sama, dan alasannya lebih tegas lagi:
+ * `OrderHub` mensyaratkan token yang masih berlaku di seluruh permukaannya, jadi sambungan
+ * yang dibuat sekali saat dashboard dibuka dan dibiarkan hidup selamanya akan terus
+ * membawa token akun yang sudah lama keluar begitu ada pergantian sesi.
  */
 
 type KeadaanSesi =
@@ -33,6 +38,7 @@ type KeadaanSesi =
 interface IsiSesi {
   keadaan: KeadaanSesi;
   api: KlienApi;
+  hub: KontrakOrderHub;
   masuk(noHp: string, kode: string): Promise<Pengguna>;
   keluar(): void;
 }
@@ -42,10 +48,13 @@ const KonteksSesi = createContext<IsiSesi | null>(null);
 export function PenyediaSesi({
   children,
   buatKlien,
+  buatHub,
 }: {
   children: ReactNode;
   /** Disediakan tes untuk menembus jaringan. Pemakaian biasa tidak mengisinya. */
   buatKlien?: (bacaToken: () => string | null) => KlienApi;
+  /** Disediakan tes untuk menembus sambungan hub sungguhan. Pemakaian biasa tidak mengisinya. */
+  buatHub?: (bacaToken: () => string | null) => KontrakOrderHub;
 }) {
   const [token, setToken] = useState<string | null>(() => bacaToken());
   const [keadaan, setKeadaan] = useState<KeadaanSesi>(() =>
@@ -64,6 +73,25 @@ export function PenyediaSesi({
     const baca = () => tokenRef.current;
     return buatKlien ? buatKlien(baca) : new KlienApi(baca);
   }, [buatKlien]);
+
+  const hub = useMemo(() => {
+    const baca = () => tokenRef.current;
+    return buatHub ? buatHub(baca) : new OrderHubClient(baca);
+  }, [buatHub]);
+
+  // Siklus hidupnya mengikuti tahap sesi: nyala begitu ada yang masuk, mati begitu keluar.
+  // Bukan sekali saat dashboard dibuka, karena tokennya bisa berganti (masuk sebagai akun
+  // lain sesudah keluar) tanpa dashboard-nya sendiri dimuat ulang, dan sambungan lama akan
+  // terus membawa token yang sudah tidak berlaku.
+  useEffect(() => {
+    if (keadaan.tahap === 'masuk') {
+      hub.mulai();
+    } else {
+      void hub.berhenti();
+    }
+  }, [keadaan.tahap, hub]);
+
+  useEffect(() => () => void hub.berhenti(), [hub]);
 
   const keluar = useCallback(() => {
     hapusToken();
@@ -109,7 +137,10 @@ export function PenyediaSesi({
     [api],
   );
 
-  const isi = useMemo<IsiSesi>(() => ({ keadaan, api, masuk, keluar }), [keadaan, api, masuk, keluar]);
+  const isi = useMemo<IsiSesi>(
+    () => ({ keadaan, api, hub, masuk, keluar }),
+    [keadaan, api, hub, masuk, keluar],
+  );
 
   return <KonteksSesi.Provider value={isi}>{children}</KonteksSesi.Provider>;
 }

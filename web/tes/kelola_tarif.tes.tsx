@@ -6,6 +6,7 @@ import { PenyediaSesi } from '../src/auth/sesi';
 import { HalamanKelolaTarif } from '../src/halaman/kelola_tarif';
 import { KlienApi } from '../src/inti/klien_api';
 import type { Tarif } from '../src/inti/tipe';
+import { buatTiruanHub } from './dukungan_hub';
 
 /**
  * Yang paling penting diuji di sini: form dimuat dari angka yang sedang berlaku (bukan
@@ -41,7 +42,7 @@ function pasang(ambil: ReturnType<typeof vi.fn>) {
 
   return render(
     <MemoryRouter>
-      <PenyediaSesi buatKlien={buatKlien}>
+      <PenyediaSesi buatKlien={buatKlien} buatHub={buatTiruanHub}>
         <HalamanKelolaTarif />
       </PenyediaSesi>
     </MemoryRouter>,

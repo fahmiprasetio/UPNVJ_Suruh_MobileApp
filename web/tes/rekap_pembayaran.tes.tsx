@@ -6,6 +6,7 @@ import { PenyediaSesi } from '../src/auth/sesi';
 import { HalamanRekapPembayaran } from '../src/halaman/rekap_pembayaran';
 import { KlienApi } from '../src/inti/klien_api';
 import type { BarisPayout, PayoutSetting, RekapPayout, RekapRunner, RincianPayout } from '../src/inti/tipe';
+import { buatTiruanHub } from './dukungan_hub';
 
 /**
  * Yang paling penting diuji di sini adalah dua hal yang menyangkut uang sungguhan.
@@ -94,7 +95,7 @@ function pasang(ambil: ReturnType<typeof vi.fn>) {
 
   return render(
     <MemoryRouter>
-      <PenyediaSesi buatKlien={buatKlien}>
+      <PenyediaSesi buatKlien={buatKlien} buatHub={buatTiruanHub}>
         <HalamanRekapPembayaran />
       </PenyediaSesi>
     </MemoryRouter>,

@@ -6,6 +6,7 @@ import { PenyediaSesi } from '../src/auth/sesi';
 import { HalamanDetailOrder } from '../src/halaman/detail_order';
 import { KlienApi } from '../src/inti/klien_api';
 import type { Order } from '../src/inti/tipe';
+import { buatTiruanHub } from './dukungan_hub';
 
 /**
  * Panel pembatalan ini satu-satunya tempat di dashboard yang mengubah data lewat aksi
@@ -62,7 +63,7 @@ function pasang(ambil: ReturnType<typeof vi.fn>, id = order().id) {
 
   return render(
     <MemoryRouter initialEntries={[`/order/${id}`]}>
-      <PenyediaSesi buatKlien={buatKlien}>
+      <PenyediaSesi buatKlien={buatKlien} buatHub={buatTiruanHub}>
         <Routes>
           <Route path="/order/:id" element={<HalamanDetailOrder />} />
         </Routes>

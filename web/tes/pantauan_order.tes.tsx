@@ -1,11 +1,12 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
 import { PenyediaSesi } from '../src/auth/sesi';
+import { AMBANG_MACET_MENIT, HalamanPantauanOrder, sedangMacet } from '../src/halaman/pantauan_order';
 import { KlienApi } from '../src/inti/klien_api';
 import type { Halaman, Order, StatusOrder } from '../src/inti/tipe';
-import { AMBANG_MACET_MENIT, HalamanPantauanOrder, sedangMacet } from '../src/halaman/pantauan_order';
+import { buatKendaliHub, buatTiruanHub } from './dukungan_hub';
 
 function order(ubah: Partial<Order> = {}): Order {
   return {
@@ -73,7 +74,7 @@ describe('sedangMacet', () => {
   });
 });
 
-function pasang(isi: Order[], total = isi.length) {
+function pasang(isi: Order[], total = isi.length, buatHub = buatTiruanHub) {
   const halaman: Halaman<Order> = {
     isi,
     total,
@@ -94,7 +95,7 @@ function pasang(isi: Order[], total = isi.length) {
 
   render(
     <MemoryRouter>
-      <PenyediaSesi buatKlien={buatKlien}>
+      <PenyediaSesi buatKlien={buatKlien} buatHub={buatHub}>
         <HalamanPantauanOrder />
       </PenyediaSesi>
     </MemoryRouter>,
@@ -142,5 +143,19 @@ describe('HalamanPantauanOrder', () => {
     const baris = (await screen.findByText('SRH-001')).closest('tr');
     expect(baris).not.toBeNull();
     expect(within(baris as HTMLElement).getByText('macet')).toBeInTheDocument();
+  });
+
+  it('memuat ulang begitu hub mengabarkan ada order yang berubah', async () => {
+    // Jaring penyegar tambahan di atas pengambilan berkala 15 detik: begitu ada kabar
+    // dari hub, layar ini harus menanyakan ulang daftarnya tanpa menunggu jeda itu habis.
+    const { hub, picu } = buatKendaliHub();
+    const ambil = pasang([order()], 1, () => hub);
+
+    await screen.findByText('SRH-001');
+    expect(ambil).toHaveBeenCalledTimes(1);
+
+    act(() => picu());
+
+    await waitFor(() => expect(ambil).toHaveBeenCalledTimes(2));
   });
 });

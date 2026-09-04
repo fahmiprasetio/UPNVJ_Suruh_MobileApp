@@ -6,6 +6,7 @@ import { PerluAdmin } from '../src/auth/penjaga_admin';
 import { PenyediaSesi } from '../src/auth/sesi';
 import { KlienApi } from '../src/inti/klien_api';
 import type { Pengguna } from '../src/inti/tipe';
+import { buatTiruanHub } from './dukungan_hub';
 
 /**
  * Penjaga ini bukan penjagaan keamanan; yang menjaga data ada di backend. Yang diuji di
@@ -21,7 +22,7 @@ function pasangSesi(jawabanSaya: () => Promise<Response>) {
 
   return render(
     <MemoryRouter initialEntries={['/order']}>
-      <PenyediaSesi buatKlien={buatKlien}>
+      <PenyediaSesi buatKlien={buatKlien} buatHub={buatTiruanHub}>
         <Routes>
           <Route path="/masuk" element={<p>Halaman masuk</p>} />
           <Route
