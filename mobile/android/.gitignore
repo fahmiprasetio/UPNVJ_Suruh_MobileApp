@@ -1,8 +1,16 @@
-gradle-wrapper.jar
+# gradle-wrapper.jar, gradlew, dan gradlew.bat DULU diabaikan di sini, ikut bawaan
+# template Flutter. Sengaja dilacak sekarang: gradlew.bat bawaan gagal total di mesin
+# ini (dan di mesin siapa pun yang jalur proyeknya memuat "&") karena skripnya
+# menugaskan CLASSPATH dan beberapa variabel lain tanpa tanda kutip, sehingga cmd.exe
+# memecah perintahnya persis di karakter "&" pada nama folder. Perbaikannya (enam
+# penugasan dikutip) cuma bertahan di berkas lokal selama ia tetap diabaikan; siapa
+# pun yang clone ulang mewarisi wrapper yang rusak lagi tanpa satu pun baris di sini
+# yang memberitahunya kenapa. gradlew (skrip Unix) ikut dilacak juga, bukan karena ia
+# rusak (sudah diperiksa, seluruh pemakaian APP_HOME/CLASSPATH di sana sudah dikutip
+# atau berupa penugasan yang aman), melainkan supaya clone yang sama tetap bisa
+# dibangun dari Mac atau Linux.
 /.gradle
 /captures/
-/gradlew
-/gradlew.bat
 /local.properties
 GeneratedPluginRegistrant.java
 .cxx/
