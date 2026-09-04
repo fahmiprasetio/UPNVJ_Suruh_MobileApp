@@ -4,18 +4,25 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 namespace UpnvjSuruh.Api.Data;
 
 /// <summary>
-/// Memeriksa apakah server masih bisa menghubungi basis datanya.
+/// Memeriksa apakah server masih bisa melayani: basis datanya menjawab, dan skemanya sudah
+/// selengkap yang dituntut kode yang sedang berjalan.
 /// </summary>
 /// <remarks>
-/// Ini satu-satunya hal yang perlu diperiksa dari luar. Tanpa basis data, server ini tidak
-/// bisa melayani satu pun permintaan yang berguna, sementara prosesnya tetap menyala dan
-/// tetap menjawab permintaan TCP. Pemeriksa yang cuma menanyakan "prosesnya hidup?" akan
-/// melaporkannya sehat sepanjang mati listrik di sisi basis data.
+/// Keduanya diperiksa, bukan yang pertama saja, dan yang kedua ditambahkan sesudah
+/// kekurangannya terbukti sungguhan: server dijalankan terhadap basis data pengembangan yang
+/// tertinggal satu migrasi, alamat ini menjawab sehat, lalu setiap permintaan yang menyentuh
+/// tabel baru dijawab 500 tanpa satu pun petunjuk yang menghubungkannya dengan migrasi.
 ///
-/// Sebab kegagalannya sengaja tidak ikut di jawaban. Yang memanggil alamat ini bisa siapa
-/// saja, dan pesan galat koneksi memuat nama host beserta nama basis data.
+/// Basis data yang menjawab tapi skemanya tertinggal adalah keadaan yang paling menyesatkan
+/// dari ketiganya. Server yang mati kelihatan mati, basis data yang mati sudah tertangkap
+/// pemeriksaan pertama; yang ini kelihatan sehat sepenuhnya dan baru pecah pada permintaan
+/// tertentu saja, sehingga yang dicurigai lebih dulu selalu kodenya, bukan skemanya.
+///
+/// Sebab kegagalannya sengaja tidak ikut di badan jawaban. Yang memanggil alamat ini bisa
+/// siapa saja, dan pesan galat koneksi memuat nama host beserta nama basis data. Yang perlu
+/// tahu justru orang yang memegang servernya, dan ia membacanya dari log.
 /// </remarks>
-public class PemeriksaBasisData(AppDbContext db) : IHealthCheck
+public class PemeriksaBasisData(AppDbContext db, ILogger<PemeriksaBasisData> log) : IHealthCheck
 {
     public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext konteks,
@@ -23,9 +30,27 @@ public class PemeriksaBasisData(AppDbContext db) : IHealthCheck
     {
         try
         {
-            return await db.Database.CanConnectAsync(batal)
-                ? HealthCheckResult.Healthy()
-                : HealthCheckResult.Unhealthy("Basis data tidak menjawab.");
+            if (!await db.Database.CanConnectAsync(batal))
+            {
+                return HealthCheckResult.Unhealthy("Basis data tidak menjawab.");
+            }
+
+            var tertunda = (await db.Database.GetPendingMigrationsAsync(batal)).ToList();
+            if (tertunda.Count > 0)
+            {
+                // Nama migrasinya ditulis ke log, bukan ke jawaban, dan justru inilah bagian
+                // yang paling menolong: yang membacanya langsung tahu perintah apa yang
+                // kurang, tanpa menebak dari galat 500 di layar yang sama sekali lain.
+                log.LogError(
+                    "Basis data tertinggal {Jumlah} migrasi: {Migrasi}. "
+                    + "Jalankan `dotnet ef database update` sebelum memakai server ini.",
+                    tertunda.Count,
+                    string.Join(", ", tertunda));
+
+                return HealthCheckResult.Unhealthy("Skema basis data belum sesuai.");
+            }
+
+            return HealthCheckResult.Healthy();
         }
         catch (Exception galat)
         {

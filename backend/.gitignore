@@ -5,3 +5,12 @@ obj/
 appsettings.*.json
 !appsettings.json
 !appsettings.Development.json
+
+# Foto bukti pekerjaan yang diunggah ke server yang dijalankan dari sini.
+#
+# Bawaan PenyimpanFoto adalah folder di dalam proyek API ini, jadi server pengembangan
+# yang dipakai sebentar untuk menelusuri alur meninggalkan foto sungguhan di pohon
+# sumber. Isinya bukan berkas proyek, dan foto bukti pekerjaan memuat isi order orang.
+# Tes tidak terkena ini (ApiFactory mengarahkan Media:Folder ke luar pohon sumber),
+# hanya server yang dijalankan langsung.
+src/UpnvjSuruh.Api/berkas/
