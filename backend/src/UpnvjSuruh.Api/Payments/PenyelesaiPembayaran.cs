@@ -100,6 +100,7 @@ public class PenyelesaiPembayaran(
         if (status != PaymentStatus.Berhasil)
         {
             await db.SaveChangesAsync(batal);
+            await hub.BeriTahuKlienAsync(order.Id, batal);
             return HasilPenyelesaian.Dicatat;
         }
 
@@ -122,6 +123,7 @@ public class PenyelesaiPembayaran(
             // hilang dari pembukuan bersamanya.
             pembayaran.Status = PaymentStatus.JumlahTidakCocok;
             await db.SaveChangesAsync(batal);
+            await hub.BeriTahuKlienAsync(order.Id, batal);
             return HasilPenyelesaian.JumlahTidakCocok;
         }
 
@@ -145,6 +147,7 @@ public class PenyelesaiPembayaran(
                 "Pembayaran berhasil untuk order {OrderId} yang berstatus {Status}.",
                 order.Id, order.Status);
             await db.SaveChangesAsync(batal);
+            await hub.BeriTahuKlienAsync(order.Id, batal);
             return HasilPenyelesaian.Dicatat;
         }
 
@@ -185,6 +188,7 @@ public class PenyelesaiPembayaran(
                 order.Status = OrderStatus.Dikerjakan;
                 await db.SaveChangesAsync(batal);
                 await hub.BeriTahuAdminAsync(order.Id, batal);
+                await hub.BeriTahuKlienAsync(order.Id, batal);
                 return HasilPenyelesaian.Lunas;
             }
 
@@ -213,6 +217,7 @@ public class PenyelesaiPembayaran(
             },
             batal);
         await hub.BeriTahuAdminAsync(order.Id, batal);
+        await hub.BeriTahuKlienAsync(order.Id, batal);
 
         return HasilPenyelesaian.Lunas;
     }

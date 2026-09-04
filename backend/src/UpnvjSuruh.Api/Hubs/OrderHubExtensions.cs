@@ -38,4 +38,26 @@ public static class OrderHubExtensions
         Guid orderId,
         CancellationToken batal = default) =>
         hub.Clients.Group(OrderHub.AdminsGroup).SendAsync("OrderChanged", new { OrderId = orderId }, batal);
+
+    /// <summary>
+    /// Memberi tahu klien yang sedang membuka layar bayar order ini bahwa tagihannya
+    /// bergeser dari menunggu.
+    /// </summary>
+    /// <remarks>
+    /// Dipanggil dari <c>PenyelesaiPembayaran</c> di setiap titik keluar sesudah
+    /// <c>Payment.Menunggu</c> berhenti benar — lunas, gagal, kedaluwarsa lewat webhook,
+    /// atau jumlahnya tidak cocok — bukan cuma saat lunas. Layar bayar sisi mobile
+    /// menggambar keempat keadaan itu secara berbeda (lihat cabang <c>switch</c> di
+    /// <c>PembayaranScreen</c>: berhasil, menunggu, atau keadaan akhir lainnya), jadi
+    /// keempatnya sama-sama layak diberi tahu seketika, bukan cuma yang lunas.
+    ///
+    /// Grup yang dikirimi cuma diisi klien yang benar-benar pemilik order ini
+    /// (<see cref="OrderHub.GabungOrder"/> memeriksa itu sebelum mengizinkan bergabung),
+    /// jadi kabar ini tidak perlu menyaring lagi siapa yang boleh menerimanya.
+    /// </remarks>
+    public static Task BeriTahuKlienAsync(
+        this IHubContext<OrderHub> hub,
+        Guid orderId,
+        CancellationToken batal = default) =>
+        hub.Clients.Group(OrderHub.GrupOrder(orderId)).SendAsync("PaymentChanged", new { OrderId = orderId }, batal);
 }
