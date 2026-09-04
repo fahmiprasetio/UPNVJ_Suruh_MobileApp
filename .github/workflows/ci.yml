@@ -1,0 +1,120 @@
+name: CI
+
+# Tiga permukaan, tiga job paralel, satu ci.yml. Bukan tiga berkas terpisah: ketiganya
+# dipicu oleh push dan pull_request yang sama, dan menaruh keduanya di satu tempat membuat
+# jelas bahwa satu dorongan menguji ketiganya sekaligus, bukan cuma permukaan yang kebetulan
+# tersentuh. Job yang independen (tidak ada `needs:` di antaranya) supaya kegagalan di satu
+# permukaan tidak menunda hasil dua lainnya.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend (.NET)
+    runs-on: ubuntu-latest
+
+    # Basis data sungguhan, bukan penyedia in-memory. DatabaseApiFactory sengaja menegakkan
+    # hal-hal yang tidak dimiliki penyedia in-memory (index unik nomor HP, pemetaan peran ke
+    # integer[] Postgres), dan tes yang lolos karena penyedianya tidak menegakkan apa-apa
+    # lebih buruk daripada tidak ada tes.
+    #
+    # Kredensial di sini sengaja sama persis dengan nilai bawaan DatabaseApiFactory.Induk
+    # (Host=localhost;Port=5432;Username=postgres;Password=postgres), jadi UPNVJ_TEST_DB
+    # tidak perlu disebut sama sekali. Menyamakannya, bukan menimpanya lewat env var, berarti
+    # tes yang jalan di CI sungguh menguji jalur bawaan yang juga dipakai siapa pun yang
+    # menjalankan `dotnet test` di laptop sendiri dengan Postgres lokal terpasang.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pasang .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Pulihkan paket
+        run: dotnet restore backend/UpnvjSuruh.sln
+
+      - name: Bangun
+        run: dotnet build backend/UpnvjSuruh.sln --no-restore --configuration Release
+
+      - name: Jalankan tes
+        run: dotnet test backend/UpnvjSuruh.sln --no-build --configuration Release --verbosity normal
+
+  mobile:
+    name: Mobile (Flutter)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Channel stable, mengikuti mobile/.metadata (channel "stable" di mesin pengembangan).
+      # Tidak dipatok ke satu revisi persis: tes yang cuma lolos pada satu titik waktu stable
+      # tertentu, bukan pada keluarga versi yang sebenarnya dipakai proyek ini, adalah tes yang
+      # rapuh terhadap pembaruan Flutter yang wajar.
+      - name: Pasang Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Pulihkan paket
+        run: flutter pub get
+        working-directory: mobile
+
+      # Sama seperti yang dituntut di setiap sesi pengembangan lokal: bersih tanpa satu pun
+      # galat atau peringatan, bukan cuma "berhasil dikompilasi".
+      - name: Analisis statis
+        run: flutter analyze
+        working-directory: mobile
+
+      - name: Jalankan tes
+        run: flutter test
+        working-directory: mobile
+
+  web:
+    name: Web (dashboard admin)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pasang Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Pulihkan paket
+        run: npm ci
+        working-directory: web
+
+      - name: Periksa tipe
+        run: npm run periksa
+        working-directory: web
+
+      - name: Jalankan tes
+        run: npm run tes
+        working-directory: web
+
+      - name: Bangun
+        run: npm run build
+        working-directory: web
