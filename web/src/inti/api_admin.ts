@@ -2,11 +2,16 @@ import type { KlienApi } from './klien_api';
 import type {
   Halaman,
   HasilMasuk,
+  HasilTandaiLunas,
+  ModeKomisi,
   Order,
+  PayoutSetting,
   Pengguna,
   Peran,
   PerubahanPeran,
   Pesan,
+  RekapPayout,
+  RincianPayout,
   StatusOrder,
   Tarif,
 } from './tipe';
@@ -207,5 +212,80 @@ export function perbaruiTarif(
   return api.minta<Tarif>('/api/tarif', {
     metode: 'PUT',
     badan: tarif,
+  });
+}
+
+/*
+ * Sengaja tidak ada pembungkus untuk GET /api/admin/payout/setting, walaupun endpointnya ada.
+ * Rekap sudah membawa rumus yang sedang berlaku di dalam jawabannya, dan satu-satunya layar
+ * yang menampilkan rumus itu adalah layar rekap; pembungkus kedua yang tidak dipanggil siapa
+ * pun cuma mengundang layar berikutnya mengambil hal yang sama dua kali.
+ */
+
+/**
+ * Menyimpan rumus bagi hasil.
+ *
+ * Kedua angka selalu ikut terkirim walau cuma satu yang dipakai sesuai modenya, mengikuti
+ * `PerbaruiPayoutSettingRequest` di backend: admin yang berpindah mode lalu kembali
+ * menemukan isian terakhirnya masih ada, bukan hilang jadi nol karena sempat tidak terpakai.
+ *
+ * Penyimpanan pertama kali juga menghitung bayaran order yang selesai selagi rumusnya belum
+ * ada. Itu terjadi di server, bukan di sini, tapi pemanggilnya perlu tahu bahwa jawaban
+ * yang kembali berarti rekapnya sudah berubah dan layak dimuat ulang.
+ */
+export function perbaruiPayoutSetting(
+  api: KlienApi,
+  rumus: { mode: ModeKomisi; komisiPersen: number; komisiTetap: number },
+): Promise<PayoutSetting> {
+  return api.minta<PayoutSetting>('/api/admin/payout/setting', {
+    metode: 'PUT',
+    badan: rumus,
+  });
+}
+
+/** Siapa harus dibayar berapa. Tidak berhalaman: barisnya sebanyak anggota tim mitra. */
+export function rekapPayout(api: KlienApi, sinyal?: AbortSignal): Promise<RekapPayout> {
+  return api.minta<RekapPayout>('/api/admin/payout/rekap', { sinyal });
+}
+
+/**
+ * Order mana saja yang membentuk tagihan seorang runner.
+ *
+ * Halamannya cuma memotong riwayat yang sudah dibayar. Yang belum dibayar selalu dikirim
+ * seluruhnya oleh backend, karena itulah angka yang dijumlahkan admin sebelum menyerahkan
+ * uang, dan jumlah yang cuma sebagian bukan jumlah.
+ */
+export function rincianPayout(
+  api: KlienApi,
+  runnerId: string,
+  penyaring: PenyaringHalaman = {},
+  sinyal?: AbortSignal,
+): Promise<RincianPayout> {
+  return api.minta<RincianPayout>(`/api/admin/payout/rekap/${runnerId}`, {
+    kueri: { halaman: penyaring.halaman, ukuran: penyaring.ukuran },
+    sinyal,
+  });
+}
+
+/**
+ * Menandai bayaran yang disebut sudah diserahkan ke runner.
+ *
+ * Yang dikirim daftar id yang benar-benar dilihat admin, bukan perintah "lunasi semua yang
+ * belum lunas". Bedanya adalah uang sungguhan: order yang selesai beberapa detik setelah
+ * layar dimuat akan ikut tertandai lunas oleh perintah "semua", padahal uang yang berpindah
+ * tangan cuma sebesar yang tertera di layar tadi.
+ *
+ * Backend menolak seluruh permintaan kalau ada satu id yang tidak memenuhi syarat, bukan
+ * mengerjakan sebagiannya, jadi pemanggil di sini tidak perlu memikirkan keberhasilan
+ * separuh jalan.
+ */
+export function tandaiLunas(
+  api: KlienApi,
+  runnerId: string,
+  penugasanIds: string[],
+): Promise<HasilTandaiLunas> {
+  return api.minta<HasilTandaiLunas>(`/api/admin/payout/rekap/${runnerId}/lunas`, {
+    metode: 'POST',
+    badan: { penugasanIds },
   });
 }

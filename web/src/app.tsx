@@ -8,6 +8,7 @@ import { HalamanKelolaPeran } from './halaman/kelola_peran';
 import { HalamanKelolaTarif } from './halaman/kelola_tarif';
 import { HalamanMasuk } from './halaman/masuk';
 import { HalamanPantauanOrder } from './halaman/pantauan_order';
+import { HalamanRekapPembayaran } from './halaman/rekap_pembayaran';
 
 /**
  * Peta alamat dashboard.
@@ -36,6 +37,7 @@ export function App() {
           <Route path="/order/:id" element={<HalamanDetailOrder />} />
           <Route path="/pengguna" element={<HalamanKelolaPeran />} />
           <Route path="/tarif" element={<HalamanKelolaTarif />} />
+          <Route path="/pembayaran" element={<HalamanRekapPembayaran />} />
         </Route>
 
         {/* Beranda dashboard adalah pantauan order, bukan halaman sambutan. Yang membuka

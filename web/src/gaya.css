@@ -906,3 +906,153 @@ input {
   color: var(--keadaan);
   font-size: 13px;
 }
+
+/* --- Rekap pembayaran runner --- */
+
+.rekap__keterangan {
+  margin: 4px 0 calc(var(--jeda) * 2);
+  color: var(--tinta-samar);
+  max-width: 70ch;
+}
+
+.rekap__rumus {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jeda);
+  max-width: 560px;
+}
+
+.rekap__rumus h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.rekap__rumus fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--jeda);
+}
+
+.rekap__rumus legend {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--tinta-samar);
+  padding: 0 0 var(--jeda);
+  width: 100%;
+  border-bottom: 1px solid var(--garis);
+  margin-bottom: 4px;
+}
+
+/* Dua pilihan mode, masing-masing membawa angkanya sendiri di baris yang sama. Angkanya
+   ikut mati saat modenya tidak dipilih, supaya tidak ada yang mengetik ke kolom yang
+   tidak akan dipakai lalu heran kenapa hasilnya tidak berubah. */
+.rekap__pilihan {
+  display: flex;
+  align-items: center;
+  gap: var(--jeda);
+}
+
+.rekap__pilihan span {
+  flex: 1;
+  color: var(--tinta-samar);
+  font-size: 13px;
+}
+
+.rekap__pilihan input[type='number'] {
+  width: 140px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.rekap__pilihan input[type='number']:disabled {
+  opacity: 0.45;
+}
+
+/* Keadaan "rumusnya belum pernah diatur". Bukan galat, jadi bukan merah: ini pekerjaan
+   yang belum dikerjakan, dan yang perlu dilakukan ada tepat di bawahnya. */
+.rekap__peringatan {
+  margin: 0;
+  padding: var(--jeda) calc(var(--jeda) * 1.5);
+  border-radius: var(--lengkung);
+  border: 1px solid var(--garis-tegas);
+  background: var(--wadah);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.rekap__catatan,
+.rekap__diubah {
+  margin: 0;
+  font-size: 12px;
+  color: var(--tinta-samar);
+}
+
+.rekap__kaki-rumus,
+.rekap__kaki-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--jeda) * 2);
+  padding-top: var(--jeda);
+  border-top: 1px solid var(--garis);
+}
+
+.rekap__kaki-panel {
+  margin-top: var(--jeda);
+}
+
+.rekap__berhasil {
+  margin: 0;
+  padding: var(--jeda) calc(var(--jeda) * 1.5);
+  border-radius: var(--lengkung);
+  background: color-mix(in srgb, var(--patch-green) 12%, var(--kartu));
+  color: var(--keadaan);
+  font-size: 13px;
+}
+
+.rekap__tabel {
+  margin-bottom: calc(var(--jeda) * 2);
+}
+
+.rekap__tabel tfoot td {
+  padding: 10px 12px;
+  background: var(--wadah);
+  border-top: 1px solid var(--garis-tegas);
+}
+
+.rekap__telepon,
+.rekap__menunggu {
+  font-size: 12px;
+  color: var(--tinta-samar);
+}
+
+.rekap__panel-kepala {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--jeda);
+  margin-bottom: var(--jeda);
+}
+
+.rekap__panel-kepala h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.rekap__riwayat {
+  margin-top: calc(var(--jeda) * 2);
+  padding-top: var(--jeda);
+  border-top: 1px solid var(--garis);
+}
+
+.rekap__riwayat summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--tinta-samar);
+  margin-bottom: var(--jeda);
+}

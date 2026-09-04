@@ -151,3 +151,84 @@ export interface PerubahanPeran {
   alasan: string;
   diubahPada: string;
 }
+
+/**
+ * Bentuk potongan organisasi dari harga satu order, dari `ModeKomisi` di backend.
+ *
+ * Dua, bukan satu, karena pertanyaan pengunci ke mitra memang ditulis dengan dua
+ * kemungkinan jawaban: berapa persen, atau berapa rupiah (rencana capstone bagian 14.8).
+ */
+export type ModeKomisi = 'Persen' | 'Tetap';
+
+/**
+ * Rumus bagi hasil yang sedang berlaku, dari `PayoutSettingResponse` di backend.
+ *
+ * `sudahDiatur` bernilai salah selama belum ada admin yang mengisinya, dan itu keadaan yang
+ * berbeda dari "diatur ke nol persen": selama masih begitu, order yang selesai tidak
+ * dihitung bayarannya sama sekali, bukan dihitung nol. Layar rekap harus menampilkannya
+ * sebagai pekerjaan yang tertahan, bukan sebagai angka nol yang wajar.
+ */
+export interface PayoutSetting {
+  mode: ModeKomisi;
+  komisiPersen: number;
+  komisiTetap: number;
+  sudahDiatur: boolean;
+  diaturPada: string | null;
+}
+
+/** Satu runner pada rekap pembayaran, dari `RekapRunnerResponse` di backend. */
+export interface RekapRunner {
+  runnerId: string;
+  nama: string;
+  telepon: string;
+  jumlahOrderBelumDibayar: number;
+  totalBelumDibayar: number;
+  totalSudahDibayar: number;
+  /** Order selesai yang bayarannya belum bisa dihitung. Selalu nol setelah rumusnya ada. */
+  menungguRumus: number;
+  terakhirDibayarPada: string | null;
+}
+
+/** Seluruh rekap pembayaran, dari `RekapPayoutResponse` di backend. */
+export interface RekapPayout {
+  setting: PayoutSetting;
+  runner: RekapRunner[];
+  totalBelumDibayar: number;
+  totalMenungguRumus: number;
+}
+
+/**
+ * Satu order pada rincian bayaran seorang runner, dari `BarisPayoutResponse` di backend.
+ *
+ * `penugasanId` adalah id baris penugasan, bukan id order: satu order multi-runner punya
+ * beberapa bayaran terpisah, dan yang dilunasi bayaran satu orang, bukan ordernya.
+ *
+ * `jumlah` bernilai null berarti belum bisa dihitung karena rumusnya belum diatur.
+ */
+export interface BarisPayout {
+  penugasanId: string;
+  orderId: string;
+  kodeOrder: string;
+  layanan: JenisLayanan;
+  selesaiPada: string | null;
+  jumlah: number | null;
+  dibayarPada: string | null;
+}
+
+/** Rincian bayaran satu runner, dari `RincianPayoutResponse` di backend. */
+export interface RincianPayout {
+  runnerId: string;
+  nama: string;
+  telepon: string;
+  belumDibayar: BarisPayout[];
+  totalBelumDibayar: number;
+  sudahDibayar: Halaman<BarisPayout>;
+  totalSudahDibayar: number;
+}
+
+/** Hasil penandaan lunas, dari `TandaiLunasResponse` di backend. */
+export interface HasilTandaiLunas {
+  jumlahDitandai: number;
+  totalDitandai: number;
+  dibayarPada: string;
+}
