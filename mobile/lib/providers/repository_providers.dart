@@ -8,18 +8,22 @@ import '../core/realtime/order_hub_client.dart';
 import '../data/api/api_auth_repository.dart';
 import '../data/api/api_foto_bukti_repository.dart';
 import '../data/api/api_order_repository.dart';
+import '../data/api/api_pendapatan_repository.dart';
 import '../data/api/api_tarif_repository.dart';
 import '../data/api/sesi_token.dart';
 import '../data/fake/fake_auth_repository.dart';
 import '../data/fake/fake_foto_bukti_repository.dart';
 import '../data/fake/fake_order_repository.dart';
+import '../data/fake/fake_pendapatan_repository.dart';
 import '../data/fake/fake_tarif_repository.dart';
 import '../data/fake/seed_data.dart';
 import '../domain/models/app_user.dart';
+import '../domain/models/pendapatan.dart';
 import '../domain/models/tarif.dart';
 import '../domain/repositories/auth_repository.dart';
 import '../domain/repositories/foto_bukti_repository.dart';
 import '../domain/repositories/order_repository.dart';
+import '../domain/repositories/pendapatan_repository.dart';
 import '../domain/repositories/tarif_repository.dart';
 
 /// Benar hanya di build debug.
@@ -94,6 +98,30 @@ final tarifRepositoryProvider = Provider<TarifRepository>((ref) {
 /// lagi untuk sesuatu yang berubahnya jarang sekali.
 final tarifProvider = FutureProvider<Tarif>((ref) {
   return ref.watch(tarifRepositoryProvider).ambilTarif();
+});
+
+/// Titik tukar backend untuk pendapatan runner.
+final pendapatanRepositoryProvider = Provider<PendapatanRepository>((ref) {
+  if (ref.watch(sumberDataProvider) == SumberData.tiruan) {
+    return FakePendapatanRepository();
+  }
+  return ApiPendapatanRepository(klien: ref.watch(klienApiProvider));
+});
+
+/// Pendapatan runner yang sedang masuk.
+///
+/// `FutureProvider`, bukan aliran yang diambil ulang tiap lima belas detik
+/// seperti daftar order, dan itu keputusan yang sama dengan [tarifProvider]
+/// dengan alasan yang mirip: cuma dua kejadian yang mengubah angka di layar ini,
+/// dan keduanya jarang. Runner menutup order (yang berarti ia sedang berada di
+/// layar lain, dan layar ini akan mengambil ulang begitu dibuka lagi), dan admin
+/// menandai bayaran sudah diserahkan, yang terjadi sekali seminggu.
+///
+/// Konsekuensinya ditulis terang-terangan: layar yang sedang terbuka tidak akan
+/// melihat pelunasan yang baru saja dicatat admin sampai ditarik untuk
+/// disegarkan. Layarnya menyediakan tarikan itu justru karena batas ini ada.
+final pendapatanProvider = FutureProvider<Pendapatan>((ref) {
+  return ref.watch(pendapatanRepositoryProvider).ambilPendapatan();
 });
 
 /// Titik tukar backend untuk order.

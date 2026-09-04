@@ -6,13 +6,20 @@ import '../../providers/runner_providers.dart';
 import '../widgets/bilah_navigasi_bawah.dart';
 import 'order_masuk/order_masuk_screen.dart';
 import 'order_saya/order_saya_runner_screen.dart';
+import 'pendapatan/pendapatan_screen.dart';
 
-/// Permukaan runner: dua daftar yang dipakai bergantian sepanjang hari.
+/// Permukaan runner: tiga layar yang dipakai bergantian sepanjang hari.
 ///
-/// Order Masuk dibuka untuk mencari pekerjaan, Order Saya dibuka untuk
-/// menyelesaikannya. Keduanya dipasang di [IndexedStack] supaya berpindah tab
-/// tidak membuang keadaan layar, daftar tidak dimuat ulang dari awal setiap
-/// kali runner mengintip tab sebelah.
+/// Order Masuk dibuka untuk mencari pekerjaan, Order Saya untuk
+/// menyelesaikannya, Pendapatan untuk melihat hasilnya. Ketiganya dipasang di
+/// [IndexedStack] supaya berpindah tab tidak membuang keadaan layar, daftar
+/// tidak dimuat ulang dari awal setiap kali runner mengintip tab sebelah.
+///
+/// Pendapatan ditaruh paling kanan, bukan di antara keduanya: dua tab pertama
+/// dipakai berulang-ulang dalam satu hari kerja dan berpasangan (cari lalu
+/// kerjakan), sedangkan yang ketiga dibuka sesekali dan tidak menuntut tindakan
+/// apa pun. Menyelipkannya di tengah berarti memindahkan letak tab yang sudah
+/// dihafal jempol runner.
 class BerandaRunnerScreen extends ConsumerStatefulWidget {
   const BerandaRunnerScreen({super.key});
 
@@ -41,6 +48,7 @@ class _BerandaRunnerScreenState extends ConsumerState<BerandaRunnerScreen> {
           OrderSayaRunnerScreen(
             onMintaOrderMasuk: () => setState(() => _tab = 0),
           ),
+          const PendapatanScreen(),
         ],
       ),
       bottomNavigationBar: BilahNavigasiBawah(
@@ -66,6 +74,11 @@ class _BerandaRunnerScreenState extends ConsumerState<BerandaRunnerScreen> {
               child: const Icon(Icons.assignment),
             ),
             label: 'Order Saya',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.account_balance_wallet_outlined),
+            selectedIcon: Icon(Icons.account_balance_wallet),
+            label: 'Pendapatan',
           ),
         ],
       ),

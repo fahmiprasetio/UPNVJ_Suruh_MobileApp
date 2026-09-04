@@ -61,7 +61,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(NavigationBar, 'Order Saya'));
+    // Labelnya yang diketuk, bukan NavigationBar-nya. Mengetuk bilahnya berarti
+    // mengetuk titik tengahnya, yaitu tab yang kebetulan ada di tengah, dan itu
+    // berpindah begitu ada tab yang ditambahkan (Pendapatan, sejak layar
+    // pendapatan runner ada).
+    await tester.tap(find.text('Order Saya').last);
     await tester.pumpAndSettle();
     return orderRepo;
   }
