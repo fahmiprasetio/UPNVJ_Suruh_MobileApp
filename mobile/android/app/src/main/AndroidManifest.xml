@@ -1,4 +1,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Seluruh aplikasi ini bicara ke server: masuk, order, chat, pembayaran, unggah
+         foto bukti. Tanpa baris ini tidak satu pun dari itu bisa jalan.
+
+         Template Flutter hanya menaruh izin ini di manifes debug dan profile, dan itu
+         bukan kelalaian template melainkan pilihannya: aplikasi yang tidak butuh jaringan
+         tidak seharusnya memintanya, jadi yang butuh harus menyatakannya sendiri di sini.
+         Akibatnya jebakannya sunyi. Selama aplikasi dikembangkan lewat Flutter web dan
+         build debug, semuanya bekerja; yang pertama kali kehilangan jaringan justru APK
+         rilis yang diserahkan ke dosen atau mitra, dan gagalnya tidak terlihat seperti
+         izin yang kurang melainkan seperti server yang mati. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <application
         android:label="upnvj_suruh"
         android:name="${applicationName}"
