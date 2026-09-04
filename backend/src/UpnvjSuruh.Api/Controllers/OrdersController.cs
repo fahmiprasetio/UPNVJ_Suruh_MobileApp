@@ -85,6 +85,8 @@ public class OrdersController(
         db.Orders.Add(order);
         await db.SaveChangesAsync(batal);
 
+        await hub.BeriTahuAdminAsync(order.Id, batal);
+
         return CreatedAtAction(
             nameof(Ambil),
             new { id = order.Id },
@@ -354,6 +356,11 @@ public class OrdersController(
             new { OrderId = order.Id, Selesai = order.Status == OrderStatus.Dikerjakan },
             batal);
 
+        // Dikirim selalu, bukan cuma saat statusnya bergeser ke Dikerjakan. Runner yang
+        // bergabung pada order multi-runner tetap perubahan yang layak dilihat admin,
+        // walaupun statusnya sendiri belum berpindah selama kuotanya belum penuh.
+        await hub.BeriTahuAdminAsync(order.Id, batal);
+
         return Ok(new TerimaOrderResponse(true, "Order jadi milikmu."));
     }
 
@@ -447,6 +454,7 @@ public class OrdersController(
         PembekuPayout.Bekukan(order, payoutSetting);
 
         await db.SaveChangesAsync(batal);
+        await hub.BeriTahuAdminAsync(order.Id, batal);
         return Ok(OrderResponse.Dari(
             order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, User.Id(), User.Punya(Peran.Admin), batal)));
     }
@@ -519,6 +527,7 @@ public class OrdersController(
         }
 
         await db.SaveChangesAsync(batal);
+        await hub.BeriTahuAdminAsync(order.Id, batal);
         return Ok(OrderResponse.Dari(
             order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, User.Id(), User.Punya(Peran.Admin), batal)));
     }

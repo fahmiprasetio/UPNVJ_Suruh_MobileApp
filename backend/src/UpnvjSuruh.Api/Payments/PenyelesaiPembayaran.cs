@@ -180,9 +180,11 @@ public class PenyelesaiPembayaran(
             if (order.RequiredRunnerCount <= 1)
             {
                 // Satu slot yang dibutuhkan sudah terisi oleh pemenang tawaran itu sendiri.
-                // Tidak ada yang perlu disiarkan lagi.
+                // Tidak ada yang perlu disiarkan ke grup runner lagi, tapi admin tetap perlu
+                // tahu: order ini baru saja berpindah dari menunggu pembayaran ke dikerjakan.
                 order.Status = OrderStatus.Dikerjakan;
                 await db.SaveChangesAsync(batal);
+                await hub.BeriTahuAdminAsync(order.Id, batal);
                 return HasilPenyelesaian.Lunas;
             }
 
@@ -210,6 +212,7 @@ public class PenyelesaiPembayaran(
                 JumlahRunnerDibutuhkan = order.RequiredRunnerCount,
             },
             batal);
+        await hub.BeriTahuAdminAsync(order.Id, batal);
 
         return HasilPenyelesaian.Lunas;
     }

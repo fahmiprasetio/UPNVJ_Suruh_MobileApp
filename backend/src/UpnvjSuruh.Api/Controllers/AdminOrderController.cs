@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using UpnvjSuruh.Api.Auth;
 using UpnvjSuruh.Api.Contracts;
 using UpnvjSuruh.Api.Data;
 using UpnvjSuruh.Api.Domain;
+using UpnvjSuruh.Api.Hubs;
 
 namespace UpnvjSuruh.Api.Controllers;
 
@@ -28,7 +30,10 @@ namespace UpnvjSuruh.Api.Controllers;
 [ApiController]
 [Route("api/admin/orders")]
 [Authorize(Roles = Peran.Admin)]
-public class AdminOrderController(AppDbContext db, ILogger<AdminOrderController> log) : ControllerBase
+public class AdminOrderController(
+    AppDbContext db,
+    IHubContext<OrderHub> hub,
+    ILogger<AdminOrderController> log) : ControllerBase
 {
     /// <summary>Order yang ada di sistem, disaring status dan dipotong per halaman.</summary>
     [HttpGet]
@@ -168,6 +173,7 @@ public class AdminOrderController(AppDbContext db, ILogger<AdminOrderController>
         order.Status = OrderStatus.Batal;
 
         await db.SaveChangesAsync(batal);
+        await hub.BeriTahuAdminAsync(order.Id, batal);
 
         return Ok(OrderResponse.Dari(
             order,

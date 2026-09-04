@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using UpnvjSuruh.Api.Auth;
 using UpnvjSuruh.Api.Contracts;
 using UpnvjSuruh.Api.Data;
 using UpnvjSuruh.Api.Domain;
+using UpnvjSuruh.Api.Hubs;
 
 namespace UpnvjSuruh.Api.Controllers;
 
@@ -23,7 +25,7 @@ namespace UpnvjSuruh.Api.Controllers;
 [ApiController]
 [Route("api/orders")]
 [Authorize]
-public class JalurBController(AppDbContext db) : ControllerBase
+public class JalurBController(AppDbContext db, IHubContext<OrderHub> hub) : ControllerBase
 {
     /// <summary>Klien mengirim permintaan Jalur B, sekaligus mengusulkan harga.</summary>
     [EnableRateLimiting(BatasLaju.KebijakanTulis)]
@@ -63,6 +65,8 @@ public class JalurBController(AppDbContext db) : ControllerBase
 
         db.Orders.Add(order);
         await db.SaveChangesAsync(batal);
+
+        await hub.BeriTahuAdminAsync(order.Id, batal);
 
         return CreatedAtAction(
             nameof(OrdersController.Ambil),
@@ -193,6 +197,7 @@ public class JalurBController(AppDbContext db) : ControllerBase
         }
 
         await db.SaveChangesAsync(batal);
+        await hub.BeriTahuAdminAsync(order.Id, batal);
         return Ok(OrderResponse.Dari(
             order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, User.Id(), User.Punya(Peran.Admin), batal)));
     }
