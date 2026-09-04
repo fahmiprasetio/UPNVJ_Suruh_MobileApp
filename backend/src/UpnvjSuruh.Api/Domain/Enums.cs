@@ -129,3 +129,27 @@ public static class ServiceTypeExtensions
         _ => throw new ArgumentOutOfRangeException(nameof(serviceType), serviceType, null),
     };
 }
+
+/// <summary>
+/// Bentuk potongan organisasi dari harga satu order, sebelum sisanya dibagikan ke runner.
+/// </summary>
+/// <remarks>
+/// Ada dua, bukan satu, karena pertanyaan penguncinya ke mitra memang ditulis dengan dua
+/// kemungkinan jawaban: "bagi hasil runner vs organisasi: berapa persen atau berapa rupiah?"
+/// (rencana capstone bagian 14.8). Menyediakan cuma satu bentuk berarti menebak jawabannya,
+/// dan tebakan yang salah bukan sekadar angka yang perlu diganti melainkan kolom yang perlu
+/// ditambah beserta migrasinya.
+///
+/// Keduanya tidak pernah berlaku bersamaan. Admin memilih salah satu, dan yang tidak dipakai
+/// diabaikan kalkulator. Membiarkan keduanya berlaku sekaligus berarti rumusnya jadi
+/// bertingkat ("sekian persen lalu dipotong sekian lagi"), bentuk yang tidak pernah disebut
+/// siapa pun dan jauh lebih sulit dijelaskan ke runner yang mempertanyakan bayarannya.
+/// </remarks>
+public enum ModeKomisi
+{
+    /// <summary>Organisasi mengambil sekian persen dari harga order.</summary>
+    Persen,
+
+    /// <summary>Organisasi mengambil sekian rupiah tetap dari tiap order, berapa pun harganya.</summary>
+    Tetap
+}

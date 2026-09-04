@@ -11,6 +11,7 @@ using UpnvjSuruh.Api.Data;
 using UpnvjSuruh.Api.Hubs;
 using UpnvjSuruh.Api.Media;
 using UpnvjSuruh.Api.Domain;
+using UpnvjSuruh.Api.Payouts;
 using UpnvjSuruh.Api.Pricing;
 
 namespace UpnvjSuruh.Api.Controllers;
@@ -431,6 +432,19 @@ public class OrdersController(
         order.CompletedAt = sekarang;
         order.PhotoUrl = permintaan.FotoBuktiUrl.Trim();
         order.HandoverNote = permintaan.CatatanSerahTerima?.Trim();
+
+        // Bayaran runner dibekukan di sini, pada satu-satunya saat harganya, runnernya, dan
+        // rumus bagi hasil yang berlaku sama-sama sudah pasti. Menghitungnya belakangan saat
+        // rekap dibaca berarti bayaran yang sudah dijanjikan ikut bergeser setiap kali admin
+        // menyunting rumusnya, termasuk untuk pekerjaan yang sudah lama selesai.
+        //
+        // Selagi rumusnya belum pernah diatur admin, ini tidak melakukan apa-apa dan bayarannya
+        // menunggu di sana sampai rumus itu disimpan pertama kali; penutupan ordernya sendiri
+        // tidak ikut tertahan, karena runner yang sudah selesai bekerja tidak ada urusannya
+        // dengan pertanyaan yang belum dijawab mitra.
+        var payoutSetting = await db.PayoutSettings
+            .SingleAsync(p => p.Id == PayoutSetting.SatuSatunyaId, batal);
+        PembekuPayout.Bekukan(order, payoutSetting);
 
         await db.SaveChangesAsync(batal);
         return Ok(OrderResponse.Dari(

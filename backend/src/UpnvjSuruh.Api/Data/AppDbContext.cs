@@ -14,6 +14,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<UserRoleChange> UserRoleChanges => Set<UserRoleChange>();
     public DbSet<TarifSetting> TarifSettings => Set<TarifSetting>();
+    public DbSet<PayoutSetting> PayoutSettings => Set<PayoutSetting>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -101,6 +102,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .WithMany()
                 .HasForeignKey(a => a.RunnerId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Sengaja tidak ada indeks tambahan untuk rekap pembayaran. Indeks yang dibuat EF
+            // sendiri untuk kunci asing RunnerId sudah menjawab pertanyaan yang ditanyakan
+            // rekap dan layar pendapatan ("penugasan milik runner ini"), dan indeks kedua di
+            // kolom yang sama, disaring pada yang belum lunas, justru menggantikan indeks itu
+            // alih-alih menambahnya: yang tersaring tidak bisa dipakai kueri yang membaca
+            // riwayat lengkap seorang runner, termasuk yang sudah lunas.
         });
 
         modelBuilder.Entity<OrderOffer>(entity =>
@@ -183,6 +191,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 JastipBarangFee = TarifConfig.JastipBarangFee,
                 JastipBarangTarifPerKm = TarifConfig.JastipBarangTarifPerKm,
             });
+        });
+
+        modelBuilder.Entity<PayoutSetting>(entity =>
+        {
+            // Barisnya disemai kosong: mode bawaan, nol persen, dan DiaturPada tetap null.
+            //
+            // Nilai awalnya sengaja bukan tebakan bagi hasil yang masuk akal. Angka yang
+            // kelihatan wajar akan dipakai diam-diam oleh setiap order yang selesai, dan tidak
+            // ada yang akan menyadarinya sampai ada runner yang menghitung sendiri bayarannya.
+            // Selama DiaturPada masih null, tidak ada bayaran yang dibekukan sama sekali
+            // (lihat PayoutSetting), jadi keadaan "mitra belum menjawab" tetap terlihat sebagai
+            // keadaan yang belum dijawab, bukan menyamar jadi jawaban.
+            entity.HasData(new PayoutSetting { Id = PayoutSetting.SatuSatunyaId });
         });
     }
 }
