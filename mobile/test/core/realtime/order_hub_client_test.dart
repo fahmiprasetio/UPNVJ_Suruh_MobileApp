@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:upnvj_suruh/core/realtime/order_hub_client.dart';
 
@@ -65,6 +67,39 @@ void main() {
 
     test('pesan berbentuk larik, bukan objek, tidak melempar galat', () {
       expect(apakahPesanInvocation('[1,2,3]'), isFalse);
+    });
+  });
+
+  group('bentukInvocation', () {
+    test('menyusun type 1 beserta target dan argumen', () {
+      final pesan = bentukInvocation('GabungOrder', ['abc-123']);
+
+      expect(pesan, endsWith('\x1e'));
+      expect(apakahPesanInvocation(pesan.substring(0, pesan.length - 1)), isTrue);
+
+      final terpisah = pisahkanPesanHub(pesan);
+      expect(terpisah.pesanUtuh, hasLength(1));
+      final isi = jsonDecode(terpisah.pesanUtuh.single) as Map<String, dynamic>;
+      expect(isi['type'], 1);
+      expect(isi['target'], 'GabungOrder');
+      expect(isi['arguments'], ['abc-123']);
+    });
+
+    test('tidak menyertakan invocationId', () {
+      // Server tidak diminta membalas; menyertakan id yang tidak pernah dipakai
+      // siapa pun cuma menambah bidang yang bisa disalahpahami sebagai sesuatu
+      // yang harus dijaga.
+      final isi =
+          jsonDecode(bentukInvocation('TinggalkanOrder', ['x']).replaceAll('\x1e', ''))
+              as Map<String, dynamic>;
+      expect(isi.containsKey('invocationId'), isFalse);
+    });
+
+    test('argumen kosong menghasilkan larik kosong, bukan hilang', () {
+      final isi =
+          jsonDecode(bentukInvocation('Sesuatu', []).replaceAll('\x1e', ''))
+              as Map<String, dynamic>;
+      expect(isi['arguments'], isEmpty);
     });
   });
 }

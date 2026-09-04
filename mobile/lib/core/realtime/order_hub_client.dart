@@ -46,6 +46,30 @@ bool apakahPesanInvocation(String pesanJson) {
   }
 }
 
+/// Menyusun satu pesan Invocation untuk dikirim ke server: memanggil method
+/// [target] di hub dengan [argumen], mengikuti Protokol Hub JSON yang sama
+/// dengan yang dibaca [apakahPesanInvocation].
+///
+/// Fungsi murni, terpisah dari [OrderHubClient] dengan alasan yang sama seperti
+/// [pisahkanPesanHub]: supaya bentuk pesannya bisa diuji tanpa soket sungguhan.
+/// Tidak menyertakan "invocationId" — server tidak diminta membalas, kedua
+/// method hub yang memakainya ("GabungOrder" dan "TinggalkanOrder") sama-sama
+/// tidak berbalas nilai, dan invocationId cuma berarti sesuatu kalau balasannya
+/// ditunggu.
+String bentukInvocation(String target, List<Object?> argumen) =>
+    '${jsonEncode({'type': 1, 'target': target, 'arguments': argumen})}$_pemisahPesan';
+
+/// Bagian dari [OrderHubClient] yang dibutuhkan pemakainya di luar dirinya
+/// sendiri ([ApiOrderRepository] cuma butuh [perubahan], `ApiPaymentGateway`
+/// butuh ketiganya), dipisahkan sebagai antarmuka supaya tes bisa memberi
+/// tiruan yang tidak sungguhan menyambung ke mana pun — persis alasan yang
+/// sama dengan `KontrakOrderHub` di sisi web.
+abstract interface class SaluranHubOrder {
+  void ikutiOrder(String orderId);
+  void berhentiIkutiOrder(String orderId);
+  Stream<void> get perubahan;
+}
+
 /// Klien SignalR minimal, ditulis tangan alih-alih memakai paket `signalr_netcore`.
 ///
 /// Paket itu tidak mencantumkan dukungan web di pub.dev, dan proyek ini cuma bisa
@@ -66,7 +90,23 @@ bool apakahPesanInvocation(String pesanJson) {
 /// Server mensyaratkan `[Authorize]` di seluruh hub (lihat `OrderHub.cs`), jadi
 /// [mulai] dipanggil ulang oleh [orderHubClientProvider] setiap kali status masuk
 /// berubah, bukan sekali saat aplikasi dibuka.
-class OrderHubClient {
+///
+/// ## Bergabung ke grup satu order
+///
+/// [ikutiOrder] dan [berhentiIkutiOrder] mengirim "GabungOrder"/"TinggalkanOrder"
+/// ke server (rencana capstone bagian 41), dipakai layar bayar supaya kabar
+/// "PaymentChanged" order yang sedang dibuka ikut lewat [perubahan] — kelas ini
+/// sengaja tidak membedakan kabar itu dari "OrderBroadcast"/"OrderTaken", dengan
+/// alasan yang sama seperti di atas.
+///
+/// Id order yang sedang diikuti disimpan di [_orderDiikuti] dan dikirim ulang
+/// setiap kali soket berhasil tersambung, termasuk sesudah sambung ulang.
+/// Keanggotaan grup di SignalR menempel pada satu koneksi, bukan pada akunnya;
+/// koneksi yang putus lalu tersambung lagi mendapat id koneksi baru, dan tanpa
+/// pengiriman ulang ini layar bayar akan diam-diam berhenti mendengar tepat
+/// pada saat jaringan sempat goyah, yaitu saat jaring pengaman ini justru paling
+/// dibutuhkan.
+class OrderHubClient implements SaluranHubOrder {
   OrderHubClient({
     required String baseUrl,
     required PengambilToken token,
@@ -93,6 +133,7 @@ class OrderHubClient {
   /// cuma perlu tahu "ada yang berubah, ambil ulang", bukan detail apa yang
   /// berubah. Membedakannya berarti bentuk muatan pesan harus dijaga sama persis
   /// dengan backend di dua tempat, untuk sesuatu yang tidak dipakai layar mana pun.
+  @override
   Stream<void> get perubahan => _perubahan.stream;
 
   WebSocketChannel? _soket;
@@ -101,6 +142,7 @@ class OrderHubClient {
   Timer? _pewaktuSambungUlang;
   bool _seharusnyaJalan = false;
   String _bufer = '';
+  final Set<String> _orderDiikuti = {};
 
   /// Mulai (atau sambung ulang) koneksi ke hub. Aman dipanggil berkali-kali.
   void mulai() {
@@ -114,7 +156,36 @@ class OrderHubClient {
     _seharusnyaJalan = false;
     _pewaktuSambungUlang?.cancel();
     _tutupSoket();
+    // Bukan cuma soketnya yang ditutup: daftar order yang diikuti ikut
+    // dikosongkan. Sesi berikutnya (akun lain yang masuk di perangkat yang sama)
+    // tidak seharusnya mewarisi langganan order milik akun sebelumnya.
+    _orderDiikuti.clear();
   }
+
+  /// Mulai mendengarkan kabar "PaymentChanged" untuk satu order, biasanya
+  /// dipanggil begitu layar bayar order itu dibuka.
+  ///
+  /// Aman dipanggil sebelum soketnya tersambung, atau selagi terputus: id-nya
+  /// disimpan lebih dulu, dikirim begitu (atau begitu lagi) tersambung.
+  @override
+  void ikutiOrder(String orderId) {
+    _orderDiikuti.add(orderId);
+    _kirim(bentukInvocation('GabungOrder', [orderId]));
+  }
+
+  /// Berhenti mendengarkan satu order, dipanggil begitu layar bayarnya ditutup.
+  @override
+  void berhentiIkutiOrder(String orderId) {
+    _orderDiikuti.remove(orderId);
+    _kirim(bentukInvocation('TinggalkanOrder', [orderId]));
+  }
+
+  /// Menulis satu pesan mentah ke soket, diam-diam diabaikan kalau sedang tidak
+  /// tersambung. Pemanggilnya (mulai, ping berkala, ikutiOrder) tidak perlu tahu
+  /// keadaan koneksinya lebih dulu; yang tidak sempat terkirim akan menyusul
+  /// lewat jalur masing-masing begitu tersambung lagi ([_sambung] mengirim ulang
+  /// seluruh [_orderDiikuti], [_pewaktuPing] menyala lagi begitu soket baru ada).
+  void _kirim(String pesan) => _soket?.sink.add(pesan);
 
   Future<void> _sambung() async {
     if (!_seharusnyaJalan) return;
@@ -154,8 +225,16 @@ class OrderHubClient {
       );
 
       _pewaktuPing = Timer.periodic(_jedaPing, (_) {
-        _soket?.sink.add('${jsonEncode({'type': 6})}$_pemisahPesan');
+        _kirim('${jsonEncode({'type': 6})}$_pemisahPesan');
       });
+
+      // Keanggotaan grup SignalR menempel pada satu koneksi, bukan pada akun.
+      // Soket yang baru ini punya id koneksi baru, jadi order yang tadinya
+      // diikuti lewat koneksi lama (kalau ini sambungan ulang sesudah putus)
+      // perlu diminta lagi dari awal; server tidak mengingatnya sendiri.
+      for (final orderId in _orderDiikuti) {
+        _kirim(bentukInvocation('GabungOrder', [orderId]));
+      }
     } catch (_) {
       // Negosiasi gagal (server belum menyala, token ditolak, jaringan mati).
       // Bukan galat yang layak dilempar ke pemanggil: klien ini cuma jaring

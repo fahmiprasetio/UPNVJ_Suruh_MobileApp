@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../core/api/klien_api.dart';
+import '../../core/realtime/order_hub_client.dart';
 import '../../domain/models/transaksi_pembayaran.dart';
 import '../../domain/repositories/payment_gateway.dart';
 import 'pemeta_transaksi.dart';
@@ -12,24 +13,34 @@ import 'pemeta_transaksi.dart';
 /// menerima webhook. Yang berubah nanti ketika mitra memilih gateway ada di sisi
 /// server; kelas ini tidak perlu disentuh.
 ///
-/// ## Kenapa mengintip berkala, bukan menunggu dikabari
+/// ## Mengintip berkala, dipercepat dengan kabar dari hub
 ///
 /// Kabar bahwa uang sudah masuk mendarat di server sebagai webhook. `OrderHub`
-/// (lihat `OrderHubClient`) sekarang tersambung, tapi cuma menyiarkan ke grup
-/// runner (order berbayar yang butuh diambil) — bukan ke klien yang sedang
-/// menunggu tagihannya sendiri lunas, karena itu butuh saluran per-order yang
-/// belum ada. Sampai itu ada, layar bayar menanyakan keadaannya berulang kali.
+/// sekarang punya grup per-order (rencana capstone bagian 41): begitu
+/// [watchTransaksi] mulai, ia meminta [SaluranHubOrder] bergabung ke grup order
+/// itu (`ikutiOrder`), dan setiap kabar yang lewat membuat putaran tunggunya
+/// berhenti lebih awal alih-alih menunggu jeda intip penuh.
+///
+/// Pengintipan berkala TIDAK dihapus, cuma dipersingkat efeknya, mengikuti
+/// alasan yang sama dengan `ApiOrderRepository` (bagian 37.3): koneksi hub bisa
+/// putus sesaat (jaringan kampus yang goyah, tab yang lama tidak difokuskan),
+/// dan pengintipan itu tetap menjaga layar ini tidak menunggu selamanya kalau
+/// itu terjadi tepat saat pembayaran lunas.
 ///
 /// Jedanya lebih rapat daripada penyegaran daftar order, dan itu disengaja: di
 /// layar ini pengguna sedang menatap layarnya sambil menunggu, jadi basi lima
-/// belas detik terasa seperti aplikasi yang menggantung. Pengintipan berhenti
-/// begitu statusnya final, jadi ia tidak berjalan sepanjang aplikasi terbuka.
+/// belas detik terasa seperti aplikasi yang menggantung — sekalipun sekarang
+/// itu cuma jaring pengaman, bukan jalur utama saat koneksinya hidup.
+/// Pengintipan berhenti begitu statusnya final, jadi ia tidak berjalan
+/// sepanjang aplikasi terbuka.
 class ApiPaymentGateway implements PaymentGateway {
-  ApiPaymentGateway({required KlienApi klien, Duration? jedaIntip})
+  ApiPaymentGateway({required KlienApi klien, SaluranHubOrder? hub, Duration? jedaIntip})
     : _klien = klien,
+      _hub = hub,
       _jedaIntip = jedaIntip ?? const Duration(seconds: 3);
 
   final KlienApi _klien;
+  final SaluranHubOrder? _hub;
   final Duration _jedaIntip;
 
   @override
@@ -45,18 +56,60 @@ class ApiPaymentGateway implements PaymentGateway {
     var terakhir = await _ambil(orderId);
     yield terakhir;
 
-    while (terakhir.menunggu) {
-      await Future<void>.delayed(_jedaIntip);
-      final sekarang = await _ambil(orderId);
+    // Diminta sekali di sini, bukan di dalam gerbang gabungan yang dipakai
+    // provider, karena kontrak inilah tempat pemanggil sungguh mulai
+    // "mengamati" order ini. Ditinggalkan di finally, bukan begitu status
+    // final tercapai, supaya layar yang ditutup di tengah menunggu (klien
+    // berpindah layar sebelum sempat membayar) tidak meninggalkan langganan
+    // yang menggantung di sisi soket selamanya.
+    //
+    // "Selamanya" di atas sengaja bukan "seketika". Generator async* ini
+    // cuma menyimak pembatalan langganannya pada titik "yield" berikutnya,
+    // bukan di tengah await yang sedang tertunda dan bukan pula pada
+    // evaluasi ulang syarat "while". Kalau layar bayar ditutup persis
+    // selagi menunggu di _tungguPerubahanAtauJeda, finally di bawah baru
+    // jalan begitu satu "yield sekarang;" sungguh tereksekusi sesudahnya —
+    // yaitu begitu statusnya sungguh berubah, bukan cuma begitu satu jeda
+    // intip berlalu. Order yang macet Pending selamanya (kabar gateway
+    // tidak pernah datang) berarti keanggotaan grupnya ikut tidak pernah
+    // dibersihkan sampai order itu akhirnya kedaluwarsa dan status yang
+    // dibaca berubah. Itu batas yang bisa diterima untuk sesuatu yang cuma
+    // menahan satu baris keanggotaan grup di server, bukan sumber daya
+    // yang mahal dibiarkan menganggur.
+    _hub?.ikutiOrder(orderId);
+    try {
+      while (terakhir.menunggu) {
+        await _tungguPerubahanAtauJeda();
+        final sekarang = await _ambil(orderId);
 
-      // Hanya perubahan yang diteruskan. Mengirim ulang keadaan yang sama tiap
-      // beberapa detik akan membangunkan layarnya terus-menerus tanpa ada yang
-      // berubah di sana.
-      if (sekarang.status != terakhir.status || sekarang.id != terakhir.id) {
-        yield sekarang;
+        // Hanya perubahan yang diteruskan. Mengirim ulang keadaan yang sama
+        // tiap beberapa detik akan membangunkan layarnya terus-menerus tanpa
+        // ada yang berubah di sana.
+        if (sekarang.status != terakhir.status || sekarang.id != terakhir.id) {
+          yield sekarang;
+        }
+        terakhir = sekarang;
       }
-      terakhir = sekarang;
+    } finally {
+      _hub?.berhentiIkutiOrder(orderId);
     }
+  }
+
+  /// Menunggu jeda intip penuh, KECUALI hub memberi kabar lebih dulu.
+  ///
+  /// `Future.any` dipilih di atas `StreamGroup` atau sejenisnya karena yang
+  /// dibutuhkan cuma "yang mana pun duluan", bukan menggabungkan dua aliran
+  /// jadi satu untuk dipakai berulang — putaran berikutnya memanggil ini lagi
+  /// dan berlangganan [SaluranHubOrder.perubahan] dari awal.
+  ///
+  /// Tanpa hub yang tersambung ([_hub] null, atau hub ada tapi sedang
+  /// terputus), ini berperilaku persis kode lama: menunggu jeda intip apa
+  /// adanya.
+  Future<void> _tungguPerubahanAtauJeda() {
+    return Future.any<void>([
+      Future<void>.delayed(_jedaIntip),
+      ?_hub?.perubahan.first,
+    ]);
   }
 
   @override

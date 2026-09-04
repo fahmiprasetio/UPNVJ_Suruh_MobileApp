@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:fake_async/fake_async.dart';
@@ -7,6 +8,7 @@ import 'package:http/testing.dart';
 import 'package:upnvj_suruh/core/api/galat_api.dart';
 import 'package:upnvj_suruh/core/api/klien_api.dart';
 import 'package:upnvj_suruh/core/config/tarif_config.dart';
+import 'package:upnvj_suruh/core/realtime/order_hub_client.dart';
 import 'package:upnvj_suruh/data/api/api_payment_gateway.dart';
 import 'package:upnvj_suruh/domain/enums.dart';
 import 'package:upnvj_suruh/domain/models/transaksi_pembayaran.dart';
@@ -34,6 +36,7 @@ void main() {
     Object? Function(http.Request permintaan) jawab, {
     int status = 200,
     Duration jedaIntip = const Duration(milliseconds: 50),
+    SaluranHubOrder? hub,
   }) {
     final dikirim = <http.Request>[];
     final klien = KlienApi(
@@ -48,7 +51,7 @@ void main() {
       }),
     );
     return (
-      gateway: ApiPaymentGateway(klien: klien, jedaIntip: jedaIntip),
+      gateway: ApiPaymentGateway(klien: klien, jedaIntip: jedaIntip, hub: hub),
       dikirim: dikirim,
     );
   }
@@ -185,4 +188,126 @@ void main() {
       });
     });
   });
+
+  group('hub', () {
+    test('meminta bergabung ke order begitu mulai diamati', () {
+      fakeAsync((async) {
+        final hub = _HubTiruan();
+        final uji = buat(
+          (_) => transaksiJson(status: 'Berhasil'),
+          hub: hub,
+        );
+
+        uji.gateway.watchTransaksi(orderId).listen((_) {});
+        async.flushMicrotasks();
+
+        expect(hub.diikuti, [orderId]);
+      });
+    });
+
+    test('berhenti mengikuti begitu statusnya final', () {
+      fakeAsync((async) {
+        final hub = _HubTiruan();
+        final uji = buat(
+          (_) => transaksiJson(status: 'Berhasil'),
+          hub: hub,
+        );
+
+        uji.gateway.watchTransaksi(orderId).listen((_) {});
+        async.elapse(const Duration(seconds: 1));
+
+        expect(hub.ditinggalkan, [orderId]);
+      });
+    });
+
+    test('berhenti mengikuti begitu langganannya dibatalkan sebelum final', () {
+      // Klien berpindah layar sebelum sempat membayar. Tanpa `finally` di
+      // watchTransaksi, langganan grup order ini akan menggantung terus di
+      // sisi soket walau tidak ada lagi yang mendengarkannya.
+      //
+      // Pembatalan langganan Stream cuma disimak generator "async*" pada
+      // titik `yield` berikutnya, bukan di tengah `await` yang sedang
+      // tertunda, dan bukan pula pada baris `while` yang mengevaluasi
+      // ulang syaratnya. Itu sebabnya jawaban servernya sengaja dibuat
+      // berubah (Pending lalu Berhasil), bukan diam Pending selamanya:
+      // tanpa perubahan status, baris `yield` di dalam loop tidak pernah
+      // tereksekusi sama sekali, jadi pembatalannya tidak akan pernah
+      // ketahuan generator ini dalam keadaan apa pun.
+      fakeAsync((async) {
+        final hub = _HubTiruan();
+        var jumlahIntip = 0;
+        final uji = buat((_) {
+          jumlahIntip++;
+          return transaksiJson(status: jumlahIntip >= 2 ? 'Berhasil' : 'Pending');
+        }, jedaIntip: const Duration(seconds: 1), hub: hub);
+
+        final langganan = uji.gateway.watchTransaksi(orderId).listen((_) {});
+        async.flushMicrotasks();
+        langganan.cancel();
+        async.elapse(const Duration(seconds: 2));
+
+        expect(hub.ditinggalkan, [orderId]);
+      });
+    });
+
+    test('kabar dari hub membuat putaran tunggu berhenti lebih awal', () {
+      // Jeda intipnya sengaja lama (10 detik). Kalau kabar hub tidak
+      // mempercepat apa pun, jumlahIntip masih 1 pada detik pertama.
+      fakeAsync((async) {
+        final hub = _HubTiruan();
+        var jumlahIntip = 0;
+        final uji = buat((_) {
+          jumlahIntip++;
+          return transaksiJson(status: jumlahIntip >= 2 ? 'Berhasil' : 'Pending');
+        }, jedaIntip: const Duration(seconds: 10), hub: hub);
+
+        uji.gateway.watchTransaksi(orderId).listen((_) {});
+        async.flushMicrotasks();
+        expect(jumlahIntip, 1); // baru pengambilan pertama
+
+        hub.kabari();
+        async.elapse(const Duration(seconds: 1));
+
+        expect(jumlahIntip, 2);
+      });
+    });
+
+    test('tanpa hub, perilakunya persis mengintip berkala biasa', () {
+      // hub: null (bawaan) tidak boleh membuat watchTransaksi melempar atau
+      // berhenti bekerja; ini jalur yang dipakai selama koneksi hub belum
+      // tersambung.
+      fakeAsync((async) {
+        var jumlahIntip = 0;
+        final uji = buat((_) {
+          jumlahIntip++;
+          return transaksiJson(status: jumlahIntip >= 2 ? 'Berhasil' : 'Pending');
+        }, jedaIntip: const Duration(milliseconds: 50));
+
+        final diterima = <String>[];
+        uji.gateway.watchTransaksi(orderId).listen((t) => diterima.add(t.status.name));
+        async.elapse(const Duration(seconds: 1));
+
+        expect(diterima, ['pending', 'berhasil']);
+      });
+    });
+  });
+}
+
+/// Tiruan [SaluranHubOrder] yang mencatat panggilan alih-alih menyambung ke
+/// mana pun, dan bisa dipicu dari tes lewat [kabari].
+class _HubTiruan implements SaluranHubOrder {
+  final List<String> diikuti = [];
+  final List<String> ditinggalkan = [];
+  final StreamController<void> _perubahan = StreamController<void>.broadcast();
+
+  @override
+  void ikutiOrder(String orderId) => diikuti.add(orderId);
+
+  @override
+  void berhentiIkutiOrder(String orderId) => ditinggalkan.add(orderId);
+
+  @override
+  Stream<void> get perubahan => _perubahan.stream;
+
+  void kabari() => _perubahan.add(null);
 }

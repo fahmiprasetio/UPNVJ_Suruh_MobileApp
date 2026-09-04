@@ -13,6 +13,10 @@ import 'repository_providers.dart';
 /// Cabang tiruannya perlu diberi tahu berapa harga ordernya, karena ia tidak
 /// punya basis data untuk membacanya sendiri. Dibaca lewat kontrak order, bukan
 /// disalin dari layar: jumlah tagihan tidak boleh datang dari sisi yang membayar.
+///
+/// Cabang API-nya diberi [orderHubClientProvider], `null` di jalur tiruan sama
+/// seperti [orderRepositoryProvider]. Tanpa hub, `ApiPaymentGateway` tetap
+/// jalan, cuma kembali murni mengintip berkala (bagian 41).
 final paymentGatewayProvider = Provider<PaymentGateway>((ref) {
   if (ref.watch(sumberDataProvider) == SumberData.tiruan) {
     final gateway = FakePaymentGateway(
@@ -25,7 +29,10 @@ final paymentGatewayProvider = Provider<PaymentGateway>((ref) {
     return gateway;
   }
 
-  return ApiPaymentGateway(klien: ref.watch(klienApiProvider));
+  return ApiPaymentGateway(
+    klien: ref.watch(klienApiProvider),
+    hub: ref.watch(orderHubClientProvider),
+  );
 });
 
 /// Tombol simulator, alat penguji yang menggantikan bank klien.
