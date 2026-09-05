@@ -26,12 +26,25 @@ final orderKlienProvider = StreamProvider<Halaman<Order>>((ref) {
 ///
 /// Mengembalikan `null` kalau ordernya tidak ada, layar detail memakai ini
 /// untuk membedakan "sedang dimuat" dari "memang tidak ada".
+///
+/// Selama ada yang mengamati, hub diminta mengikutkan koneksi ini ke grup order
+/// tersebut. Itu yang membuat pesan chat baru dan perubahan status order muncul
+/// seketika alih-alih menunggu pengambilan berkala lima belas detik: kabar apa pun
+/// dari grup itu menabuh [ApiOrderRepository] untuk mengambil ulang. Diletakkan di
+/// sini, bukan di masing-masing layar, karena setiap layar yang menampilkan satu
+/// order (detail klien, chat kedua peran, layar bayar) sudah mengamati provider ini
+/// — menaruhnya di layar berarti tiga tempat yang harus sama-sama ingat melepasnya.
 final orderProvider = StreamProvider.family<Order?, String>((ref, orderId) {
   // Percakapannya ikut jendela order ini sendiri, bukan jendela bersama. Chat order
   // yang pernah diperlebar tidak boleh membuat chat order lain ikut mengambil jauh
   // lebih banyak daripada yang dibutuhkan.
   final ukuranPesan = ref.watch(ukuranPesanProvider.notifier).untuk(orderId);
   ref.watch(ukuranPesanProvider);
+
+  // `null` di jalur data tiruan, yang memang tidak punya server untuk disambungi.
+  final hub = ref.watch(orderHubClientProvider);
+  hub?.ikutiOrder(orderId);
+  ref.onDispose(() => hub?.berhentiIkutiOrder(orderId));
 
   return ref
       .watch(orderRepositoryProvider)

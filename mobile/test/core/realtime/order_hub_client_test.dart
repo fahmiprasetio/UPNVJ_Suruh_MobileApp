@@ -102,4 +102,73 @@ void main() {
       expect(isi['arguments'], isEmpty);
     });
   });
+
+  /// Satu order bisa diikuti dari dua tempat sekaligus: layar bayar lewat aliran
+  /// transaksinya, dan `orderProvider` lewat ordernya sendiri. Yang selesai
+  /// duluan tidak boleh menghapus keanggotaan grup yang masih dibutuhkan yang
+  /// satunya — kalau itu terjadi, layar yang tersisa berhenti menerima kabar
+  /// tanpa ada yang terlihat salah, dan cuma pengambilan berkala 15 detik yang
+  /// menutupinya.
+  group('hitungan pengamat order', () {
+    OrderHubClient buatKlien() => OrderHubClient(
+      baseUrl: 'http://contoh.invalid',
+      token: () => null,
+    );
+
+    test('dua pengamat, satu pergi: ordernya masih diikuti', () {
+      final klien = buatKlien();
+      addTearDown(klien.dispose);
+
+      klien.ikutiOrder('order-1');
+      klien.ikutiOrder('order-1');
+      klien.berhentiIkutiOrder('order-1');
+
+      expect(klien.orderDiikuti, {'order-1': 1});
+    });
+
+    test('pengamat terakhir pergi: ordernya dilepas', () {
+      final klien = buatKlien();
+      addTearDown(klien.dispose);
+
+      klien.ikutiOrder('order-1');
+      klien.ikutiOrder('order-1');
+      klien.berhentiIkutiOrder('order-1');
+      klien.berhentiIkutiOrder('order-1');
+
+      expect(klien.orderDiikuti, isEmpty);
+    });
+
+    test('order berbeda dihitung sendiri-sendiri', () {
+      final klien = buatKlien();
+      addTearDown(klien.dispose);
+
+      klien.ikutiOrder('order-1');
+      klien.ikutiOrder('order-2');
+      klien.berhentiIkutiOrder('order-1');
+
+      expect(klien.orderDiikuti, {'order-2': 1});
+    });
+
+    test('berhenti tanpa pernah mengikuti tidak membuat hitungan negatif', () {
+      final klien = buatKlien();
+      addTearDown(klien.dispose);
+
+      klien.berhentiIkutiOrder('order-1');
+
+      expect(klien.orderDiikuti, isEmpty);
+    });
+
+    /// Sesi berikutnya (akun lain di perangkat yang sama) tidak mewarisi
+    /// langganan order milik akun sebelumnya.
+    test('berhenti() mengosongkan seluruh hitungan', () {
+      final klien = buatKlien();
+      addTearDown(klien.dispose);
+
+      klien.ikutiOrder('order-1');
+      klien.ikutiOrder('order-1');
+      klien.berhenti();
+
+      expect(klien.orderDiikuti, isEmpty);
+    });
+  });
 }

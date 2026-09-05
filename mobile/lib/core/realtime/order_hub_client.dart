@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -94,9 +95,9 @@ abstract interface class SaluranHubOrder {
 /// ## Bergabung ke grup satu order
 ///
 /// [ikutiOrder] dan [berhentiIkutiOrder] mengirim "GabungOrder"/"TinggalkanOrder"
-/// ke server (rencana capstone bagian 41), dipakai layar bayar supaya kabar
-/// "PaymentChanged" order yang sedang dibuka ikut lewat [perubahan] — kelas ini
-/// sengaja tidak membedakan kabar itu dari "OrderBroadcast"/"OrderTaken", dengan
+/// ke server (rencana capstone bagian 41), dipakai layar bayar untuk kabar
+/// "PaymentChanged" dan oleh `orderProvider` untuk kabar "MessageAdded" (bagian
+/// 43) — kelas ini sengaja tidak membedakan kabar-kabar itu satu sama lain, dengan
 /// alasan yang sama seperti di atas.
 ///
 /// Id order yang sedang diikuti disimpan di [_orderDiikuti] dan dikirim ulang
@@ -129,10 +130,11 @@ class OrderHubClient implements SaluranHubOrder {
 
   /// Menyala setiap kali server mengirim pesan apa pun ke hub ini.
   ///
-  /// Sengaja tidak membedakan "OrderBroadcast" dari "OrderTaken": pemanggilnya
-  /// cuma perlu tahu "ada yang berubah, ambil ulang", bukan detail apa yang
-  /// berubah. Membedakannya berarti bentuk muatan pesan harus dijaga sama persis
-  /// dengan backend di dua tempat, untuk sesuatu yang tidak dipakai layar mana pun.
+  /// Sengaja tidak membedakan satu kabar dari kabar lain ("OrderBroadcast",
+  /// "OrderTaken", "PaymentChanged", "MessageAdded"): pemanggilnya cuma perlu
+  /// tahu "ada yang berubah, ambil ulang", bukan detail apa yang berubah.
+  /// Membedakannya berarti bentuk muatan pesan harus dijaga sama persis dengan
+  /// backend di dua tempat, untuk sesuatu yang tidak dipakai layar mana pun.
   @override
   Stream<void> get perubahan => _perubahan.stream;
 
@@ -142,7 +144,23 @@ class OrderHubClient implements SaluranHubOrder {
   Timer? _pewaktuSambungUlang;
   bool _seharusnyaJalan = false;
   String _bufer = '';
-  final Set<String> _orderDiikuti = {};
+
+  /// Order yang sedang diikuti, beserta berapa banyak pengamat di aplikasi ini
+  /// yang sedang memintanya.
+  ///
+  /// Dihitung, bukan sekadar didaftar, karena satu order bisa diikuti lebih dari
+  /// satu tempat sekaligus: layar bayar mengikuti lewat aliran transaksinya
+  /// sendiri, dan pada saat yang sama `orderProvider` mengikutinya lagi untuk
+  /// ordernya. Kalau ini cuma himpunan, yang pertama selesai akan mengirim
+  /// "TinggalkanOrder" selagi yang kedua masih membutuhkannya, dan yang kedua
+  /// diam-diam berhenti menerima kabar tanpa ada yang terlihat salah.
+  final Map<String, int> _orderDiikuti = {};
+
+  /// Cuma untuk tes: order yang sedang diikuti beserta jumlah pengamatnya.
+  /// Perilaku hitungannya tidak bisa diamati dari luar tanpa soket sungguhan,
+  /// karena [_kirim] diam-diam tidak melakukan apa pun selagi belum tersambung.
+  @visibleForTesting
+  Map<String, int> get orderDiikuti => Map.unmodifiable(_orderDiikuti);
 
   /// Mulai (atau sambung ulang) koneksi ke hub. Aman dipanggil berkali-kali.
   void mulai() {
@@ -162,20 +180,33 @@ class OrderHubClient implements SaluranHubOrder {
     _orderDiikuti.clear();
   }
 
-  /// Mulai mendengarkan kabar "PaymentChanged" untuk satu order, biasanya
-  /// dipanggil begitu layar bayar order itu dibuka.
+  /// Mulai mendengarkan kabar satu order ("PaymentChanged", "MessageAdded"),
+  /// dipanggil begitu salah satu layar order itu dibuka.
   ///
   /// Aman dipanggil sebelum soketnya tersambung, atau selagi terputus: id-nya
-  /// disimpan lebih dulu, dikirim begitu (atau begitu lagi) tersambung.
+  /// disimpan lebih dulu, dikirim begitu (atau begitu lagi) tersambung. Aman pula
+  /// dipanggil berkali-kali untuk order yang sama, asal setiap panggilan
+  /// berpasangan dengan satu [berhentiIkutiOrder].
   @override
   void ikutiOrder(String orderId) {
-    _orderDiikuti.add(orderId);
+    _orderDiikuti.update(orderId, (jumlah) => jumlah + 1, ifAbsent: () => 1);
+    // Dikirim juga saat pengamat kedua datang walau grupnya sudah diikuti.
+    // "GabungOrder" idempoten di sisi server, dan mengirimnya ulang lebih murah
+    // daripada menjaga tebakan tentang keadaan grup di sisi sini tetap benar.
     _kirim(bentukInvocation('GabungOrder', [orderId]));
   }
 
-  /// Berhenti mendengarkan satu order, dipanggil begitu layar bayarnya ditutup.
+  /// Berhenti mendengarkan satu order, dipanggil begitu layarnya ditutup.
+  ///
+  /// Grupnya baru sungguh ditinggalkan saat pengamat terakhirnya pergi.
   @override
   void berhentiIkutiOrder(String orderId) {
+    final sisa = (_orderDiikuti[orderId] ?? 0) - 1;
+    if (sisa > 0) {
+      _orderDiikuti[orderId] = sisa;
+      return;
+    }
+
     _orderDiikuti.remove(orderId);
     _kirim(bentukInvocation('TinggalkanOrder', [orderId]));
   }
@@ -232,7 +263,7 @@ class OrderHubClient implements SaluranHubOrder {
       // Soket yang baru ini punya id koneksi baru, jadi order yang tadinya
       // diikuti lewat koneksi lama (kalau ini sambungan ulang sesudah putus)
       // perlu diminta lagi dari awal; server tidak mengingatnya sendiri.
-      for (final orderId in _orderDiikuti) {
+      for (final orderId in _orderDiikuti.keys) {
         _kirim(bentukInvocation('GabungOrder', [orderId]));
       }
     } catch (_) {
