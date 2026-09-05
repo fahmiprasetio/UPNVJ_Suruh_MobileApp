@@ -8,7 +8,14 @@ namespace UpnvjSuruh.Api.Perawatan;
 /// <summary>Apa saja yang dibereskan satu kali sapuan.</summary>
 /// <param name="PembayaranKedaluwarsa">Transaksi menunggu yang batas waktunya sudah lewat.</param>
 /// <param name="BerkasYatim">Foto yang tidak pernah dipakai menutup order mana pun.</param>
-public readonly record struct HasilSapuan(int PembayaranKedaluwarsa, int BerkasYatim);
+/// <param name="OrderMacet">
+/// Order yang sudah terlalu lama menganggur. Tidak diubah apa pun, cuma dihitung dan
+/// dilaporkan; lihat alasannya di <see cref="Penyapu.LaporkanOrderMacetAsync"/>.
+/// </param>
+public readonly record struct HasilSapuan(
+    int PembayaranKedaluwarsa,
+    int BerkasYatim,
+    int OrderMacet);
 
 /// <summary>
 /// Merapikan hal-hal yang tidak dirapikan siapa pun karena tidak ada yang menanyakannya.
@@ -56,7 +63,45 @@ public class Penyapu(AppDbContext db, PenyimpanFoto penyimpan, ILogger<Penyapu> 
 
         return new HasilSapuan(
             await KedaluwarsakanPembayaranAsync(sekarang, batal),
-            await HapusBerkasYatimAsync(sekarang, batal));
+            await HapusBerkasYatimAsync(sekarang, batal),
+            await LaporkanOrderMacetAsync(sekarang, batal));
+    }
+
+    /// <summary>
+    /// Menghitung order yang sedang macet, dan menyebutkannya di log kalau ada.
+    /// </summary>
+    /// <remarks>
+    /// Tidak mengubah apa pun, dan itu disengaja. Order yang macet berisi uang klien yang
+    /// sudah masuk; membatalkannya sendiri berarti mengembalikan uang tanpa ada yang
+    /// memutuskan, dan menahannya lebih lama juga bukan keputusan yang boleh diambil pewaktu.
+    /// Sejak bagian 46 klien punya jalannya sendiri untuk meminta pembatalan, dan admin punya
+    /// antreannya; yang kurang cuma satu hal, yaitu ada yang memperhatikan ketika tidak ada
+    /// seorang pun sedang menatap dashboard.
+    ///
+    /// Itu yang dikerjakan di sini. Sebelumnya "macet" adalah warna baris di tabel admin,
+    /// jadi order yang macet secara harfiah tidak ada bagi siapa pun yang tidak sedang
+    /// membuka halaman itu — termasuk bagi log server, yang justru satu-satunya yang tetap
+    /// mencatat saat semua orang tidur.
+    ///
+    /// Peringatan, bukan informasi, karena inilah keadaan terburuk yang bisa dialami sistem
+    /// ini: uangnya sudah masuk, pekerjaannya belum dimulai, kliennya menunggu.
+    /// </remarks>
+    private async Task<int> LaporkanOrderMacetAsync(DateTime sekarang, CancellationToken batal)
+    {
+        var jumlah = await db.Orders
+            .Where(Domain.OrderMacet.Ekspresi(sekarang))
+            .CountAsync(batal);
+
+        if (jumlah > 0)
+        {
+            log.LogWarning(
+                "{Jumlah} order sudah lebih dari {Menit} menit tanpa runner. "
+                + "Buka Pantauan Order lalu saring \"Macet\".",
+                jumlah,
+                (int)Domain.OrderMacet.Ambang.TotalMinutes);
+        }
+
+        return jumlah;
     }
 
     /// <summary>

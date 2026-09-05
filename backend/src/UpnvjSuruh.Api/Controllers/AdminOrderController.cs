@@ -60,6 +60,14 @@ public class AdminOrderController(
             kueri = kueri.Where(o => o.CancellationRequestedAt != null);
         }
 
+        // Disaring di basis data, bukan sesudah halamannya terpotong. Menyaring di sisi sini
+        // berarti "5 order macet" yang sebenarnya berarti "5 di antara dua puluh yang muat di
+        // halaman ini", dan yang berada di halaman berikutnya tidak pernah ditemukan siapa pun.
+        if (permintaan.Macet == true)
+        {
+            kueri = kueri.Where(OrderMacet.Ekspresi(DateTime.UtcNow));
+        }
+
         // Dihitung sebelum dipotong, jadi angkanya menyebut seluruh yang cocok, bukan yang
         // muat di halaman ini. Itulah satu-satunya angka yang berguna bagi yang membacanya:
         // "menunggu penawaran: 20" yang ternyata cuma isi satu halaman adalah kabar yang

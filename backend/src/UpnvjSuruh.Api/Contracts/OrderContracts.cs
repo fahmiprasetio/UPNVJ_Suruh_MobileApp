@@ -79,7 +79,16 @@ public record OrderResponse(
     /// dashboard untuk menandai order yang menunggu keputusan, dan dipakai aplikasi klien
     /// untuk menjelaskan bahwa permintaannya sudah sampai.
     /// </summary>
-    DateTime? MintaBatalPada)
+    DateTime? MintaBatalPada,
+    /// <summary>
+    /// Benar kalau order ini sudah terlalu lama menganggur di keadaan yang seharusnya cepat
+    /// berlalu (<see cref="Domain.OrderMacet"/>).
+    ///
+    /// Dihitung server, bukan oleh yang membacanya. Sebelumnya dashboard menghitungnya
+    /// sendiri dari waktu pembuatan order, yang berarti ambangnya hidup di dua tempat dan
+    /// server tidak pernah bisa menyebut-nyebut order yang bermasalah.
+    /// </summary>
+    bool Macet)
 {
     public static OrderResponse Dari(Order order, string namaKlien, int jumlahPesan = 0) => new(
         order.Id,
@@ -109,7 +118,8 @@ public record OrderResponse(
         order.CreatedAt,
         order.PaidAt,
         order.CompletedAt,
-        order.CancellationRequestedAt);
+        order.CancellationRequestedAt,
+        OrderMacet.Sedang(order, DateTime.UtcNow));
 }
 
 public record BuatOrderResponse(OrderResponse Order, IReadOnlyList<RincianTarifResponse> Rincian);

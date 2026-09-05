@@ -74,6 +74,18 @@ public record PermintaanDaftarOrder : PermintaanHalaman
     /// Boleh dipakai bersama <see cref="Status"/>, dan keduanya menyempit bersama.
     /// </remarks>
     public bool? MintaBatal { get; init; }
+
+    /// <summary>
+    /// Kalau benar, cuma order yang sedang macet yang dikembalikan
+    /// (<see cref="Domain.OrderMacet"/>).
+    /// </summary>
+    /// <remarks>
+    /// Penyaring tersendiri dengan alasan yang sama seperti <see cref="MintaBatal"/>: macet
+    /// bukan status order melainkan berapa lama ia sudah berada di statusnya. Sebelum ada
+    /// penyaring ini, order yang macet cuma "ada" selama seseorang kebetulan menatap halaman
+    /// tabel yang memuatnya, karena yang menandainya perhitungan di layar.
+    /// </remarks>
+    public bool? Macet { get; init; }
 }
 
 /// <summary>
