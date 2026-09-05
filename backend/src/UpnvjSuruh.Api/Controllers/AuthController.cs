@@ -224,4 +224,61 @@ public class AuthController(
         // lagi, dan 401 adalah jawaban yang sudah ditangani lapisan HTTP-nya.
         return user is null ? Unauthorized() : Ok(UserResponse.Dari(user));
     }
+
+    /// <summary>Menyunting profil sendiri: nama, dan alamat bawaan.</summary>
+    /// <remarks>
+    /// Sebelum ini tidak ada cara mengubah apa pun tentang akun sendiri. Nama yang salah
+    /// ketik saat mendaftar melekat selamanya, dan nama itu bukan urusan pribadi: ia yang
+    /// dilihat runner saat menerima order, dan yang dilihat klien saat runner datang.
+    ///
+    /// Kolom alamat sendiri sudah ada sejak skema pertama dan tidak pernah ditulis satu
+    /// baris pun. Ia ikut di setiap <see cref="UserResponse"/>, ikut di model mobile,
+    /// lengkap dengan tempatnya di <c>copyWith</c> dan perbandingannya — dan isinya selalu
+    /// null. Endpoint ini yang membuatnya berarti: alamat yang disimpan sekali lalu
+    /// mengisi sendiri kolom yang paling sering diketik ulang di formulir order.
+    ///
+    /// Bukan alamat order. Order membawa alamatnya sendiri, karena satu orang memesan dari
+    /// tempat yang berbeda-beda dan ke tempat yang berbeda-beda; menautkan order ke alamat
+    /// akun berarti alamat order lama ikut berubah saat orangnya pindah kos, dan riwayat
+    /// order yang berubah sendiri adalah riwayat yang tidak bisa dipakai menengahi apa pun.
+    ///
+    /// Nomor HP sengaja tidak ikut, lihat <see cref="PerbaruiProfilRequest"/>.
+    /// </remarks>
+    [Authorize]
+    [EnableRateLimiting(BatasLaju.KebijakanTulis)]
+    [HttpPut("saya")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<UserResponse>> PerbaruiSaya(
+        PerbaruiProfilRequest permintaan,
+        CancellationToken batal)
+    {
+        var user = await db.Users.SingleOrDefaultAsync(u => u.Id == User.Id(), batal);
+        if (user is null) return Unauthorized();
+
+        var nama = permintaan.Nama.Trim();
+        if (nama.Length == 0)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Nama tidak boleh kosong",
+                Detail = "Isi namamu, itu yang dilihat runner saat menerima ordermu.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        user.Name = nama;
+
+        // Alamat kosong disimpan sebagai null, bukan sebagai string kosong. Keduanya
+        // berarti "tidak ada", dan dua cara menuliskan hal yang sama berarti setiap
+        // pembacanya harus memeriksa dua-duanya — termasuk pengisi otomatis di formulir
+        // order, yang kalau lupa akan mengisinya dengan spasi.
+        var alamat = permintaan.Alamat?.Trim();
+        user.Address = string.IsNullOrEmpty(alamat) ? null : alamat;
+
+        await db.SaveChangesAsync(batal);
+
+        return Ok(UserResponse.Dari(user));
+    }
 }

@@ -258,4 +258,127 @@ public class AuthEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Databa
 
         Assert.Equal(HttpStatusCode.OK, jawaban.StatusCode);
     }
+
+    // --- Menyunting profil sendiri ---
+
+    private async Task<HttpClient> KlienMasukAsync(string nama = "Dina Rahmawati")
+    {
+        var klien = Klien();
+        var noHp = await DaftarAsync(klien, NomorBaru(), nama);
+        var masuk = await MasukAsync(klien, noHp);
+        klien.DefaultRequestHeaders.Authorization = new("Bearer", masuk.Token);
+        return klien;
+    }
+
+    [Fact]
+    public async Task ProfilSendiriBisaDisuntingNamaDanAlamatnya()
+    {
+        var klien = await KlienMasukAsync("Dina Rahmwati");
+
+        var jawaban = await klien.PutAsJsonAsync(
+            "/api/auth/saya",
+            new { Nama = "Dina Rahmawati", Alamat = "Kos Melati kamar 7, Jl. Pondok Labu Raya" });
+
+        jawaban.EnsureSuccessStatusCode();
+        var sesudah = (await jawaban.Content.ReadFromJsonAsync<UserResponse>())!;
+        Assert.Equal("Dina Rahmawati", sesudah.Nama);
+        Assert.Equal("Kos Melati kamar 7, Jl. Pondok Labu Raya", sesudah.Alamat);
+
+        // Dibaca ulang, bukan dipercaya dari jawaban PUT-nya: yang diuji perubahannya
+        // tersimpan, bukan bahwa endpoint bisa menggemakan kembali apa yang dikirim.
+        var dibaca = await klien.GetFromJsonAsync<UserResponse>("/api/auth/saya");
+        Assert.Equal("Dina Rahmawati", dibaca!.Nama);
+        Assert.Equal("Kos Melati kamar 7, Jl. Pondok Labu Raya", dibaca.Alamat);
+    }
+
+    /// <summary>
+    /// Alamat kosong disimpan sebagai null, bukan string kosong. Dua cara menuliskan
+    /// "tidak ada" berarti setiap pembacanya harus memeriksa dua-duanya, dan pengisi
+    /// otomatis di formulir order yang lupa akan mengisinya dengan spasi.
+    /// </summary>
+    [Fact]
+    public async Task AlamatKosongDisimpanSebagaiNull()
+    {
+        var klien = await KlienMasukAsync();
+        (await klien.PutAsJsonAsync("/api/auth/saya", new { Nama = "Dina", Alamat = "Kos Melati" }))
+            .EnsureSuccessStatusCode();
+
+        (await klien.PutAsJsonAsync("/api/auth/saya", new { Nama = "Dina", Alamat = "   " }))
+            .EnsureSuccessStatusCode();
+
+        var dibaca = await klien.GetFromJsonAsync<UserResponse>("/api/auth/saya");
+        Assert.Null(dibaca!.Alamat);
+    }
+
+    [Fact]
+    public async Task NamaKosongDitolak()
+    {
+        var klien = await KlienMasukAsync();
+
+        var jawaban = await klien.PutAsJsonAsync("/api/auth/saya", new { Nama = "   ", Alamat = (string?)null });
+
+        Assert.Equal(HttpStatusCode.BadRequest, jawaban.StatusCode);
+    }
+
+    [Fact]
+    public async Task NamaTerlaluPanjangDitolak()
+    {
+        var klien = await KlienMasukAsync();
+
+        var jawaban = await klien.PutAsJsonAsync(
+            "/api/auth/saya",
+            new { Nama = Panjang(BatasMasukan.Nama + 1), Alamat = (string?)null });
+
+        Assert.Equal(HttpStatusCode.BadRequest, jawaban.StatusCode);
+    }
+
+    [Fact]
+    public async Task AlamatTerlaluPanjangDitolak()
+    {
+        var klien = await KlienMasukAsync();
+
+        var jawaban = await klien.PutAsJsonAsync(
+            "/api/auth/saya",
+            new { Nama = "Dina", Alamat = Panjang(BatasMasukan.Alamat + 1) });
+
+        Assert.Equal(HttpStatusCode.BadRequest, jawaban.StatusCode);
+    }
+
+    /// <summary>
+    /// Yang paling penting dijaga di endpoint ini. Peran dan nomor HP tidak ada di
+    /// kontraknya, dan field yang tidak ada di kontrak diabaikan diam-diam oleh
+    /// pengurai JSON — jadi satu-satunya cara membuktikan ia benar-benar diabaikan
+    /// adalah mengirimnya dan melihat keduanya tidak berubah.
+    /// </summary>
+    [Fact]
+    public async Task PeranDanNomorHpTidakBisaDiubahLewatProfil()
+    {
+        var klien = Klien();
+        var noHp = await DaftarAsync(klien, NomorBaru());
+        var masuk = await MasukAsync(klien, noHp);
+        klien.DefaultRequestHeaders.Authorization = new("Bearer", masuk.Token);
+
+        var jawaban = await klien.PutAsJsonAsync("/api/auth/saya", new
+        {
+            Nama = "Dina",
+            Alamat = (string?)null,
+            Roles = new[] { "Admin" },
+            NoHp = "081100000000",
+        });
+
+        jawaban.EnsureSuccessStatusCode();
+        var sesudah = (await jawaban.Content.ReadFromJsonAsync<UserResponse>())!;
+        Assert.Equal(noHp, sesudah.NoHp);
+        Assert.Equal(["Klien"], sesudah.Roles);
+    }
+
+    [Fact]
+    public async Task ProfilTidakBisaDisuntingTanpaToken()
+    {
+        var jawaban = await Klien().PutAsJsonAsync(
+            "/api/auth/saya",
+            new { Nama = "Siapa Saja", Alamat = (string?)null });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, jawaban.StatusCode);
+    }
 }

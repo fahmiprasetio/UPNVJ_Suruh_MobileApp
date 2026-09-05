@@ -48,6 +48,31 @@ public record MasukRequest
     public string Kode { get; init; } = string.Empty;
 }
 
+/// <summary>
+/// Menyunting profil sendiri.
+///
+/// PERHATIKAN APA YANG TIDAK ADA DI SINI, sama seperti <see cref="DaftarRequest"/>: tidak
+/// ada field peran, dan tidak ada nomor HP. Peran karena alasan yang sama persis. Nomor HP
+/// karena ia identitas masuk: ia yang menerima kode OTP, jadi mengubahnya lewat endpoint
+/// yang cuma menerima teks berarti siapa pun yang memegang token sesaat bisa memindahkan
+/// akunnya ke nomor lain, dan pemilik aslinya terkunci di luar. Menggantinya menuntut
+/// verifikasi kode ke nomor barunya, dan itu pekerjaan tersendiri.
+/// </summary>
+public record PerbaruiProfilRequest
+{
+    [Required(AllowEmptyStrings = false)]
+    [MaxLength(BatasMasukan.Nama)]
+    public string Nama { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Alamat bawaan, boleh dikosongkan. Bukan alamat order: order membawa alamatnya
+    /// sendiri, karena satu orang memesan dari tempat yang berbeda-beda. Yang ini cuma
+    /// jawaban yang paling sering ia ketik, disimpan supaya tidak diketik ulang.
+    /// </summary>
+    [MaxLength(BatasMasukan.Alamat)]
+    public string? Alamat { get; init; }
+}
+
 public record UserResponse(
     Guid Id,
     string Nama,
