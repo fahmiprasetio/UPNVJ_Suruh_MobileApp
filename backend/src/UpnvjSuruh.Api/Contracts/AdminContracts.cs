@@ -29,19 +29,30 @@ public record TetapkanPeranRequest
     public string Alasan { get; init; } = string.Empty;
 }
 
+/// <param name="NamaAdmin">
+/// Nama admin yang mengubahnya, atau <c>-</c> kalau akunnya sudah tidak ada.
+///
+/// Ikut dibawa karena pertanyaan yang melahirkan catatan ini "siapa yang mengangkat orang ini
+/// jadi runner", dan deretan UUID bukan jawaban atas pertanyaan yang memakai kata "siapa".
+/// Idnya tetap dikirim di samping namanya: nama bisa sama antara dua orang dan bisa disunting
+/// pemiliknya sendiri sejak bagian 52, sedangkan yang harus tetap bisa ditunjuk oleh catatan
+/// audit adalah akunnya.
+/// </param>
 public record PerubahanPeranResponse(
     Guid Id,
     Guid UserId,
     Guid DiubahOlehAdminId,
+    string NamaAdmin,
     IReadOnlyList<string> Sebelum,
     IReadOnlyList<string> Sesudah,
     string Alasan,
     DateTime DiubahPada)
 {
-    public static PerubahanPeranResponse Dari(UserRoleChange p) => new(
+    public static PerubahanPeranResponse Dari(UserRoleChange p, string? namaAdmin = null) => new(
         p.Id,
         p.UserId,
         p.ChangedByAdminId,
+        namaAdmin ?? "-",
         [.. p.RolesBefore.Select(r => r.ToString())],
         [.. p.RolesAfter.Select(r => r.ToString())],
         p.Reason,
@@ -58,14 +69,17 @@ public record PerubahanPenangguhanResponse(
     Guid Id,
     Guid UserId,
     Guid DiubahOlehAdminId,
+    string NamaAdmin,
     bool Ditangguhkan,
     string Alasan,
     DateTime DiubahPada)
 {
-    public static PerubahanPenangguhanResponse Dari(UserSuspensionChange p) => new(
+    public static PerubahanPenangguhanResponse Dari(
+        UserSuspensionChange p, string? namaAdmin = null) => new(
         p.Id,
         p.UserId,
         p.ChangedByAdminId,
+        namaAdmin ?? "-",
         p.Suspended,
         p.Reason,
         p.ChangedAt);

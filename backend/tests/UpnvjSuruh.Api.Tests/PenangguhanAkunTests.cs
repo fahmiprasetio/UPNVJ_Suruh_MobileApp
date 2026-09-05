@@ -317,6 +317,11 @@ public class PenangguhanAkunTests(DatabaseApiFactory pabrik) : IClassFixture<Dat
         Assert.True(riwayat.Isi[1].Ditangguhkan);
         Assert.Equal("Minta batal berulang kali.", riwayat.Isi[1].Alasan);
         Assert.All(riwayat.Isi, baris => Assert.Equal(adminId, baris.DiubahOlehAdminId));
+
+        // Namanya ikut dengan alasan yang sama seperti riwayat peran: yang membacanya
+        // bertanya "siapa", dan deretan UUID bukan jawaban atas pertanyaan seperti itu.
+        var namaAdmin = (await admin.GetFromJsonAsync<UserResponse>("/api/auth/saya"))!.Nama;
+        Assert.All(riwayat.Isi, baris => Assert.Equal(namaAdmin, baris.NamaAdmin));
     }
 
     /// <summary>

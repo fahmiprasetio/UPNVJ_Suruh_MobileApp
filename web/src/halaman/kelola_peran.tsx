@@ -386,7 +386,8 @@ function RiwayatPenangguhan({ userId, penanda }: { userId: string; penanda: numb
                 {baris.ditangguhkan ? 'Ditangguhkan' : 'Dipulihkan'}
               </p>
               <p className="riwayat-peran__alasan">{baris.alasan}</p>
-              <time dateTime={baris.diubahPada}>{formatTanggalJam(baris.diubahPada)}</time>
+              <time dateTime={baris.diubahPada}>{formatTanggalJam(baris.diubahPada)}</time>{' '}
+              <span className="riwayat-peran__oleh">oleh {baris.namaAdmin}</span>
             </li>
           ))}
         </ol>
@@ -433,7 +434,8 @@ function RiwayatPeran({ userId, penanda }: { userId: string; penanda: number }) 
                 {baris.sesudah.join(', ') || 'tanpa peran'}
               </p>
               <p className="riwayat-peran__alasan">{baris.alasan}</p>
-              <time dateTime={baris.diubahPada}>{formatTanggalJam(baris.diubahPada)}</time>
+              <time dateTime={baris.diubahPada}>{formatTanggalJam(baris.diubahPada)}</time>{' '}
+              <span className="riwayat-peran__oleh">oleh {baris.namaAdmin}</span>
             </li>
           ))}
         </ol>

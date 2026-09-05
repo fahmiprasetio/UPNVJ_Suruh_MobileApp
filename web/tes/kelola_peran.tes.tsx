@@ -425,6 +425,7 @@ describe('PanelPenangguhan', () => {
                 id: 's-2',
                 userId: '44444444-4444-4444-4444-444444444444',
                 diubahOlehAdminId: '55555555-5555-5555-5555-555555555555',
+                namaAdmin: 'Jiro',
                 ditangguhkan: false,
                 alasan: 'Sudah dijelaskan, ternyata salah paham.',
                 diubahPada: '2026-09-05T12:00:00Z',
@@ -433,6 +434,7 @@ describe('PanelPenangguhan', () => {
                 id: 's-1',
                 userId: '44444444-4444-4444-4444-444444444444',
                 diubahOlehAdminId: '55555555-5555-5555-5555-555555555555',
+                namaAdmin: 'Adji',
                 ditangguhkan: true,
                 alasan: 'Memesan lalu minta batal berulang kali.',
                 diubahPada: '2026-09-05T10:00:00Z',
@@ -462,6 +464,10 @@ describe('PanelPenangguhan', () => {
     expect(await screen.findByText('Dipulihkan')).toBeInTheDocument();
     expect(screen.getByText('Ditangguhkan')).toBeInTheDocument();
     expect(screen.getByText('Sudah dijelaskan, ternyata salah paham.')).toBeInTheDocument();
+    // Siapa yang memutuskannya ikut terbaca, dan dua baris di daftar yang sama bisa datang
+    // dari dua admin yang berbeda — itu justru yang paling ingin diketahui saat ditelusuri.
+    expect(screen.getByText('oleh Jiro')).toBeInTheDocument();
+    expect(screen.getByText('oleh Adji')).toBeInTheDocument();
     // Jumlahnya ikut di judulnya, alasannya sama dengan daftar pelepasan: yang dicari
     // admin pola, dan sekali berbeda artinya dari tiga kali.
     expect(screen.getByText(/Riwayat penangguhan \(2\)/)).toBeInTheDocument();

@@ -808,7 +808,8 @@ input {
   color: var(--tinta-samar);
 }
 
-.riwayat-peran__daftar time {
+.riwayat-peran__daftar time,
+.riwayat-peran__oleh {
   font-size: 11px;
   color: var(--tinta-samar);
 }

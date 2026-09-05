@@ -92,6 +92,10 @@ public class AdminPenggunaController(
     /// pernah dihapus, jadi satu-satunya arah pertumbuhannya naik. Endpoint yang dibiarkan
     /// tanpa batas karena "isinya masih sedikit" adalah endpoint yang batasnya baru dicari
     /// setelah ada yang mengeluh.
+    ///
+    /// Nama adminnya ikut diambil, bukan cuma idnya. Pertanyaan yang melahirkan tabel ini
+    /// "siapa yang mengangkat orang ini jadi runner", dan deretan UUID bukan jawaban atas
+    /// pertanyaan yang memakai kata "siapa".
     /// </remarks>
     [HttpGet("{id:guid}/peran/riwayat")]
     public async Task<ActionResult<HalamanResponse<PerubahanPeranResponse>>> Riwayat(
@@ -107,10 +111,18 @@ public class AdminPenggunaController(
             .ThenByDescending(p => p.Id)
             .Skip(permintaan.Dilewati)
             .Take(permintaan.Ukuran)
+            .Select(p => new
+            {
+                Baris = p,
+                NamaAdmin = db.Users
+                    .Where(u => u.Id == p.ChangedByAdminId)
+                    .Select(u => u.Name)
+                    .FirstOrDefault(),
+            })
             .ToListAsync(batal);
 
         return Ok(new HalamanResponse<PerubahanPeranResponse>(
-            [.. riwayat.Select(PerubahanPeranResponse.Dari)],
+            [.. riwayat.Select(b => PerubahanPeranResponse.Dari(b.Baris, b.NamaAdmin))],
             total,
             permintaan.Halaman,
             permintaan.Ukuran));
@@ -124,7 +136,8 @@ public class AdminPenggunaController(
     /// satu daftar berarti admin yang mencari salah satunya harus menyaring yang lain dengan
     /// matanya.
     ///
-    /// Berhalaman dan diurutkan dari yang terbaru, sama seperti dua daftar tetangganya.
+    /// Berhalaman dan diurutkan dari yang terbaru, sama seperti dua daftar tetangganya, dan
+    /// membawa nama adminnya dengan alasan yang sama seperti <see cref="Riwayat"/>.
     /// </remarks>
     [HttpGet("{id:guid}/penangguhan/riwayat")]
     public async Task<ActionResult<HalamanResponse<PerubahanPenangguhanResponse>>> RiwayatPenangguhan(
@@ -140,10 +153,18 @@ public class AdminPenggunaController(
             .ThenByDescending(p => p.Id)
             .Skip(permintaan.Dilewati)
             .Take(permintaan.Ukuran)
+            .Select(p => new
+            {
+                Baris = p,
+                NamaAdmin = db.Users
+                    .Where(u => u.Id == p.ChangedByAdminId)
+                    .Select(u => u.Name)
+                    .FirstOrDefault(),
+            })
             .ToListAsync(batal);
 
         return Ok(new HalamanResponse<PerubahanPenangguhanResponse>(
-            [.. riwayat.Select(PerubahanPenangguhanResponse.Dari)],
+            [.. riwayat.Select(b => PerubahanPenangguhanResponse.Dari(b.Baris, b.NamaAdmin))],
             total,
             permintaan.Halaman,
             permintaan.Ukuran));

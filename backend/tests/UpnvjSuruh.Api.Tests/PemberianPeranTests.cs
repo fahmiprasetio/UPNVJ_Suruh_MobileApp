@@ -221,6 +221,12 @@ public class PemberianPeranTests(DatabaseApiFactory pabrik) : IClassFixture<Data
         var catatan = Assert.Single(riwayat!.Isi);
         Assert.Equal(1, riwayat.Total);
         Assert.Equal(adminId, catatan.DiubahOlehAdminId);
+
+        // Namanya ikut, bukan cuma idnya: pertanyaannya memakai kata "siapa", dan deretan
+        // UUID bukan jawaban atas pertanyaan seperti itu.
+        var namaAdmin = (await admin.GetFromJsonAsync<UserResponse>("/api/auth/saya"))!.Nama;
+        Assert.Equal(namaAdmin, catatan.NamaAdmin);
+
         Assert.Equal(["Klien"], catatan.Sebelum);
         Assert.Equal(["Klien", "Runner"], catatan.Sesudah);
         Assert.Equal("Direkrut mitra per 28 Agustus.", catatan.Alasan);

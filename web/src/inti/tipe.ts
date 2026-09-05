@@ -196,6 +196,7 @@ export interface PerubahanPenangguhan {
   id: string;
   userId: string;
   diubahOlehAdminId: string;
+  namaAdmin: string;
   ditangguhkan: boolean;
   alasan: string;
   diubahPada: string;
@@ -205,6 +206,8 @@ export interface PerubahanPeran {
   id: string;
   userId: string;
   diubahOlehAdminId: string;
+  /** Nama admin yang mengubahnya, atau `-` kalau akunnya sudah tidak ada. */
+  namaAdmin: string;
   sebelum: string[];
   sesudah: string[];
   alasan: string;
