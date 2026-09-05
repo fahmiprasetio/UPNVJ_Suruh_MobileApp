@@ -211,6 +211,37 @@ export function tetapkanPeran(
 }
 
 /**
+ * Menangguhkan sebuah akun: pemiliknya tidak bisa memakai aplikasi sama sekali.
+ *
+ * Berlaku seketika, bukan setelah token lamanya kedaluwarsa — server membaca ulang akunnya
+ * di setiap permintaan. Ditangguhkan, bukan dihapus: akun yang dihapus membawa serta
+ * seluruh ordernya, dan order yang hilang berarti riwayat pembayaran dan bayaran runner
+ * ikut hilang bersama jejaknya.
+ */
+export function tangguhkanAkun(
+  api: KlienApi,
+  userId: string,
+  alasan: string,
+): Promise<Pengguna> {
+  return api.minta<Pengguna>(`/api/admin/pengguna/${userId}/tangguhkan`, {
+    metode: 'POST',
+    badan: { alasan },
+  });
+}
+
+/** Memulihkan akun yang ditangguhkan. Alasannya wajib juga, sama seperti menangguhkan. */
+export function pulihkanAkun(
+  api: KlienApi,
+  userId: string,
+  alasan: string,
+): Promise<Pengguna> {
+  return api.minta<Pengguna>(`/api/admin/pengguna/${userId}/pulihkan`, {
+    metode: 'POST',
+    badan: { alasan },
+  });
+}
+
+/**
  * Tarif Jalur A yang sedang berlaku.
  *
  * Endpoint bacanya `[Authorize]` biasa di backend, bukan khusus admin (siapa pun yang

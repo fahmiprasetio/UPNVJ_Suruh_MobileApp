@@ -50,6 +50,12 @@ export interface Pengguna {
   noHp: string;
   alamat: string | null;
   roles: Peran[];
+  /**
+   * Terisi selama akun ini ditangguhkan: pemiliknya tidak bisa memakai aplikasi sama
+   * sekali, dan tokennya yang masih berlaku pun ditolak setiap permintaan.
+   */
+  ditangguhkanPada: string | null;
+  alasanPenangguhan: string | null;
 }
 
 export interface HasilMasuk {

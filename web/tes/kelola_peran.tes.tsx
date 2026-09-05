@@ -24,6 +24,8 @@ function pengguna(ubah: Partial<Pengguna> = {}): Pengguna {
     noHp: '081234567890',
     alamat: null,
     roles: ['Klien'],
+    ditangguhkanPada: null,
+    alasanPenangguhan: null,
     ...ubah,
   };
 }
@@ -192,6 +194,129 @@ describe('HalamanKelolaPeran', () => {
       screen.getByText(
         'Ini akun kamu sendiri. Mencabut peran admin dari akun sendiri akan ditolak server.',
       ),
+    ).toBeInTheDocument();
+
+    window.sessionStorage.clear();
+  });
+});
+
+/**
+ * Menangguhkan akun berdiri terpisah dari mengubah peran, dan itu keputusan yang diuji di
+ * sini: mengubah peran mempersempit apa yang bisa dikerjakan seseorang, sedangkan
+ * menangguhkan menghentikannya sama sekali. Satu tombol simpan untuk keduanya berarti satu
+ * kesalahan klik bisa menghentikan orang yang sebenarnya cuma mau diubah perannya.
+ */
+describe('PanelPenangguhan', () => {
+  function ambilDengan(hasilPencarian: Pengguna) {
+    return vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes('/peran/riwayat')) {
+        return Promise.resolve(
+          jawaban(200, { isi: [], total: 0, halaman: 1, ukuranHalaman: 20, totalHalaman: 0 }),
+        );
+      }
+      if (init?.method === 'POST') {
+        return Promise.resolve(
+          jawaban(200, pengguna({ ditangguhkanPada: new Date().toISOString() })),
+        );
+      }
+      return Promise.resolve(jawaban(200, [hasilPencarian]));
+    });
+  }
+
+  async function pilihRifqi(hasilPencarian: Pengguna) {
+    const ambil = ambilDengan(hasilPencarian);
+    pasang(ambil);
+
+    fireEvent.change(screen.getByLabelText('Cari nama atau nomor HP'), {
+      target: { value: 'rifqi' },
+    });
+    fireEvent.click(await screen.findByText('Rifqi'));
+    return ambil;
+  }
+
+  it('akun biasa menawarkan penangguhan, bukan pemulihan', async () => {
+    await pilihRifqi(pengguna());
+
+    expect(
+      await screen.findByRole('button', { name: 'Tangguhkan akun ini' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Pulihkan akun ini' })).not.toBeInTheDocument();
+  });
+
+  /// Admin harus tahu akun itu sedang berhenti sebelum menyunting apa pun, supaya ia tidak
+  /// mengira perubahan peran yang ia simpan akan langsung dipakai orangnya.
+  it('akun yang ditangguhkan mengatakannya beserta alasannya', async () => {
+    await pilihRifqi(
+      pengguna({
+        ditangguhkanPada: new Date().toISOString(),
+        alasanPenangguhan: 'Memesan lalu minta batal berulang kali.',
+      }),
+    );
+
+    expect(
+      await screen.findByText(/Memesan lalu minta batal berulang kali\./),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Pulihkan akun ini' }),
+    ).toBeInTheDocument();
+  });
+
+  it('menuntut alasan sebelum penangguhan bisa dikirim', async () => {
+    await pilihRifqi(pengguna());
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Tangguhkan akun ini' }));
+
+    const kirim = screen.getByRole('button', { name: 'Ya, tangguhkan akun ini' });
+    expect(kirim).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText('Alasan menangguhkan'), {
+      target: { value: 'Nomor palsu.' },
+    });
+    expect(kirim).toBeEnabled();
+  });
+
+  it('mengirim alasannya ke endpoint tangguhkan', async () => {
+    const ambil = await pilihRifqi(pengguna());
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Tangguhkan akun ini' }));
+    fireEvent.change(screen.getByLabelText('Alasan menangguhkan'), {
+      target: { value: 'Nomor palsu.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Ya, tangguhkan akun ini' }));
+
+    await waitFor(() => {
+      const panggilan = ambil.mock.calls.find(
+        ([url, init]) => String(url).includes('/tangguhkan') && init?.method === 'POST',
+      );
+      expect(panggilan).toBeDefined();
+      expect(JSON.parse(String(panggilan![1].body))).toEqual({ alasan: 'Nomor palsu.' });
+    });
+  });
+
+  /// Backend menolaknya, dan menunggu penolakan server untuk hal yang sudah pasti ditolak
+  /// cuma membuang satu bolak-balik jaringan.
+  it('tidak menawarkan penangguhan untuk akun sendiri', async () => {
+    window.sessionStorage.setItem('upnvj-suruh.token-admin', 'token-uji');
+
+    const saya = pengguna({ roles: ['Admin'] });
+    const ambil = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/api/auth/saya')) return Promise.resolve(jawaban(200, saya));
+      if (url.includes('/peran/riwayat')) {
+        return Promise.resolve(
+          jawaban(200, { isi: [], total: 0, halaman: 1, ukuranHalaman: 20, totalHalaman: 0 }),
+        );
+      }
+      return Promise.resolve(jawaban(200, [saya]));
+    });
+
+    pasang(ambil);
+    fireEvent.change(screen.getByLabelText('Cari nama atau nomor HP'), {
+      target: { value: 'rifqi' },
+    });
+    fireEvent.click(await screen.findByText('Rifqi'));
+
+    expect(
+      await screen.findByText(/tidak bisa ditangguhkan dari sini/),
     ).toBeInTheDocument();
 
     window.sessionStorage.clear();

@@ -72,6 +72,8 @@ function pengguna(roles: Pengguna['roles']): Response {
     noHp: '08123',
     alamat: null,
     roles,
+    ditangguhkanPada: null,
+    alasanPenangguhan: null,
   };
   return new Response(JSON.stringify(isi), {
     status: 200,

@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 
 import { useSesi, usePengguna } from '../auth/sesi';
-import { cariPengguna, riwayatPeran, tetapkanPeran } from '../inti/api_admin';
-import { formatTanggalJam } from '../inti/format';
+import {
+  cariPengguna,
+  pulihkanAkun,
+  riwayatPeran,
+  tangguhkanAkun,
+  tetapkanPeran,
+} from '../inti/api_admin';
+import { formatTanggalJam, formatWaktuRelatif } from '../inti/format';
 import { gunakanMuat } from '../inti/gunakan_muat';
 import { gunakanTunda } from '../inti/gunakan_tunda';
 import type { Pengguna, Peran } from '../inti/tipe';
@@ -170,6 +176,17 @@ function PanelPengguna({
       <h2>{pengguna.nama}</h2>
       <p className="panel-pengguna__hp">{pengguna.noHp}</p>
 
+      {/* Berdiri paling atas, sebelum apa pun yang bisa diubah admin. Peran akun yang
+          sedang ditangguhkan tetap boleh disunting — itu bukan kontradiksi, tapi admin
+          harus tahu lebih dulu bahwa akunnya memang sedang berhenti, supaya ia tidak
+          mengira perubahan peran yang ia simpan akan langsung dipakai orangnya. */}
+      {pengguna.ditangguhkanPada !== null && (
+        <p className="keadaan keadaan--galat" role="status">
+          Akun ini ditangguhkan {formatWaktuRelatif(pengguna.ditangguhkanPada)}.
+          {pengguna.alasanPenangguhan !== null && ` Alasannya: ${pengguna.alasanPenangguhan}`}
+        </p>
+      )}
+
       <form onSubmit={simpan} className="panel-pengguna__form">
         <fieldset>
           <legend>Peran</legend>
@@ -222,6 +239,12 @@ function PanelPengguna({
         </p>
       )}
 
+      <PanelPenangguhan
+        pengguna={pengguna}
+        mengubahDiriSendiri={mengubahDiriSendiri}
+        onBerubah={onBerubah}
+      />
+
       <RiwayatPeran userId={pengguna.id} penanda={penandaRiwayat} />
     </div>
   );
@@ -269,6 +292,135 @@ function RiwayatPeran({ userId, penanda }: { userId: string; penanda: number }) 
             </li>
           ))}
         </ol>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Menghentikan sebuah akun, atau memulihkannya.
+ *
+ * Berdiri terpisah dari form peran, dan bukan sekadar demi tata letak: mengubah peran
+ * mempersempit apa yang bisa dikerjakan seseorang, sedangkan ini menghentikannya sama
+ * sekali. Menyatukan keduanya di satu tombol simpan berarti satu kesalahan klik bisa
+ * menghentikan orang yang sebenarnya cuma mau diubah perannya.
+ *
+ * Formnya tertutup sampai diminta, mengikuti panel pembatalan di layar detail order: yang
+ * tidak mencarinya tidak akan tersenggol, dan yang mencarinya menemukannya.
+ */
+function PanelPenangguhan({
+  pengguna,
+  mengubahDiriSendiri,
+  onBerubah,
+}: {
+  pengguna: Pengguna;
+  mengubahDiriSendiri: boolean;
+  onBerubah: (diperbarui: Pengguna) => void;
+}) {
+  const { api } = useSesi();
+  const [terbuka, setTerbuka] = useState(false);
+  const [alasan, setAlasan] = useState('');
+  const [sibuk, setSibuk] = useState(false);
+  const [galat, setGalat] = useState<unknown>(null);
+
+  const ditangguhkan = pengguna.ditangguhkanPada !== null;
+
+  // Backend menolaknya (admin tidak boleh menangguhkan akunnya sendiri), dan alasannya sama
+  // dengan peringatan di form peran: menunggu penolakan server untuk hal yang sudah pasti
+  // ditolak cuma membuang satu bolak-balik jaringan.
+  if (mengubahDiriSendiri && !ditangguhkan) {
+    return (
+      <p className="panel-pengguna__peringatan">
+        Ini akun kamu sendiri, jadi tidak bisa ditangguhkan dari sini.
+      </p>
+    );
+  }
+
+  async function kirim(peristiwa: FormEvent) {
+    peristiwa.preventDefault();
+    setSibuk(true);
+    setGalat(null);
+    try {
+      const diperbarui = ditangguhkan
+        ? await pulihkanAkun(api, pengguna.id, alasan.trim())
+        : await tangguhkanAkun(api, pengguna.id, alasan.trim());
+      onBerubah(diperbarui);
+      setAlasan('');
+      setTerbuka(false);
+    } catch (salah) {
+      setGalat(salah);
+    } finally {
+      setSibuk(false);
+    }
+  }
+
+  return (
+    <div className="panel-pengguna__penangguhan">
+      {!terbuka ? (
+        <button
+          type="button"
+          className="tombol tombol--halus"
+          onClick={() => setTerbuka(true)}
+        >
+          {ditangguhkan ? 'Pulihkan akun ini' : 'Tangguhkan akun ini'}
+        </button>
+      ) : (
+        <form onSubmit={kirim}>
+          <label htmlFor="alasanTangguh">
+            {ditangguhkan ? 'Alasan memulihkan' : 'Alasan menangguhkan'}
+          </label>
+          <textarea
+            id="alasanTangguh"
+            rows={2}
+            maxLength={2000}
+            required
+            autoFocus
+            value={alasan}
+            disabled={sibuk}
+            placeholder={
+              ditangguhkan
+                ? 'Misal: sudah dijelaskan, ternyata salah paham.'
+                : 'Misal: memesan lalu minta batal berulang kali.'
+            }
+            onChange={(e) => setAlasan(e.target.value)}
+          />
+          <div className="pembatalan__tombol">
+            <button
+              type="submit"
+              className="tombol"
+              disabled={sibuk || alasan.trim().length === 0}
+            >
+              {sibuk
+                ? 'Menyimpan...'
+                : ditangguhkan
+                  ? 'Ya, pulihkan akun ini'
+                  : 'Ya, tangguhkan akun ini'}
+            </button>
+            <button
+              type="button"
+              className="tombol tombol--halus"
+              disabled={sibuk}
+              onClick={() => {
+                setTerbuka(false);
+                setAlasan('');
+                setGalat(null);
+              }}
+            >
+              Urungkan
+            </button>
+          </div>
+          {!ditangguhkan && (
+            <p className="panel-pengguna__peringatan">
+              Berlaku seketika: orangnya langsung keluar dari aplikasi, tanpa menunggu
+              sesinya habis. Ordernya tidak ikut terhapus.
+            </p>
+          )}
+          {galat !== null && (
+            <p className="keadaan keadaan--galat" role="alert">
+              {pesanGalat(galat)}
+            </p>
+          )}
+        </form>
       )}
     </div>
   );
