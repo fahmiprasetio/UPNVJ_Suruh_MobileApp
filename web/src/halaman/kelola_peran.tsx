@@ -5,6 +5,7 @@ import {
   cariPengguna,
   pelepasanOrder,
   pulihkanAkun,
+  riwayatPenangguhan,
   riwayatPeran,
   tangguhkanAkun,
   tetapkanPeran,
@@ -161,6 +162,7 @@ function PanelPengguna({
   const [sibuk, setSibuk] = useState(false);
   const [galat, setGalat] = useState<unknown>(null);
   const [penandaRiwayat, setPenandaRiwayat] = useState(0);
+  const [penandaPenangguhan, setPenandaPenangguhan] = useState(0);
 
   // Peran yang ditampilkan mengikuti pengguna yang sedang dipilih, bukan menyisakan
   // pilihan dari akun sebelumnya. Efeknya cuma berjalan saat identitas pengguna berganti
@@ -276,8 +278,17 @@ function PanelPengguna({
       <PanelPenangguhan
         pengguna={pengguna}
         mengubahDiriSendiri={mengubahDiriSendiri}
-        onBerubah={onBerubah}
+        onBerubah={(diperbarui) => {
+          onBerubah(diperbarui);
+          setPenandaPenangguhan((n) => n + 1);
+        }}
       />
+
+      {/* Menempel langsung di bawah tombolnya, bukan di antara dua daftar audit lain di
+          bawah, karena inilah yang paling dibutuhkan orang yang jarinya sedang berada di
+          atas tombol itu: akun yang sudah tiga kali dihentikan lalu dikembalikan adalah
+          keputusan yang berbeda dari akun yang baru pertama kali dipersoalkan. */}
+      <RiwayatPenangguhan userId={pengguna.id} penanda={penandaPenangguhan} />
 
       {/* Berdiri di atas riwayat peran, bukan di bawahnya, dan urutannya disengaja:
           ini bukti yang dipakai memutuskan, sedangkan riwayat peran catatan keputusan
@@ -325,6 +336,57 @@ function PelepasanRunner({ userId }: { userId: string }) {
               <p className="riwayat-peran__perubahan">{baris.kodeOrder}</p>
               <p className="riwayat-peran__alasan">{baris.alasan}</p>
               <time dateTime={baris.dilepasPada}>{formatTanggalJam(baris.dilepasPada)}</time>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Riwayat penangguhan dan pemulihan akun ini.
+ *
+ * Kolom penangguhan di akunnya cuma menyimpan yang terakhir: menangguhkan ulang menimpanya,
+ * dan memulihkan mengosongkannya. Daftar ini satu-satunya tempat yang bisa menjawab "sudah
+ * berapa kali", dan satu-satunya tempat alasan memulihkan bisa dibaca sama sekali.
+ */
+function RiwayatPenangguhan({ userId, penanda }: { userId: string; penanda: number }) {
+  const { api } = useSesi();
+
+  const ambil = useCallback(
+    (sinyal: AbortSignal) => riwayatPenangguhan(api, userId, { ukuran: 20 }, sinyal),
+    [api, userId],
+  );
+
+  const { data, memuat, galat, muatUlang } = gunakanMuat(ambil);
+
+  // Alasannya sama dengan riwayat peran: `muatUlang` dibuat ulang setiap render oleh
+  // gunakanMuat, jadi memasukkannya ke dependensi berarti mengambil ulang setiap render.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (penanda > 0) muatUlang();
+  }, [penanda]);
+
+  return (
+    <div className="riwayat-peran">
+      <h3>Riwayat penangguhan{data !== null && data.total > 0 && ` (${data.total})`}</h3>
+
+      {galat !== null && <KotakGalat galat={galat} cobaLagi={muatUlang} />}
+      {memuat && data === null && <Memuat />}
+      {data !== null && data.isi.length === 0 && (
+        <Kosong keterangan="Akun ini belum pernah ditangguhkan." />
+      )}
+
+      {data !== null && data.isi.length > 0 && (
+        <ol className="riwayat-peran__daftar">
+          {data.isi.map((baris) => (
+            <li key={baris.id}>
+              <p className="riwayat-peran__perubahan">
+                {baris.ditangguhkan ? 'Ditangguhkan' : 'Dipulihkan'}
+              </p>
+              <p className="riwayat-peran__alasan">{baris.alasan}</p>
+              <time dateTime={baris.diubahPada}>{formatTanggalJam(baris.diubahPada)}</time>
             </li>
           ))}
         </ol>

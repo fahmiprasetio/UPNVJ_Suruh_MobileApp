@@ -184,6 +184,23 @@ export interface PelepasanOrder {
   dilepasPada: string;
 }
 
+/**
+ * Satu kali sebuah akun ditangguhkan atau dipulihkan, dari
+ * `PerubahanPenangguhanResponse` di backend.
+ *
+ * `ditangguhkan` menyebut arah keputusannya: benar berarti baris ini penangguhan, salah
+ * berarti pemulihan. Bukan keadaan akun sesudah seluruh riwayatnya, yang selalu dibaca dari
+ * `Pengguna.ditangguhkanPada` saja.
+ */
+export interface PerubahanPenangguhan {
+  id: string;
+  userId: string;
+  diubahOlehAdminId: string;
+  ditangguhkan: boolean;
+  alasan: string;
+  diubahPada: string;
+}
+
 export interface PerubahanPeran {
   id: string;
   userId: string;

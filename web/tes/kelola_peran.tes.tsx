@@ -125,7 +125,7 @@ describe('HalamanKelolaPeran', () => {
     const permintaan: { url: string; init: RequestInit }[] = [];
     const ambil = vi.fn().mockImplementation((url: string, init: RequestInit) => {
       permintaan.push({ url, init });
-      if (url.includes('/peran/riwayat') || url.includes('/pelepasan')) {
+      if (url.includes('/riwayat') || url.includes('/pelepasan')) {
         return Promise.resolve(
           jawaban(200, { isi: [], total: 0, halaman: 1, ukuranHalaman: 20, totalHalaman: 0 }),
         );
@@ -171,7 +171,7 @@ describe('HalamanKelolaPeran', () => {
 
     const ambil = vi.fn().mockImplementation((url: string) => {
       if (url.includes('/api/auth/saya')) return Promise.resolve(jawaban(200, admin));
-      if (url.includes('/peran/riwayat') || url.includes('/pelepasan')) {
+      if (url.includes('/riwayat') || url.includes('/pelepasan')) {
         return Promise.resolve(
           jawaban(200, { isi: [], total: 0, halaman: 1, ukuranHalaman: 20, totalHalaman: 0 }),
         );
@@ -209,7 +209,7 @@ describe('HalamanKelolaPeran', () => {
 describe('PanelPenangguhan', () => {
   function ambilDengan(hasilPencarian: Pengguna) {
     return vi.fn().mockImplementation((url: string, init?: RequestInit) => {
-      if (url.includes('/peran/riwayat') || url.includes('/pelepasan')) {
+      if (url.includes('/riwayat') || url.includes('/pelepasan')) {
         return Promise.resolve(
           jawaban(200, { isi: [], total: 0, halaman: 1, ukuranHalaman: 20, totalHalaman: 0 }),
         );
@@ -301,7 +301,7 @@ describe('PanelPenangguhan', () => {
     const saya = pengguna({ roles: ['Admin'] });
     const ambil = vi.fn().mockImplementation((url: string) => {
       if (url.includes('/api/auth/saya')) return Promise.resolve(jawaban(200, saya));
-      if (url.includes('/peran/riwayat') || url.includes('/pelepasan')) {
+      if (url.includes('/riwayat') || url.includes('/pelepasan')) {
         return Promise.resolve(
           jawaban(200, { isi: [], total: 0, halaman: 1, ukuranHalaman: 20, totalHalaman: 0 }),
         );
@@ -379,7 +379,7 @@ describe('PanelPenangguhan', () => {
           }),
         );
       }
-      if (String(url).includes('/peran/riwayat')) {
+      if (String(url).includes('/riwayat')) {
         return Promise.resolve(
           jawaban(200, { isi: [], total: 0, halaman: 1, ukuranHalaman: 20, totalHalaman: 0 }),
         );
@@ -408,5 +408,88 @@ describe('PanelPenangguhan', () => {
         'Akun ini belum pernah melepas order yang sudah diterimanya.',
       ),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * Kolom penangguhan di akunnya cuma menyimpan yang terakhir, dan memulihkan
+   * mengosongkannya. Daftar ini satu-satunya tempat pola "dihentikan lalu dikembalikan
+   * berulang kali" terbaca, dan satu-satunya tempat alasan memulihkan bisa dibaca.
+   */
+  it('menampilkan kedua arah penangguhan beserta alasannya', async () => {
+    const ambil = vi.fn().mockImplementation((url: string) => {
+      if (String(url).includes('/penangguhan/riwayat')) {
+        return Promise.resolve(
+          jawaban(200, {
+            isi: [
+              {
+                id: 's-2',
+                userId: '44444444-4444-4444-4444-444444444444',
+                diubahOlehAdminId: '55555555-5555-5555-5555-555555555555',
+                ditangguhkan: false,
+                alasan: 'Sudah dijelaskan, ternyata salah paham.',
+                diubahPada: '2026-09-05T12:00:00Z',
+              },
+              {
+                id: 's-1',
+                userId: '44444444-4444-4444-4444-444444444444',
+                diubahOlehAdminId: '55555555-5555-5555-5555-555555555555',
+                ditangguhkan: true,
+                alasan: 'Memesan lalu minta batal berulang kali.',
+                diubahPada: '2026-09-05T10:00:00Z',
+              },
+            ],
+            total: 2,
+            halaman: 1,
+            ukuranHalaman: 20,
+            totalHalaman: 1,
+          }),
+        );
+      }
+      if (String(url).includes('/riwayat') || String(url).includes('/pelepasan')) {
+        return Promise.resolve(
+          jawaban(200, { isi: [], total: 0, halaman: 1, ukuranHalaman: 20, totalHalaman: 0 }),
+        );
+      }
+      return Promise.resolve(jawaban(200, [pengguna()]));
+    });
+
+    pasang(ambil);
+    fireEvent.change(screen.getByLabelText('Cari nama atau nomor HP'), {
+      target: { value: 'rifqi' },
+    });
+    fireEvent.click(await screen.findByText('Rifqi'));
+
+    expect(await screen.findByText('Dipulihkan')).toBeInTheDocument();
+    expect(screen.getByText('Ditangguhkan')).toBeInTheDocument();
+    expect(screen.getByText('Sudah dijelaskan, ternyata salah paham.')).toBeInTheDocument();
+    // Jumlahnya ikut di judulnya, alasannya sama dengan daftar pelepasan: yang dicari
+    // admin pola, dan sekali berbeda artinya dari tiga kali.
+    expect(screen.getByText(/Riwayat penangguhan \(2\)/)).toBeInTheDocument();
+  });
+
+  /**
+   * Daftar yang tidak ikut berubah sesudah tombolnya ditekan akan dibaca admin sebagai
+   * penangguhan yang gagal, dan yang paling mungkin ia lakukan sesudah itu menekannya lagi.
+   */
+  it('memuat ulang riwayatnya sesudah penangguhan berhasil dikirim', async () => {
+    const ambil = await pilihRifqi(pengguna());
+
+    await screen.findByText('Akun ini belum pernah ditangguhkan.');
+    const sebelum = ambil.mock.calls.filter((c) =>
+      String(c[0]).includes('/penangguhan/riwayat'),
+    ).length;
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Tangguhkan akun ini' }));
+    fireEvent.change(screen.getByLabelText('Alasan menangguhkan'), {
+      target: { value: 'Nomor palsu.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Ya, tangguhkan akun ini' }));
+
+    await waitFor(() => {
+      const sesudah = ambil.mock.calls.filter((c) =>
+        String(c[0]).includes('/penangguhan/riwayat'),
+      ).length;
+      expect(sesudah).toBeGreaterThan(sebelum);
+    });
   });
 });

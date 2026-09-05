@@ -9,6 +9,7 @@ import type {
   Pengguna,
   Peran,
   PelepasanOrder,
+  PerubahanPenangguhan,
   PerubahanPeran,
   Pesan,
   RekapPayout,
@@ -193,6 +194,25 @@ export function riwayatPeran(
     kueri: { halaman: penyaring.halaman, ukuran: penyaring.ukuran },
     sinyal,
   });
+}
+
+/**
+ * Riwayat penangguhan dan pemulihan satu akun.
+ *
+ * Terpisah dari `riwayatPeran` karena keduanya memang dua daftar yang berbeda di backend, dan
+ * alasannya sama di sini: mengubah peran mempersempit apa yang bisa dikerjakan seseorang,
+ * sedangkan penangguhan menghentikannya sama sekali.
+ */
+export function riwayatPenangguhan(
+  api: KlienApi,
+  userId: string,
+  penyaring: PenyaringHalaman = {},
+  sinyal?: AbortSignal,
+): Promise<Halaman<PerubahanPenangguhan>> {
+  return api.minta<Halaman<PerubahanPenangguhan>>(
+    `/api/admin/pengguna/${userId}/penangguhan/riwayat`,
+    { kueri: { halaman: penyaring.halaman, ukuran: penyaring.ukuran }, sinyal },
+  );
 }
 
 /**
