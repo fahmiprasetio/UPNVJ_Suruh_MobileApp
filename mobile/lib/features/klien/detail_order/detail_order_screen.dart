@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api/galat_api.dart';
+import '../../../core/config/batas_masukan.dart';
 import '../../../core/format/formatters.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
@@ -256,13 +257,19 @@ class _Isi extends ConsumerWidget {
 /// pil "Menunggu Pembayaran" yang berdiri beberapa sentimeter di atasnya.
 /// Bobotnya ditaruh di dialog konfirmasinya, bukan di warnanya.
 ///
-/// ## Kenapa order yang sudah dibayar tetap diberi kalimat
+/// ## Order yang sudah dibayar: meminta, bukan membatalkan
 ///
-/// Menyembunyikan tombolnya begitu saja membuat pembatalan terlihat kadang ada
-/// kadang tidak, tanpa aturan yang bisa ditebak. Backend menolak membatalkan
-/// order yang sudah dibayar karena itu menyangkut pengembalian uang, dan alasan
-/// itu pantas dibaca orang yang sedang mencarinya, lengkap dengan ke mana ia
-/// harus pergi.
+/// Order yang sudah dibayar tidak bisa dibatalkan klien sendiri, karena ada uang
+/// yang harus kembali dan itu keputusan admin. Dulu yang berdiri di sini cuma
+/// kalimat yang menjelaskan hal itu lalu menyuruh orangnya bertanya lewat chat —
+/// benar, dan buntu: admin baru menemukan pertanyaan itu kalau kebetulan membuka
+/// order tersebut, dan yang tersisa bagi klien adalah menunggu pekerjaan yang
+/// sudah tidak ia butuhkan, atau mencari nomor WhatsApp admin.
+///
+/// Sekarang ia bisa meminta, dan permintaannya masuk ke antrean yang memang
+/// dilihat admin. Tiga keadaan yang digambar berbeda: belum pernah meminta,
+/// sedang menunggu jawaban, dan order yang belum dibayar (yang bisa dibatalkan
+/// sendiri saat itu juga).
 class _JalanBatal extends ConsumerStatefulWidget {
   const _JalanBatal({required this.order});
 
@@ -284,19 +291,55 @@ class _JalanBatalState extends ConsumerState<_JalanBatal> {
     // menjelaskan apa pun: tidak ada yang sedang dicari orang di sana.
     if (!order.status.isAktif) return const SizedBox.shrink();
 
-    if (order.dibayarPada != null) {
+    if (order.mintaBatalPada != null) {
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.info_outline, size: 18, color: skema.onSurfaceVariant),
+          Icon(Icons.hourglass_top_outlined, size: 18, color: skema.onSurfaceVariant),
           const SizedBox(width: AppTheme.spasiKecil),
           Expanded(
             child: Text(
-              'Order yang sudah dibayar tidak bisa dibatalkan sendiri, karena '
-              'ada uang yang harus kembali. Tanyakan lewat chat order.',
+              'Permintaan pembatalanmu sudah sampai ke admin, tinggal menunggu '
+              'jawabannya. Jawabannya muncul di chat order ini.',
               style: Theme.of(
                 context,
               ).textTheme.bodySmall?.copyWith(color: skema.onSurfaceVariant),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (order.dibayarPada != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.info_outline, size: 18, color: skema.onSurfaceVariant),
+              const SizedBox(width: AppTheme.spasiKecil),
+              Expanded(
+                child: Text(
+                  'Order yang sudah dibayar tidak bisa dibatalkan sendiri, karena '
+                  'ada uang yang harus kembali. Admin yang memutuskan.',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: skema.onSurfaceVariant),
+                ),
+              ),
+            ],
+          ),
+          Center(
+            child: TextButton(
+              onPressed: _sedangMembatalkan ? null : _tanyaLaluMintaBatal,
+              child: _sedangMembatalkan
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Minta pembatalan'),
             ),
           ),
         ],
@@ -315,6 +358,51 @@ class _JalanBatalState extends ConsumerState<_JalanBatal> {
             : const Text('Batalkan order'),
       ),
     );
+  }
+
+  /// Meminta pembatalan menuntut alasan, bukan cuma tombol.
+  ///
+  /// Di ujung permintaan ini ada keputusan mengembalikan uang, dan admin yang cuma
+  /// menerima "seseorang minta batal" tanpa sebab harus mengejarnya lewat chat
+  /// sebelum bisa memutuskan apa pun.
+  Future<void> _tanyaLaluMintaBatal() async {
+    final order = widget.order;
+
+    final alasan = await showDialog<String>(
+      context: context,
+      builder: (context) => const _DialogMintaBatal(),
+    );
+    if (alasan == null || !mounted) return;
+
+    setState(() => _sedangMembatalkan = true);
+    try {
+      await ref
+          .read(orderRepositoryProvider)
+          .mintaBatalOrder(orderId: order.id, alasan: alasan);
+    } catch (galat) {
+      if (!mounted) return;
+      setState(() => _sedangMembatalkan = false);
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              galat is GalatApi ? galat.pesan : 'Permintaan gagal dikirim.',
+            ),
+          ),
+        );
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() => _sedangMembatalkan = false);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('Permintaanmu terkirim. Admin akan menjawab lewat chat order.'),
+        ),
+      );
   }
 
   Future<void> _tanyaLaluBatalkan() async {
@@ -475,3 +563,67 @@ class _BilahBayar extends StatelessWidget {
   }
 }
 
+/// Alasan permintaan pembatalan, ditanyakan sebelum apa pun dikirim.
+///
+/// Bentuknya sama dengan dialog nego dan dialog lepas order: satu kalimat yang
+/// menjelaskan ke mana alasannya pergi dan apa yang akan terjadi, satu kolom teks,
+/// dan tombol kirim yang mati selama kolomnya kosong.
+class _DialogMintaBatal extends StatefulWidget {
+  const _DialogMintaBatal();
+
+  @override
+  State<_DialogMintaBatal> createState() => _DialogMintaBatalState();
+}
+
+class _DialogMintaBatalState extends State<_DialogMintaBatal> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Minta pembatalan'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Admin yang memutuskan, karena ada uang yang harus kembali. Sampai '
+            'dijawab, ordernya tetap berjalan. Tulis alasanmu; kalimat ini yang '
+            'dibaca admin di chat ordermu.',
+          ),
+          const SizedBox(height: AppTheme.spasiSedang),
+          TextField(
+            controller: _controller,
+            maxLength: BatasMasukan.pesanChat,
+            autofocus: true,
+            maxLines: 3,
+            minLines: 2,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(
+              hintText: 'Acaranya batal, jadi tidak jadi dipakai.',
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Jangan'),
+        ),
+        TextButton(
+          onPressed: _controller.text.trim().isEmpty
+              ? null
+              : () => Navigator.of(context).pop(_controller.text.trim()),
+          child: const Text('Kirim permintaan'),
+        ),
+      ],
+    );
+  }
+}

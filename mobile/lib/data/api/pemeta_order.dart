@@ -41,6 +41,7 @@ class PemetaOrder {
       catatanSerahTerima: isi['catatanSerahTerima'] as String?,
       dibayarPada: _waktu(isi, 'dibayarPada'),
       selesaiPada: _waktu(isi, 'selesaiPada'),
+      mintaBatalPada: _waktu(isi, 'mintaBatalPada'),
       offers: [
         for (final p in (isi['penawaran'] as List? ?? const []))
           penawaran(p as Map<String, dynamic>),

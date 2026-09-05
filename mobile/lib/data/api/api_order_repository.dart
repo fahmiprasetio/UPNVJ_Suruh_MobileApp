@@ -290,6 +290,15 @@ class ApiOrderRepository implements OrderRepository {
       _tindakan('/api/orders/$orderId/lepas', badan: {'alasan': alasan.trim()});
 
   @override
+  Future<Order> mintaBatalOrder({
+    required String orderId,
+    required String alasan,
+  }) => _tindakan(
+    '/api/orders/$orderId/minta-batal',
+    badan: {'alasan': alasan.trim()},
+  );
+
+  @override
   Future<Order> batalkanOrder(String orderId) =>
       _tindakan('/api/orders/$orderId/batal');
 

@@ -171,6 +171,17 @@ abstract interface class OrderRepository {
   /// menyimpulkan sistemnya rusak.
   Future<Order> lepasOrder({required String orderId, required String alasan});
 
+  /// Klien meminta order yang sudah dibayar dibatalkan admin.
+  ///
+  /// Bukan pembatalan: yang terjadi cuma benderanya naik, dan keputusannya tetap
+  /// milik admin karena di ujungnya ada uang yang dikembalikan. Ordernya tetap
+  /// berjalan selama permintaannya menunggu.
+  ///
+  /// [alasan] wajib, dan tersimpan sebagai pesan dari klien di chat ordernya, sama
+  /// seperti runner melepas order. Admin yang cuma menerima "seseorang minta batal"
+  /// tanpa sebab harus mengejarnya lewat chat sebelum bisa memutuskan apa pun.
+  Future<Order> mintaBatalOrder({required String orderId, required String alasan});
+
   /// Membatalkan order.
   ///
   /// Hanya pemesannya, dan hanya selama belum dibayar. Pembatalan setelah pembayaran

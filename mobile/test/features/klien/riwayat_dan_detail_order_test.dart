@@ -139,22 +139,84 @@ void main() {
     expect(find.text('Order SRH-0409 dibatalkan.'), findsNothing);
   });
 
-  testWidgets('order yang sudah dibayar menjelaskan kenapa tidak ada tombol', (
+  testWidgets('order yang sudah dibayar menawarkan minta pembatalan, bukan batal', (
     tester,
   ) async {
-    // SRH-0411 sudah dibayar. Server menolak membatalkannya karena ada uang
-    // yang harus kembali, dan menyembunyikan tombolnya begitu saja membuat
-    // pembatalan terlihat kadang ada kadang tidak tanpa aturan yang bisa
-    // ditebak.
+    // SRH-0411 sudah dibayar. Membatalkannya menyangkut pengembalian uang, jadi
+    // keputusannya milik admin. Yang penting kedua-duanya: tombol batal sendiri
+    // memang tidak ada, DAN ada jalan menuju admin. Dulu yang berdiri di sini
+    // cuma kalimatnya, dan kalimat tanpa jalan keluar adalah jalan buntu yang
+    // sopan.
     await bukaRiwayat(tester);
     await tester.tap(find.textContaining('SRH-0411'));
     await tester.pumpAndSettle();
 
     expect(find.text('Batalkan order'), findsNothing);
+    expect(find.text('Minta pembatalan'), findsOneWidget);
     expect(
       find.textContaining('tidak bisa dibatalkan sendiri'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('permintaan pembatalan menuntut alasan sebelum bisa dikirim', (
+    tester,
+  ) async {
+    await bukaRiwayat(tester);
+    await tester.tap(find.textContaining('SRH-0411'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Minta pembatalan'));
+    await tester.pumpAndSettle();
+
+    final tombolKirim = find.widgetWithText(TextButton, 'Kirim permintaan');
+    expect(tester.widget<TextButton>(tombolKirim).onPressed, isNull);
+
+    await tester.enterText(find.byType(TextField), 'Acaranya batal.');
+    await tester.pump();
+
+    expect(tester.widget<TextButton>(tombolKirim).onPressed, isNotNull);
+  });
+
+  /// Sesudah terkirim, yang berdiri di sana bukan tombol yang sama lagi. Klien yang
+  /// masih melihat "Minta pembatalan" akan menekannya lagi dan mengira permintaannya
+  /// tidak sampai.
+  testWidgets('sesudah diminta, yang tampil keterangan menunggu jawaban', (
+    tester,
+  ) async {
+    await bukaRiwayat(tester);
+    await tester.tap(find.textContaining('SRH-0411'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Minta pembatalan'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Acaranya batal.');
+    await tester.pump();
+    await tester.tap(find.widgetWithText(TextButton, 'Kirim permintaan'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Minta pembatalan'), findsNothing);
+    expect(find.textContaining('sudah sampai ke admin'), findsOneWidget);
+  });
+
+  /// Ordernya tetap berjalan selama permintaannya menunggu: runner yang memegangnya
+  /// harus tetap mengerjakannya sampai admin memutuskan.
+  testWidgets('meminta pembatalan tidak menggeser status ordernya', (
+    tester,
+  ) async {
+    await bukaRiwayat(tester);
+    await tester.tap(find.textContaining('SRH-0411'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Minta pembatalan'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Acaranya batal.');
+    await tester.pump();
+    await tester.tap(find.widgetWithText(TextButton, 'Kirim permintaan'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Order selesai. Terima kasih!'), findsNothing);
+    expect(find.textContaining('sudah sampai ke admin'), findsOneWidget);
   });
 
   testWidgets('detail order yang sudah selesai tidak menawarkan tindakan', (

@@ -714,6 +714,49 @@ class FakeOrderRepository implements OrderRepository {
   }
 
   @override
+  Future<Order> mintaBatalOrder({
+    required String orderId,
+    required String alasan,
+  }) async {
+    await Future<void>.delayed(_jedaJaringan);
+    final order = _wajibMilikPemanggil(orderId);
+
+    if (!order.status.isAktif) {
+      throw StateError('Order ${order.kodeOrder} sudah ${order.status.label}');
+    }
+
+    // Order yang belum dibayar bisa dibatalkan sendiri saat itu juga, jadi tidak ada
+    // yang perlu diminta ke admin.
+    if (order.dibayarPada == null) {
+      throw StateError(
+        'Order ${order.kodeOrder} belum dibayar, batalkan saja sendiri',
+      );
+    }
+
+    if (order.mintaBatalPada != null) {
+      throw StateError(
+        'Permintaan pembatalan order ${order.kodeOrder} sedang menunggu admin',
+      );
+    }
+
+    if (alasan.trim().isEmpty) {
+      throw StateError('Alasan permintaan pembatalan wajib diisi');
+    }
+
+    // Statusnya sengaja tidak digeser: ordernya tetap berjalan sampai admin
+    // memutuskan, sama seperti di server.
+    final diperbarui = order.copyWith(
+      mintaBatalPada: DateTime.now(),
+      messages: [
+        ...order.messages,
+        _pesanBaru(orderId, MessageSender.klien, alasan.trim()),
+      ],
+    );
+    _ganti(diperbarui);
+    return diperbarui;
+  }
+
+  @override
   Future<Order> batalkanOrder(String orderId) async {
     await Future<void>.delayed(_jedaJaringan);
     final order = _wajibMilikPemanggil(orderId);

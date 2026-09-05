@@ -32,6 +32,7 @@ class Order {
     this.catatanSerahTerima,
     this.dibayarPada,
     this.selesaiPada,
+    this.mintaBatalPada,
     this.offers = const [],
     this.messages = const [],
     this.payment,
@@ -77,6 +78,13 @@ class Order {
   final String? catatanSerahTerima;
   final DateTime? dibayarPada;
   final DateTime? selesaiPada;
+
+  /// Terisi selama ada permintaan pembatalan yang belum dijawab admin.
+  ///
+  /// Order yang sudah dibayar tidak bisa dibatalkan klien sendiri, karena ada uang
+  /// yang harus kembali. Yang bisa ia lakukan meminta, dan nilai inilah yang
+  /// membedakan "belum pernah meminta" dari "sudah, tinggal menunggu jawaban".
+  final DateTime? mintaBatalPada;
 
   final List<OrderOffer> offers;
   final List<OrderMessage> messages;
@@ -139,6 +147,7 @@ class Order {
     String? catatanSerahTerima,
     DateTime? dibayarPada,
     DateTime? selesaiPada,
+    DateTime? mintaBatalPada,
     List<OrderOffer>? offers,
     List<OrderMessage>? messages,
     Payment? payment,
@@ -165,6 +174,7 @@ class Order {
       catatanSerahTerima: catatanSerahTerima ?? this.catatanSerahTerima,
       dibayarPada: dibayarPada ?? this.dibayarPada,
       selesaiPada: selesaiPada ?? this.selesaiPada,
+      mintaBatalPada: mintaBatalPada ?? this.mintaBatalPada,
       offers: offers ?? this.offers,
       messages: messages ?? this.messages,
       // Kalau daftar pesannya diganti, jumlahnya ikut dihitung ulang dari daftar
