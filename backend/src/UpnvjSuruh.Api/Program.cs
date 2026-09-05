@@ -251,24 +251,47 @@ builder.Services.AddHealthChecks().AddCheck<PemeriksaBasisData>("basis-data");
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// --- CORS, hanya untuk pengembangan ---
+// --- CORS ---
 //
-// Aplikasi Flutter yang dijalankan di browser tunduk pada aturan asal-usul: halaman di
-// localhost:port-acak tidak boleh membaca jawaban dari localhost:5059 kecuali server itu
-// mengizinkannya. Di perangkat Android maupun iOS aturan ini tidak berlaku, jadi ini murni
-// kebutuhan menjalankan aplikasi di browser saat mengembangkan.
+// Halaman yang berjalan di browser tunduk pada aturan asal-usul: ia tidak boleh membaca
+// jawaban dari server di asal yang berbeda kecuali server itu mengizinkannya. Dua pemakai
+// yang tunduk pada aturan itu: aplikasi Flutter versi web saat mengembangkan, dan dashboard
+// admin, yang seluruhnya berjalan di browser dan disajikan dari asal yang berbeda dengan API.
+// Aplikasi Android tidak tunduk pada aturan ini sama sekali.
 //
-// Kebijakannya cuma didaftarkan di Development, dan asalnya dibatasi ke localhost, bukan
-// AllowAnyOrigin. Digabung dengan AllowCredentials, izin ke semua asal berarti halaman mana
-// pun yang dibuka korban bisa memanggil API ini membawa sesi korban.
-if (builder.Environment.IsDevelopment())
+// Dulu kebijakannya cuma didaftarkan di Development, dan itu benar selama dashboard admin
+// belum ada. Sekarang ada, dan tanpa kebijakan produksi ia akan gagal memanggil API begitu
+// dipasang di server sungguhan — kegagalan yang muncul persis di menit terakhir, dan yang
+// perbaikan tercepatnya `AllowAnyOrigin`. Karena itu jalur produksinya disediakan di sini,
+// dalam bentuk yang tidak bisa dipakai untuk itu.
+//
+// Asal produksi dibaca dari konfigurasi (`Cors:AsalDiizinkan`), tidak pernah ditebak, dan
+// tidak punya nilai bawaan. Konfigurasi yang kosong berarti tidak ada asal yang diizinkan,
+// bukan semua diizinkan: dashboard yang tidak bisa memanggil API adalah kegagalan yang
+// segera terlihat dan segera diperbaiki, sedangkan API yang terbuka untuk semua asal adalah
+// kegagalan yang tidak terlihat sampai ada yang memanfaatkannya.
+//
+// `AllowCredentials` sengaja tidak dipakai sama sekali. Yang dibawa dashboard maupun aplikasi
+// adalah header Authorization, bukan cookie, jadi tidak ada kredensial peramban yang perlu
+// ikut. Tanpa `AllowCredentials`, kesalahan konfigurasi asal yang paling berbahaya —
+// halaman mana pun memanggil API ini membawa sesi korban — tidak mungkin terjadi, karena
+// browser tidak akan mengirimkan apa pun milik korban ke sini.
+var asalDiizinkan = builder.Configuration
+    .GetSection("Cors:AsalDiizinkan")
+    .Get<string[]>() ?? [];
+
+builder.Services.AddCors(opsi => opsi.AddDefaultPolicy(kebijakan =>
 {
-    builder.Services.AddCors(opsi => opsi.AddDefaultPolicy(kebijakan => kebijakan
-        .SetIsOriginAllowed(asal => new Uri(asal).IsLoopback)
+    kebijakan
+        .SetIsOriginAllowed(asal =>
+            asalDiizinkan.Contains(asal, StringComparer.OrdinalIgnoreCase)
+            // Loopback diizinkan hanya saat mengembangkan. Di server sungguhan, "localhost"
+            // adalah asal milik peramban orang yang membuka halaman di mesinnya sendiri,
+            // bukan asal milik kita.
+            || (builder.Environment.IsDevelopment() && new Uri(asal).IsLoopback))
         .AllowAnyHeader()
-        .AllowAnyMethod()
-        .AllowCredentials()));
-}
+        .AllowAnyMethod();
+}));
 
 var app = builder.Build();
 
@@ -297,10 +320,12 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
     app.UseHttpsRedirection();
 }
-else
-{
-    app.UseCors();
-}
+
+// Dipasang di kedua lingkungan, tidak lagi cuma di Development, dan sebelum autentikasi:
+// permintaan preflight (OPTIONS) berangkat tanpa header Authorization sama sekali, jadi
+// kalau ia harus melewati autentikasi lebih dulu ia dijawab 401 dan permintaan
+// sesungguhnya tidak pernah dikirim browser.
+app.UseCors();
 
 // Urutannya wajib begini: UseAuthentication membaca siapa pemanggilnya, UseAuthorization
 // memutuskan apakah ia boleh. Terbalik, atau yang pertama hilang seperti sebelumnya,

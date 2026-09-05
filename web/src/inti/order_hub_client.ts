@@ -89,6 +89,15 @@ export class OrderHubClient implements KontrakOrderHub {
     const koneksi = new signalR.HubConnectionBuilder()
       .withUrl(`${this.alamat}/hubs/orders`, {
         accessTokenFactory: () => this.bacaToken() ?? '',
+        // Bawaan paket ini `true`, dan itu harus dimatikan di sini.
+        //
+        // Kebijakan CORS server sengaja tidak memakai `AllowCredentials` (lihat Program.cs):
+        // yang dibawa dashboard ini adalah header Authorization, bukan cookie, jadi tidak ada
+        // kredensial peramban yang perlu ikut. Permintaan yang tetap meminta kredensial akan
+        // ditolak peramban terhadap kebijakan itu, dan penolakannya terjadi di sisi peramban
+        // — server tidak pernah melihatnya, jadi tidak ada apa pun di log yang menjelaskan
+        // kenapa hub-nya tidak pernah tersambung di produksi.
+        withCredentials: false,
       })
       // Jaring pengaman untuk putus sesaat, mengikuti alasan yang sama dengan sisi mobile:
       // koneksi hub boleh hilang sewaktu-waktu, dan pengambilan berkala di bawahnya tetap
