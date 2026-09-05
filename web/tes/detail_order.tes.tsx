@@ -42,6 +42,7 @@ function order(ubah: Partial<Order> = {}): Order {
     dibuatPada: new Date().toISOString(),
     dibayarPada: null,
     selesaiPada: null,
+    mintaBatalPada: null,
     ...ubah,
   };
 }
@@ -258,5 +259,92 @@ describe('kabar hub di layar detail', () => {
     // berangkat butuh satu putaran mikrotugas untuk terlihat di hitungan ini.
     await new Promise((selesai) => setTimeout(selesai, 50));
     expect(ambil.mock.calls.length).toBe(sebelum);
+  });
+});
+
+/**
+ * Permintaan pembatalan dari klien: satu-satunya hal di layar ini yang menuntut jawaban,
+ * karena di ujungnya ada uang yang dikembalikan atau tidak.
+ *
+ * Yang dijaga di sini dua-duanya: panelnya cuma muncul untuk order yang memang sedang
+ * meminta, dan jawaban "tidak" benar-benar sampai ke endpoint yang benar berikut alasannya.
+ * Sebelum endpoint tolak ada, "tidak" tidak punya jalan sama sekali: benderanya menempel
+ * selamanya dan klien tidak pernah tahu permintaannya dibaca.
+ */
+describe('PanelPermintaanBatal', () => {
+  const orderDiminta = () =>
+    order({
+      status: 'Dikerjakan',
+      dibayarPada: new Date().toISOString(),
+      mintaBatalPada: new Date().toISOString(),
+    });
+
+  it('tidak muncul untuk order yang tidak sedang meminta dibatalkan', async () => {
+    const ambil = vi.fn().mockImplementation((url: string) =>
+      Promise.resolve(
+        url.includes('/pesan')
+          ? jawaban(200, halamanPesanKosong())
+          : jawaban(200, order({ dibayarPada: new Date().toISOString() })),
+      ),
+    );
+
+    pasang(ambil);
+
+    await screen.findByText('SRH-042');
+    expect(screen.queryByText('Klien minta order ini dibatalkan')).not.toBeInTheDocument();
+  });
+
+  it('muncul untuk order yang sedang menunggu keputusan', async () => {
+    const ambil = vi.fn().mockImplementation((url: string) =>
+      Promise.resolve(
+        url.includes('/pesan') ? jawaban(200, halamanPesanKosong()) : jawaban(200, orderDiminta()),
+      ),
+    );
+
+    pasang(ambil);
+
+    expect(await screen.findByText('Klien minta order ini dibatalkan')).toBeInTheDocument();
+  });
+
+  it('menolak permintaan mengirim alasannya ke endpoint tolak', async () => {
+    const ambil = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes('/pesan')) return Promise.resolve(jawaban(200, halamanPesanKosong()));
+      if (init?.method === 'POST' && url.includes('/tolak-pembatalan')) {
+        return Promise.resolve(jawaban(200, order({ dibayarPada: new Date().toISOString() })));
+      }
+      return Promise.resolve(jawaban(200, orderDiminta()));
+    });
+
+    pasang(ambil);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Tolak permintaan' }));
+    fireEvent.change(await screen.findByLabelText('Alasan menolak'), {
+      target: { value: 'Runnernya sudah berangkat.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Kirim penolakan' }));
+
+    await waitFor(() => {
+      const panggilan = ambil.mock.calls.find(
+        ([url, init]) => String(url).includes('/tolak-pembatalan') && init?.method === 'POST',
+      );
+      expect(panggilan).toBeDefined();
+      expect(JSON.parse(String(panggilan![1].body))).toEqual({
+        alasan: 'Runnernya sudah berangkat.',
+      });
+    });
+  });
+
+  it('tombol kirim mati selama alasannya kosong', async () => {
+    const ambil = vi.fn().mockImplementation((url: string) =>
+      Promise.resolve(
+        url.includes('/pesan') ? jawaban(200, halamanPesanKosong()) : jawaban(200, orderDiminta()),
+      ),
+    );
+
+    pasang(ambil);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Tolak permintaan' }));
+
+    expect(screen.getByRole('button', { name: 'Kirim penolakan' })).toBeDisabled();
   });
 });

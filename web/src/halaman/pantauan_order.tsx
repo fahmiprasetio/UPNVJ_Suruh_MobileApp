@@ -52,11 +52,16 @@ const AMBANG_MACET_MENIT = 10;
 export function HalamanPantauanOrder() {
   const { api, hub } = useSesi();
   const [status, setStatus] = useState<StatusOrder | undefined>(undefined);
+  // Berdiri terpisah dari `status`, bukan salah satu nilainya, karena menunggu keputusan
+  // pembatalan bukan status order: ordernya tetap MencariRunner atau Dikerjakan sementara
+  // permintaannya menunggu. Keduanya boleh menyala bersamaan dan menyempit bersama.
+  const [mintaBatal, setMintaBatal] = useState(false);
   const [halaman, setHalaman] = useState(1);
 
   const ambil = useCallback(
-    (sinyal: AbortSignal) => daftarOrder(api, { status, halaman, ukuran: UKURAN_HALAMAN }, sinyal),
-    [api, status, halaman],
+    (sinyal: AbortSignal) =>
+      daftarOrder(api, { status, mintaBatal, halaman, ukuran: UKURAN_HALAMAN }, sinyal),
+    [api, status, mintaBatal, halaman],
   );
 
   const { data, memuat, galat, muatUlang } = gunakanMuat(ambil, { segarkanBerkala: true });
@@ -77,6 +82,7 @@ export function HalamanPantauanOrder() {
         {data && (
           <p className="pantauan__hitungan">
             {data.total} order{status ? ' berstatus ' + labelPenyaringAktif : ''}
+            {mintaBatal ? ' yang meminta dibatalkan' : ''}
           </p>
         )}
       </header>
@@ -101,10 +107,34 @@ export function HalamanPantauanOrder() {
         ))}
       </div>
 
+      {/* Berdiri sendiri, terpisah dari deretan status di atasnya, karena isinya
+          berbeda jenis: penyaring status memilah order menurut keadaannya, sedangkan yang
+          ini satu-satunya antrean di dashboard yang menuntut jawaban. Di ujungnya ada uang
+          yang dikembalikan atau tidak, dan klien yang sedang menunggu jawabannya. */}
+      <div className="pantauan__penyaring">
+        <button
+          type="button"
+          className={mintaBatal ? 'cip cip--aktif' : 'cip'}
+          aria-pressed={mintaBatal}
+          onClick={() => {
+            setMintaBatal((sebelumnya) => !sebelumnya);
+            setHalaman(1);
+          }}
+        >
+          Minta dibatalkan
+        </button>
+      </div>
+
       {galat !== null && <KotakGalat galat={galat} cobaLagi={muatUlang} />}
       {memuat && data === null && <Memuat />}
       {data !== null && data.isi.length === 0 && (
-        <Kosong keterangan="Tidak ada order yang cocok dengan penyaring ini." />
+        <Kosong
+          keterangan={
+            mintaBatal
+              ? 'Tidak ada permintaan pembatalan yang menunggu jawaban.'
+              : 'Tidak ada order yang cocok dengan penyaring ini.'
+          }
+        />
       )}
 
       {data !== null && data.isi.length > 0 && (
@@ -170,6 +200,14 @@ function BarisOrder({ order }: { order: Order }) {
       <td>{order.namaKlien}</td>
       <td>
         <LencanaStatus status={order.status} />
+        {order.mintaBatalPada !== null && (
+          // Ditandai di kolom status, bukan kolom tersendiri, karena inilah yang paling
+          // menentukan apa yang harus dilakukan admin terhadap baris ini — lebih menentukan
+          // daripada statusnya sendiri.
+          <span className="tanda-macet" title={'Diminta ' + formatWaktuRelatif(order.mintaBatalPada)}>
+            minta batal
+          </span>
+        )}
         {macet && (
           <span
             className="tanda-macet"

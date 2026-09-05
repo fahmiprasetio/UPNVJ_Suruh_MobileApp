@@ -95,6 +95,14 @@ export interface Order {
   dibuatPada: string;
   dibayarPada: string | null;
   selesaiPada: string | null;
+  /**
+   * Terisi selama klien menunggu keputusan pembatalan.
+   *
+   * Bukan status order: ordernya tetap MencariRunner atau Dikerjakan sementara
+   * permintaannya menunggu, karena runner yang memegangnya harus terus mengerjakannya
+   * sampai admin memutuskan.
+   */
+  mintaBatalPada: string | null;
 }
 
 export interface Pesan {

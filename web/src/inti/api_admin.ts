@@ -57,6 +57,8 @@ export function saya(api: KlienApi, sinyal?: AbortSignal): Promise<Pengguna> {
 
 export interface PenyaringOrder {
   status?: StatusOrder;
+  /** Kalau benar, cuma order yang sedang menunggu keputusan pembatalan yang diminta. */
+  mintaBatal?: boolean;
   halaman?: number;
   ukuran?: number;
 }
@@ -69,6 +71,9 @@ export function daftarOrder(
   return api.minta<Halaman<Order>>('/api/admin/orders', {
     kueri: {
       status: penyaring.status,
+      // `undefined` dibuang KlienApi, jadi penyaring yang tidak aktif tidak ikut
+      // terkirim sebagai "false" yang harus ditafsirkan server.
+      mintaBatal: penyaring.mintaBatal === true ? true : undefined,
       halaman: penyaring.halaman,
       ukuran: penyaring.ukuran,
     },
@@ -94,6 +99,21 @@ export function ambilOrder(api: KlienApi, id: string, sinyal?: AbortSignal): Pro
  */
 export function batalkanOrder(api: KlienApi, orderId: string, alasan: string): Promise<Order> {
   return api.minta<Order>(`/api/admin/orders/${orderId}/batalkan`, {
+    metode: 'POST',
+    badan: { alasan },
+  });
+}
+
+/**
+ * Menolak permintaan pembatalan dari klien: ordernya tetap berjalan.
+ *
+ * Jawaban "tidak" punya jalannya sendiri, bukan dibiarkan menggantung. Tanpa ini benderanya
+ * menempel selamanya pada order yang tetap dikerjakan, antrean di dashboard tidak pernah
+ * berkurang, dan klien tidak pernah tahu permintaannya sudah dibaca. Alasannya sampai
+ * kepadanya lewat chat ordernya, tempat ia menuliskan permintaannya.
+ */
+export function tolakPembatalan(api: KlienApi, orderId: string, alasan: string): Promise<Order> {
+  return api.minta<Order>(`/api/admin/orders/${orderId}/tolak-pembatalan`, {
     metode: 'POST',
     badan: { alasan },
   });

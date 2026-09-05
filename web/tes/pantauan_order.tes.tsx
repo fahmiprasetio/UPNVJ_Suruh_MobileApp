@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -34,6 +34,7 @@ function order(ubah: Partial<Order> = {}): Order {
     dibuatPada: new Date().toISOString(),
     dibayarPada: null,
     selesaiPada: null,
+    mintaBatalPada: null,
     ...ubah,
   };
 }
@@ -157,5 +158,45 @@ describe('HalamanPantauanOrder', () => {
     act(() => picu());
 
     await waitFor(() => expect(ambil).toHaveBeenCalledTimes(2));
+  });
+
+  /**
+   * Satu-satunya antrean di dashboard yang isinya menuntut jawaban, bukan sekadar ditonton.
+   * Tanpa penanda dan penyaringnya, admin harus memindai seluruh daftar order untuk
+   * menemukan yang mana yang sedang bertanya.
+   */
+  it('menandai baris order yang sedang meminta dibatalkan', async () => {
+    pasang([order({ mintaBatalPada: menitLalu(3) })]);
+
+    const baris = (await screen.findByText('SRH-001')).closest('tr');
+    expect(baris).not.toBeNull();
+    expect(within(baris as HTMLElement).getByText('minta batal')).toBeInTheDocument();
+  });
+
+  it('baris biasa tidak ikut ditandai', async () => {
+    pasang([order()]);
+
+    const baris = (await screen.findByText('SRH-001')).closest('tr');
+    expect(within(baris as HTMLElement).queryByText('minta batal')).not.toBeInTheDocument();
+  });
+
+  it('penyaring antrean pembatalan ikut terkirim ke server', async () => {
+    const ambil = pasang([order()]);
+    await screen.findByText('SRH-001');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Minta dibatalkan' }));
+
+    await waitFor(() => {
+      const terakhir = String(ambil.mock.calls.at(-1)![0]);
+      expect(terakhir).toContain('mintaBatal=true');
+    });
+  });
+
+  /// Penyaring yang mati tidak boleh terkirim sebagai "false" yang harus ditafsirkan server.
+  it('penyaring yang mati tidak ikut terkirim sama sekali', async () => {
+    const ambil = pasang([order()]);
+    await screen.findByText('SRH-001');
+
+    expect(String(ambil.mock.calls.at(-1)![0])).not.toContain('mintaBatal');
   });
 });

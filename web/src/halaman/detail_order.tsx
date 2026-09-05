@@ -2,7 +2,13 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { useSesi } from '../auth/sesi';
-import { ambilOrder, batalkanOrder, daftarPesan, kirimPesan } from '../inti/api_admin';
+import {
+  ambilOrder,
+  batalkanOrder,
+  daftarPesan,
+  kirimPesan,
+  tolakPembatalan,
+} from '../inti/api_admin';
 import {
   formatDurasi,
   formatJadwal,
@@ -75,6 +81,7 @@ export function HalamanDetailOrder() {
 
       <div className="detail__kolom">
         <div className="detail__utama">
+          <PanelPermintaanBatal order={order} onDijawab={muatUlang} />
           <RincianOrder order={order} />
           <DaftarPenawaran order={order} />
           <PanelPembatalan order={order} onDibatalkan={muatUlang} />
@@ -208,6 +215,112 @@ function labelStatusPenawaran(status: StatusPenawaran): string {
  * bukan satu tombol yang langsung jalan: ini tindakan yang tidak bisa dibatalkan baliknya
  * dari dashboard, order yang sudah Batal tidak bisa dibatalkan lagi.
  */
+/**
+ * Permintaan pembatalan dari klien yang belum dijawab.
+ *
+ * Berdiri paling atas di kolom ini, di atas rincian ordernya sendiri, karena inilah
+ * satu-satunya hal di layar ini yang menuntut jawaban: di ujungnya ada uang yang
+ * dikembalikan atau tidak, dan klien yang sedang menunggu.
+ *
+ * Dua jawabannya sengaja tidak berdampingan di satu panel. "Ya" berarti membatalkan
+ * order berikut mencatat pengembalian dana, dan itu sudah punya panelnya sendiri di bawah
+ * lengkap dengan isian alasan dan konfirmasinya; menyalinnya ke sini berarti dua jalan
+ * menuju tindakan yang sama yang pelan-pelan berbeda perilaku. Yang ada di sini cuma
+ * jawaban "tidak", yang sebelumnya tidak punya jalan sama sekali.
+ */
+function PanelPermintaanBatal({
+  order,
+  onDijawab,
+}: {
+  order: Order;
+  onDijawab: () => void;
+}) {
+  const { api } = useSesi();
+  const [terbuka, setTerbuka] = useState(false);
+  const [alasan, setAlasan] = useState('');
+  const [sibuk, setSibuk] = useState(false);
+  const [galat, setGalat] = useState<unknown>(null);
+
+  if (order.mintaBatalPada === null) return null;
+
+  async function tolak(peristiwa: FormEvent) {
+    peristiwa.preventDefault();
+    setSibuk(true);
+    setGalat(null);
+    try {
+      await tolakPembatalan(api, order.id, alasan.trim());
+      onDijawab();
+    } catch (salah) {
+      setGalat(salah);
+      setSibuk(false);
+    }
+  }
+
+  return (
+    <article className="kartu kartu--pembatalan">
+      <h2>Klien minta order ini dibatalkan</h2>
+      <p className="pembatalan__keterangan">
+        Diminta {formatWaktuRelatif(order.mintaBatalPada)}. Alasannya ada di obrolan order
+        ini. Untuk menyetujui, pakai panel &ldquo;Batalkan &amp; kembalikan dana&rdquo; di
+        bawah; sampai dijawab, ordernya tetap berjalan.
+      </p>
+
+      {!terbuka ? (
+        <button type="button" className="tombol tombol--halus" onClick={() => setTerbuka(true)}>
+          Tolak permintaan
+        </button>
+      ) : (
+        <form onSubmit={tolak}>
+          <label htmlFor="alasanTolak">Alasan menolak</label>
+          <textarea
+            id="alasanTolak"
+            rows={2}
+            maxLength={1000}
+            required
+            autoFocus
+            value={alasan}
+            disabled={sibuk}
+            placeholder="Misal: runnernya sudah berangkat, jadi tidak bisa dibatalkan."
+            onChange={(e) => setAlasan(e.target.value)}
+          />
+          <div className="pembatalan__tombol">
+            <button
+              type="submit"
+              className="tombol"
+              disabled={sibuk || alasan.trim().length === 0}
+            >
+              {sibuk ? 'Mengirim...' : 'Kirim penolakan'}
+            </button>
+            <button
+              type="button"
+              className="tombol tombol--halus"
+              disabled={sibuk}
+              onClick={() => {
+                setTerbuka(false);
+                setAlasan('');
+                setGalat(null);
+              }}
+            >
+              Urungkan
+            </button>
+          </div>
+          {/* Alasannya sampai ke klien lewat chat ordernya, tempat ia menuliskan
+              permintaannya. Jawaban yang cuma membuat tombolnya hilang tanpa satu kalimat
+              pun sama saja dengan tidak dijawab. */}
+          <p className="pembatalan__keterangan">
+            Kalimat ini dikirim ke klien sebagai pesan di obrolan order.
+          </p>
+          {galat !== null && (
+            <p className="keadaan keadaan--galat" role="alert">
+              {pesanGalat(galat)}
+            </p>
+          )}
+        </form>
+      )}
+    </article>
+  );
+}
+
 function PanelPembatalan({
   order,
   onDibatalkan,
