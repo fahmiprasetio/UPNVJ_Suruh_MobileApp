@@ -125,7 +125,7 @@ describe('HalamanKelolaPeran', () => {
     const permintaan: { url: string; init: RequestInit }[] = [];
     const ambil = vi.fn().mockImplementation((url: string, init: RequestInit) => {
       permintaan.push({ url, init });
-      if (url.includes('/peran/riwayat')) {
+      if (url.includes('/peran/riwayat') || url.includes('/pelepasan')) {
         return Promise.resolve(
           jawaban(200, { isi: [], total: 0, halaman: 1, ukuranHalaman: 20, totalHalaman: 0 }),
         );
@@ -171,7 +171,7 @@ describe('HalamanKelolaPeran', () => {
 
     const ambil = vi.fn().mockImplementation((url: string) => {
       if (url.includes('/api/auth/saya')) return Promise.resolve(jawaban(200, admin));
-      if (url.includes('/peran/riwayat')) {
+      if (url.includes('/peran/riwayat') || url.includes('/pelepasan')) {
         return Promise.resolve(
           jawaban(200, { isi: [], total: 0, halaman: 1, ukuranHalaman: 20, totalHalaman: 0 }),
         );
@@ -209,7 +209,7 @@ describe('HalamanKelolaPeran', () => {
 describe('PanelPenangguhan', () => {
   function ambilDengan(hasilPencarian: Pengguna) {
     return vi.fn().mockImplementation((url: string, init?: RequestInit) => {
-      if (url.includes('/peran/riwayat')) {
+      if (url.includes('/peran/riwayat') || url.includes('/pelepasan')) {
         return Promise.resolve(
           jawaban(200, { isi: [], total: 0, halaman: 1, ukuranHalaman: 20, totalHalaman: 0 }),
         );
@@ -301,7 +301,7 @@ describe('PanelPenangguhan', () => {
     const saya = pengguna({ roles: ['Admin'] });
     const ambil = vi.fn().mockImplementation((url: string) => {
       if (url.includes('/api/auth/saya')) return Promise.resolve(jawaban(200, saya));
-      if (url.includes('/peran/riwayat')) {
+      if (url.includes('/peran/riwayat') || url.includes('/pelepasan')) {
         return Promise.resolve(
           jawaban(200, { isi: [], total: 0, halaman: 1, ukuranHalaman: 20, totalHalaman: 0 }),
         );
@@ -350,5 +350,63 @@ describe('PanelPenangguhan', () => {
     await pilihRifqi(pengguna({ ditangguhkanPada: '2026-09-05T10:00:00Z' }));
 
     expect(await screen.findByText('ditangguhkan')).toBeInTheDocument();
+  });
+
+  /**
+   * Bukti yang dipakai memutuskan apakah sebuah akun pantas dihentikan. Sebelum catatan
+   * ini ada, runner yang menerima lalu melepas sepuluh order berturut-turut meninggalkan
+   * basis data yang bentuknya persis sama dengan runner yang tidak pernah melakukannya.
+   */
+  it('menampilkan order yang pernah dilepas beserta alasannya', async () => {
+    const ambil = vi.fn().mockImplementation((url: string) => {
+      if (String(url).includes('/pelepasan')) {
+        return Promise.resolve(
+          jawaban(200, {
+            isi: [
+              {
+                id: 'p-1',
+                orderId: 'o-1',
+                kodeOrder: 'SRH-0042',
+                runnerId: '44444444-4444-4444-4444-444444444444',
+                alasan: 'Motor mogok di Lenteng Agung.',
+                dilepasPada: '2026-09-05T10:00:00Z',
+              },
+            ],
+            total: 1,
+            halaman: 1,
+            ukuranHalaman: 20,
+            totalHalaman: 1,
+          }),
+        );
+      }
+      if (String(url).includes('/peran/riwayat')) {
+        return Promise.resolve(
+          jawaban(200, { isi: [], total: 0, halaman: 1, ukuranHalaman: 20, totalHalaman: 0 }),
+        );
+      }
+      return Promise.resolve(jawaban(200, [pengguna()]));
+    });
+
+    pasang(ambil);
+    fireEvent.change(screen.getByLabelText('Cari nama atau nomor HP'), {
+      target: { value: 'rifqi' },
+    });
+    fireEvent.click(await screen.findByText('Rifqi'));
+
+    expect(await screen.findByText('SRH-0042')).toBeInTheDocument();
+    expect(screen.getByText('Motor mogok di Lenteng Agung.')).toBeInTheDocument();
+    // Jumlahnya ikut di judulnya: yang dicari admin pola, dan satu kali melepas berbeda
+    // artinya dari sepuluh kali.
+    expect(screen.getByText(/Order yang pernah dilepas \(1\)/)).toBeInTheDocument();
+  });
+
+  it('mengatakan dengan jelas kalau akun ini belum pernah melepas order', async () => {
+    await pilihRifqi(pengguna());
+
+    expect(
+      await screen.findByText(
+        'Akun ini belum pernah melepas order yang sudah diterimanya.',
+      ),
+    ).toBeInTheDocument();
   });
 });

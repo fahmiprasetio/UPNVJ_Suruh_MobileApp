@@ -8,6 +8,7 @@ import type {
   PayoutSetting,
   Pengguna,
   Peran,
+  PelepasanOrder,
   PerubahanPeran,
   Pesan,
   RekapPayout,
@@ -189,6 +190,25 @@ export function riwayatPeran(
   sinyal?: AbortSignal,
 ): Promise<Halaman<PerubahanPeran>> {
   return api.minta<Halaman<PerubahanPeran>>(`/api/admin/pengguna/${userId}/peran/riwayat`, {
+    kueri: { halaman: penyaring.halaman, ukuran: penyaring.ukuran },
+    sinyal,
+  });
+}
+
+/**
+ * Order yang pernah dilepas runner ini sesudah menerimanya.
+ *
+ * Penangguhan tanpa bukti bukan keputusan, cuma tebakan. Sebelum catatan ini ada, runner
+ * yang menerima lalu melepas sepuluh order berturut-turut meninggalkan basis data yang
+ * bentuknya persis sama dengan runner yang tidak pernah melakukannya.
+ */
+export function pelepasanOrder(
+  api: KlienApi,
+  userId: string,
+  penyaring: PenyaringHalaman = {},
+  sinyal?: AbortSignal,
+): Promise<Halaman<PelepasanOrder>> {
+  return api.minta<Halaman<PelepasanOrder>>(`/api/admin/pengguna/${userId}/pelepasan`, {
     kueri: { halaman: penyaring.halaman, ukuran: penyaring.ukuran },
     sinyal,
   });

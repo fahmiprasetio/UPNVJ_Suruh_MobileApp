@@ -167,6 +167,23 @@ export interface Tarif {
  * berlaku sekarang kalau `UserRole` pernah berubah, dan riwayat audit tidak boleh diam-diam
  * membuang nilai yang tidak dikenalinya.
  */
+/**
+ * Satu kali seorang runner melepas order yang sudah dipegangnya, dari
+ * `PelepasanOrderResponse` di backend.
+ *
+ * Membawa `kodeOrder` di samping `orderId`, dan itu bukan kelebihan data: yang membaca
+ * daftar ini sedang menimbang apakah sebuah akun pantas dihentikan, dan deretan id tanpa
+ * kode berarti ia harus membuka satu per satu untuk tahu order mana saja yang dimaksud.
+ */
+export interface PelepasanOrder {
+  id: string;
+  orderId: string;
+  kodeOrder: string;
+  runnerId: string;
+  alasan: string;
+  dilepasPada: string;
+}
+
 export interface PerubahanPeran {
   id: string;
   userId: string;

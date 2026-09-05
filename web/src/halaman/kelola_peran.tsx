@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useSesi, usePengguna } from '../auth/sesi';
 import {
   cariPengguna,
+  pelepasanOrder,
   pulihkanAkun,
   riwayatPeran,
   tangguhkanAkun,
@@ -278,7 +279,56 @@ function PanelPengguna({
         onBerubah={onBerubah}
       />
 
+      {/* Berdiri di atas riwayat peran, bukan di bawahnya, dan urutannya disengaja:
+          ini bukti yang dipakai memutuskan, sedangkan riwayat peran catatan keputusan
+          yang sudah diambil. Yang membuka panel ini biasanya sedang menimbang, bukan
+          sedang menelusuri apa yang pernah ia lakukan sendiri. */}
+      <PelepasanRunner userId={pengguna.id} />
+
       <RiwayatPeran userId={pengguna.id} penanda={penandaRiwayat} />
+    </div>
+  );
+}
+
+/**
+ * Order yang pernah dilepas runner ini sesudah menerimanya.
+ *
+ * Ditampilkan untuk setiap akun, bukan cuma yang berperan runner, dan itu bukan
+ * kelalaian: runner yang perannya baru saja dicabut adalah persis akun yang paling
+ * mungkin sedang dipersoalkan, dan menyembunyikan catatannya karena perannya sudah
+ * hilang berarti menyembunyikannya tepat saat ia paling dibutuhkan.
+ */
+function PelepasanRunner({ userId }: { userId: string }) {
+  const { api } = useSesi();
+
+  const ambil = useCallback(
+    (sinyal: AbortSignal) => pelepasanOrder(api, userId, { ukuran: 20 }, sinyal),
+    [api, userId],
+  );
+
+  const { data, memuat, galat, muatUlang } = gunakanMuat(ambil);
+
+  return (
+    <div className="riwayat-peran">
+      <h3>Order yang pernah dilepas{data !== null && data.total > 0 && ` (${data.total})`}</h3>
+
+      {galat !== null && <KotakGalat galat={galat} cobaLagi={muatUlang} />}
+      {memuat && data === null && <Memuat />}
+      {data !== null && data.isi.length === 0 && (
+        <Kosong keterangan="Akun ini belum pernah melepas order yang sudah diterimanya." />
+      )}
+
+      {data !== null && data.isi.length > 0 && (
+        <ol className="riwayat-peran__daftar">
+          {data.isi.map((baris) => (
+            <li key={baris.id}>
+              <p className="riwayat-peran__perubahan">{baris.kodeOrder}</p>
+              <p className="riwayat-peran__alasan">{baris.alasan}</p>
+              <time dateTime={baris.dilepasPada}>{formatTanggalJam(baris.dilepasPada)}</time>
+            </li>
+          ))}
+        </ol>
+      )}
     </div>
   );
 }
