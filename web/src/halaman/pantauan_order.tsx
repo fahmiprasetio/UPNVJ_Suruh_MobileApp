@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 
 import { useSesi } from '../auth/sesi';
 import { daftarOrder } from '../inti/api_admin';
-import { formatRupiah, formatWaktuRelatif, labelLayanan, menitSejak } from '../inti/format';
+import { formatRupiah, formatWaktuRelatif, labelLayanan } from '../inti/format';
 import { gunakanMuat } from '../inti/gunakan_muat';
 import type { Order, StatusOrder } from '../inti/tipe';
 import { Kosong, KotakGalat, Memuat } from '../komponen/keadaan';
@@ -38,17 +38,6 @@ const penyaringStatus: { nilai: StatusOrder | undefined; label: string }[] = [
   { nilai: 'Batal', label: 'Batal' },
 ];
 
-/**
- * Berapa lama sebuah order boleh menganggur sebelum ditandai di layar ini.
- *
- * Angka milik dashboard, bukan aturan sistem. Backend belum punya batas order menganggur
- * sama sekali (bagian 14.7e rencana proyek masih terbuka), jadi tidak ada yang menegur
- * siapa pun kalau kebetulan tidak ada admin yang sedang melihat layar ini. Penandaan di
- * sini tambalan sementara untuk itu, dan sengaja disebut begitu supaya tidak ada yang
- * mengiranya penjagaan yang sungguh-sungguh.
- */
-const AMBANG_MACET_MENIT = 10;
-
 export function HalamanPantauanOrder() {
   const { api, hub } = useSesi();
   const [status, setStatus] = useState<StatusOrder | undefined>(undefined);
@@ -56,12 +45,13 @@ export function HalamanPantauanOrder() {
   // pembatalan bukan status order: ordernya tetap MencariRunner atau Dikerjakan sementara
   // permintaannya menunggu. Keduanya boleh menyala bersamaan dan menyempit bersama.
   const [mintaBatal, setMintaBatal] = useState(false);
+  const [macet, setMacet] = useState(false);
   const [halaman, setHalaman] = useState(1);
 
   const ambil = useCallback(
     (sinyal: AbortSignal) =>
-      daftarOrder(api, { status, mintaBatal, halaman, ukuran: UKURAN_HALAMAN }, sinyal),
-    [api, status, mintaBatal, halaman],
+      daftarOrder(api, { status, mintaBatal, macet, halaman, ukuran: UKURAN_HALAMAN }, sinyal),
+    [api, status, mintaBatal, macet, halaman],
   );
 
   const { data, memuat, galat, muatUlang } = gunakanMuat(ambil, { segarkanBerkala: true });
@@ -83,6 +73,7 @@ export function HalamanPantauanOrder() {
           <p className="pantauan__hitungan">
             {data.total} order{status ? ' berstatus ' + labelPenyaringAktif : ''}
             {mintaBatal ? ' yang meminta dibatalkan' : ''}
+            {macet ? ' yang macet' : ''}
           </p>
         )}
       </header>
@@ -122,6 +113,20 @@ export function HalamanPantauanOrder() {
           }}
         >
           Minta dibatalkan
+        </button>
+        {/* Disaring server, bukan di sini. Menyaring baris yang sudah terlanjur terpotong
+            per halaman berarti order macet yang kebetulan berada di halaman kedua tidak
+            pernah ditemukan siapa pun — dan itu justru yang paling lama menunggu. */}
+        <button
+          type="button"
+          className={macet ? 'cip cip--aktif' : 'cip'}
+          aria-pressed={macet}
+          onClick={() => {
+            setMacet((sebelumnya) => !sebelumnya);
+            setHalaman(1);
+          }}
+        >
+          Macet
         </button>
       </div>
 
@@ -186,10 +191,8 @@ export function HalamanPantauanOrder() {
 }
 
 function BarisOrder({ order }: { order: Order }) {
-  const macet = sedangMacet(order);
-
   return (
-    <tr className={macet ? 'tabel__baris--macet' : undefined}>
+    <tr className={order.macet ? 'tabel__baris--macet' : undefined}>
       <td>
         <Link to={'/order/' + order.id} className="tautan-kode">
           {order.kodeOrder}
@@ -208,11 +211,8 @@ function BarisOrder({ order }: { order: Order }) {
             minta batal
           </span>
         )}
-        {macet && (
-          <span
-            className="tanda-macet"
-            title={'Belum bergerak lebih dari ' + AMBANG_MACET_MENIT + ' menit.'}
-          >
+        {order.macet && (
+          <span className="tanda-macet" title="Sudah terlalu lama menganggur tanpa runner.">
             macet
           </span>
         )}
@@ -234,22 +234,3 @@ function BarisOrder({ order }: { order: Order }) {
     </tr>
   );
 }
-
-/**
- * Order yang sudah terlalu lama berada di keadaan yang seharusnya cepat berlalu.
- *
- * Cuma dua status yang dihitung. `MencariRunner` berarti klien sudah membayar dan belum ada
- * yang mengambil, dan itu keadaan terburuk yang bisa dialami sistem ini: uangnya sudah
- * masuk, pekerjaannya belum dimulai, kliennya menunggu. `Permintaan` berarti Jalur B yang
- * belum ditawar siapa pun.
- *
- * `MenungguPembayaran` sengaja tidak dihitung. Yang ditunggu di sana klien, bukan
- * organisasi, dan menandainya macet berarti menyuruh admin mengejar sesuatu yang memang
- * bukan urusannya.
- */
-export function sedangMacet(order: Order, sekarang: Date = new Date()): boolean {
-  if (order.status !== 'MencariRunner' && order.status !== 'Permintaan') return false;
-  return menitSejak(order.dibuatPada, sekarang) >= AMBANG_MACET_MENIT;
-}
-
-export { AMBANG_MACET_MENIT };

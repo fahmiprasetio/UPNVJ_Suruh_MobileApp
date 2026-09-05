@@ -59,6 +59,8 @@ export interface PenyaringOrder {
   status?: StatusOrder;
   /** Kalau benar, cuma order yang sedang menunggu keputusan pembatalan yang diminta. */
   mintaBatal?: boolean;
+  /** Kalau benar, cuma order yang sedang macet yang diminta. */
+  macet?: boolean;
   halaman?: number;
   ukuran?: number;
 }
@@ -74,6 +76,7 @@ export function daftarOrder(
       // `undefined` dibuang KlienApi, jadi penyaring yang tidak aktif tidak ikut
       // terkirim sebagai "false" yang harus ditafsirkan server.
       mintaBatal: penyaring.mintaBatal === true ? true : undefined,
+      macet: penyaring.macet === true ? true : undefined,
       halaman: penyaring.halaman,
       ukuran: penyaring.ukuran,
     },

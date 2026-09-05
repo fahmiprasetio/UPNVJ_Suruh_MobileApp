@@ -3,9 +3,9 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
 import { PenyediaSesi } from '../src/auth/sesi';
-import { AMBANG_MACET_MENIT, HalamanPantauanOrder, sedangMacet } from '../src/halaman/pantauan_order';
+import { HalamanPantauanOrder } from '../src/halaman/pantauan_order';
 import { KlienApi } from '../src/inti/klien_api';
-import type { Halaman, Order, StatusOrder } from '../src/inti/tipe';
+import type { Halaman, Order } from '../src/inti/tipe';
 import { buatKendaliHub, buatTiruanHub } from './dukungan_hub';
 
 function order(ubah: Partial<Order> = {}): Order {
@@ -35,45 +35,24 @@ function order(ubah: Partial<Order> = {}): Order {
     dibayarPada: null,
     selesaiPada: null,
     mintaBatalPada: null,
+    macet: false,
     ...ubah,
   };
 }
 
-function menitLalu(menit: number): string {
-  return new Date(Date.now() - menit * 60_000).toISOString();
-}
-
-describe('sedangMacet', () => {
-  it('menandai order yang sudah dibayar tapi belum diambil siapa pun', () => {
-    // Keadaan terburuk yang bisa dialami sistem ini: uangnya sudah masuk, pekerjaannya
-    // belum dimulai, kliennya menunggu.
-    const macet = order({ status: 'MencariRunner', dibuatPada: menitLalu(AMBANG_MACET_MENIT) });
-    expect(sedangMacet(macet)).toBe(true);
-  });
-
-  it('menandai permintaan Jalur B yang belum ditawar siapa pun', () => {
-    const macet = order({ status: 'Permintaan', track: 'JalurB', dibuatPada: menitLalu(30) });
-    expect(sedangMacet(macet)).toBe(true);
-  });
-
-  it('membiarkan order yang baru masuk', () => {
-    expect(sedangMacet(order({ dibuatPada: menitLalu(1) }))).toBe(false);
-  });
-
-  it('tidak menandai order yang menunggu klien membayar', () => {
-    // Yang ditunggu di sana klien, bukan organisasi. Menandainya macet berarti menyuruh
-    // admin mengejar sesuatu yang memang bukan urusannya.
-    const menunggu = order({ status: 'MenungguPembayaran', dibuatPada: menitLalu(120) });
-    expect(sedangMacet(menunggu)).toBe(false);
-  });
-
-  it('tidak menandai order yang sudah berakhir', () => {
-    const status: StatusOrder[] = ['Selesai', 'Batal', 'Dikerjakan'];
-    for (const s of status) {
-      expect(sedangMacet(order({ status: s, dibuatPada: menitLalu(600) }))).toBe(false);
-    }
-  });
-});
+/*
+ * Aturan "macet" tidak lagi diuji di sini karena tidak lagi tinggal di sini.
+ *
+ * Dulu dashboard punya ambangnya sendiri dan menghitung sendiri dari waktu pembuatan order,
+ * jadi seluruh aturannya ada di berkas ini dan diuji di berkas ini. Sekarang server yang
+ * memutuskan dan mengirimkan hasilnya sebagai satu bendera (`OrderMacet` di backend, diuji
+ * di `OrderMacetTests`), termasuk koreksi yang ikut ketahuan saat memindahkannya: untuk
+ * order yang sedang mencari runner, hitungannya mulai dari kapan ia dibayar, bukan kapan ia
+ * dibuat.
+ *
+ * Yang tersisa diuji di sini justru yang memang milik layar ini: benderanya dipakai apa
+ * adanya, dan penyaringnya sungguh sampai ke server.
+ */
 
 function pasang(isi: Order[], total = isi.length, buatHub = buatTiruanHub) {
   const halaman: Halaman<Order> = {
@@ -138,12 +117,33 @@ describe('HalamanPantauanOrder', () => {
     expect(await screen.findByText('137 order')).toBeInTheDocument();
   });
 
-  it('menandai baris order yang menganggur terlalu lama', async () => {
-    pasang([order({ dibuatPada: menitLalu(45) })]);
+  it('menandai baris yang oleh server disebut macet', async () => {
+    // Benderanya dipakai apa adanya, tidak dihitung ulang di sini. Layar yang menghitung
+    // sendiri akan menandai baris yang berbeda dari yang disaring server, dan bedanya baru
+    // ketahuan kalau ada yang membandingkan keduanya satu per satu.
+    pasang([order({ macet: true })]);
 
     const baris = (await screen.findByText('SRH-001')).closest('tr');
     expect(baris).not.toBeNull();
     expect(within(baris as HTMLElement).getByText('macet')).toBeInTheDocument();
+  });
+
+  it('tidak menandai baris yang tidak disebut macet, sekalipun sudah lama dibuat', async () => {
+    pasang([order({ macet: false, dibuatPada: new Date(Date.now() - 86_400_000).toISOString() })]);
+
+    const baris = (await screen.findByText('SRH-001')).closest('tr');
+    expect(within(baris as HTMLElement).queryByText('macet')).not.toBeInTheDocument();
+  });
+
+  it('penyaring macet ikut terkirim ke server', async () => {
+    const ambil = pasang([order()]);
+    await screen.findByText('SRH-001');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Macet' }));
+
+    await waitFor(() => {
+      expect(String(ambil.mock.calls.at(-1)![0])).toContain('macet=true');
+    });
   });
 
   it('memuat ulang begitu hub mengabarkan ada order yang berubah', async () => {
@@ -166,7 +166,7 @@ describe('HalamanPantauanOrder', () => {
    * menemukan yang mana yang sedang bertanya.
    */
   it('menandai baris order yang sedang meminta dibatalkan', async () => {
-    pasang([order({ mintaBatalPada: menitLalu(3) })]);
+    pasang([order({ mintaBatalPada: new Date(Date.now() - 180_000).toISOString() })]);
 
     const baris = (await screen.findByText('SRH-001')).closest('tr');
     expect(baris).not.toBeNull();

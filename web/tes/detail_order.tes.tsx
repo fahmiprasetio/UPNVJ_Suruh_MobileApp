@@ -43,6 +43,7 @@ function order(ubah: Partial<Order> = {}): Order {
     dibayarPada: null,
     selesaiPada: null,
     mintaBatalPada: null,
+    macet: false,
     ...ubah,
   };
 }

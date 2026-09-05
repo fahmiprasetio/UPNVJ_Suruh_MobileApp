@@ -103,6 +103,16 @@ export interface Order {
    * sampai admin memutuskan.
    */
   mintaBatalPada: string | null;
+  /**
+   * Benar kalau order ini sudah terlalu lama menganggur di keadaan yang seharusnya cepat
+   * berlalu.
+   *
+   * Dihitung server (`OrderMacet` di backend), bukan di sini. Dulu sebaliknya: dashboard
+   * punya ambangnya sendiri dan menghitung sendiri, yang berarti order macet cuma "ada"
+   * selama ada yang membuka halaman tabelnya, dan ambangnya hidup di dua tempat yang bisa
+   * berselisih.
+   */
+  macet: boolean;
 }
 
 export interface Pesan {
