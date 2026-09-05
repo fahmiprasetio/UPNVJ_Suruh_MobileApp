@@ -288,6 +288,101 @@ public class PenangguhanAkunTests(DatabaseApiFactory pabrik) : IClassFixture<Dat
         Assert.Equal("Nomor palsu.", ditemukan.AlasanPenangguhan);
     }
 
+    // --- Riwayat penangguhan ---
+
+    private static Task<HalamanResponse<PerubahanPenangguhanResponse>?> RiwayatAsync(
+        HttpClient admin, Guid id) =>
+        admin.GetFromJsonAsync<HalamanResponse<PerubahanPenangguhanResponse>>(
+            $"/api/admin/pengguna/{id}/penangguhan/riwayat");
+
+    /// <summary>
+    /// Yang paling ingin diketahui admin bukan keadaan sekarang — itu sudah ada di kolom
+    /// akunnya — melainkan bolak-baliknya, dan urutannya harus utuh dalam satu daftar.
+    /// </summary>
+    [Fact]
+    public async Task PenangguhanDanPemulihanTercatatKeduanyaTerurutTerbaruDulu()
+    {
+        var (_, korbanId, _) = await AkunAsync(UserRole.Klien);
+        var (admin, adminId, _) = await AkunAsync(UserRole.Admin);
+
+        (await TangguhkanAsync(admin, korbanId, "Minta batal berulang kali."))
+            .EnsureSuccessStatusCode();
+        (await PulihkanAsync(admin, korbanId, "Ternyata salah paham.")).EnsureSuccessStatusCode();
+
+        var riwayat = await RiwayatAsync(admin, korbanId);
+
+        Assert.Equal(2, riwayat!.Total);
+        Assert.False(riwayat.Isi[0].Ditangguhkan);
+        Assert.Equal("Ternyata salah paham.", riwayat.Isi[0].Alasan);
+        Assert.True(riwayat.Isi[1].Ditangguhkan);
+        Assert.Equal("Minta batal berulang kali.", riwayat.Isi[1].Alasan);
+        Assert.All(riwayat.Isi, baris => Assert.Equal(adminId, baris.DiubahOlehAdminId));
+    }
+
+    /// <summary>
+    /// Inti kenapa tabelnya dibuat. Memulihkan mengosongkan ketiga kolom penangguhan di
+    /// akunnya, jadi sebelum ada catatan ini alasan memulihkan diminta dari admin lalu
+    /// dibuang ke log aplikasi dan tidak bisa ditanya dari layar mana pun.
+    /// </summary>
+    [Fact]
+    public async Task AlasanMemulihkanTidakIkutHilangSaatKolomnyaDikosongkan()
+    {
+        var (_, korbanId, noHp) = await AkunAsync(UserRole.Klien);
+        var (admin, _, _) = await AkunAsync(UserRole.Admin);
+        (await TangguhkanAsync(admin, korbanId)).EnsureSuccessStatusCode();
+        (await PulihkanAsync(admin, korbanId, "Sudah membayar sisanya.")).EnsureSuccessStatusCode();
+
+        var akun = (await admin.GetFromJsonAsync<List<UserResponse>>(
+            $"/api/admin/pengguna?q={noHp}"))!.Single(u => u.Id == korbanId);
+        Assert.Null(akun.AlasanPenangguhan);
+
+        var riwayat = await RiwayatAsync(admin, korbanId);
+        Assert.Contains(riwayat!.Isi, b => !b.Ditangguhkan && b.Alasan == "Sudah membayar sisanya.");
+    }
+
+    /// <summary>
+    /// Menangguhkan akun yang sudah ditangguhkan tidak mengubah apa pun, jadi tidak ada yang
+    /// perlu dicatat. Catatan audit yang penuh baris "tidak terjadi apa-apa" akan berhenti
+    /// dibaca orang, sama seperti perubahan peran yang isinya sama dengan sebelumnya.
+    /// </summary>
+    [Fact]
+    public async Task MenangguhkanUlangTidakMenambahBarisBaru()
+    {
+        var (_, korbanId, _) = await AkunAsync(UserRole.Klien);
+        var (admin, _, _) = await AkunAsync(UserRole.Admin);
+        (await TangguhkanAsync(admin, korbanId, "Alasan pertama.")).EnsureSuccessStatusCode();
+        (await TangguhkanAsync(admin, korbanId, "Alasan kedua.")).EnsureSuccessStatusCode();
+
+        var riwayat = await RiwayatAsync(admin, korbanId);
+
+        Assert.Equal(1, riwayat!.Total);
+        Assert.Equal("Alasan pertama.", riwayat.Isi[0].Alasan);
+    }
+
+    [Fact]
+    public async Task AkunYangTidakPernahDitangguhkanRiwayatnyaKosong()
+    {
+        var (_, orangId, _) = await AkunAsync(UserRole.Klien);
+        var (admin, _, _) = await AkunAsync(UserRole.Admin);
+
+        var riwayat = await RiwayatAsync(admin, orangId);
+
+        Assert.Empty(riwayat!.Isi);
+        Assert.Equal(0, riwayat.Total);
+    }
+
+    [Fact]
+    public async Task RiwayatPenangguhanTertutupUntukAkunBiasa()
+    {
+        var (klien, _, _) = await AkunAsync(UserRole.Klien);
+        var (_, korbanId, _) = await AkunAsync(UserRole.Klien);
+
+        var jawaban = await klien.GetAsync(
+            $"/api/admin/pengguna/{korbanId}/penangguhan/riwayat");
+
+        Assert.Equal(HttpStatusCode.Forbidden, jawaban.StatusCode);
+    }
+
     // --- Menemukan kembali akun yang ditangguhkan ---
 
     /// <summary>

@@ -48,6 +48,29 @@ public record PerubahanPeranResponse(
         p.ChangedAt);
 }
 
+/// <summary>Satu kali sebuah akun ditangguhkan, atau dipulihkan kembali.</summary>
+/// <remarks>
+/// <see cref="Ditangguhkan"/> menyebut arah keputusannya, bukan keadaan akun sesudahnya, dan
+/// keduanya kebetulan sama nilainya: baris ini selalu berarti pindah dari satu keadaan ke
+/// keadaan lain, jadi tidak ada arah ketiga yang perlu dibedakan.
+/// </remarks>
+public record PerubahanPenangguhanResponse(
+    Guid Id,
+    Guid UserId,
+    Guid DiubahOlehAdminId,
+    bool Ditangguhkan,
+    string Alasan,
+    DateTime DiubahPada)
+{
+    public static PerubahanPenangguhanResponse Dari(UserSuspensionChange p) => new(
+        p.Id,
+        p.UserId,
+        p.ChangedByAdminId,
+        p.Suspended,
+        p.Reason,
+        p.ChangedAt);
+}
+
 /// <summary>Satu kali seorang runner melepas order yang sudah dipegangnya.</summary>
 /// <remarks>
 /// Membawa kode ordernya, bukan cuma idnya. Yang membacanya sedang menimbang apakah sebuah

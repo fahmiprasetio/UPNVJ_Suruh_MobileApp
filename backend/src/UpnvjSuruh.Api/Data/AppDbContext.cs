@@ -14,6 +14,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<UserRoleChange> UserRoleChanges => Set<UserRoleChange>();
     public DbSet<OrderRelease> OrderReleases => Set<OrderRelease>();
+    public DbSet<UserSuspensionChange> UserSuspensionChanges => Set<UserSuspensionChange>();
     public DbSet<TarifSetting> TarifSettings => Set<TarifSetting>();
     public DbSet<PayoutSetting> PayoutSettings => Set<PayoutSetting>();
 
@@ -50,6 +51,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .HasForeignKey(p => p.UserId)
                 // Catatan audit tidak ikut hilang bersama akunnya. Justru akun yang dihapus
                 // adalah akun yang paling mungkin dipertanyakan belakangan.
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<UserSuspensionChange>(entity =>
+        {
+            entity.Property(p => p.Reason).HasMaxLength(BatasMasukan.Deskripsi);
+
+            entity.HasIndex(p => p.UserId);
+
+            entity.HasOne(p => p.User)
+                .WithMany()
+                .HasForeignKey(p => p.UserId)
+                // Sama seperti dua catatan audit lainnya: justru akun yang dihapus adalah
+                // akun yang paling mungkin dipertanyakan belakangan.
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

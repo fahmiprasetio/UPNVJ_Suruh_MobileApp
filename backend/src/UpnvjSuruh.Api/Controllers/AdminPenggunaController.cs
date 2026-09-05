@@ -116,6 +116,39 @@ public class AdminPenggunaController(
             permintaan.Ukuran));
     }
 
+    /// <summary>Riwayat penangguhan dan pemulihan satu akun.</summary>
+    /// <remarks>
+    /// Berdiri terpisah dari <see cref="Riwayat"/> walaupun bentuk jawabannya mirip. Peran dan
+    /// penangguhan adalah dua keputusan yang berbeda sifatnya — yang satu mempersempit apa yang
+    /// bisa dikerjakan seseorang, yang satu menghentikannya sama sekali — dan menyatukannya di
+    /// satu daftar berarti admin yang mencari salah satunya harus menyaring yang lain dengan
+    /// matanya.
+    ///
+    /// Berhalaman dan diurutkan dari yang terbaru, sama seperti dua daftar tetangganya.
+    /// </remarks>
+    [HttpGet("{id:guid}/penangguhan/riwayat")]
+    public async Task<ActionResult<HalamanResponse<PerubahanPenangguhanResponse>>> RiwayatPenangguhan(
+        Guid id,
+        [FromQuery] PermintaanHalaman permintaan,
+        CancellationToken batal)
+    {
+        var kueri = db.UserSuspensionChanges.Where(p => p.UserId == id);
+
+        var total = await kueri.CountAsync(batal);
+        var riwayat = await kueri
+            .OrderByDescending(p => p.ChangedAt)
+            .ThenByDescending(p => p.Id)
+            .Skip(permintaan.Dilewati)
+            .Take(permintaan.Ukuran)
+            .ToListAsync(batal);
+
+        return Ok(new HalamanResponse<PerubahanPenangguhanResponse>(
+            [.. riwayat.Select(PerubahanPenangguhanResponse.Dari)],
+            total,
+            permintaan.Halaman,
+            permintaan.Ukuran));
+    }
+
     /// <summary>Order yang pernah dilepas runner ini sesudah menerimanya.</summary>
     /// <remarks>
     /// Ada karena penangguhan tanpa bukti bukan keputusan, cuma tebakan. Sejak akun bisa
@@ -174,9 +207,9 @@ public class AdminPenggunaController(
     /// order yang hilang berarti riwayat pembayaran dan bayaran runner ikut hilang bersama
     /// jejaknya — justru pada akun yang paling mungkin dipersoalkan belakangan.
     ///
-    /// ponytail: cuma penangguhan terakhir yang tersimpan, bukan riwayatnya. Kalau pola
-    /// "ditangguhkan lalu dipulihkan berulang kali" jadi pertanyaan, yang dibutuhkan tabel
-    /// tersendiri seperti <c>UserRoleChange</c>.
+    /// Setiap penangguhan ikut dicatat di <see cref="UserSuspensionChange"/>. Kolom di akunnya
+    /// menyimpan keadaan sekarang dan ditimpa setiap kali berubah; yang menjawab "sudah berapa
+    /// kali orang ini dihentikan lalu dikembalikan" cuma tabel itu.
     /// </remarks>
     [EnableRateLimiting(BatasLaju.KebijakanTulis)]
     [HttpPost("{id:guid}/tangguhkan")]
@@ -222,6 +255,14 @@ public class AdminPenggunaController(
         user.SuspendedReason = permintaan.Alasan.Trim();
         user.SuspendedByAdminId = User.Id();
 
+        db.UserSuspensionChanges.Add(new UserSuspensionChange
+        {
+            UserId = user.Id,
+            ChangedByAdminId = User.Id(),
+            Suspended = true,
+            Reason = user.SuspendedReason,
+        });
+
         await db.SaveChangesAsync(batal);
 
         log.LogWarning(
@@ -235,6 +276,11 @@ public class AdminPenggunaController(
     /// Alasannya wajib juga, bukan cuma saat menangguhkan. Keputusan mengembalikan akses
     /// kepada orang yang pernah dihentikan sama layaknya punya sebab tercatat dengan
     /// keputusan menghentikannya.
+    ///
+    /// Dan sampai <see cref="UserSuspensionChange"/> ada, alasan itu tidak tersimpan di mana
+    /// pun: memulihkan mengosongkan ketiga kolom penangguhan di akunnya, jadi satu-satunya
+    /// jejaknya baris log aplikasi. Alasan yang diminta lalu dibuang bukan alasan yang
+    /// diminta.
     /// </remarks>
     [EnableRateLimiting(BatasLaju.KebijakanTulis)]
     [HttpPost("{id:guid}/pulihkan")]
@@ -259,6 +305,14 @@ public class AdminPenggunaController(
         user.SuspendedAt = null;
         user.SuspendedReason = null;
         user.SuspendedByAdminId = null;
+
+        db.UserSuspensionChanges.Add(new UserSuspensionChange
+        {
+            UserId = user.Id,
+            ChangedByAdminId = User.Id(),
+            Suspended = false,
+            Reason = permintaan.Alasan.Trim(),
+        });
 
         await db.SaveChangesAsync(batal);
 
