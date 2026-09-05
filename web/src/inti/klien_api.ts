@@ -50,6 +50,14 @@ export class KlienApi {
     private readonly bacaToken: () => string | null,
     private readonly alamat: string = alamatApi,
     private readonly fetchImpl: typeof fetch = globalThis.fetch.bind(globalThis),
+    /**
+     * Dipanggil ketika server menolak token yang sedang dipakai.
+     *
+     * Yang harus terjadi bukan urusan satu layar yang kebetulan sedang mengambil
+     * data: seluruh dashboard harus berhenti memakai token itu. Layar yang
+     * memintanya tetap menerima `GalatTidakBerwenang`-nya seperti biasa.
+     */
+    private readonly saatSesiDitolak: () => void = () => {},
   ) {}
 
   async minta<T>(jalur: string, opsi: OpsiPermintaan = {}): Promise<T> {
@@ -82,6 +90,20 @@ export class KlienApi {
     }
 
     if (!jawaban.ok) {
+      // Token yang ditolak dilaporkan sekali di sini, bukan ditunggu ditangani
+      // masing-masing layar.
+      //
+      // Token berlaku 60 menit dan tidak ada penyegarannya, jadi admin yang
+      // membiarkan dashboard terbuka lebih lama dari itu adalah kejadian biasa, bukan
+      // kasus tepi. Sebelumnya 401 cuma ditangani pada pemeriksaan token saat
+      // dashboard DIBUKA; yang habis saat sedang dipakai tidak menghasilkan apa pun
+      // selain setiap kartu berubah jadi kotak galat dengan tombol coba lagi yang
+      // selamanya gagal.
+      //
+      // Syarat `token` penting: cuma permintaan yang benar-benar membawanya yang boleh
+      // memicu ini. Kode masuk yang salah juga dijawab 401 dan berangkat tanpa token
+      // sama sekali.
+      if (jawaban.status === 401 && token) this.saatSesiDitolak();
       throw galatDari(jawaban.status, await badanJson(jawaban));
     }
 

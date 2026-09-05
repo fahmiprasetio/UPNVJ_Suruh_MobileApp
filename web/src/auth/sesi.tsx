@@ -32,7 +32,14 @@ import { bacaToken, hapusToken, simpanToken } from './penyimpanan_token';
 type KeadaanSesi =
   /** Belum tahu: ada token tersimpan, dan pemiliknya sedang ditanyakan ke server. */
   | { tahap: 'memeriksa' }
-  | { tahap: 'keluar' }
+  /**
+   * `ditolak` benar kalau sesinya berakhir karena server menolak tokennya, bukan
+   * karena adminnya menekan keluar. Dipakai halaman masuk untuk menjelaskan kenapa
+   * orangnya tiba-tiba ada di sana; sesi yang berakhir sendiri tanpa keterangan
+   * terbaca sebagai dashboard yang rusak, dan yang mengira begitu tidak mencoba
+   * masuk lagi.
+   */
+  | { tahap: 'keluar'; ditolak?: boolean }
   | { tahap: 'masuk'; pengguna: Pengguna };
 
 interface IsiSesi {
@@ -51,8 +58,14 @@ export function PenyediaSesi({
   buatHub,
 }: {
   children: ReactNode;
-  /** Disediakan tes untuk menembus jaringan. Pemakaian biasa tidak mengisinya. */
-  buatKlien?: (bacaToken: () => string | null) => KlienApi;
+  /**
+   * Disediakan tes untuk menembus jaringan. Pemakaian biasa tidak mengisinya.
+   *
+   * Jalur penolakan sesi ikut dioper, tidak cuma tokennya. Kalau tidak, setiap klien
+   * yang disuntik dari luar memutus jalur itu diam-diam: 401 tidak lagi mengeluarkan
+   * siapa pun, dan tidak ada yang gagal untuk menandainya.
+   */
+  buatKlien?: (bacaToken: () => string | null, saatSesiDitolak: () => void) => KlienApi;
   /** Disediakan tes untuk menembus sambungan hub sungguhan. Pemakaian biasa tidak mengisinya. */
   buatHub?: (bacaToken: () => string | null) => KontrakOrderHub;
 }) {
@@ -69,9 +82,15 @@ export function PenyediaSesi({
   const tokenRef = useRef(token);
   tokenRef.current = token;
 
+  // Lewat ref, dengan alasan yang sama seperti token di atas: KlienApi dibuat sekali
+  // dan dipakai seumur halaman, jadi ia tidak boleh menangkap fungsi yang isinya
+  // berubah.
+  const sesiDitolakRef = useRef<() => void>(() => {});
+
   const api = useMemo(() => {
     const baca = () => tokenRef.current;
-    return buatKlien ? buatKlien(baca) : new KlienApi(baca);
+    const ditolak = () => sesiDitolakRef.current();
+    return buatKlien ? buatKlien(baca, ditolak) : new KlienApi(baca, undefined, undefined, ditolak);
   }, [buatKlien]);
 
   const hub = useMemo(() => {
@@ -99,6 +118,16 @@ export function PenyediaSesi({
     setKeadaan({ tahap: 'keluar' });
   }, []);
 
+  sesiDitolakRef.current = () => {
+    // Sudah keluar sejak permintaan itu berangkat: dua permintaan gagal beruntun, atau
+    // adminnya menekan keluar tepat di sela itu. Menyalakan kalimat "sesimu berakhir"
+    // untuk orang yang barusan menekan keluar sendiri jelas salah.
+    if (tokenRef.current === null) return;
+    hapusToken();
+    setToken(null);
+    setKeadaan({ tahap: 'keluar', ditolak: true });
+  };
+
   // Token yang tersimpan diperiksa ke server, tidak dipercaya begitu saja.
   //
   // Data pengguna ikut disimpan di peramban akan lebih cepat, dan salah: peran admin yang
@@ -115,11 +144,14 @@ export function PenyediaSesi({
         // sedang mati atau jaringan yang putus bukan alasan menghapus token: kalau
         // dihapus, admin harus meminta kode SMS baru hanya karena backend sempat
         // direstart.
-        if (galat instanceof GalatTidakBerwenang) {
-          keluar();
-        } else {
-          setKeadaan({ tahap: 'keluar' });
-        }
+        //
+        // Token yang ditolak tidak lagi ditangani di sini: `KlienApi` sudah
+        // melakukannya untuk SETIAP permintaan, termasuk yang ini, lewat jalur yang
+        // sama dengan token yang basi di tengah pemakaian. Menanganinya dua kali
+        // berarti yang belakangan menimpa keterangan yang baru saja dipasang yang
+        // pertama, dan adminnya kembali tidak diberi tahu apa-apa.
+        if (galat instanceof GalatTidakBerwenang) return;
+        setKeadaan({ tahap: 'keluar' });
       });
 
     return () => kendali.abort();

@@ -65,6 +65,15 @@ export function HalamanMasuk() {
         <h1>Dashboard Admin</h1>
         <p className="halaman-masuk__keterangan">UPNVJ Suruh. Khusus akun berperan admin.</p>
 
+        {/* Sengaja memakai kelas netral, bukan `keadaan--galat`. Sesi yang habis
+            waktunya bukan kesalahan siapa pun, dan kotak merah di halaman masuk
+            terbaca sebagai dashboard yang rusak sendiri. */}
+        {keadaan.tahap === 'keluar' && keadaan.ditolak === true && (
+          <p className="keadaan" role="status">
+            Sesimu sudah berakhir. Masuk lagi, ya, tidak ada data yang hilang.
+          </p>
+        )}
+
         {tahap === 'nomor' ? (
           <form onSubmit={kirimNomor}>
             <label htmlFor="noHp">Nomor HP</label>
