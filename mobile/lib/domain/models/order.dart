@@ -33,6 +33,7 @@ class Order {
     this.dibayarPada,
     this.selesaiPada,
     this.mintaBatalPada,
+    this.macet = false,
     this.offers = const [],
     this.messages = const [],
     this.payment,
@@ -85,6 +86,13 @@ class Order {
   /// yang harus kembali. Yang bisa ia lakukan meminta, dan nilai inilah yang
   /// membedakan "belum pernah meminta" dari "sudah, tinggal menunggu jawaban".
   final DateTime? mintaBatalPada;
+
+  /// Benar kalau order ini sudah terlalu lama menganggur tanpa runner.
+  ///
+  /// Dihitung server, bukan di sini. Ambangnya aturan sistem (`OrderMacet` di backend),
+  /// bukan angka milik satu layar, dan menghitungnya sendiri di dua permukaan berarti
+  /// aplikasi dan dashboard bisa berbeda pendapat tentang order yang sama.
+  final bool macet;
 
   final List<OrderOffer> offers;
   final List<OrderMessage> messages;
@@ -148,6 +156,7 @@ class Order {
     DateTime? dibayarPada,
     DateTime? selesaiPada,
     DateTime? mintaBatalPada,
+    bool? macet,
     List<OrderOffer>? offers,
     List<OrderMessage>? messages,
     Payment? payment,
@@ -175,6 +184,7 @@ class Order {
       dibayarPada: dibayarPada ?? this.dibayarPada,
       selesaiPada: selesaiPada ?? this.selesaiPada,
       mintaBatalPada: mintaBatalPada ?? this.mintaBatalPada,
+      macet: macet ?? this.macet,
       offers: offers ?? this.offers,
       messages: messages ?? this.messages,
       // Kalau daftar pesannya diganti, jumlahnya ikut dihitung ulang dari daftar

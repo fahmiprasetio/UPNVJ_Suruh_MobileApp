@@ -503,7 +503,37 @@ class _Baris extends StatelessWidget {
 /// Kalimatnya menjawab satu pertanyaan: siapa yang sedang berbuat sesuatu, dan
 /// apa yang ditunggu. Status yang cuma dinamai lencana meninggalkan klien
 /// menebak apakah ia sedang menunggu orang lain atau sedang ditunggu.
-String? _catatanStatus(Order order) => switch (order.status) {
+String? _catatanStatus(Order order) {
+  // Order yang sudah lama menganggur mendapat kalimatnya sendiri, mendahului kalimat
+  // biasa untuk statusnya.
+  //
+  // "Ordermu sedang disiarkan ke runner yang tersedia" adalah kalimat yang benar pada
+  // menit pertama dan menyesatkan pada menit keempat puluh: yang membacanya menyimpulkan
+  // semuanya berjalan sebagaimana mestinya, padahal tidak ada yang berjalan sama sekali.
+  // Klien yang tidak diberi tahu tidak akan menanyakannya lewat aplikasi ini; ia akan
+  // menanyakannya lewat WhatsApp, yang justru kebiasaan yang mau ditinggalkan.
+  //
+  // Kalimatnya menyebut jalan keluar yang ada di layar yang sama, beberapa sentimeter di
+  // bawahnya: minta pembatalan untuk order yang sudah dibayar, batalkan sendiri untuk
+  // permintaan Jalur B yang belum berharga.
+  if (order.macet) {
+    return switch (order.status) {
+      OrderStatus.mencariRunner =>
+        'Belum ada runner yang mengambil ordermu. Uangmu tetap aman. Kamu bisa '
+            'menunggu lagi, atau minta pembatalan di bawah.',
+      OrderStatus.permintaan =>
+        'Belum ada runner yang menawar permintaanmu. Kamu bisa menunggu lagi, '
+            'atau membatalkannya di bawah.',
+      // Status lain tidak pernah dihitung macet oleh server. Kalau suatu saat iya,
+      // yang muncul kalimat biasanya, bukan kalimat yang salah.
+      _ => _catatanBiasa(order),
+    };
+  }
+
+  return _catatanBiasa(order);
+}
+
+String? _catatanBiasa(Order order) => switch (order.status) {
   OrderStatus.permintaan => order.penawaranPending.isEmpty
       ? 'Menunggu runner yang tersedia mengajukan tawaran.'
       : 'Ada tawaran masuk dari runner di bawah. Pilih salah satu, atau '

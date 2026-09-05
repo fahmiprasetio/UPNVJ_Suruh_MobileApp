@@ -3,6 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:upnvj_suruh/app.dart';
+import 'package:upnvj_suruh/data/fake/fake_order_repository.dart';
+import 'package:upnvj_suruh/data/fake/seed_data.dart';
+import 'package:upnvj_suruh/domain/models/order.dart';
+import 'package:upnvj_suruh/providers/repository_providers.dart';
 
 import '../../support/tiruan.dart';
 
@@ -28,6 +32,32 @@ void main() {
     view.resetPhysicalSize();
     view.resetDevicePixelRatio();
   });
+
+  /// Membuka riwayat dengan daftar order yang ditentukan tes, bukan data contoh bawaan.
+  ///
+  /// Dipakai untuk keadaan yang tidak ada di data contoh dan tidak bisa dibuat lewat
+  /// tindakan pengguna, seperti bendera macet: yang menentukannya server, dan repository
+  /// tiruan memang tidak menghitungnya sendiri.
+  Future<void> bukaRiwayatDengan(WidgetTester tester, List<Order> orders) async {
+    final repo = FakeOrderRepository(
+      pemanggil: () => SeedData.klien.id,
+      orderAwal: orders,
+    );
+    addTearDown(repo.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sumberTiruan,
+          orderRepositoryProvider.overrideWith((ref) => repo),
+        ],
+        child: const UpnvjSuruhApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Order Saya'));
+    await tester.pumpAndSettle();
+  }
 
   Future<void> bukaRiwayat(WidgetTester tester) async {
     await tester.pumpWidget(
@@ -229,5 +259,50 @@ void main() {
 
     expect(find.text('Order selesai. Terima kasih!'), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'Bayar Sekarang'), findsNothing);
+  });
+
+  testWidgets('order yang belum lama tetap memakai kalimat biasanya', (tester) async {
+    await bukaRiwayat(tester);
+    await tester.tap(find.textContaining('SRH-0411'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Ordermu sedang disiarkan ke runner yang tersedia.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Belum ada runner yang mengambil'), findsNothing);
+  });
+
+  /// Order yang menganggur terlalu lama sekarang mengatakannya.
+  ///
+  /// Benderanya datang dari server, jadi tes ini memasangnya langsung. Yang diuji bukan
+  /// perhitungannya (itu milik backend, dan diuji di sana), melainkan bahwa layar ini
+  /// benar-benar mengganti kalimatnya dan menyebutkan jalan keluarnya.
+  testWidgets('order yang lama tanpa runner mengatakannya, bukan bilang sedang disiarkan', (
+    tester,
+  ) async {
+    final macet = SeedData.orderAwal().first.copyWith(macet: true);
+    await bukaRiwayatDengan(tester, [macet]);
+
+    await tester.tap(find.textContaining(macet.kodeOrder));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Belum ada runner yang mengambil'), findsOneWidget);
+    expect(
+      find.text('Ordermu sedang disiarkan ke runner yang tersedia.'),
+      findsNothing,
+    );
+  });
+
+  /// Dan jalan keluarnya memang ada di layar yang sama, beberapa sentimeter di bawahnya.
+  /// Kalimat yang menyebut sesuatu yang tidak ada di layar lebih buruk daripada diam.
+  testWidgets('kalimat macet menyebut jalan keluar yang benar-benar ada', (tester) async {
+    final macet = SeedData.orderAwal().first.copyWith(macet: true);
+    await bukaRiwayatDengan(tester, [macet]);
+
+    await tester.tap(find.textContaining(macet.kodeOrder));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Minta pembatalan'), findsOneWidget);
   });
 }
