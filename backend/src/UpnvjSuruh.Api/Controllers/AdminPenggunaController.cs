@@ -116,6 +116,47 @@ public class AdminPenggunaController(
             permintaan.Ukuran));
     }
 
+    /// <summary>Order yang pernah dilepas runner ini sesudah menerimanya.</summary>
+    /// <remarks>
+    /// Ada karena penangguhan tanpa bukti bukan keputusan, cuma tebakan. Sejak akun bisa
+    /// dihentikan (bagian 50) dan admin punya cara melihat siapa yang sedang dihentikan
+    /// (bagian 51), yang tersisa satu: dasar untuk memutuskan. Runner yang menerima lalu
+    /// melepas sepuluh order berturut-turut sebelumnya meninggalkan basis data yang bentuknya
+    /// persis sama dengan runner yang tidak pernah melakukannya, karena penugasannya dihapus
+    /// bersama seluruh jejaknya.
+    ///
+    /// Berhalaman dan diurutkan dari yang terbaru, sama seperti riwayat peran, dan alasannya
+    /// juga sama: catatan audit tidak pernah dihapus, jadi satu-satunya arah pertumbuhannya
+    /// naik.
+    ///
+    /// Ordernya ikut dimuat supaya jawabannya membawa kode order, bukan cuma id. Yang
+    /// membacanya sedang menimbang sebuah akun, dan deretan id tanpa kode berarti ia harus
+    /// membuka satu per satu untuk tahu order mana saja yang dimaksud.
+    /// </remarks>
+    [HttpGet("{id:guid}/pelepasan")]
+    public async Task<ActionResult<HalamanResponse<PelepasanOrderResponse>>> Pelepasan(
+        Guid id,
+        [FromQuery] PermintaanHalaman permintaan,
+        CancellationToken batal)
+    {
+        var kueri = db.OrderReleases.Where(p => p.RunnerId == id);
+
+        var total = await kueri.CountAsync(batal);
+        var pelepasan = await kueri
+            .Include(p => p.Order)
+            .OrderByDescending(p => p.ReleasedAt)
+            .ThenByDescending(p => p.Id)
+            .Skip(permintaan.Dilewati)
+            .Take(permintaan.Ukuran)
+            .ToListAsync(batal);
+
+        return Ok(new HalamanResponse<PelepasanOrderResponse>(
+            [.. pelepasan.Select(PelepasanOrderResponse.Dari)],
+            total,
+            permintaan.Halaman,
+            permintaan.Ukuran));
+    }
+
     /// <summary>Menetapkan peran seseorang.</summary>
     /// <summary>Menangguhkan sebuah akun: pemiliknya tidak bisa memakai aplikasi sama sekali.</summary>
     /// <remarks>

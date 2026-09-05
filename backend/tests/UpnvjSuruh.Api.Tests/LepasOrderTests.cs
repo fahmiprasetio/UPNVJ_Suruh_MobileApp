@@ -304,4 +304,125 @@ public class LepasOrderTests(DatabaseApiFactory pabrik) : IClassFixture<Database
 
         Assert.False(adaBayaranHilang);
     }
+
+    // --- Jejak yang ditinggalkan ---
+
+    /// <summary>
+    /// Sebelum ada tabelnya, runner yang menerima lalu melepas sepuluh order berturut-turut
+    /// meninggalkan basis data yang bentuknya persis sama dengan runner yang tidak pernah
+    /// melakukannya, karena penugasannya dihapus bersama seluruh jejaknya.
+    /// </summary>
+    [Fact]
+    public async Task MelepasMeninggalkanCatatanBesertaAlasannya()
+    {
+        var (_, runner, order) = await OrderDipegangAsync();
+        var runnerId = await IdRunnerAsync(order.Id);
+
+        (await LepasAsync(runner, order.Id, "Motor mogok di Lenteng Agung.")).EnsureSuccessStatusCode();
+
+        using var lingkup = pabrik.Services.CreateScope();
+        var db = lingkup.ServiceProvider.GetRequiredService<AppDbContext>();
+        var catatan = await db.OrderReleases.SingleAsync(p => p.OrderId == order.Id);
+
+        Assert.Equal(runnerId, catatan.RunnerId);
+        Assert.Equal("Motor mogok di Lenteng Agung.", catatan.Reason);
+    }
+
+    /// <summary>
+    /// Penugasannya tetap dihapus, bukan ditandai. Itu inti kenapa jejaknya perlu tabel
+    /// tersendiri: kalau baris penugasannya tertinggal, setiap tempat yang bertanya "siapa
+    /// runner order ini" harus ikut menyaring yang sudah pergi, dan satu saja yang lupa
+    /// berarti runner yang sudah pergi tetap bisa membaca alamat rumah pelanggan.
+    /// </summary>
+    [Fact]
+    public async Task CatatannyaTidakMenghidupkanKembaliPenugasanYangDihapus()
+    {
+        var (_, runner, order) = await OrderDipegangAsync();
+
+        (await LepasAsync(runner, order.Id)).EnsureSuccessStatusCode();
+
+        using var lingkup = pabrik.Services.CreateScope();
+        var db = lingkup.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.False(await db.OrderRunnerAssignments.AnyAsync(a => a.OrderId == order.Id));
+    }
+
+    /// <summary>
+    /// Yang dicari admin justru pola, bukan satu kejadian. Menghitungnya per runner harus
+    /// benar walaupun ordernya berbeda-beda.
+    /// </summary>
+    [Fact]
+    public async Task DuaPelepasanOlehSatuRunnerTercatatDuaBaris()
+    {
+        var (klienA, _) = await AkunAsync(UserRole.Klien);
+        var (runner, runnerId) = await AkunAsync(UserRole.Runner);
+
+        foreach (var _ in Enumerable.Range(0, 2))
+        {
+            var order = await BuatOrderAsync(klienA);
+            await BayarAsync(order.Id, order.Harga!.Value);
+            (await runner.PostAsync($"/api/orders/{order.Id}/terima", null)).EnsureSuccessStatusCode();
+            (await LepasAsync(runner, order.Id)).EnsureSuccessStatusCode();
+        }
+
+        using var lingkup = pabrik.Services.CreateScope();
+        var db = lingkup.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal(2, await db.OrderReleases.CountAsync(p => p.RunnerId == runnerId));
+    }
+
+    // --- Apa yang dilihat admin ---
+
+    [Fact]
+    public async Task AdminMelihatDaftarPelepasanRunnerBesertaKodeOrdernya()
+    {
+        var (_, runner, order) = await OrderDipegangAsync();
+        var runnerId = await IdRunnerAsync(order.Id);
+        var (admin, _) = await AkunAsync(UserRole.Admin);
+
+        (await LepasAsync(runner, order.Id, "Jadwal kuliah bergeser.")).EnsureSuccessStatusCode();
+
+        var halaman = await admin.GetFromJsonAsync<HalamanResponse<PelepasanOrderResponse>>(
+            $"/api/admin/pengguna/{runnerId}/pelepasan");
+
+        var baris = Assert.Single(halaman!.Isi);
+        Assert.Equal(order.Id, baris.OrderId);
+        // Kode ordernya ikut, bukan cuma idnya: admin yang sedang menimbang sebuah akun
+        // tidak seharusnya membuka satu per satu untuk tahu order mana yang dimaksud.
+        Assert.Equal(order.KodeOrder, baris.KodeOrder);
+        Assert.Equal("Jadwal kuliah bergeser.", baris.Alasan);
+    }
+
+    [Fact]
+    public async Task RunnerYangBelumPernahMelepasPunyaDaftarKosong()
+    {
+        var (_, runnerId) = await AkunAsync(UserRole.Runner);
+        var (admin, _) = await AkunAsync(UserRole.Admin);
+
+        var halaman = await admin.GetFromJsonAsync<HalamanResponse<PelepasanOrderResponse>>(
+            $"/api/admin/pengguna/{runnerId}/pelepasan");
+
+        Assert.Empty(halaman!.Isi);
+        Assert.Equal(0, halaman.Total);
+    }
+
+    /// <summary>
+    /// Daftar ini menyebutkan alasan yang ditulis runner beserta order yang ia pegang, jadi
+    /// ia berdiri di balik pintu yang sama dengan sisa dashboard admin.
+    /// </summary>
+    [Fact]
+    public async Task DaftarPelepasanTertutupUntukYangBukanAdmin()
+    {
+        var (runnerLain, runnerLainId) = await AkunAsync(UserRole.Runner);
+
+        var jawaban = await runnerLain.GetAsync($"/api/admin/pengguna/{runnerLainId}/pelepasan");
+
+        Assert.Equal(HttpStatusCode.Forbidden, jawaban.StatusCode);
+    }
+
+    /// <summary>Id runner yang sedang memegang order, dibaca sebelum ia melepasnya.</summary>
+    private async Task<Guid> IdRunnerAsync(Guid orderId)
+    {
+        using var lingkup = pabrik.Services.CreateScope();
+        var db = lingkup.ServiceProvider.GetRequiredService<AppDbContext>();
+        return (await db.OrderRunnerAssignments.SingleAsync(a => a.OrderId == orderId)).RunnerId;
+    }
 }

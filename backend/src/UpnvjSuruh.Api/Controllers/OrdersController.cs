@@ -431,9 +431,9 @@ public class OrdersController(
     /// percakapan ordernya sebagai pesan dari runner itu, tempat klien dan admin
     /// sama-sama bisa membacanya.
     ///
-    /// ponytail: tanpa jejak siapa sering melepas. Kalau pola itu jadi masalah, yang
-    /// dibutuhkan tabel tersendiri, bukan kolom di penugasan yang harus disaring di enam
-    /// tempat.
+    /// Jejak siapa sering melepas tinggal di <see cref="OrderRelease"/>, tabel tersendiri —
+    /// bukan kolom di penugasan yang harus disaring di enam tempat. Penugasannya tetap
+    /// dihapus persis seperti sebelumnya, jadi tidak ada satu pun kueri yang berubah.
     /// </remarks>
     [EnableRateLimiting(BatasLaju.KebijakanTulis)]
     [HttpPost("{id:guid}/lepas")]
@@ -480,6 +480,16 @@ public class OrdersController(
             SenderId = runnerId,
             SenderRole = UserRole.Runner,
             Text = permintaan.Alasan.Trim(),
+        });
+
+        // Ditulis sebelum penugasannya dihapus, dan bukan cuma soal urutan yang rapi:
+        // sesudah baris itu hilang tidak ada lagi yang bisa membuktikan runner ini pernah
+        // memegang order ini.
+        db.OrderReleases.Add(new OrderRelease
+        {
+            OrderId = order.Id,
+            RunnerId = runnerId,
+            Reason = permintaan.Alasan.Trim(),
         });
 
         db.OrderRunnerAssignments.Remove(penugasan);

@@ -48,6 +48,29 @@ public record PerubahanPeranResponse(
         p.ChangedAt);
 }
 
+/// <summary>Satu kali seorang runner melepas order yang sudah dipegangnya.</summary>
+/// <remarks>
+/// Membawa kode ordernya, bukan cuma idnya. Yang membacanya sedang menimbang apakah sebuah
+/// akun pantas dihentikan, dan deretan id tanpa kode berarti ia harus membuka satu per satu
+/// untuk tahu order mana saja yang dimaksud.
+/// </remarks>
+public record PelepasanOrderResponse(
+    Guid Id,
+    Guid OrderId,
+    string KodeOrder,
+    Guid RunnerId,
+    string Alasan,
+    DateTime DilepasPada)
+{
+    public static PelepasanOrderResponse Dari(OrderRelease p) => new(
+        p.Id,
+        p.OrderId,
+        p.Order?.OrderCode ?? "-",
+        p.RunnerId,
+        p.Reason,
+        p.ReleasedAt);
+}
+
 /// <summary>
 /// Penyaring dan halaman untuk daftar order admin.
 /// </summary>

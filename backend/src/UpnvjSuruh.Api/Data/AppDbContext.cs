@@ -13,6 +13,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<OrderRunnerAssignment> OrderRunnerAssignments => Set<OrderRunnerAssignment>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<UserRoleChange> UserRoleChanges => Set<UserRoleChange>();
+    public DbSet<OrderRelease> OrderReleases => Set<OrderRelease>();
     public DbSet<TarifSetting> TarifSettings => Set<TarifSetting>();
     public DbSet<PayoutSetting> PayoutSettings => Set<PayoutSetting>();
 
@@ -49,6 +50,29 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .HasForeignKey(p => p.UserId)
                 // Catatan audit tidak ikut hilang bersama akunnya. Justru akun yang dihapus
                 // adalah akun yang paling mungkin dipertanyakan belakangan.
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<OrderRelease>(entity =>
+        {
+            entity.Property(p => p.Reason).HasMaxLength(BatasMasukan.Deskripsi);
+
+            // Diindeks lewat runnernya, bukan lewat ordernya: pertanyaan yang dijawab tabel
+            // ini "berapa sering orang ini melepas", bukan "siapa saja yang pernah melepas
+            // order ini" — order yang dilepas dua kali oleh dua orang berbeda sudah cukup
+            // aneh untuk diperiksa satu per satu.
+            entity.HasIndex(p => p.RunnerId);
+
+            entity.HasOne(p => p.Order)
+                .WithMany()
+                .HasForeignKey(p => p.OrderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(p => p.Runner)
+                .WithMany()
+                .HasForeignKey(p => p.RunnerId)
+                // Sama seperti catatan peran: justru akun yang dihapus adalah akun yang
+                // paling mungkin dipertanyakan belakangan.
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
