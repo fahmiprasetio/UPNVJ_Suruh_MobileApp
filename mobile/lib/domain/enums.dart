@@ -75,7 +75,13 @@ enum OfferStatus {
   disetujui,
   ditolak,
   dinegoUlang,
-  ditutup;
+  ditutup,
+
+  /// Ditarik kembali runner yang membuatnya, sebelum klien menjawabnya.
+  ///
+  /// Satu-satunya status di sini yang lahir dari tindakan runner; empat lainnya
+  /// keputusan klien atau sistem.
+  dicabut;
 
   String get label => switch (this) {
     OfferStatus.pending => 'Menunggu jawabanmu',
@@ -83,6 +89,7 @@ enum OfferStatus {
     OfferStatus.ditolak => 'Ditolak',
     OfferStatus.dinegoUlang => 'Diminta ditinjau ulang',
     OfferStatus.ditutup => 'Klien sudah pilih runner lain',
+    OfferStatus.dicabut => 'Ditarik runner',
   };
 }
 

@@ -247,6 +247,101 @@ public class JalurBController(AppDbContext db, IHubContext<OrderHub> hub) : Cont
     }
 
     /// <summary>
+    /// Runner menarik kembali penawarannya sendiri.
+    /// </summary>
+    /// <remarks>
+    /// Sebelum ini runner tidak punya jalan keluar apa pun atas penawarannya. Ia tidak bisa
+    /// mencabutnya, dan tidak bisa mengirim penawaran pengganti selama yang lama masih
+    /// menunggu (index unik parsial pada pasangan OrderId dan runner menahannya). Sementara
+    /// itu klien boleh menyetujuinya kapan saja, dan persetujuan memindahkan harga penawaran
+    /// menjadi harga order lalu mengunci runner itu sebagai pemegangnya begitu lunas.
+    ///
+    /// Artinya satu digit yang salah ketik — 50.000 padahal maksudnya 150.000 — mengikat
+    /// runner ke pekerjaan seharga sepertiga, dan satu-satunya harapannya klien kebetulan
+    /// menolak. Itu bukan tawar-menawar, itu jebakan.
+    ///
+    /// ## Yang bisa dan tidak bisa dicabut
+    ///
+    /// Yang masih menunggu jawaban (<see cref="OfferStatus.Pending"/>) dan yang diminta
+    /// dihitung ulang (<see cref="OfferStatus.DinegoUlang"/>): boleh. Keduanya belum jadi
+    /// komitmen apa pun bagi klien.
+    ///
+    /// Yang sudah disetujui: tidak. Harga ordernya sudah ditetapkan dari penawaran itu dan
+    /// klien mungkin sedang membayarnya; membiarkan runner menariknya di titik itu berarti
+    /// klien membayar pekerjaan yang tidak lagi punya siapa-siapa. Runner yang tetap ingin
+    /// mundur menunggu pembayarannya masuk, lalu memakai jalan yang memang untuk itu
+    /// (<c>POST /api/orders/{id}/lepas</c>), yang mengembalikan ordernya ke pencarian runner
+    /// alih-alih meninggalkannya kosong.
+    ///
+    /// Sesudah dicabut, order itu muncul lagi di daftar order masuk runner dan ia boleh
+    /// menawar ulang dengan angka yang benar. Itu memang tujuannya.
+    /// </remarks>
+    [EnableRateLimiting(BatasLaju.KebijakanTulis)]
+    [HttpPost("{id:guid}/penawaran/{offerId:guid}/cabut")]
+    [Authorize(Roles = Peran.Runner)]
+    public async Task<ActionResult<OrderResponse>> Cabut(
+        Guid id,
+        Guid offerId,
+        CabutPenawaranRequest permintaan,
+        CancellationToken batal)
+    {
+        var order = await Muat(id, batal);
+        if (order is null) return NotFound();
+
+        var runnerId = User.Id();
+
+        var penawaran = order.Offers.SingleOrDefault(
+            f => f.Id == offerId && f.CreatedByRunnerId == runnerId);
+
+        // 404, bukan 403: penawaran orang lain bukan sesuatu yang boleh ia ketahui ada.
+        if (penawaran is null) return NotFound();
+
+        if (penawaran.Status is not (OfferStatus.Pending or OfferStatus.DinegoUlang))
+        {
+            return Salah(
+                "Penawaran ini sudah tidak bisa dicabut",
+                penawaran.Status == OfferStatus.Disetujui
+                    ? "Penawaranmu sudah dipilih klien dan harganya sudah jadi harga order. "
+                      + "Kalau tetap ingin mundur, tunggu pembayarannya masuk lalu lepas "
+                      + "ordernya."
+                    : $"Penawaran ini sudah {penawaran.Status}.");
+        }
+
+        // Ditulis selagi runnernya masih pihak yang berkepentingan di order ini. Sesudah
+        // penawarannya dicabut ia bukan siapa-siapa di sana lagi (AksesOrder.MasihMenawar),
+        // dan endpoint chat akan menolaknya.
+        var alasan = permintaan.Alasan?.Trim();
+        if (!string.IsNullOrEmpty(alasan))
+        {
+            db.OrderMessages.Add(new OrderMessage
+            {
+                OrderId = order.Id,
+                // Ke jalur obrolan pribadinya sendiri, bukan obrolan umum: yang perlu
+                // membacanya cuma klien, dan runner lain yang menawar order yang sama tidak
+                // ada urusannya dengan tawaran yang ditarik ini.
+                RunnerPenawarId = runnerId,
+                SenderId = runnerId,
+                SenderRole = UserRole.Runner,
+                Text = alasan,
+            });
+        }
+
+        Jawab(penawaran, OfferStatus.Dicabut);
+
+        await db.SaveChangesAsync(batal);
+
+        // Status ordernya tidak bergeser: permintaan Jalur B yang kehilangan satu penawaran
+        // tetap permintaan yang menerima penawaran. Yang berubah cuma isi daftar tawarannya,
+        // dan itu terlihat dari ordernya sendiri.
+        await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
+
+        return Ok(OrderResponse.Dari(
+            order,
+            order.Client?.Name ?? "Klien",
+            await db.JumlahPesanAsync(order.Id, runnerId, User.Punya(Peran.Admin), batal)));
+    }
+
+    /// <summary>
     /// Klien meminta satu penawaran tertentu ditinjau ulang, disertai alasannya.
     /// </summary>
     /// <remarks>

@@ -178,6 +178,48 @@ public class OrdersController(
             batal));
     }
 
+    /// <summary>
+    /// Order yang sedang ditawar runner yang masuk, dan penawarannya masih hidup.
+    /// </summary>
+    /// <remarks>
+    /// Sebelum daftar ini ada, penawaran yang sudah dikirim lenyap dari pandangan runner
+    /// sepenuhnya. Ordernya keluar dari <see cref="Tersiar"/> begitu ia menawar (penyaring di
+    /// sana sengaja mengecualikan order yang sudah ia tawar), dan tidak pernah masuk ke
+    /// <see cref="RunnerSaya"/>, yang isinya order yang sudah punya penugasan. Jadi runner
+    /// menekan kirim, lalu tidak ada apa-apa: ia tidak tahu tawarannya masih menunggu,
+    /// ditolak, atau diminta dihitung ulang — padahal permintaan hitung ulang mengirim pesan
+    /// ke jalur obrolan pribadinya, yang juga tidak bisa ia buka dari mana pun.
+    ///
+    /// Yang dihitung "masih hidup" sama persis dengan aturan akses
+    /// (<see cref="AksesOrder.MasihMenawar"/>), dan memang harus: daftar yang memuat order
+    /// yang tidak lagi boleh ia buka cuma menghasilkan deretan kartu yang dijawab 404 saat
+    /// ditekan.
+    ///
+    /// Penawaran yang sudah disetujui ikut tampil di sini selama ordernya belum dibayar.
+    /// Di jendela itu runner belum punya penugasan, jadi ia belum muncul di
+    /// <see cref="RunnerSaya"/>, dan tanpa ini kabar terbaik yang bisa diterimanya —
+    /// tawarannya dipilih — justru tidak terlihat di mana pun.
+    /// </remarks>
+    [HttpGet("tawaran-saya")]
+    [Authorize(Roles = Peran.Runner)]
+    public async Task<ActionResult<HalamanResponse<OrderResponse>>> TawaranSaya(
+        [FromQuery] PermintaanHalaman permintaan,
+        CancellationToken batal)
+    {
+        var runnerId = User.Id();
+
+        return Ok(await HalamanAsync(
+            db.Orders.Where(o =>
+                !o.RunnerAssignments.Any(a => a.RunnerId == runnerId)
+                && o.Offers.Any(f =>
+                    f.CreatedByRunnerId == runnerId
+                    && (f.Status == OfferStatus.Pending
+                        || f.Status == OfferStatus.DinegoUlang
+                        || f.Status == OfferStatus.Disetujui))),
+            permintaan,
+            batal));
+    }
+
     /// <summary>Order yang sedang dipegang runner yang masuk, terbaru di atas.</summary>
     /// <remarks>
     /// Termasuk yang sudah selesai, karena runner perlu melihat riwayat pekerjaannya sendiri.

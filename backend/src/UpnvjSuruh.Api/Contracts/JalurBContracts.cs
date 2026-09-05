@@ -62,6 +62,27 @@ public record BuatPenawaranRequest
     public string? Catatan { get; init; }
 }
 
+/// <summary>
+/// Runner menarik kembali penawarannya sendiri, boleh disertai alasan.
+/// </summary>
+/// <remarks>
+/// Alasannya opsional, dan itu perbedaan yang disengaja dari <c>LepasOrderRequest</c> maupun
+/// <c>MintaBatalRequest</c>, yang keduanya mewajibkan. Yang dilepas di sana pekerjaan yang
+/// sudah dibayar dan sudah ditunggu orang; yang ditarik di sini tawaran yang belum diterima
+/// siapa pun, jadi belum ada komitmen yang dibatalkan. Mewajibkan alasan untuk kasus yang
+/// paling sering terjadi — salah ketik angka — cuma memaksa orang mengetik "salah ketik".
+///
+/// Kalau diisi, kalimatnya masuk ke jalur obrolan pribadi runner itu dengan klien, ditulis
+/// sebelum penawarannya dicabut: sesudah dicabut runner bukan pihak yang berkepentingan lagi
+/// di order itu (<c>AksesOrder.MasihMenawar</c>), jadi inilah satu-satunya kesempatannya
+/// menjelaskan.
+/// </remarks>
+public record CabutPenawaranRequest
+{
+    [MaxLength(BatasMasukan.PesanChat)]
+    public string? Alasan { get; init; }
+}
+
 /// <summary>Klien meminta satu penawaran tertentu dihitung ulang, disertai alasannya.</summary>
 public record NegoPenawaranRequest
 {

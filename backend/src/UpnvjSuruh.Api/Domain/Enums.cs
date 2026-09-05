@@ -60,7 +60,22 @@ public enum OfferStatus
     /// runner yang bersangkutan perlu tahu bedanya, "kamu ditolak" dan "klien sudah pilih
     /// orang lain" adalah kabar yang beda.
     /// </summary>
-    Ditutup
+    Ditutup,
+
+    /// <summary>
+    /// Ditarik kembali oleh runner yang membuatnya, sebelum klien menjawabnya.
+    ///
+    /// Beda dari <see cref="Ditolak"/> dan <see cref="Ditutup"/>, yang keduanya keputusan
+    /// klien. Ini satu-satunya jalan keluar yang dimiliki runner atas penawarannya sendiri,
+    /// dan alasan utamanya sederhana: salah ketik. Penawaran mengunci harga order begitu
+    /// klien menyetujuinya, jadi angka yang tertulis satu digit kurang mengikat runner ke
+    /// pekerjaan seharga sepersepuluh tanpa ada yang bisa ia lakukan.
+    ///
+    /// Ditulis sebagai status, bukan dengan menghapus barisnya, supaya klien yang sempat
+    /// melihat tawaran itu tahu bedanya "runner menariknya kembali" dari "tawaran itu tidak
+    /// pernah ada".
+    /// </summary>
+    Dicabut
 }
 
 public enum PaymentStatus
