@@ -152,20 +152,27 @@ export function kirimPesan(api: KlienApi, orderId: string, isi: string): Promise
 }
 
 /**
- * Mencari pengguna untuk diangkat atau diturunkan perannya.
+ * Mencari pengguna untuk diangkat, diturunkan perannya, atau dipulihkan.
  *
  * Backend menolak kata kunci di bawah 3 huruf (lihat `AdminPenggunaController.Cari`) dan
  * tidak menyediakan cara mengambil seluruh daftar; kata kunci di sini karena itu wajib,
  * bukan opsional, sama seperti di sana. Layar pemanggil yang memutuskan kapan permintaan
  * ini layak dikirim (biasanya menunggu pengetikan berhenti sejenak), bukan fungsi ini.
+ *
+ * Kecuali `tertangguh`. Di sana kata kunci boleh kosong, karena yang diminta bukan
+ * pencarian melainkan daftar akun yang sedang dihentikan — himpunan kecil yang dibuat
+ * admin sendiri, dan satu-satunya jalan menemukan kembali akun yang perlu dipulihkan
+ * tanpa harus mengingat namanya.
  */
 export function cariPengguna(
   api: KlienApi,
   kataKunci: string,
+  tertangguh = false,
   sinyal?: AbortSignal,
 ): Promise<Pengguna[]> {
   return api.minta<Pengguna[]>('/api/admin/pengguna', {
-    kueri: { q: kataKunci },
+    // `q` kosong dibuang oleh klien API, bukan dikirim sebagai string kosong.
+    kueri: { q: kataKunci || undefined, tertangguh: tertangguh || undefined },
     sinyal,
   });
 }

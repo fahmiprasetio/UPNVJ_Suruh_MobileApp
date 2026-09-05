@@ -321,4 +321,34 @@ describe('PanelPenangguhan', () => {
 
     window.sessionStorage.clear();
   });
+
+  /**
+   * Penangguhan bisa dicabut, tapi tanpa penyaring ini satu-satunya jalan menemukan
+   * akunnya kembali adalah mengingat namanya. Kotak centangnya karena itu harus bisa
+   * meminta daftar tanpa kata kunci sama sekali — yang persis dilarang untuk pencarian
+   * biasa, jadi ini justru bagian yang paling mudah salah.
+   */
+  it('meminta daftar akun tertangguh tanpa kata kunci sama sekali', async () => {
+    const ambil = vi.fn().mockImplementation((url: string) =>
+      Promise.resolve(
+        String(url).includes('tertangguh=true')
+          ? jawaban(200, [pengguna({ ditangguhkanPada: '2026-09-05T10:00:00Z' })])
+          : jawaban(200, []),
+      ),
+    );
+    pasang(ambil);
+
+    fireEvent.click(screen.getByLabelText('Hanya akun yang ditangguhkan'));
+
+    expect(await screen.findByText('Rifqi')).toBeInTheDocument();
+    const dipanggil = ambil.mock.calls.map((c) => String(c[0]));
+    expect(dipanggil.some((u) => u.includes('tertangguh=true'))).toBe(true);
+    expect(dipanggil.every((u) => !u.includes('q='))).toBe(true);
+  });
+
+  it('menandai akun yang ditangguhkan di hasil pencarian biasa', async () => {
+    await pilihRifqi(pengguna({ ditangguhkanPada: '2026-09-05T10:00:00Z' }));
+
+    expect(await screen.findByText('ditangguhkan')).toBeInTheDocument();
+  });
 });

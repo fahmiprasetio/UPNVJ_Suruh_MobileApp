@@ -34,14 +34,22 @@ export function HalamanKelolaPeran() {
   const { api } = useSesi();
   const [kataKunci, setKataKunci] = useState('');
   const kataKunciTertunda = gunakanTunda(kataKunci.trim(), 300);
+  const [hanyaTertangguh, setHanyaTertangguh] = useState(false);
   const [dipilih, setDipilih] = useState<Pengguna | null>(null);
 
-  const layakDicari = kataKunciTertunda.length >= PANJANG_KATA_KUNCI_MINIMAL;
+  // Kata kunci wajib hanya saat mencari di seluruh pengguna. Daftar akun tertangguh
+  // adalah himpunan kecil yang memang perlu ditinjau seluruhnya, jadi ia layak diminta
+  // tanpa kata kunci sama sekali — dan tanpa itu, admin yang diminta memulihkan sebuah
+  // akun harus mengingat namanya lebih dulu.
+  const layakDicari =
+    hanyaTertangguh || kataKunciTertunda.length >= PANJANG_KATA_KUNCI_MINIMAL;
 
   const ambil = useCallback(
     (sinyal: AbortSignal) =>
-      layakDicari ? cariPengguna(api, kataKunciTertunda, sinyal) : Promise.resolve([]),
-    [api, kataKunciTertunda, layakDicari],
+      layakDicari
+        ? cariPengguna(api, kataKunciTertunda, hanyaTertangguh, sinyal)
+        : Promise.resolve([]),
+    [api, kataKunciTertunda, hanyaTertangguh, layakDicari],
   );
 
   const { data: hasil, memuat, galat, muatUlang } = gunakanMuat(ambil);
@@ -69,10 +77,29 @@ export function HalamanKelolaPeran() {
             </p>
           )}
 
+          {/* Di sebelah kotak pencarian, bukan sebagai daftar tersendiri di layar lain.
+              Yang dilakukan admin sesudah menemukan akun tertangguh sama persis dengan
+              yang ia lakukan sesudah mencarinya lewat nama: membuka panelnya, lalu
+              memulihkan atau menyunting perannya. */}
+          <label className="cek">
+            <input
+              type="checkbox"
+              checked={hanyaTertangguh}
+              onChange={(e) => setHanyaTertangguh(e.target.checked)}
+            />
+            Hanya akun yang ditangguhkan
+          </label>
+
           {galat !== null && <KotakGalat galat={galat} cobaLagi={muatUlang} />}
           {layakDicari && memuat && hasil === null && <Memuat />}
           {layakDicari && hasil !== null && hasil.length === 0 && (
-            <Kosong keterangan="Tidak ada akun yang cocok." />
+            <Kosong
+              keterangan={
+                hanyaTertangguh
+                  ? 'Tidak ada akun yang sedang ditangguhkan.'
+                  : 'Tidak ada akun yang cocok.'
+              }
+            />
           )}
 
           {hasil !== null && hasil.length > 0 && (
@@ -93,6 +120,12 @@ export function HalamanKelolaPeran() {
                     <span className="daftar-pengguna__peran">
                       {pengguna.roles.length > 0 ? pengguna.roles.join(', ') : 'tanpa peran'}
                     </span>
+                    {/* Ditandai juga di hasil pencarian biasa, bukan cuma saat penyaringnya
+                        menyala: admin yang mencari nama untuk mengubah perannya perlu tahu
+                        akun itu sedang berhenti sebelum ia mengkliknya, bukan sesudahnya. */}
+                    {pengguna.ditangguhkanPada !== null && (
+                      <span className="daftar-pengguna__tanda">ditangguhkan</span>
+                    )}
                   </button>
                 </li>
               ))}
