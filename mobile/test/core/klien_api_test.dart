@@ -17,13 +17,14 @@ void main() {
     MockClient tiruan, {
     String? Function()? token,
     Duration? batasWaktu,
+    void Function()? saatSesiDitolak,
   }) {
     return KlienApi(
       klien: tiruan,
       baseUrl: 'http://uji.local',
       token: token,
       batasWaktu: batasWaktu,
-    );
+    )..saatSesiDitolak = saatSesiDitolak;
   }
 
   MockClient jawab(int status, {Object? isi, String? mentah}) {
@@ -336,6 +337,78 @@ void main() {
       ])).getDaftar('/api/orders/saya');
 
       expect(hasil, hasLength(2));
+    });
+  });
+
+  /// Token berlaku 60 menit dan tidak ada penyegarannya, jadi sesi yang habis di
+  /// tengah pemakaian adalah kejadian biasa, bukan kasus tepi. Sebelum ini tidak ada
+  /// apa pun yang bereaksi terhadapnya: setiap layar cuma berubah jadi kotak "gagal
+  /// muat" dengan tombol coba lagi yang selamanya gagal.
+  ///
+  /// Dua sisinya sama-sama gampang salah, jadi dua-duanya dijaga di sini. Yang
+  /// membawa token harus melapor; yang tidak membawa token tidak boleh, karena kode
+  /// masuk yang salah juga dijawab 401 dan berangkat sebelum ada sesi sama sekali.
+  group('sesi yang ditolak server', () {
+    test('401 pada permintaan bertoken melaporkan sesi ditolak', () async {
+      var dilaporkan = 0;
+      final klien = klienDengan(
+        jawab(401),
+        token: () => 'token-lama',
+        saatSesiDitolak: () => dilaporkan++,
+      );
+
+      await expectLater(
+        klien.get('/api/orders/saya'),
+        throwsA(isA<GalatTidakBerwenang>()),
+      );
+      expect(dilaporkan, 1);
+    });
+
+    test('401 tanpa token tidak melaporkan apa pun', () async {
+      var dilaporkan = 0;
+      final klien = klienDengan(
+        jawab(401),
+        saatSesiDitolak: () => dilaporkan++,
+      );
+
+      await expectLater(
+        klien.post('/api/auth/masuk', badan: {'kode': '000000'}),
+        throwsA(isA<GalatTidakBerwenang>()),
+      );
+      expect(dilaporkan, 0);
+    });
+
+    test('token kosong dihitung sama dengan tidak ada token', () async {
+      var dilaporkan = 0;
+      final klien = klienDengan(
+        jawab(401),
+        token: () => '',
+        saatSesiDitolak: () => dilaporkan++,
+      );
+
+      await expectLater(
+        klien.get('/api/orders/saya'),
+        throwsA(isA<GalatTidakBerwenang>()),
+      );
+      expect(dilaporkan, 0);
+    });
+
+    /// Galat lain tidak boleh ikut mengeluarkan orang. 403 khususnya: itu berarti
+    /// tokennya sah tapi perannya tidak cukup, dan mengeluarkan orang karena menyentuh
+    /// satu layar yang bukan haknya jauh lebih buruk daripada menolak layar itu saja.
+    test('galat selain 401 tidak melaporkan sesi ditolak', () async {
+      var dilaporkan = 0;
+
+      for (final status in [400, 403, 404, 409, 429, 500]) {
+        final klien = klienDengan(
+          jawab(status),
+          token: () => 'token-sah',
+          saatSesiDitolak: () => dilaporkan++,
+        );
+        await expectLater(klien.get('/api/orders/saya'), throwsA(isA<GalatApi>()));
+      }
+
+      expect(dilaporkan, 0);
     });
   });
 }

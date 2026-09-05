@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 
 import '../core/api/klien_api.dart';
 import '../core/api/konfigurasi_api.dart';
@@ -68,8 +69,43 @@ final alamatApiProvider = Provider<String>((ref) {
   return KonfigurasiApi.baca(modeDebug: ref.watch(modeDebugProvider));
 });
 
+/// Benar kalau sesi terakhir berakhir karena tokennya ditolak server, bukan
+/// karena penggunanya menekan keluar.
+///
+/// Dipakai layar masuk untuk menjelaskan kenapa orangnya tiba-tiba ada di sana.
+/// Tanpa keterangan itu, keluar paksa terbaca sebagai aplikasi yang rusak
+/// sendiri, dan orang yang mengira aplikasinya rusak tidak mencoba masuk lagi.
+///
+/// Dikosongkan di satu tempat saja, yaitu begitu ada yang berhasil masuk. Itu
+/// cukup untuk keduanya: sesi yang berakhir karena tombol keluar mendapati
+/// nilainya sudah `false` sejak ia masuk tadi, jadi tidak ada kalimat yang salah
+/// muncul untuk orang yang memang sengaja keluar.
+class SesiDitolak extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void tandai() => state = true;
+
+  void padamkan() => state = false;
+}
+
+final sesiDitolakProvider = NotifierProvider<SesiDitolak, bool>(SesiDitolak.new);
+
+/// Klien HTTP mentah yang dipakai [klienApiProvider].
+///
+/// Berdiri sebagai provider tersendiri semata supaya tes bisa memasang klien tiruan
+/// dan membuktikan apa yang terjadi ketika server menolak token, tanpa server
+/// sungguhan. Itu satu-satunya jalur di aplikasi ini yang kalau putus tidak
+/// menimbulkan galat apa pun, cuma aplikasi yang berhenti bisa dipakai tanpa memberi
+/// tahu kenapa. Alasannya sama dengan [modeDebugProvider].
+///
+/// Penutupannya diserahkan ke [KlienApi.dispose], pemilik satu-satunya, supaya tidak
+/// ada dua tempat yang mengaku menutup benda yang sama.
+final klienHttpProvider = Provider<http.Client>((ref) => http.Client());
+
 final klienApiProvider = Provider<KlienApi>((ref) {
   final klien = KlienApi(
+    klien: ref.watch(klienHttpProvider),
     baseUrl: ref.watch(alamatApiProvider),
     token: () => ref.read(sesiTokenProvider).nilai,
   );
@@ -190,6 +226,10 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final repo = ApiAuthRepository(
     klien: ref.watch(klienApiProvider),
     sesi: ref.watch(sesiTokenProvider),
+    // Arahnya sengaja begini: repository yang memberi tahu ke atas, bukan klien HTTP
+    // yang meminta repository lewat provider. Yang kedua membuat keduanya saling
+    // membutuhkan, dan Riverpod menolaknya sebagai lingkaran saat dijalankan.
+    saatSesiBerakhirPaksa: () => ref.read(sesiDitolakProvider.notifier).tandai(),
   );
   ref.onDispose(repo.dispose);
   return repo;

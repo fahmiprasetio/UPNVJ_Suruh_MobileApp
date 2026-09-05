@@ -15,6 +15,14 @@ import 'konfigurasi_api.dart';
 /// pengguna berganti akun.
 typedef PengambilToken = String? Function();
 
+/// Dipanggil ketika server menolak token yang sedang dipakai.
+///
+/// Berbentuk callback, bukan galat yang dilempar ke atas, karena yang harus
+/// terjadi bukan urusan satu layar yang kebetulan sedang mengambil data:
+/// seluruh aplikasi harus berhenti memakai token itu. Layar mana pun tetap
+/// menerima [GalatTidakBerwenang]-nya seperti biasa.
+typedef PenolakanSesi = void Function();
+
 /// Satu-satunya tempat aplikasi ini bicara HTTP.
 ///
 /// Semua repository lewat sini, jadi hal-hal yang harus benar di setiap permintaan
@@ -36,6 +44,15 @@ class KlienApi {
   final String _baseUrl;
   final PengambilToken _token;
   final Duration _batasWaktu;
+
+  /// Siapa yang diberi tahu ketika server menolak token yang sedang dipakai.
+  ///
+  /// Dipasang belakangan, bukan diterima di konstruktor, dan arahnya memang
+  /// begitu: yang memasangnya adalah `ApiAuthRepository`, satu-satunya yang tahu
+  /// cara mengakhiri sesi, dan repository itu sendiri dibuat dari klien ini. Kalau
+  /// urutannya dibalik — klien ini yang meminta repositorynya lewat provider —
+  /// keduanya jadi saling membutuhkan, dan Riverpod menolaknya sebagai lingkaran.
+  PenolakanSesi? saatSesiDitolak;
 
   Future<Map<String, dynamic>> get(String jalur, {Map<String, String>? kueri}) async =>
       _kirim(() => _klien.get(_alamat(jalur, kueri), headers: _header()));
@@ -140,6 +157,27 @@ class KlienApi {
     }
 
     if (jawaban.statusCode >= 200 && jawaban.statusCode < 300) return jawaban;
+
+    // Token yang ditolak dilaporkan sekali di sini, bukan ditunggu ditangani
+    // masing-masing layar.
+    //
+    // Tanpa ini, sesi yang habis di tengah pemakaian (token berlaku 60 menit,
+    // dan tidak ada penyegarannya) tidak menghasilkan apa pun selain setiap
+    // layar berubah jadi kotak "gagal muat" dengan tombol coba lagi yang
+    // selamanya gagal. Tidak ada satu pun kalimat yang memberi tahu bahwa yang
+    // dibutuhkan cuma masuk lagi, dan tidak ada jalan keluar selain menebaknya
+    // sendiri lewat tombol keluar di layar profil. Yang ditangani dengan benar
+    // selama ini cuma token kedaluwarsa yang ketahuan saat aplikasi DIBUKA
+    // (`ApiAuthRepository.pulihkanSesi`), bukan yang habis saat sedang dipakai.
+    //
+    // Syarat keduanya penting: cuma permintaan yang benar-benar membawa token
+    // yang boleh memicunya. Kode masuk yang salah juga dijawab 401, dan itu
+    // berangkat tanpa token sama sekali — memperlakukannya sebagai sesi ditolak
+    // berarti setiap salah ketik kode mengeluarkan orang yang bahkan belum
+    // masuk.
+    if (jawaban.statusCode == 401 && headerOtorisasi.isNotEmpty) {
+      saatSesiDitolak?.call();
+    }
 
     throw _terjemahkan(jawaban);
   }

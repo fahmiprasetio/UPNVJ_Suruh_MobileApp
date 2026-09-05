@@ -152,6 +152,10 @@ class _MasukScreenState extends ConsumerState<MasukScreen> {
           noHp: _noHpController.text.trim(),
           kode: _kodeController.text.trim(),
         );
+    // Keterangan "sesimu berakhir" dipadamkan begitu ada yang berhasil masuk.
+    // Ini satu-satunya tempat yang memadamkannya, lihat alasannya di
+    // [sesiDitolakProvider].
+    ref.read(sesiDitolakProvider.notifier).padamkan();
     // Tidak ada navigasi di sini. Yang memindahkan layar adalah berubahnya sesi,
     // dan itu diurus router. Layar yang mendorong dirinya sendiri setelah masuk
     // akan bertabrakan dengan pengalihan router dan menyisakan layar masuk di
@@ -201,6 +205,14 @@ class _MasukScreenState extends ConsumerState<MasukScreen> {
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
+                      if (ref.watch(sesiDitolakProvider)) ...[
+                        const SizedBox(height: AppTheme.spasiSedang),
+                        const _KotakGalat.pemberitahuan(
+                          pesan:
+                              'Sesimu sudah berakhir. Masuk lagi, ya, '
+                              'pekerjaan yang sudah tercatat tidak hilang.',
+                        ),
+                      ],
                       const SizedBox(height: AppTheme.spasiSedang),
                       ..._isiLangkah,
                       if (_galat != null) ...[
@@ -486,31 +498,46 @@ class _JalanKeluarBelumTerdaftar extends StatelessWidget {
 }
 
 class _KotakGalat extends StatelessWidget {
-  const _KotakGalat({required this.pesan});
+  const _KotakGalat({required this.pesan}) : _salahPengguna = true;
+
+  /// Kabar yang perlu dibaca, tapi bukan kesalahan siapa pun.
+  ///
+  /// Warnanya sengaja bukan warna galat. Sesi yang berakhir karena waktunya habis
+  /// bukan sesuatu yang orangnya lakukan salah, dan kotak merah di layar masuk
+  /// terbaca sebagai aplikasi yang rusak sendiri — persis kesimpulan yang membuat
+  /// orang berhenti mencoba, bukannya masuk lagi.
+  const _KotakGalat.pemberitahuan({required this.pesan}) : _salahPengguna = false;
 
   final String pesan;
+  final bool _salahPengguna;
 
   @override
   Widget build(BuildContext context) {
     final skema = Theme.of(context).colorScheme;
+    final latar = _salahPengguna ? skema.errorContainer : skema.secondaryContainer;
+    final tinta = _salahPengguna ? skema.onErrorContainer : skema.onSecondaryContainer;
 
     return Container(
       padding: const EdgeInsets.all(AppTheme.spasiSedang),
       decoration: BoxDecoration(
-        color: skema.errorContainer,
+        color: latar,
         borderRadius: BorderRadius.circular(AppTheme.radiusKartu),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.error_outline, size: 20, color: skema.onErrorContainer),
+          Icon(
+            _salahPengguna ? Icons.error_outline : Icons.schedule_outlined,
+            size: 20,
+            color: tinta,
+          ),
           const SizedBox(width: AppTheme.spasiKecil),
           Expanded(
             child: Text(
               pesan,
               style: Theme.of(
                 context,
-              ).textTheme.bodySmall?.copyWith(color: skema.onErrorContainer),
+              ).textTheme.bodySmall?.copyWith(color: tinta),
             ),
           ),
         ],

@@ -351,4 +351,49 @@ void main() {
 
     expect(find.text('Kirim kode'), findsOneWidget);
   });
+
+  /// Kalimat yang menjelaskan kenapa orangnya tiba-tiba ada di layar masuk.
+  ///
+  /// Sesi yang berakhir sendiri tanpa keterangan terbaca sebagai aplikasi yang rusak,
+  /// dan orang yang mengira aplikasinya rusak tidak mencoba masuk lagi. Yang dijaga di
+  /// sini dua-duanya: kalimatnya muncul saat memang sesinya ditolak, dan TIDAK muncul
+  /// untuk orang yang menekan keluar sendiri — kesalahan yang sama merugikannya, cuma
+  /// ke arah sebaliknya.
+  testWidgets('menjelaskan sesi yang berakhir sendiri', (tester) async {
+    final authRepo = FakeAuthRepository.belumMasuk();
+    addTearDown(authRepo.dispose);
+    final orderRepo = FakeOrderRepository();
+    addTearDown(orderRepo.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sumberTiruan,
+          authRepositoryProvider.overrideWith((ref) => authRepo),
+          orderRepositoryProvider.overrideWith((ref) => orderRepo),
+          sesiDitolakProvider.overrideWith(SesiDitolakYangSudahMenyala.new),
+        ],
+        child: const UpnvjSuruhApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Sesimu sudah berakhir'), findsOneWidget);
+  });
+
+  testWidgets('tidak menuduh sesi berakhir sendiri saat orangnya keluar sendiri', (
+    tester,
+  ) async {
+    await bukaBelumMasuk(tester);
+
+    expect(find.textContaining('Sesimu sudah berakhir'), findsNothing);
+  });
+}
+
+/// Keadaan "sesi terakhir ditolak server", dipasang tes tanpa perlu server yang
+/// sungguh menolak apa pun. Rangkaian dari 401 sampai ke keadaan ini diuji terpisah
+/// di `test/providers/sesi_ditolak_test.dart`.
+class SesiDitolakYangSudahMenyala extends SesiDitolak {
+  @override
+  bool build() => true;
 }

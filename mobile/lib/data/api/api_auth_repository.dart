@@ -13,12 +13,19 @@ import 'sesi_token.dart';
 /// aplikasi yang boleh menyatakan perannya sendiri sama saja dengan tidak punya
 /// peran sama sekali.
 class ApiAuthRepository implements AuthRepository {
-  ApiAuthRepository({required KlienApi klien, required SesiToken sesi})
-    : _klien = klien,
-      _sesi = sesi;
+  ApiAuthRepository({
+    required KlienApi klien,
+    required SesiToken sesi,
+    void Function()? saatSesiBerakhirPaksa,
+  }) : _klien = klien,
+       _sesi = sesi,
+       _saatSesiBerakhirPaksa = saatSesiBerakhirPaksa {
+    _klien.saatSesiDitolak = _tanganiPenolakanSesi;
+  }
 
   final KlienApi _klien;
   final SesiToken _sesi;
+  final void Function()? _saatSesiBerakhirPaksa;
 
   AppUser? _userAktif;
   final StreamController<AppUser?> _controller =
@@ -107,6 +114,30 @@ class ApiAuthRepository implements AuthRepository {
     _controller.add(user);
 
     return user;
+  }
+
+  /// Sesi berakhir bukan karena penggunanya menekan keluar, tapi karena server
+  /// menolak tokennya di tengah pemakaian.
+  ///
+  /// Token berlaku 60 menit dan tidak ada penyegarannya, jadi ini kejadian biasa,
+  /// bukan kasus tepi. Yang selama ini ditangani cuma token kedaluwarsa yang
+  /// ketahuan saat aplikasi DIBUKA, di [pulihkanSesi]; yang habis saat sedang
+  /// dipakai tidak menghasilkan apa pun selain setiap layar berubah jadi kotak
+  /// "gagal muat" dengan tombol coba lagi yang selamanya gagal, tanpa satu pun
+  /// kalimat yang memberi tahu bahwa yang dibutuhkan cuma masuk lagi.
+  ///
+  /// Yang memindahkan layar bukan method ini, melainkan sesi yang jadi kosong:
+  /// router mengantar yang sudah tidak masuk ke layar masuk, dan koneksi hub
+  /// ikut diputus karena tokennya sudah pasti ditolak juga.
+  void _tanganiPenolakanSesi() {
+    // Sudah keluar sejak permintaan itu berangkat: dua permintaan gagal beruntun,
+    // atau penggunanya menekan keluar tepat di sela itu. Tidak ada sesi yang perlu
+    // diakhiri lagi, dan menyalakan kalimat "sesimu berakhir" untuk orang yang
+    // barusan menekan keluar sendiri jelas salah.
+    if (_userAktif == null) return;
+
+    unawaited(keluar());
+    _saatSesiBerakhirPaksa?.call();
   }
 
   @override
