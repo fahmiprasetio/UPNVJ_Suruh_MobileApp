@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:upnvj_suruh/app.dart';
+import 'package:upnvj_suruh/data/fake/seed_data.dart';
 
 import '../../support/tiruan.dart';
 
@@ -78,6 +79,9 @@ void main() {
   testWidgets('order tidak dibuat kalau alamat masih kosong', (tester) async {
     await bukaForm(tester);
 
+    // Dikosongkan lebih dulu: alamat tersimpan sekarang mengisi kolom jemput
+    // sendiri, dan yang diuji di sini penjagaannya, bukan keadaan awalnya.
+    await tester.enterText(kolom(0), '');
     await tester.enterText(kolom(2), '3');
     await tester.pumpAndSettle();
     await tester.tap(find.text('Buat Order'));
@@ -111,5 +115,19 @@ void main() {
 
     // Pekerjaannya sudah selesai, tidak boleh ada yang masih berputar.
     expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
+
+  /// Yang diisi kolom jemput, bukan kolom tujuan, dan urutannya kebalikan dari
+  /// jastip barang: di sini yang dijemput adalah dirinya sendiri, sedangkan di
+  /// jastip yang diantar adalah dirinya sendiri. Menukar keduanya menghasilkan
+  /// order yang berangkat ke alamat yang salah tanpa ada yang menyadarinya.
+  testWidgets('alamat tersimpan mengisi sendiri kolom jemput', (tester) async {
+    await bukaForm(tester);
+
+    expect(
+      tester.widget<TextFormField>(kolom(0)).controller?.text,
+      SeedData.klien.alamat,
+    );
+    expect(tester.widget<TextFormField>(kolom(1)).controller?.text, isEmpty);
   });
 }

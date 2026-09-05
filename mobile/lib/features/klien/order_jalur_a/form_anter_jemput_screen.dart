@@ -38,6 +38,28 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
 
   bool _sedangMengirim = false;
 
+  /// Alamat tersimpan mengisi sendiri kolom "Dijemput di mana?".
+  ///
+  /// Yang diisi cuma satu dari dua kolom alamat di layar ini, dan yang mana
+  /// bukan pilihan sembarang: di anter jemput justru terbalik dari jastip barang, karena yang dijemput adalah dirinya sendiri dan yang dituju kampus atau tempat lain.
+  ///
+  /// Diisi, bukan ditawarkan lewat tombol "pakai alamat saya". Isinya terlihat,
+  /// bisa disunting, dan tetap divalidasi sebelum dikirim, jadi tombol tambahan
+  /// cuma menambah satu ketukan bagi orang yang memang memesan dari kosnya --
+  /// yaitu hampir semuanya.
+  ///
+  /// Dibaca sekali di sini lewat `userAktif`, bukan ditonton lewat provider:
+  /// alamat yang berubah di tengah orang mengetik formulir order tidak boleh
+  /// menimpa apa yang sudah ia ketik.
+  @override
+  void initState() {
+    super.initState();
+    final alamat = ref.read(authRepositoryProvider).userAktif?.alamat;
+    if (alamat != null && alamat.isNotEmpty) {
+      _jemputController.text = alamat;
+    }
+  }
+
   @override
   void dispose() {
     _jemputController.dispose();

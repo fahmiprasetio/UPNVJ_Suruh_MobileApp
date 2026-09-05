@@ -69,8 +69,18 @@ void main() {
     await buka(tester, SeedData.klien);
 
     expect(find.widgetWithText(AppBar, 'Profil'), findsOneWidget);
-    expect(find.text(SeedData.klien.nama), findsOneWidget);
-    expect(find.text(SeedData.klien.noHp), findsOneWidget);
+    // Dicari di dalam kartu identitasnya, bukan di seluruh layar: kolom sunting
+    // di bawahnya berisi nama yang sama persis, jadi pencarian teks polos
+    // menemukan dua-duanya dan tidak membuktikan yang mana yang tampil.
+    final kartu = find.byKey(const ValueKey('kartu-identitas'));
+    expect(
+      find.descendant(of: kartu, matching: find.text(SeedData.klien.nama)),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: kartu, matching: find.text(SeedData.klien.noHp)),
+      findsOneWidget,
+    );
   });
 
   testWidgets('runner juga punya pintu profil, bukan cuma klien', (
@@ -82,7 +92,13 @@ void main() {
     await buka(tester, SeedData.runner);
 
     expect(find.widgetWithText(AppBar, 'Profil'), findsOneWidget);
-    expect(find.text(SeedData.runner.nama), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('kartu-identitas')),
+        matching: find.text(SeedData.runner.nama),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('keluar bertanya dulu, dan batal berarti tetap masuk', (
@@ -121,5 +137,66 @@ void main() {
     // sudah tidak ada.
     expect(find.text('Belum punya akun? Daftar'), findsOneWidget);
     expect(find.byType(BackButton), findsNothing);
+  });
+
+  testWidgets('nama yang disunting tersimpan, dan tampil di layar', (
+    tester,
+  ) async {
+    final authRepo = await buka(tester, SeedData.klien);
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, SeedData.klien.nama),
+      'Dina Rahmawati Putri',
+    );
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, 'Simpan'));
+    await tester.pumpAndSettle();
+
+    expect(authRepo.userAktif?.nama, 'Dina Rahmawati Putri');
+    expect(authRepo.userAktif?.noHp, SeedData.klien.noHp);
+    // Perannya tidak ikut berubah, dan itu bukan pemeriksaan basa-basi: satu
+    // method di jalur ini yang lalai menyalin peran berarti klien kehilangan
+    // seluruh permukaannya begitu ia membetulkan namanya.
+    expect(authRepo.userAktif?.roles, SeedData.klien.roles);
+  });
+
+  testWidgets('alamat bisa dikosongkan lagi sesudah pernah diisi', (
+    tester,
+  ) async {
+    // Kemampuan yang paling mudah hilang tanpa disadari, karena `copyWith`
+    // memperlakukan null sebagai "jangan diubah" — dan orang yang pindah kos
+    // adalah persis orang yang membutuhkannya.
+    final authRepo = await buka(tester, SeedData.klien);
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, SeedData.klien.alamat!),
+      '',
+    );
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, 'Simpan'));
+    await tester.pumpAndSettle();
+
+    expect(authRepo.userAktif?.alamat, isNull);
+  });
+
+  testWidgets('simpan mati selama tidak ada yang berubah', (tester) async {
+    await buka(tester, SeedData.klien);
+
+    final tombol = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Simpan'),
+    );
+    expect(tombol.onPressed, isNull);
+  });
+
+  testWidgets('nomor HP tidak punya kolom isian sama sekali', (tester) async {
+    // Bukan kolom mati: kolom yang tidak bisa diisi mengundang orangnya mencoba
+    // lalu menyimpulkan aplikasinya rusak.
+    await buka(tester, SeedData.klien);
+
+    expect(
+      find.widgetWithText(TextFormField, SeedData.klien.noHp),
+      findsNothing,
+    );
+    expect(find.textContaining('Nomor HP tidak bisa diubah'), findsOneWidget);
   });
 }

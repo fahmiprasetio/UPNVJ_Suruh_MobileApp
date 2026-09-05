@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:upnvj_suruh/app.dart';
+import 'package:upnvj_suruh/data/fake/seed_data.dart';
 
 import '../../support/tiruan.dart';
 import 'package:upnvj_suruh/core/config/tarif_config.dart';
@@ -159,5 +160,16 @@ void main() {
     expect(find.text('Menunggu Pembayaran'), findsWidgets);
     expect(find.text('Ambil paket di Indomaret Pondok Labu atas nama Dina'),
         findsOneWidget);
+  });
+
+  /// Kebalikan dari anter jemput: yang diambil ada di toko, dan yang diantar
+  /// adalah dirinya sendiri.
+  testWidgets('alamat tersimpan mengisi sendiri kolom tujuan', (tester) async {
+    await bukaForm(tester);
+
+    final tujuan = tester.widget<TextFormField>(
+      find.widgetWithText(TextFormField, 'Diantar ke mana?'),
+    );
+    expect(tujuan.controller?.text, SeedData.klien.alamat);
   });
 }

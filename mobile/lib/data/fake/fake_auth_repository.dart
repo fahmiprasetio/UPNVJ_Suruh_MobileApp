@@ -124,6 +124,44 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<AppUser> perbaruiProfil({required String nama, String? alamat}) async {
+    await Future<void>.delayed(_jedaJaringan);
+
+    final sekarang = _userAktif;
+    if (sekarang == null) {
+      throw StateError('Belum masuk');
+    }
+
+    final bersihNama = nama.trim();
+    if (bersihNama.isEmpty) {
+      throw StateError('Nama tidak boleh kosong');
+    }
+
+    final bersihAlamat = alamat?.trim();
+
+    // Dirakit lewat konstruktor, bukan `copyWith`. `copyWith` memperlakukan null
+    // sebagai "jangan diubah", jadi lewat sana alamat tidak akan pernah bisa
+    // dikosongkan lagi sesudah sekali diisi — persis kemampuan yang paling mungkin
+    // dipakai orang yang pindah kos.
+    final baru = AppUser(
+      id: sekarang.id,
+      nama: bersihNama,
+      noHp: sekarang.noHp,
+      roles: sekarang.roles,
+      alamat: bersihAlamat == null || bersihAlamat.isEmpty ? null : bersihAlamat,
+    );
+
+    // Ikut diperbarui di daftar akun contoh, supaya keluar lalu masuk lagi tidak
+    // mengembalikan nama lamanya.
+    final indeks = _users.indexWhere((u) => u.id == sekarang.id);
+    if (indeks >= 0) _users[indeks] = baru;
+
+    _userAktif = baru;
+    _controller.add(baru);
+    return baru;
+  }
+
+  @override
   Future<void> keluar() async {
     await Future<void>.delayed(_jedaJaringan);
     _userAktif = null;

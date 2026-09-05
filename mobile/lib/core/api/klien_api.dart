@@ -74,6 +74,14 @@ class KlienApi {
         ),
       );
 
+  Future<Map<String, dynamic>> put(String jalur, {Object? badan}) async => _kirim(
+        () => _klien.put(
+          _alamat(jalur, null),
+          headers: _header(denganBadan: badan != null),
+          body: badan == null ? null : jsonEncode(badan),
+        ),
+      );
+
   /// Mengirim satu berkas sebagai multipart.
   ///
   /// Lewat pintu yang sama dengan permintaan lain, bukan merakit `MultipartRequest`

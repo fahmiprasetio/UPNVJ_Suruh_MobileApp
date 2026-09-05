@@ -50,6 +50,76 @@ void main() {
     return (repo: repo, sesi: sesi, dikirim: dikirim);
   }
 
+  group('perbaruiProfil', () {
+    test('mengirim PUT dengan nama yang sudah dirapikan', () async {
+      final uji = buat((_) => jawabanUser);
+
+      await uji.repo.perbaruiProfil(
+        nama: '  Dina Rahmawati ',
+        alamat: ' Kos Melati ',
+      );
+
+      expect(uji.dikirim.single.method, 'PUT');
+      expect(uji.dikirim.single.url.path, '/api/auth/saya');
+      expect(jsonDecode(uji.dikirim.single.body), {
+        'nama': 'Dina Rahmawati',
+        'alamat': 'Kos Melati',
+      });
+    });
+
+    /// Yang paling penting dijaga di sini. Peran dan nomor HP tidak boleh ikut
+    /// berangkat, bukan karena server akan mengabaikannya, tapi karena kode yang
+    /// mengirim sesuatu yang tidak boleh diberikan akan dibaca orang berikutnya
+    /// sebagai sesuatu yang seharusnya bisa.
+    test('tidak pernah mengirim peran maupun nomor HP', () async {
+      final uji = buat((_) => jawabanUser);
+
+      await uji.repo.perbaruiProfil(nama: 'Dina', alamat: null);
+
+      final badan = jsonDecode(uji.dikirim.single.body) as Map<String, dynamic>;
+      expect(badan.containsKey('roles'), isFalse);
+      expect(badan.containsKey('noHp'), isFalse);
+    });
+
+    test('alamat kosong dikirim sebagai null, bukan string kosong', () async {
+      final uji = buat((_) => jawabanUser);
+
+      await uji.repo.perbaruiProfil(nama: 'Dina', alamat: '   ');
+
+      expect(
+        (jsonDecode(uji.dikirim.single.body) as Map<String, dynamic>)['alamat'],
+        isNull,
+      );
+    });
+
+    /// Server yang memutuskan bentuk akhirnya: ia memangkas spasi dan menyimpan
+    /// alamat kosong sebagai null. Merakit user dari apa yang barusan dikirim
+    /// berarti layar menampilkan sesuatu yang berbeda dari yang tersimpan.
+    test('user aktif diambil dari jawaban server, bukan dari yang dikirim',
+        () async {
+      final uji = buat((_) => {...jawabanUser, 'nama': 'Nama Dari Server'});
+
+      final hasil = await uji.repo.perbaruiProfil(nama: 'Nama Dikirim');
+
+      expect(hasil.nama, 'Nama Dari Server');
+      expect(uji.repo.userAktif?.nama, 'Nama Dari Server');
+    });
+
+    test('perubahan disiarkan ke penyimak user aktif', () async {
+      final uji = buat((_) => {...jawabanUser, 'nama': 'Nama Baru'});
+      final terlihat = <String?>[];
+      final langganan = uji.repo
+          .watchUserAktif()
+          .listen((user) => terlihat.add(user?.nama));
+      addTearDown(langganan.cancel);
+
+      await uji.repo.perbaruiProfil(nama: 'Nama Baru');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(terlihat.last, 'Nama Baru');
+    });
+  });
+
   group('daftar', () {
     test('mengirim nama dan nomor yang sudah dirapikan', () async {
       // Server menjawab 202 tanpa badan, sama untuk nomor yang terdaftar maupun

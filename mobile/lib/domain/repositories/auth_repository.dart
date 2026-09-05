@@ -70,5 +70,25 @@ abstract interface class AuthRepository {
   /// tidak memberi tahu bahwa setengah jawabannya sudah benar.
   Future<AppUser> masuk({required String noHp, required String kode});
 
+  /// Menyunting profil sendiri: nama, dan alamat bawaan.
+  ///
+  /// PERHATIKAN APA YANG TIDAK ADA DI SINI, dan keduanya disengaja.
+  ///
+  /// Tidak ada peran, karena aturan di atas: tidak satu pun method di kontrak ini
+  /// boleh mengubah [AppUser.roles].
+  ///
+  /// Tidak ada nomor HP, karena nomor HP adalah identitas masuk — ia yang menerima
+  /// kode. Menggantinya lewat satu kolom isian berarti siapa pun yang sempat
+  /// memegang HP orang lain sebentar bisa memindahkan akunnya ke nomornya sendiri,
+  /// dan pemilik aslinya terkunci di luar tanpa cara kembali. Menggantinya menuntut
+  /// verifikasi kode ke nomor barunya, dan itu pekerjaan tersendiri, bukan satu
+  /// parameter tambahan di sini.
+  ///
+  /// [alamat] boleh null atau kosong, artinya "tidak ada alamat tersimpan". Ini
+  /// bukan alamat order: order membawa alamatnya sendiri, karena satu orang memesan
+  /// dari tempat yang berbeda-beda. Yang ini cuma jawaban yang paling sering ia
+  /// ketik, disimpan supaya tidak diketik ulang setiap kali memesan.
+  Future<AppUser> perbaruiProfil({required String nama, String? alamat});
+
   Future<void> keluar();
 }

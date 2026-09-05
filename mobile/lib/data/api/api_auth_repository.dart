@@ -116,6 +116,33 @@ class ApiAuthRepository implements AuthRepository {
     return user;
   }
 
+  @override
+  Future<AppUser> perbaruiProfil({required String nama, String? alamat}) async {
+    final bersih = alamat?.trim();
+
+    final jawaban = await _klien.put(
+      '/api/auth/saya',
+      // Perhatikan tidak ada peran dan tidak ada nomor HP di sini, sama seperti di
+      // [daftar]: DTO di server memang tidak punya tempatnya, dan mengirimnya tetap
+      // salah karena kode yang meminta sesuatu yang tidak boleh diberikan akan
+      // dibaca orang berikutnya sebagai sesuatu yang seharusnya bisa.
+      badan: {
+        'nama': nama.trim(),
+        'alamat': bersih == null || bersih.isEmpty ? null : bersih,
+      },
+    );
+
+    // Diambil dari jawaban server, bukan dirakit dari apa yang barusan dikirim.
+    // Server yang memutuskan bentuk akhirnya — ia memangkas spasi dan menyimpan
+    // alamat kosong sebagai null — dan menebaknya sendiri di sini berarti layar
+    // menampilkan sesuatu yang berbeda dari yang tersimpan sampai aplikasi dibuka
+    // lagi.
+    final user = _bacaUser(jawaban);
+    _userAktif = user;
+    _controller.add(user);
+    return user;
+  }
+
   /// Sesi berakhir bukan karena penggunanya menekan keluar, tapi karena server
   /// menolak tokennya di tengah pemakaian.
   ///

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/config/batas_masukan.dart';
 import '../../core/theme/app_theme.dart';
 import '../../domain/models/app_user.dart';
 import '../../providers/repository_providers.dart';
@@ -17,11 +18,25 @@ import '../../providers/repository_providers.dart';
 /// atas nama pemiliknya, dan tidak ada yang bisa dilakukan pemiliknya soal itu.
 ///
 /// Tombol profil di beranda klien sudah ada sejak lama dan cuma menjawab
-/// "Profil belum dibuat, menyusul". Layar ini isinya sedikit dengan sengaja:
-/// yang dibutuhkan sekarang cuma memastikan pengguna bisa melihat ia sedang
-/// masuk sebagai siapa, dan bisa berhenti. Mengubah nama dan nomor menyusul
-/// kalau memang diminta, dan mengubah nomor sendiri butuh verifikasi kode lagi,
-/// jadi ia pekerjaan tersendiri, bukan satu kolom isian tambahan.
+/// "Profil belum dibuat, menyusul".
+///
+/// ## Yang menyusul, dan yang tetap tidak
+///
+/// Nama sekarang bisa disunting. Nama yang salah ketik saat mendaftar bukan
+/// urusan pribadi yang bisa dibiarkan: ia yang dilihat runner saat menerima
+/// order, dan yang dilihat klien saat runner datang ke kosnya.
+///
+/// Alamat bawaan ikut, dan itu kolom yang sudah ada di model sejak awal tanpa
+/// pernah diisi satu kali pun. Gunanya satu: mengisi sendiri kolom yang paling
+/// sering diketik ulang di formulir order. Ia bukan alamat order — order
+/// membawa alamatnya sendiri, karena satu orang memesan dari tempat yang
+/// berbeda-beda.
+///
+/// Nomor HP tetap tidak, dan itu bukan kelupaan. Nomor itu identitas masuk, ia
+/// yang menerima kode; menggantinya lewat satu kolom isian berarti siapa pun
+/// yang sempat memegang HP orang lain sebentar bisa memindahkan akunnya ke
+/// nomornya sendiri. Menggantinya menuntut verifikasi kode ke nomor barunya,
+/// dan itu pekerjaan tersendiri.
 class ProfilScreen extends ConsumerWidget {
   const ProfilScreen({super.key});
 
@@ -41,6 +56,12 @@ class ProfilScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(AppTheme.spasiSedang),
               children: [
                 _KartuIdentitas(user: user),
+                const SizedBox(height: AppTheme.spasiSedang),
+                // `key` mengikat isian ke identitas akunnya, bukan sekadar ke
+                // posisinya di daftar: alat ganti akun bisa menukar pengguna
+                // tanpa layar ini dibongkar, dan tanpa key ini isian tetap
+                // berisi nama pemilik sebelumnya.
+                _KartuSunting(key: ValueKey(user.id), user: user),
                 const SizedBox(height: AppTheme.spasiBesar),
                 _TombolKeluar(nama: user.nama),
               ],
@@ -52,6 +73,11 @@ class ProfilScreen extends ConsumerWidget {
 class _KartuIdentitas extends StatelessWidget {
   const _KartuIdentitas({required this.user});
 
+  /// Dipakai tes untuk membedakan nama yang DITAMPILKAN di kartu ini dari nama
+  /// yang sedang DIKETIK di kolom sunting di bawahnya. Keduanya berisi teks yang
+  /// sama persis, jadi pencarian teks polos tidak bisa memisahkannya.
+  static const kunci = ValueKey('kartu-identitas');
+
   final AppUser user;
 
   @override
@@ -60,6 +86,7 @@ class _KartuIdentitas extends StatelessWidget {
     final teks = Theme.of(context).textTheme;
 
     return Card(
+      key: kunci,
       child: Padding(
         padding: const EdgeInsets.all(AppTheme.spasiSedang),
         child: Column(
@@ -234,5 +261,153 @@ class _TombolKeluarState extends ConsumerState<_TombolKeluar> {
     // `refreshListenable`. Mendorong sendiri dari sini akan bertabrakan dengan
     // pengalihan router dan menyisakan layar profil di tumpukan belakang layar
     // masuk.
+  }
+}
+
+/// Menyunting nama dan alamat bawaan.
+///
+/// Selalu terbuka, bukan di balik tombol "Sunting" yang menukar tampilan jadi
+/// isian. Yang ada di sini cuma dua kolom, dan tombol simpannya sudah mati
+/// selama tidak ada yang berubah -- jadi mode sunting tersendiri cuma menambah
+/// satu ketukan sebelum orangnya bisa mulai mengetik, tanpa menjaga apa pun.
+class _KartuSunting extends ConsumerStatefulWidget {
+  const _KartuSunting({super.key, required this.user});
+
+  final AppUser user;
+
+  @override
+  ConsumerState<_KartuSunting> createState() => _KartuSuntingState();
+}
+
+class _KartuSuntingState extends ConsumerState<_KartuSunting> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _namaController;
+  late final TextEditingController _alamatController;
+  bool _sedangSimpan = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _namaController = TextEditingController(text: widget.user.nama);
+    _alamatController = TextEditingController(text: widget.user.alamat ?? '');
+  }
+
+  @override
+  void dispose() {
+    _namaController.dispose();
+    _alamatController.dispose();
+    super.dispose();
+  }
+
+  bool get _adaPerubahan =>
+      _namaController.text.trim() != widget.user.nama ||
+      _alamatController.text.trim() != (widget.user.alamat ?? '');
+
+  @override
+  Widget build(BuildContext context) {
+    final teks = Theme.of(context).textTheme;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppTheme.spasiSedang),
+        child: Form(
+          key: _formKey,
+          onChanged: () => setState(() {}),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Ubah data diri',
+                style: teks.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: AppTheme.spasiSedang),
+              TextFormField(
+                controller: _namaController,
+                maxLength: BatasMasukan.nama,
+                textCapitalization: TextCapitalization.words,
+                enabled: !_sedangSimpan,
+                decoration: const InputDecoration(
+                  counterText: '',
+                  labelText: 'Nama',
+                  helperText: 'Ini yang dilihat runner saat menerima ordermu.',
+                  prefixIcon: Icon(Icons.person_outline),
+                ),
+                validator: (nilai) => (nilai ?? '').trim().isEmpty
+                    ? 'Nama tidak boleh kosong'
+                    : null,
+              ),
+              const SizedBox(height: AppTheme.spasiSedang),
+              TextFormField(
+                controller: _alamatController,
+                maxLength: BatasMasukan.alamat,
+                textCapitalization: TextCapitalization.sentences,
+                maxLines: 2,
+                minLines: 1,
+                enabled: !_sedangSimpan,
+                decoration: const InputDecoration(
+                  counterText: '',
+                  labelText: 'Alamat kosmu (boleh dikosongkan)',
+                  hintText: 'Kos Melati kamar 7, Jl. Pondok Labu Raya',
+                  helperText:
+                      'Dipakai mengisi sendiri formulir order. Tetap bisa '
+                      'diganti per order.',
+                  prefixIcon: Icon(Icons.home_outlined),
+                ),
+              ),
+              const SizedBox(height: AppTheme.spasiSedang),
+              // Nomor HP disebut sebagai kalimat, bukan sebagai kolom mati yang
+              // tidak bisa diketik. Kolom yang tidak bisa diisi mengundang
+              // orangnya mencoba lalu menyimpulkan aplikasinya rusak.
+              Text(
+                'Nomor HP tidak bisa diubah dari sini, karena nomor itu yang '
+                'menerima kode saat kamu masuk. Hubungi admin kalau nomormu '
+                'berganti.',
+                style: teks.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: AppTheme.spasiSedang),
+              FilledButton.tonalIcon(
+                onPressed: _sedangSimpan || !_adaPerubahan ? null : _simpan,
+                icon: _sedangSimpan
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.save_outlined),
+                label: const Text('Simpan'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _simpan() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    setState(() => _sedangSimpan = true);
+    try {
+      await ref.read(authRepositoryProvider).perbaruiProfil(
+            nama: _namaController.text,
+            alamat: _alamatController.text,
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(content: Text('Profil tersimpan.')));
+    } catch (galat) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text('Gagal menyimpan: $galat')));
+    } finally {
+      // Isian tidak diisi ulang dari jawaban server di sini. Kartu ini dibangun
+      // ulang dengan user yang baru, dan `_adaPerubahan` yang membandingkannya
+      // dengan isian akan mati sendiri begitu keduanya sama.
+      if (mounted) setState(() => _sedangSimpan = false);
+    }
   }
 }
