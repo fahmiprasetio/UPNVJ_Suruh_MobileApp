@@ -6,7 +6,7 @@ import { PenyediaSesi } from '../src/auth/sesi';
 import { HalamanDetailOrder } from '../src/halaman/detail_order';
 import { KlienApi } from '../src/inti/klien_api';
 import type { Order } from '../src/inti/tipe';
-import { buatTiruanHub } from './dukungan_hub';
+import { buatKendaliHub, buatTiruanHub } from './dukungan_hub';
 
 /**
  * Panel pembatalan ini satu-satunya tempat di dashboard yang mengubah data lewat aksi
@@ -57,13 +57,17 @@ function halamanPesanKosong() {
   return { isi: [], total: 0, halaman: 1, ukuranHalaman: 50, totalHalaman: 0 };
 }
 
-function pasang(ambil: ReturnType<typeof vi.fn>, id = order().id) {
+function pasang(
+  ambil: ReturnType<typeof vi.fn>,
+  id = order().id,
+  buatTiruan: () => ReturnType<typeof buatTiruanHub> = buatTiruanHub,
+) {
   const buatKlien = (bacaToken: () => string | null) =>
     new KlienApi(bacaToken, 'http://uji', ambil as unknown as typeof fetch);
 
   return render(
     <MemoryRouter initialEntries={[`/order/${id}`]}>
-      <PenyediaSesi buatKlien={buatKlien} buatHub={buatTiruanHub}>
+      <PenyediaSesi buatKlien={buatKlien} buatHub={buatTiruan}>
         <Routes>
           <Route path="/order/:id" element={<HalamanDetailOrder />} />
         </Routes>
@@ -201,5 +205,58 @@ describe('PanelPembatalan', () => {
     expect(await screen.findByText('Order ini belum dibayar')).toBeInTheDocument();
     // Formnya tetap terbuka, alasan yang sudah diketik tidak hilang.
     expect(screen.getByLabelText('Alasan pembatalan')).toHaveValue('Klien komplain barang rusak.');
+  });
+});
+
+/**
+ * Sebelum rencana capstone bagian 43, layar ini cuma mengambil ulang setiap lima belas
+ * detik: balasan klien atau runner baru terlihat admin rata-rata tujuh detik sesudah
+ * dikirim. Dua hal yang diuji di sini, dan keduanya gampang salah ke arah yang berlawanan:
+ * kabar untuk order INI harus memuat ulang, dan kabar untuk order lain tidak boleh —
+ * grup admin menerima "OrderChanged" setiap order yang bergerak, bukan cuma yang sedang
+ * dibuka.
+ */
+describe('kabar hub di layar detail', () => {
+  function pasangDenganHub() {
+    const kendali = buatKendaliHub();
+    const ambil = vi.fn().mockImplementation((url: string) =>
+      Promise.resolve(
+        url.includes('/pesan') ? jawaban(200, halamanPesanKosong()) : jawaban(200, order()),
+      ),
+    );
+
+    pasang(ambil, order().id, () => kendali.hub);
+    return { kendali, ambil };
+  }
+
+  it('mengikuti grup order yang sedang dibuka', async () => {
+    const { kendali } = pasangDenganHub();
+
+    await waitFor(() => expect(kendali.diikuti).toEqual([order().id]));
+  });
+
+  it('memuat ulang order dan percakapannya begitu ordernya dikabarkan berubah', async () => {
+    const { kendali, ambil } = pasangDenganHub();
+
+    await screen.findByText('SRH-042');
+    const sebelum = ambil.mock.calls.length;
+
+    kendali.picu(order().id);
+
+    await waitFor(() => expect(ambil.mock.calls.length).toBeGreaterThan(sebelum));
+  });
+
+  it('mengabaikan kabar tentang order lain', async () => {
+    const { kendali, ambil } = pasangDenganHub();
+
+    await screen.findByText('SRH-042');
+    const sebelum = ambil.mock.calls.length;
+
+    kendali.picu('99999999-9999-9999-9999-999999999999');
+
+    // Sengaja menunggu sebentar, bukan langsung memeriksa: pengambilan yang telanjur
+    // berangkat butuh satu putaran mikrotugas untuk terlihat di hitungan ini.
+    await new Promise((selesai) => setTimeout(selesai, 50));
+    expect(ambil.mock.calls.length).toBe(sebelum);
   });
 });

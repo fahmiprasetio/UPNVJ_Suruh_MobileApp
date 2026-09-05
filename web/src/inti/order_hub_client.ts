@@ -14,11 +14,16 @@ import { alamatApi } from './klien_api';
 export interface KontrakOrderHub {
   mulai(): void;
   berhenti(): Promise<void>;
-  onPerubahan(pendengar: () => void): () => void;
+  onPerubahan(pendengar: (orderId: string) => void): () => void;
+  /** Mulai mendengarkan kabar satu order tertentu, dipanggil saat layar detailnya dibuka. */
+  gabungOrder(orderId: string): void;
+  /** Berhenti mendengarkan satu order, dipanggil saat layar detailnya ditutup. */
+  tinggalkanOrder(orderId: string): void;
 }
 
 /**
- * Sambungan tunggal ke `OrderHub`, sisi grup admin.
+ * Sambungan tunggal ke `OrderHub`: grup admin, dan grup satu order tertentu selama layar
+ * detailnya terbuka (rencana capstone bagian 43).
  *
  * Kembaran `OrderHubClient` di mobile (`mobile/lib/core/realtime/order_hub_client.dart`),
  * tapi jauh lebih tipis: mobile menulis Protokol Hub JSON sendiri di atas
@@ -51,7 +56,18 @@ export interface KontrakOrderHub {
  */
 export class OrderHubClient implements KontrakOrderHub {
   private koneksi: signalR.HubConnection | null = null;
-  private readonly pendengar = new Set<() => void>();
+  private readonly pendengar = new Set<(orderId: string) => void>();
+
+  /**
+   * Order yang sedang diikuti lewat grup per-order.
+   *
+   * Keanggotaan grup di SignalR menempel pada satu koneksi, bukan pada akun, dan
+   * `withAutomaticReconnect` memberi koneksi baru id yang baru. Tanpa daftar ini dan
+   * pengiriman ulangnya di `onreconnected`, layar detail akan diam-diam berhenti menerima
+   * kabar chat tepat sesudah jaringan sempat goyah — sifat menyembuhkan diri yang sama
+   * dengan `_orderDiikuti` di sisi mobile.
+   */
+  private readonly orderDiikuti = new Set<string>();
 
   constructor(
     private readonly bacaToken: () => string | null,
@@ -81,7 +97,16 @@ export class OrderHubClient implements KontrakOrderHub {
       .withAutomaticReconnect()
       .build();
 
-    koneksi.on('OrderChanged', () => this.pancarkan());
+    koneksi.on('OrderChanged', (muatan: { orderId?: string }) => this.pancarkan(muatan?.orderId));
+    // Kabar grup per-order. Cuma sampai ke koneksi yang sudah memanggil `gabungOrder`,
+    // jadi tidak ada yang perlu disaring di sini selain oleh pendengarnya sendiri.
+    koneksi.on('MessageAdded', (muatan: { orderId?: string }) => this.pancarkan(muatan?.orderId));
+
+    koneksi.onreconnected(() => {
+      for (const orderId of this.orderDiikuti) {
+        void koneksi.invoke('GabungOrder', orderId).catch(() => {});
+      }
+    });
 
     // Kegagalan pertama kali menyambung sengaja tidak dilempar ke pemanggil. Dashboard
     // tetap harus bisa dipakai lewat pengambilan berkala kalau hub-nya untuk suatu sebab
@@ -100,21 +125,45 @@ export class OrderHubClient implements KontrakOrderHub {
   async berhenti(): Promise<void> {
     const koneksi = this.koneksi;
     this.koneksi = null;
+    // Sesi berikutnya (akun lain di peramban yang sama) tidak mewarisi langganan order
+    // milik akun sebelumnya.
+    this.orderDiikuti.clear();
     await koneksi?.stop();
+  }
+
+  /**
+   * Bergabung ke grup satu order supaya kabar "MessageAdded" order itu ikut sampai.
+   *
+   * Kegagalannya sengaja didiamkan, sama seperti kegagalan `start()` di atas: layar yang
+   * memanggilnya tetap punya pengambilan berkala 15 detik sebagai jaring pengaman, dan
+   * server sendiri mengabaikan permintaan bergabung ke order yang bukan urusan pemanggil
+   * tanpa menjawab galat (lihat `OrderHub.GabungOrder`).
+   */
+  gabungOrder(orderId: string): void {
+    this.orderDiikuti.add(orderId);
+    void this.koneksi?.invoke('GabungOrder', orderId).catch(() => {});
+  }
+
+  tinggalkanOrder(orderId: string): void {
+    this.orderDiikuti.delete(orderId);
+    void this.koneksi?.invoke('TinggalkanOrder', orderId).catch(() => {});
   }
 
   /**
    * Mendengarkan kabar "ada order yang berubah". Mengembalikan fungsi untuk berhenti
    * mendengarkan, dipanggil dari `useEffect` di layar yang memakainya.
    */
-  onPerubahan(pendengar: () => void): () => void {
+  onPerubahan(pendengar: (orderId: string) => void): () => void {
     this.pendengar.add(pendengar);
     return () => {
       this.pendengar.delete(pendengar);
     };
   }
 
-  private pancarkan(): void {
-    for (const pendengar of this.pendengar) pendengar();
+  private pancarkan(orderId: string | undefined): void {
+    // Id-nya diteruskan, bukan dibaca di sini. Layar daftar mengabaikannya dan memuat ulang
+    // apa pun yang berubah; layar detail satu order memakainya untuk menyaring, supaya
+    // perubahan pada order orang lain tidak membuatnya mengambil ulang tanpa guna.
+    for (const pendengar of this.pendengar) pendengar(orderId ?? '');
   }
 }

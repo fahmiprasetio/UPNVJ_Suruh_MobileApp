@@ -19,6 +19,8 @@ export function buatTiruanHub(): KontrakOrderHub {
     onPerubahan() {
       return () => {};
     },
+    gabungOrder() {},
+    tinggalkanOrder() {},
   };
 }
 
@@ -30,8 +32,13 @@ export function buatTiruanHub(): KontrakOrderHub {
  * "OrderChanged" sungguhan sampai ke `OrderHubClient` lalu diteruskan ke seluruh
  * pendengarnya.
  */
-export function buatKendaliHub(): { hub: KontrakOrderHub; picu: () => void } {
-  const pendengar = new Set<() => void>();
+export function buatKendaliHub(): {
+  hub: KontrakOrderHub;
+  picu: (orderId?: string) => void;
+  diikuti: string[];
+} {
+  const pendengar = new Set<(orderId: string) => void>();
+  const diikuti: string[] = [];
 
   const hub: KontrakOrderHub = {
     mulai() {},
@@ -42,11 +49,18 @@ export function buatKendaliHub(): { hub: KontrakOrderHub; picu: () => void } {
         pendengar.delete(satu);
       };
     },
+    gabungOrder(orderId) {
+      diikuti.push(orderId);
+    },
+    tinggalkanOrder(orderId) {
+      const posisi = diikuti.indexOf(orderId);
+      if (posisi >= 0) diikuti.splice(posisi, 1);
+    },
   };
 
-  const picu = () => {
-    for (const satu of pendengar) satu();
+  const picu = (orderId = '') => {
+    for (const satu of pendengar) satu(orderId);
   };
 
-  return { hub, picu };
+  return { hub, picu, diikuti };
 }

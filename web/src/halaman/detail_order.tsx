@@ -1,4 +1,4 @@
-import { useCallback, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { useSesi } from '../auth/sesi';
@@ -31,10 +31,24 @@ import { LencanaJalur, LencanaStatus } from '../komponen/lencana';
  */
 export function HalamanDetailOrder() {
   const { id = '' } = useParams();
-  const { api } = useSesi();
+  const { api, hub } = useSesi();
 
   const ambil = useCallback((sinyal: AbortSignal) => ambilOrder(api, id, sinyal), [api, id]);
   const { data: order, memuat, galat, muatUlang } = gunakanMuat(ambil, { segarkanBerkala: true });
+
+  // Admin sudah menerima "OrderChanged" untuk SETIAP order lewat grup admin, jadi tanpa
+  // saringan ini layar satu order akan mengambil ulang setiap kali order siapa pun bergerak.
+  // Bergabung ke grup order ini yang membawa kabar chatnya, yang tidak disiarkan ke grup
+  // admin (rencana capstone bagian 43).
+  useEffect(() => {
+    hub.gabungOrder(id);
+    return () => hub.tinggalkanOrder(id);
+  }, [hub, id]);
+
+  useEffect(
+    () => hub.onPerubahan((orderId) => { if (orderId === id) muatUlang(); }),
+    [hub, id, muatUlang],
+  );
 
   if (galat !== null && order === null) return <KotakGalat galat={galat} cobaLagi={muatUlang} />;
   if (memuat && order === null) return <Memuat />;
@@ -285,7 +299,7 @@ function PanelPembatalan({
 }
 
 function PanelChat({ order }: { order: Order }) {
-  const { api } = useSesi();
+  const { api, hub } = useSesi();
   const [draf, setDraf] = useState('');
   const [sibuk, setSibuk] = useState(false);
   const [galatKirim, setGalatKirim] = useState<unknown>(null);
@@ -295,6 +309,14 @@ function PanelChat({ order }: { order: Order }) {
     [api, order.id],
   );
   const { data, memuat, galat, muatUlang } = gunakanMuat(ambil, { segarkanBerkala: true });
+
+  // Pendengarnya sendiri, bukan menumpang milik halaman induknya: yang perlu dimuat ulang
+  // di sini percakapannya, bukan ordernya, dan kabar "MessageAdded" tidak menggeser status
+  // order sama sekali. Grup ordernya sudah diikutkan halaman induk.
+  useEffect(
+    () => hub.onPerubahan((orderId) => { if (orderId === order.id) muatUlang(); }),
+    [hub, order.id, muatUlang],
+  );
 
   const chatDitutup = order.status === 'Selesai' || order.status === 'Batal';
 
