@@ -187,7 +187,7 @@ public class PenyelesaiPembayaran(
                 // tahu: order ini baru saja berpindah dari menunggu pembayaran ke dikerjakan.
                 order.Status = OrderStatus.Dikerjakan;
                 await db.SaveChangesAsync(batal);
-                await hub.BeriTahuAdminAsync(order.Id, batal);
+                await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
                 await hub.BeriTahuKlienAsync(order.Id, batal);
                 return HasilPenyelesaian.Lunas;
             }
@@ -216,7 +216,7 @@ public class PenyelesaiPembayaran(
                 JumlahRunnerDibutuhkan = order.RequiredRunnerCount,
             },
             batal);
-        await hub.BeriTahuAdminAsync(order.Id, batal);
+        await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
         await hub.BeriTahuKlienAsync(order.Id, batal);
 
         return HasilPenyelesaian.Lunas;

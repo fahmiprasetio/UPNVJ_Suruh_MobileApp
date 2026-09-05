@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using UpnvjSuruh.Api.Auth;
 using UpnvjSuruh.Api.Contracts;
 using UpnvjSuruh.Api.Data;
 using UpnvjSuruh.Api.Domain;
+using UpnvjSuruh.Api.Hubs;
 
 namespace UpnvjSuruh.Api.Controllers;
 
@@ -20,7 +22,7 @@ namespace UpnvjSuruh.Api.Controllers;
 [ApiController]
 [Route("api/orders/{id:guid}/pesan")]
 [Authorize]
-public class OrderChatController(AppDbContext db) : ControllerBase
+public class OrderChatController(AppDbContext db, IHubContext<OrderHub> hub) : ControllerBase
 {
     /// <summary>Pesan di satu order, terlama di atas, sebanyak jendela yang diminta.</summary>
     /// <remarks>
@@ -140,6 +142,11 @@ public class OrderChatController(AppDbContext db) : ControllerBase
 
         db.OrderMessages.Add(pesan);
         await db.SaveChangesAsync(batal);
+
+        // Sesudah tersimpan, bukan sebelum: kabar yang mendahului simpanannya akan membuat
+        // penerimanya mengambil ulang percakapan yang belum berisi pesan itu, lalu diam
+        // sampai pengambilan berkala berikutnya — persis kelambatan yang mau dihapus di sini.
+        await hub.BeriTahuPesanBaruAsync(order.Id, batal);
 
         return Ok(OrderMessageResponse.Dari(pesan));
     }

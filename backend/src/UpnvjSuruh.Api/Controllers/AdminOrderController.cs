@@ -173,7 +173,7 @@ public class AdminOrderController(
         order.Status = OrderStatus.Batal;
 
         await db.SaveChangesAsync(batal);
-        await hub.BeriTahuAdminAsync(order.Id, batal);
+        await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
 
         return Ok(OrderResponse.Dari(
             order,

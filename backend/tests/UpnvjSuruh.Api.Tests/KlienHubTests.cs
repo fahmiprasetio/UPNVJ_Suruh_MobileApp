@@ -3,7 +3,6 @@ using System.Text.Json;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using UpnvjSuruh.Api.Auth;
@@ -199,20 +198,24 @@ public class KlienHubTests(DatabaseApiFactory pabrik) : IClassFixture<DatabaseAp
 
     /// <summary>
     /// Runner dan admin tidak otomatis diikutkan grup order mana pun (beda dari grup runner
-    /// dan grup admin yang otomatis diisi dari peran). "GabungOrder" sendiri dijaga
-    /// <c>[Authorize(Roles = Peran.Klien)]</c>, jadi runner yang mencobanya pun ditolak
-    /// sebelum sempat bergabung.
+    /// dan grup admin yang otomatis diisi dari peran). Sejak bagian 43 "GabungOrder" tidak
+    /// lagi tertutup untuk peran runner — chat butuh runner ikut mendengar order yang
+    /// ditawarnya — tapi runner yang belum punya urusan apa pun dengan sebuah order tetap
+    /// ditolak, sekarang oleh pemeriksaan keterkaitan yang sama dengan endpoint HTTP-nya.
     /// </summary>
     [Fact]
-    public async Task RunnerTidakBisaBergabungKeGrupOrder()
+    public async Task RunnerYangTidakTerkaitTidakBisaBergabungKeGrupOrder()
     {
         var (klien, _, _) = await AkunAsync(UserRole.Klien);
         var (_, tokenRunner, _) = await AkunAsync(UserRole.Runner);
         var order = await BuatOrderJalurAAsync(klien);
 
         await using var sambungan = await SambungAsync(tokenRunner);
+        await sambungan.GabungAsync(order.Id);
 
-        await Assert.ThrowsAsync<HubException>(() => sambungan.GabungAsync(order.Id));
+        await KabariWebhookAsync(order.Id, PaymentStatus.Berhasil, order.Harga!.Value);
+
+        Assert.True(await sambungan.TetapSunyiAsync(TimeSpan.FromSeconds(2)));
     }
 
     // --- Meninggalkan grup ---

@@ -3,7 +3,8 @@ using Microsoft.AspNetCore.SignalR;
 namespace UpnvjSuruh.Api.Hubs;
 
 /// <summary>
-/// Satu titik panggil untuk memberi tahu dashboard admin bahwa status sebuah order berubah.
+/// Satu titik panggil untuk memberi tahu semua yang berkepentingan bahwa status sebuah
+/// order berubah: dashboard admin, dan siapa pun yang sedang membuka layar order itu.
 /// </summary>
 /// <remarks>
 /// Ditulis sekali dan dipanggil dari sembilan tempat berbeda (order dibuat lewat Jalur A
@@ -33,11 +34,28 @@ namespace UpnvjSuruh.Api.Hubs;
 /// </remarks>
 public static class OrderHubExtensions
 {
-    public static Task BeriTahuAdminAsync(
+    /// <remarks>
+    /// Dikirim ke dua grup sekaligus sejak rencana capstone bagian 43: grup admin, dan grup
+    /// order itu sendiri. Grup admin saja tidak cukup — klien yang menatap layar detail
+    /// ordernya menunggu kabar "sudah ada runner yang menerima", dan runner yang baru
+    /// mengirim penawaran Jalur B menunggu kabar "penawaranmu dipilih". Keduanya perubahan
+    /// yang sama, cuma dilihat dari sisi yang berbeda, dan sebelum ini keduanya baru muncul
+    /// setelah pengambilan berkala lima belas detik berikutnya.
+    ///
+    /// Satu koneksi yang kebetulan ada di kedua grup (admin yang sedang membuka satu order)
+    /// menerimanya dua kali. Itu dibiarkan: kabarnya cuma berarti "ambil ulang", dan sisi
+    /// klien sudah menggabungkan permintaan yang datang beruntun jadi satu pengambilan
+    /// (lihat penjaga <c>sedangAmbil</c>/<c>mintaLagi</c> di <c>ApiOrderRepository</c>).
+    /// Menghindarinya butuh daftar koneksi yang harus dijaga sendiri, untuk menghemat satu
+    /// pesan yang sudah tidak berakibat apa-apa.
+    /// </remarks>
+    public static Task BeriTahuPerubahanOrderAsync(
         this IHubContext<OrderHub> hub,
         Guid orderId,
         CancellationToken batal = default) =>
-        hub.Clients.Group(OrderHub.AdminsGroup).SendAsync("OrderChanged", new { OrderId = orderId }, batal);
+        hub.Clients
+            .Groups(OrderHub.AdminsGroup, OrderHub.GrupOrder(orderId))
+            .SendAsync("OrderChanged", new { OrderId = orderId }, batal);
 
     /// <summary>
     /// Memberi tahu klien yang sedang membuka layar bayar order ini bahwa tagihannya
@@ -60,4 +78,42 @@ public static class OrderHubExtensions
         Guid orderId,
         CancellationToken batal = default) =>
         hub.Clients.Group(OrderHub.GrupOrder(orderId)).SendAsync("PaymentChanged", new { OrderId = orderId }, batal);
+
+    /// <summary>
+    /// Memberi tahu semua yang sedang membuka satu order bahwa ada pesan chat baru di sana.
+    /// </summary>
+    /// <remarks>
+    /// Ini yang membuat chat berhenti terasa seperti surat: sebelumnya kedua belah pihak
+    /// cuma mengambil ulang percakapan setiap lima belas detik, jadi jawaban tercepat pun
+    /// baru muncul rata-rata tujuh detik setelah dikirim. Untuk fitur yang seluruh gunanya
+    /// adalah menggantikan WhatsApp (rencana capstone bagian 4), jeda selama itu adalah
+    /// alasan orang kembali ke WhatsApp.
+    ///
+    /// Dikirim ke seluruh grup order, termasuk koneksi pengirimnya sendiri.
+    /// <c>IHubContext</c> di sisi controller tidak tahu koneksi mana yang barusan mengirim
+    /// pesan lewat HTTP (permintaan HTTP dan koneksi hub adalah dua sambungan berbeda),
+    /// jadi mengecualikan pengirim butuh id koneksi yang harus dikirim ikut permintaannya —
+    /// bentuk permintaan yang lebih rumit demi menghindari satu pengambilan ulang yang
+    /// hasilnya sudah dipegang layarnya. Tidak sepadan.
+    ///
+    /// Muatannya cuma id order, sama seperti dua kabar lain, dan bukan isi pesannya. Isi
+    /// pesan lewat kabar hub berarti aturan siapa boleh melihat jalur obrolan mana
+    /// (<c>PesanTerlihat</c>, jalur pribadi tiap runner yang menawar di Jalur B) harus
+    /// ditegakkan dua kali di dua tempat berbeda. Cukup sekali, di endpoint yang diambil
+    /// ulang sesudah kabar ini diterima.
+    ///
+    /// Akibat sampingannya disebut terang-terangan: pada order Jalur B dengan beberapa
+    /// runner yang menawar, kabar ini sampai ke semuanya, jadi seorang runner bisa
+    /// menyimpulkan "ada percakapan yang bergerak di order ini" tanpa tahu isinya, siapa
+    /// yang menulis, atau di jalur siapa. Pengambilan ulang yang menyusul tetap cuma
+    /// mengembalikan jalur obrolannya sendiri. Menyembunyikan itu pun butuh kabar yang
+    /// ditujukan per jalur obrolan, yang berarti aturan <c>PesanTerlihat</c> harus ditulis
+    /// ulang di sisi hub — persis duplikasi yang dihindari di paragraf sebelumnya, demi
+    /// menutup sinyal yang tidak menyebut apa-apa.
+    /// </remarks>
+    public static Task BeriTahuPesanBaruAsync(
+        this IHubContext<OrderHub> hub,
+        Guid orderId,
+        CancellationToken batal = default) =>
+        hub.Clients.Group(OrderHub.GrupOrder(orderId)).SendAsync("MessageAdded", new { OrderId = orderId }, batal);
 }

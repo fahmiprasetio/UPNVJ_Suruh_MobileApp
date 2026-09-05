@@ -66,7 +66,27 @@ public class JalurBController(AppDbContext db, IHubContext<OrderHub> hub) : Cont
         db.Orders.Add(order);
         await db.SaveChangesAsync(batal);
 
-        await hub.BeriTahuAdminAsync(order.Id, batal);
+        // Permintaan Jalur B langsung tampil di daftar order masuk runner (lihat penyaring
+        // Permintaan di OrdersController.Tersiar), jadi ia layak disiarkan sama seperti order
+        // Jalur A yang baru lunas. Beda dari Jalur A, di sini kecepatannya bukan sekadar
+        // kenyamanan: yang menunggu adalah perlombaan menawar, dan runner yang daftarnya baru
+        // menyusul lima belas detik kemudian kalah bukan karena harganya.
+        //
+        // Yang dikirim mengikuti "OrderBroadcast" Jalur A, dengan satu bedanya yang jujur:
+        // harganya masih usulan klien, belum harga order. Angka sungguhannya baru ada setelah
+        // salah satu penawaran runner disetujui.
+        await hub.Clients.Group(OrderHub.RunnersGroup).SendAsync(
+            "OrderBroadcast",
+            new
+            {
+                OrderId = order.Id,
+                KodeOrder = order.OrderCode,
+                ServiceType = order.ServiceType.ToString(),
+                Harga = order.SuggestedPrice,
+                JumlahRunnerDibutuhkan = order.RequiredRunnerCount,
+            },
+            batal);
+        await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
 
         return CreatedAtAction(
             nameof(OrdersController.Ambil),
@@ -197,7 +217,7 @@ public class JalurBController(AppDbContext db, IHubContext<OrderHub> hub) : Cont
         }
 
         await db.SaveChangesAsync(batal);
-        await hub.BeriTahuAdminAsync(order.Id, batal);
+        await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
         return Ok(OrderResponse.Dari(
             order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, User.Id(), User.Punya(Peran.Admin), batal)));
     }

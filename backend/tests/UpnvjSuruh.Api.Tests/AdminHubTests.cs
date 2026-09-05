@@ -14,7 +14,10 @@ using UpnvjSuruh.Api.Controllers;
 namespace UpnvjSuruh.Api.Tests;
 
 /// <summary>
-/// Saluran "OrderChanged" ke grup admin di <c>OrderHub</c>.
+/// Saluran "OrderChanged" di <c>OrderHub</c>: ke grup admin, dan sejak rencana capstone
+/// bagian 43 ke grup order itu sendiri juga, supaya klien dan runner yang sedang membuka
+/// ordernya ikut tahu seketika. Kabar "OrderBroadcast" untuk permintaan Jalur B yang baru
+/// masuk ikut diuji di sini karena ia lahir dari tindakan yang sama.
 ///
 /// Beda dari <c>HubKeamananTests</c>, yang cuma memastikan pintu hubnya (siapa boleh
 /// menyambung), tes di sini menyambung sungguhan lewat <see cref="HubConnection"/> dan
@@ -93,6 +96,7 @@ public class AdminHubTests(DatabaseApiFactory pabrik) : IClassFixture<DatabaseAp
     {
         private readonly HubConnection _koneksi;
         private readonly System.Collections.Concurrent.ConcurrentQueue<Guid> _diterima = new();
+        private readonly System.Collections.Concurrent.ConcurrentQueue<Guid> _disiarkan = new();
 
         public SambunganAdmin(HubConnection koneksi)
         {
@@ -106,6 +110,32 @@ public class AdminHubTests(DatabaseApiFactory pabrik) : IClassFixture<DatabaseAp
                     _diterima.Enqueue(idProp.GetGuid());
                 }
             });
+
+            // Antrean terpisah, bukan digabung dengan yang di atas: kedua kabar ini punya
+            // penerima yang berbeda (grup order dan grup admin lawan grup runner), dan tes
+            // yang tidak bisa membedakannya akan lulus walau kabarnya sampai ke grup yang
+            // salah.
+            koneksi.On<JsonElement>("OrderBroadcast", muatan =>
+            {
+                if (muatan.TryGetProperty("orderId", out var idProp))
+                {
+                    _disiarkan.Enqueue(idProp.GetGuid());
+                }
+            });
+        }
+
+        public Task GabungAsync(Guid orderId) => _koneksi.InvokeAsync("GabungOrder", orderId);
+
+        /// <summary>Menunggu sampai order tertentu pernah disiarkan ke grup runner.</summary>
+        public async Task<bool> TungguSiaranAsync(Guid orderId, TimeSpan? batas = null)
+        {
+            var tenggat = DateTime.UtcNow + (batas ?? TimeSpan.FromSeconds(10));
+            while (DateTime.UtcNow < tenggat)
+            {
+                if (_disiarkan.Contains(orderId)) return true;
+                await Task.Delay(50);
+            }
+            return _disiarkan.Contains(orderId);
         }
 
         /// <summary>Menunggu sampai order tertentu pernah dikabarkan, atau batas waktu habis.</summary>
@@ -129,6 +159,16 @@ public class AdminHubTests(DatabaseApiFactory pabrik) : IClassFixture<DatabaseAp
             ServiceType = nameof(ServiceType.AnterJemput),
             JarakKm = 3.0,
         })).EnsureSuccessStatusCode().Content.ReadFromJsonAsync<BuatOrderResponse>())!.Order;
+
+    private static async Task<OrderResponse> BuatPermintaanJalurBAsync(HttpClient klien) =>
+        (await (await klien.PostAsJsonAsync("/api/orders/jalur-b", new
+        {
+            ServiceType = nameof(ServiceType.BersihKos),
+            Deskripsi = "Kos dua kamar, sudah lama tidak dibersihkan.",
+            JadwalMulai = DateTime.UtcNow.AddDays(2),
+            JumlahRunnerDibutuhkan = 1,
+            HargaUsulan = 150000m,
+        })).EnsureSuccessStatusCode().Content.ReadFromJsonAsync<OrderResponse>())!;
 
     private async Task BayarAsync(Guid orderId, decimal jumlah)
     {
@@ -319,5 +359,93 @@ public class AdminHubTests(DatabaseApiFactory pabrik) : IClassFixture<DatabaseAp
             .EnsureSuccessStatusCode();
 
         Assert.True(await sambungan.TungguAsync(order.Id));
+    }
+
+    // --- Grup order: klien dan runner yang sedang membuka ordernya (bagian 43) ---
+
+    /// <summary>
+    /// Klien yang membuka layar detail ordernya menunggu satu kabar di atas segalanya:
+    /// "sudah ada runner yang menerima". Sebelum bagian 43 kabar itu cuma dikirim ke grup
+    /// admin, jadi klienlah satu-satunya yang tidak diberi tahu tentang ordernya sendiri.
+    /// </summary>
+    [Fact]
+    public async Task KlienYangMembukaOrdernyaMenerimaKabarSaatRunnerMenerima()
+    {
+        var (klien, tokenKlien, _) = await AkunAsync(UserRole.Klien);
+        var (runner, _, _) = await AkunAsync(UserRole.Runner);
+        var order = await BuatOrderJalurAAsync(klien);
+        await BayarAsync(order.Id, order.Harga!.Value);
+
+        await using var sambungan = await SambungAsync(tokenKlien);
+        await sambungan.GabungAsync(order.Id);
+
+        (await runner.PostAsync($"/api/orders/{order.Id}/terima", null)).EnsureSuccessStatusCode();
+
+        Assert.True(await sambungan.TungguAsync(order.Id));
+    }
+
+    /// <summary>
+    /// Sisi sebaliknya: runner yang baru mengirim penawaran Jalur B sedang menunggu jawaban,
+    /// dan jawabannya adalah perubahan status yang sama.
+    /// </summary>
+    [Fact]
+    public async Task RunnerYangMenawarMenerimaKabarSaatPenawarannyaDisetujui()
+    {
+        var (klien, _, _) = await AkunAsync(UserRole.Klien);
+        var (runner, tokenRunner, _) = await AkunAsync(UserRole.Runner);
+        var order = await BuatPermintaanJalurBAsync(klien);
+
+        var ditawar = await runner.PostAsJsonAsync($"/api/orders/{order.Id}/penawaran", new
+        {
+            Harga = 150000m,
+            EstimasiDurasiMenit = 180,
+            JadwalMulai = DateTime.UtcNow.AddDays(2),
+        });
+        ditawar.EnsureSuccessStatusCode();
+        var penawaran = (await ditawar.Content.ReadFromJsonAsync<OrderResponse>())!.Penawaran.Single();
+
+        await using var sambungan = await SambungAsync(tokenRunner);
+        await sambungan.GabungAsync(order.Id);
+
+        (await klien.PostAsync($"/api/orders/{order.Id}/penawaran/{penawaran.Id}/setujui", null))
+            .EnsureSuccessStatusCode();
+
+        Assert.True(await sambungan.TungguAsync(order.Id));
+    }
+
+    // --- Siaran permintaan Jalur B ke grup runner (bagian 43) ---
+
+    /// <summary>
+    /// Permintaan Jalur B tampil di daftar order masuk runner sejak ia dibuat, tapi sebelum
+    /// bagian 43 tidak ada satu pun kabar yang menyertainya: daftarnya baru berubah pada
+    /// pengambilan berkala berikutnya, dan yang menunggu di sana adalah perlombaan menawar.
+    /// </summary>
+    [Fact]
+    public async Task RunnerMenerimaSiaranSaatPermintaanJalurBBaruMasuk()
+    {
+        var (klien, _, _) = await AkunAsync(UserRole.Klien);
+        var (_, tokenRunner, _) = await AkunAsync(UserRole.Runner);
+
+        await using var sambungan = await SambungAsync(tokenRunner);
+
+        var order = await BuatPermintaanJalurBAsync(klien);
+
+        Assert.True(await sambungan.TungguSiaranAsync(order.Id));
+    }
+
+    /// <summary>
+    /// Siaran itu tetap cuma untuk runner. Klien yang tersambung ke hub yang sama tidak ada
+    /// di grup runner, jadi ia tidak ikut menerima daftar pekerjaan orang lain.
+    /// </summary>
+    [Fact]
+    public async Task KlienTidakMenerimaSiaranPermintaanJalurB()
+    {
+        var (klien, tokenKlien, _) = await AkunAsync(UserRole.Klien);
+
+        await using var sambungan = await SambungAsync(tokenKlien);
+
+        var order = await BuatPermintaanJalurBAsync(klien);
+
+        Assert.False(await sambungan.TungguSiaranAsync(order.Id, TimeSpan.FromSeconds(2)));
     }
 }
