@@ -102,3 +102,19 @@ public record BatalkanOrderRequest
     [MaxLength(BatasMasukan.Deskripsi)]
     public string Alasan { get; init; } = string.Empty;
 }
+
+/// <summary>
+/// Admin menangguhkan sebuah akun, atau memulihkannya kembali.
+/// </summary>
+/// <remarks>
+/// Alasan wajib di kedua arah, mengikuti aturan yang sama dengan perubahan peran. Yang
+/// dihentikan di sini kemampuan seseorang memakai aplikasi sama sekali, dan tindakan
+/// sebesar itu tanpa sebab tercatat adalah pertanyaan yang menunggu ditanyakan belakangan —
+/// biasanya oleh orang yang akunnya dihentikan.
+/// </remarks>
+public record TangguhkanAkunRequest
+{
+    [Required(AllowEmptyStrings = false)]
+    [MaxLength(BatasMasukan.Deskripsi)]
+    public string Alasan { get; init; } = string.Empty;
+}

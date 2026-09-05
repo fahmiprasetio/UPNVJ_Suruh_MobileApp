@@ -48,10 +48,29 @@ public record MasukRequest
     public string Kode { get; init; } = string.Empty;
 }
 
-public record UserResponse(Guid Id, string Nama, string NoHp, string? Alamat, IReadOnlyList<string> Roles)
+public record UserResponse(
+    Guid Id,
+    string Nama,
+    string NoHp,
+    string? Alamat,
+    IReadOnlyList<string> Roles,
+    /// <summary>
+    /// Terisi selama akun ini ditangguhkan. Dipakai dashboard untuk menandai dan
+    /// menjelaskan; aplikasi sendiri tidak pernah menerimanya, karena akun yang
+    /// ditangguhkan tidak bisa melewati validasi token sama sekali.
+    /// </summary>
+    DateTime? DitangguhkanPada = null,
+    string? AlasanPenangguhan = null)
 {
     public static UserResponse Dari(User user) =>
-        new(user.Id, user.Name, user.Phone, user.Address, [.. user.Roles.Select(r => r.ToString())]);
+        new(
+            user.Id,
+            user.Name,
+            user.Phone,
+            user.Address,
+            [.. user.Roles.Select(r => r.ToString())],
+            user.SuspendedAt,
+            user.SuspendedReason);
 }
 
 public record MasukResponse(string Token, DateTime KedaluwarsaPada, UserResponse User);

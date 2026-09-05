@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using UpnvjSuruh.Api.Auth;
 using UpnvjSuruh.Api.Contracts;
@@ -21,7 +22,9 @@ namespace UpnvjSuruh.Api.Controllers;
 [ApiController]
 [Route("api/admin/pengguna")]
 [Authorize(Roles = Peran.Admin)]
-public class AdminPenggunaController(AppDbContext db) : ControllerBase
+public class AdminPenggunaController(
+    AppDbContext db,
+    ILogger<AdminPenggunaController> log) : ControllerBase
 {
     /// <summary>Mencari pengguna, untuk dashboard admin.</summary>
     /// <remarks>
@@ -86,6 +89,117 @@ public class AdminPenggunaController(AppDbContext db) : ControllerBase
     }
 
     /// <summary>Menetapkan peran seseorang.</summary>
+    /// <summary>Menangguhkan sebuah akun: pemiliknya tidak bisa memakai aplikasi sama sekali.</summary>
+    /// <remarks>
+    /// Sebelum ini tidak ada cara menghentikan akun. Yang bisa dilakukan admin cuma mengubah
+    /// peran, dan peran tidak boleh kosong, jadi runner yang menyalahgunakan sistem masih
+    /// bisa dicabut peran runnernya sementara klien yang memesan lalu meminta pembatalan
+    /// berulang kali tidak bisa dihentikan dengan cara apa pun.
+    ///
+    /// Berlaku seketika, bukan setelah token lamanya kedaluwarsa: setiap permintaan membaca
+    /// ulang akunnya saat tokennya divalidasi (lihat <c>OnTokenValidated</c> di Program.cs).
+    /// Penjagaan yang baru berlaku sejam kemudian bukan penjagaan untuk hal yang alasannya
+    /// penyalahgunaan.
+    ///
+    /// Ditangguhkan, bukan dihapus. Akun yang dihapus membawa serta seluruh ordernya, dan
+    /// order yang hilang berarti riwayat pembayaran dan bayaran runner ikut hilang bersama
+    /// jejaknya — justru pada akun yang paling mungkin dipersoalkan belakangan.
+    ///
+    /// ponytail: cuma penangguhan terakhir yang tersimpan, bukan riwayatnya. Kalau pola
+    /// "ditangguhkan lalu dipulihkan berulang kali" jadi pertanyaan, yang dibutuhkan tabel
+    /// tersendiri seperti <c>UserRoleChange</c>.
+    /// </remarks>
+    [EnableRateLimiting(BatasLaju.KebijakanTulis)]
+    [HttpPost("{id:guid}/tangguhkan")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<UserResponse>> Tangguhkan(
+        Guid id,
+        TangguhkanAkunRequest permintaan,
+        CancellationToken batal)
+    {
+        var user = await db.Users.SingleOrDefaultAsync(u => u.Id == id, batal);
+        if (user is null) return NotFound();
+
+        // Aturan yang sama persis dengan mencabut peran admin, dan alasannya sama: yang
+        // paling mungkin melakukannya orang yang salah menekan sambil menyunting akunnya
+        // sendiri, dan akibatnya ia langsung kehilangan akses ke satu-satunya layar yang
+        // bisa mengembalikannya.
+        if (id == User.Id())
+        {
+            return Salah(
+                "Tidak bisa menangguhkan akun sendiri",
+                "Minta admin lain yang melakukannya.");
+        }
+
+        if (user.Roles.Contains(UserRole.Admin))
+        {
+            var sisaAdmin = await db.Users.CountAsync(
+                u => u.Id != id && u.Roles.Contains(UserRole.Admin) && u.SuspendedAt == null,
+                batal);
+
+            if (sisaAdmin == 0)
+            {
+                return Salah(
+                    "Ini admin terakhir yang masih berlaku",
+                    "Angkat admin lain dulu sebelum menangguhkan yang ini.");
+            }
+        }
+
+        if (user.Ditangguhkan) return Ok(UserResponse.Dari(user));
+
+        user.SuspendedAt = DateTime.UtcNow;
+        user.SuspendedReason = permintaan.Alasan.Trim();
+        user.SuspendedByAdminId = User.Id();
+
+        await db.SaveChangesAsync(batal);
+
+        log.LogWarning(
+            "Akun {UserId} ditangguhkan oleh admin {AdminId}.", user.Id, User.Id());
+
+        return Ok(UserResponse.Dari(user));
+    }
+
+    /// <summary>Memulihkan akun yang ditangguhkan.</summary>
+    /// <remarks>
+    /// Alasannya wajib juga, bukan cuma saat menangguhkan. Keputusan mengembalikan akses
+    /// kepada orang yang pernah dihentikan sama layaknya punya sebab tercatat dengan
+    /// keputusan menghentikannya.
+    /// </remarks>
+    [EnableRateLimiting(BatasLaju.KebijakanTulis)]
+    [HttpPost("{id:guid}/pulihkan")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<UserResponse>> Pulihkan(
+        Guid id,
+        TangguhkanAkunRequest permintaan,
+        CancellationToken batal)
+    {
+        var user = await db.Users.SingleOrDefaultAsync(u => u.Id == id, batal);
+        if (user is null) return NotFound();
+
+        if (!user.Ditangguhkan)
+        {
+            return Salah(
+                "Akun ini tidak sedang ditangguhkan",
+                "Tidak ada yang perlu dipulihkan.");
+        }
+
+        user.SuspendedAt = null;
+        user.SuspendedReason = null;
+        user.SuspendedByAdminId = null;
+
+        await db.SaveChangesAsync(batal);
+
+        log.LogWarning(
+            "Akun {UserId} dipulihkan oleh admin {AdminId}: {Alasan}",
+            user.Id, User.Id(), permintaan.Alasan.Trim());
+
+        return Ok(UserResponse.Dari(user));
+    }
+
     [HttpPut("{id:guid}/peran")]
     public async Task<ActionResult<UserResponse>> TetapkanPeran(
         Guid id,

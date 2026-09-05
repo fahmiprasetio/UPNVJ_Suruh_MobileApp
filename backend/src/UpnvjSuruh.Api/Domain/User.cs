@@ -23,6 +23,39 @@ public class User
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    /// <summary>
+    /// Kapan akun ini ditangguhkan admin, atau <c>null</c> kalau ia masih berlaku.
+    /// </summary>
+    /// <remarks>
+    /// Sebelum kolom ini ada, tidak ada cara menghentikan akun sama sekali. Yang bisa
+    /// dilakukan admin cuma mengubah peran, dan peran tidak boleh kosong, jadi runner yang
+    /// menyalahgunakan sistem masih bisa dicabut peran runnernya sementara klien yang
+    /// memesan lalu meminta pembatalan berulang kali tidak bisa dihentikan dengan cara apa
+    /// pun.
+    ///
+    /// Ditangguhkan, bukan dihapus. Akun yang dihapus membawa serta seluruh ordernya, dan
+    /// order yang hilang berarti riwayat pembayaran dan bayaran runner ikut hilang bersama
+    /// jejaknya — justru pada akun yang paling mungkin dipersoalkan belakangan.
+    /// </remarks>
+    public DateTime? SuspendedAt { get; set; }
+
+    /// <summary>Kenapa ditangguhkan. Wajib diisi saat menangguhkan, ikut aturan yang sama
+    /// dengan perubahan peran: catatan tanpa alasan cuma memberi tahu bahwa sesuatu
+    /// terjadi, bukan kenapa.</summary>
+    public string? SuspendedReason { get; set; }
+
+    /// <summary>Admin yang menangguhkannya.</summary>
+    public Guid? SuspendedByAdminId { get; set; }
+
+    /// <summary>
+    /// Benar selama akun ini tidak boleh dipakai sama sekali.
+    ///
+    /// Diperiksa di satu tempat, saat token divalidasi (lihat Program.cs), bukan di
+    /// masing-masing endpoint. Yang tersebar akan terlewat di endpoint berikutnya yang
+    /// ditambahkan orang.
+    /// </summary>
+    public bool Ditangguhkan => SuspendedAt is not null;
+
     public bool IsKlien => Roles.Contains(UserRole.Klien);
     public bool IsRunner => Roles.Contains(UserRole.Runner);
     public bool IsAdmin => Roles.Contains(UserRole.Admin);

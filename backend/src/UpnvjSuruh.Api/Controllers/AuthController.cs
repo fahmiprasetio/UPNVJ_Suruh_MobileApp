@@ -174,6 +174,27 @@ public class AuthController(
             });
         }
 
+        // Akun yang ditangguhkan disebut apa adanya di sini, tidak disamarkan jadi "nomor
+        // atau kode tidak cocok" seperti dua penolakan di atas.
+        //
+        // Bedanya bukan kelalaian. Dua penolakan itu disamarkan supaya endpoint ini tidak
+        // bisa dipakai memeriksa nomor siapa saja yang punya akun. Di titik ini
+        // penyamaran itu sudah tidak menjaga apa pun: kodenya sudah benar, jadi yang
+        // bertanya sudah membuktikan memegang nomor itu. Yang tersisa cuma satu orang yang
+        // berhak tahu kenapa ia tidak bisa masuk — dan tanpa kalimat ini ia akan meminta
+        // kode berulang kali, yang setiap kalinya berbiaya SMS bagi mitra.
+        if (user.Ditangguhkan)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new ProblemDetails
+            {
+                Title = "Akun ini sedang ditangguhkan",
+                Detail = user.SuspendedReason is { Length: > 0 } alasan
+                    ? $"Alasannya: {alasan}. Hubungi admin kalau menurutmu ini keliru."
+                    : "Hubungi admin kalau menurutmu ini keliru.",
+                Status = StatusCodes.Status403Forbidden,
+            });
+        }
+
         var (nilai, kedaluwarsa) = token.Terbitkan(user);
         return Ok(new MasukResponse(nilai, kedaluwarsa, UserResponse.Dari(user)));
     }

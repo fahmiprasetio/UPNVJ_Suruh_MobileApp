@@ -1,7 +1,9 @@
 using System.Net;
 using System.Net.Http.Headers;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using UpnvjSuruh.Api.Auth;
+using UpnvjSuruh.Api.Data;
 using UpnvjSuruh.Api.Domain;
 
 namespace UpnvjSuruh.Api.Tests;
@@ -13,12 +15,43 @@ namespace UpnvjSuruh.Api.Tests;
 ///
 /// Yang diuji di sini pipeline sungguhannya, bukan tiruan: API dinyalakan apa adanya lalu
 /// diketuk lewat HTTP.
+///
+/// Memakai basis data sungguhan, dan itu tidak selalu begitu. Dulu cukup `ApiFactory` tanpa
+/// basis data, karena validasi token seluruhnya diputuskan dari isi tokennya sendiri. Sejak
+/// setiap permintaan membaca ulang akunnya (penangguhan dan peran, lihat `OnTokenValidated`
+/// di Program.cs), token untuk akun yang tidak pernah ada di basis data memang tidak lagi
+/// membuka apa pun — jadi akunnya harus benar-benar ada.
 /// </summary>
-public class HubKeamananTests(ApiFactory pabrik) : IClassFixture<ApiFactory>
+public class HubKeamananTests(DatabaseApiFactory pabrik) : IClassFixture<DatabaseApiFactory>
 {
     private const string Negosiasi = "/hubs/orders/negotiate?negotiateVersion=1";
 
-    private static string TokenUntuk(params UserRole[] roles)
+    private static string NomorBaru() => "08" + Random.Shared.NextInt64(100000000, 999999999);
+
+    /// <summary>Akun sungguhan di basis data, beserta token untuknya.</summary>
+    private async Task<string> TokenUntukAsync(params UserRole[] roles)
+    {
+        var user = new User
+        {
+            Name = "Adji Pratama",
+            Phone = NomorBaru(),
+            Roles = [.. roles],
+        };
+
+        using (var lingkup = pabrik.Services.CreateScope())
+        {
+            var db = lingkup.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Users.Add(user);
+            await db.SaveChangesAsync();
+        }
+
+        return TokenMentahUntuk(user);
+    }
+
+    /// <summary>
+    /// Token untuk akun yang sengaja TIDAK disimpan, dipakai menguji penolakannya.
+    /// </summary>
+    private static string TokenMentahUntuk(User user)
     {
         var layanan = new TokenService(Options.Create(new JwtOptions
         {
@@ -28,13 +61,7 @@ public class HubKeamananTests(ApiFactory pabrik) : IClassFixture<ApiFactory>
             MasaBerlakuMenit = 60,
         }));
 
-        var (token, _) = layanan.Terbitkan(new User
-        {
-            Name = "Adji Pratama",
-            Phone = "081234567891",
-            Roles = [.. roles],
-        });
-
+        var (token, _) = layanan.Terbitkan(user);
         return token;
     }
 
@@ -87,12 +114,36 @@ public class HubKeamananTests(ApiFactory pabrik) : IClassFixture<ApiFactory>
         Assert.Equal(HttpStatusCode.Unauthorized, jawaban.StatusCode);
     }
 
+    /// <summary>
+    /// Token yang tanda tangannya sah tapi akunnya tidak ada di basis data tetap ditolak.
+    ///
+    /// Bisa terjadi kalau akunnya dihapus setelah tokennya terbit, dan token yang membuka
+    /// pintu atas nama akun yang tidak ada adalah token tanpa pemilik.
+    /// </summary>
+    [Fact]
+    public async Task TokenUntukAkunYangTidakAdaDitolak()
+    {
+        var klien = pabrik.CreateClient();
+        klien.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            TokenMentahUntuk(new User
+            {
+                Name = "Tidak Pernah Ada",
+                Phone = NomorBaru(),
+                Roles = [UserRole.Runner],
+            }));
+
+        var jawaban = await klien.PostAsync(Negosiasi, null);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, jawaban.StatusCode);
+    }
+
     [Fact]
     public async Task TokenSahDiterima()
     {
         var klien = pabrik.CreateClient();
         klien.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", TokenUntuk(UserRole.Runner));
+            new AuthenticationHeaderValue("Bearer", await TokenUntukAsync(UserRole.Runner));
 
         var jawaban = await klien.PostAsync(Negosiasi, null);
 
@@ -107,7 +158,7 @@ public class HubKeamananTests(ApiFactory pabrik) : IClassFixture<ApiFactory>
         // dan itu diputuskan di OnConnectedAsync, bukan di sini.
         var klien = pabrik.CreateClient();
         klien.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", TokenUntuk(UserRole.Klien));
+            new AuthenticationHeaderValue("Bearer", await TokenUntukAsync(UserRole.Klien));
 
         var jawaban = await klien.PostAsync(Negosiasi, null);
 
@@ -122,8 +173,10 @@ public class HubKeamananTests(ApiFactory pabrik) : IClassFixture<ApiFactory>
         // pernah bisa menyambung ke hub.
         var klien = pabrik.CreateClient();
 
+        var token = await TokenUntukAsync(UserRole.Runner);
+
         var jawaban = await klien.PostAsync(
-            $"/hubs/orders/negotiate?negotiateVersion=1&access_token={TokenUntuk(UserRole.Runner)}",
+            $"/hubs/orders/negotiate?negotiateVersion=1&access_token={token}",
             null);
 
         Assert.Equal(HttpStatusCode.OK, jawaban.StatusCode);

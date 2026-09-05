@@ -25,6 +25,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             // yang cuma membaca.
             entity.HasIndex(u => u.Phone).IsUnique();
 
+            entity.Property(u => u.SuspendedReason).HasMaxLength(BatasMasukan.Deskripsi);
+
             entity.Property(u => u.Name).HasMaxLength(BatasMasukan.Nama);
             entity.Property(u => u.Phone).HasMaxLength(BatasMasukan.NomorHp);
             entity.Property(u => u.Address).HasMaxLength(BatasMasukan.Alamat);

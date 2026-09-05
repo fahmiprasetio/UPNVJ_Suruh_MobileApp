@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Globalization;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -137,6 +138,65 @@ builder.Services
                 }
 
                 return Task.CompletedTask;
+            },
+
+            // Akun dibaca ulang dari basis data setiap permintaan, dan dua hal diputuskan
+            // di sini yang tidak bisa diputuskan dari isi token.
+            //
+            // Yang pertama penangguhan. Token berlaku enam puluh menit, jadi tanpa
+            // pemeriksaan ini akun yang baru saja dihentikan admin tetap bisa memakai
+            // aplikasi selama sisa masa tokennya — termasuk mengambil order baru. Penjagaan
+            // yang baru berlaku sejam kemudian bukan penjagaan untuk hal yang alasannya
+            // penyalahgunaan.
+            //
+            // Yang kedua peran, dan ini lubang yang sudah lama terbuka. Peran ikut sebagai
+            // klaim di dalam token supaya endpoint tidak perlu menyentuh basis data, dan
+            // `TokenService` sendiri mencatat konsekuensinya: peran yang dicabut admin baru
+            // benar-benar hilang setelah token lamanya kedaluwarsa. Artinya runner yang
+            // dicabut perannya justru karena menyalahgunakan sistem tetap bisa menerima
+            // order selama sisa jam itu. `AuthController.Saya` sudah membaca peran ulang
+            // dari basis data untuk alasan yang sama, tapi itu cuma memperbaiki satu
+            // endpoint; yang memutuskan [Authorize(Roles = ...)] tetap klaim di token.
+            //
+            // Harganya satu kueri berindeks per permintaan. Untuk jasa sebesar ini itu
+            // murah, dan yang dibeli dengannya adalah pencabutan yang berlaku seketika
+            // alih-alih sejam kemudian.
+            //
+            // ponytail: satu kueri per permintaan. Kalau nanti terasa, yang dipasang cache
+            // pendek berkunci id pengguna, bukan mengembalikan kepercayaan pada klaim.
+            OnTokenValidated = async konteks =>
+            {
+                var db = konteks.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+                var id = konteks.Principal?.Id() ?? Guid.Empty;
+
+                var akun = await db.Users
+                    .AsNoTracking()
+                    .Where(u => u.Id == id)
+                    .Select(u => new { u.SuspendedAt, u.Roles })
+                    .SingleOrDefaultAsync(konteks.HttpContext.RequestAborted);
+
+                // Akun yang sudah tidak ada diperlakukan sama dengan yang ditangguhkan.
+                // Keduanya berujung sama bagi aplikasi, yaitu masuk lagi, dan token yang
+                // sah untuk akun yang tidak ada tidak boleh membuka apa pun.
+                if (akun is null || akun.SuspendedAt is not null)
+                {
+                    konteks.Fail("Akun tidak berlaku.");
+                    return;
+                }
+
+                // Klaim peran dari token dibuang, diganti peran yang berlaku sekarang.
+                // Menambahkan tanpa membuang tidak menutup apa-apa: yang perlu hilang justru
+                // peran yang sudah dicabut.
+                var identitas = konteks.Principal!.Identities.First();
+                foreach (var lama in identitas.FindAll(ClaimTypes.Role).ToList())
+                {
+                    identitas.RemoveClaim(lama);
+                }
+
+                foreach (var peran in akun.Roles.Distinct())
+                {
+                    identitas.AddClaim(new Claim(ClaimTypes.Role, peran.ToString()));
+                }
             },
         };
     });
