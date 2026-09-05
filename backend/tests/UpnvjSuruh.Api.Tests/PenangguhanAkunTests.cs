@@ -287,4 +287,78 @@ public class PenangguhanAkunTests(DatabaseApiFactory pabrik) : IClassFixture<Dat
         Assert.NotNull(ditemukan.DitangguhkanPada);
         Assert.Equal("Nomor palsu.", ditemukan.AlasanPenangguhan);
     }
+
+    // --- Menemukan kembali akun yang ditangguhkan ---
+
+    /// <summary>
+    /// Penangguhan bisa dicabut, tapi sampai penyaring ini ada, satu-satunya jalan menemukan
+    /// akunnya kembali adalah mengingat namanya. Admin yang menangguhkan seseorang hari ini
+    /// dan diminta memulihkannya minggu depan tidak punya cara bertanya siapa saja yang
+    /// sedang berhenti.
+    /// </summary>
+    [Fact]
+    public async Task DaftarTertangguhBisaDimintaTanpaKataKunci()
+    {
+        var (_, korbanId, _) = await AkunAsync(UserRole.Klien);
+        var (_, bebasId, _) = await AkunAsync(UserRole.Klien);
+        var (admin, _, _) = await AkunAsync(UserRole.Admin);
+        (await TangguhkanAsync(admin, korbanId, "Nomor palsu.")).EnsureSuccessStatusCode();
+
+        var hasil = await admin.GetFromJsonAsync<List<UserResponse>>(
+            "/api/admin/pengguna?tertangguh=true");
+
+        // Berisi/tidak berisi, bukan jumlahnya: pabrik basis datanya dipakai bersama seluruh
+        // tes di berkas ini, jadi akun yang ditangguhkan tes lain ikut terbawa di sini.
+        Assert.Contains(hasil!, u => u.Id == korbanId);
+        Assert.DoesNotContain(hasil!, u => u.Id == bebasId);
+        Assert.All(hasil!, u => Assert.NotNull(u.DitangguhkanPada));
+    }
+
+    /// <summary>Yang dipulihkan keluar dari daftarnya, karena daftar itulah yang menjawab
+    /// "siapa yang sedang berhenti", bukan "siapa yang pernah".</summary>
+    [Fact]
+    public async Task AkunYangDipulihkanKeluarDariDaftarTertangguh()
+    {
+        var (_, korbanId, _) = await AkunAsync(UserRole.Klien);
+        var (admin, _, _) = await AkunAsync(UserRole.Admin);
+        (await TangguhkanAsync(admin, korbanId)).EnsureSuccessStatusCode();
+        (await PulihkanAsync(admin, korbanId)).EnsureSuccessStatusCode();
+
+        var hasil = await admin.GetFromJsonAsync<List<UserResponse>>(
+            "/api/admin/pengguna?tertangguh=true");
+
+        Assert.DoesNotContain(hasil!, u => u.Id == korbanId);
+    }
+
+    /// <summary>Kata kunci tetap boleh dipakai bersamanya untuk mempersempit.</summary>
+    [Fact]
+    public async Task PenyaringTertangguhBisaDigabungDenganKataKunci()
+    {
+        var (_, dicariId, noHp) = await AkunAsync(UserRole.Klien);
+        var (_, lainId, _) = await AkunAsync(UserRole.Klien);
+        var (admin, _, _) = await AkunAsync(UserRole.Admin);
+        (await TangguhkanAsync(admin, dicariId)).EnsureSuccessStatusCode();
+        (await TangguhkanAsync(admin, lainId)).EnsureSuccessStatusCode();
+
+        var hasil = await admin.GetFromJsonAsync<List<UserResponse>>(
+            $"/api/admin/pengguna?tertangguh=true&q={noHp}");
+
+        Assert.Contains(hasil!, u => u.Id == dicariId);
+        Assert.DoesNotContain(hasil!, u => u.Id == lainId);
+    }
+
+    /// <summary>
+    /// Kata kunci wajib tetap berlaku untuk pencarian biasa, dan penyaring ini tidak
+    /// melonggarkannya. Yang dijaga aturan itu nomor HP pelanggan yang tidak ada urusannya
+    /// dengan siapa pun, dan itu tidak berubah karena ada parameter baru.
+    /// </summary>
+    [Fact]
+    public async Task PencarianBiasaTetapMenuntutKataKunci()
+    {
+        var (admin, _, _) = await AkunAsync(UserRole.Admin);
+
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            (await admin.GetAsync("/api/admin/pengguna?tertangguh=false")).StatusCode);
+    }
 }

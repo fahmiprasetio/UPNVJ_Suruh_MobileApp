@@ -31,14 +31,26 @@ public class AdminPenggunaController(
     /// Menuntut kata kunci, dan tidak menyediakan cara mengambil seluruh daftar. Dashboard
     /// mencari orang tertentu untuk diangkat jadi runner; menumpahkan seluruh nomor HP
     /// pelanggan ke satu jawaban bukan bagian dari pekerjaan itu.
+    ///
+    /// Satu pengecualian: <c>tertangguh=true</c>. Penangguhan diberikan admin dan bisa
+    /// dicabut admin, tapi sampai sekarang satu-satunya jalan menemukan akunnya kembali
+    /// adalah mengingat namanya. Admin yang menangguhkan seseorang hari ini dan diminta
+    /// memulihkannya minggu depan tidak punya cara bertanya "siapa saja yang sedang
+    /// berhenti" — dan itu pertanyaan yang justru menjadi pekerjaannya.
+    ///
+    /// Alasan kata kunci wajib tidak berlaku di sana. Yang dijaganya adalah nomor HP
+    /// pelanggan yang tidak ada urusannya dengan siapa pun; akun yang ditangguhkan
+    /// himpunan kecil, dibuat oleh admin sendiri, dan seluruhnya memang perlu ditinjau.
+    /// Kata kunci tetap boleh dipakai bersamanya untuk mempersempit.
     /// </remarks>
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<UserResponse>>> Cari(
         [FromQuery] string? q,
+        [FromQuery] bool tertangguh,
         CancellationToken batal)
     {
         var kunci = (q ?? string.Empty).Trim();
-        if (kunci.Length < 3)
+        if (!tertangguh && kunci.Length < 3)
         {
             return BadRequest(new ProblemDetails
             {
@@ -48,9 +60,25 @@ public class AdminPenggunaController(
             });
         }
 
-        var pengguna = await db.Users
-            .Where(u => EF.Functions.ILike(u.Name, $"%{kunci}%") || u.Phone.Contains(kunci))
-            .OrderBy(u => u.Name)
+        var kueri = db.Users.AsQueryable();
+
+        if (tertangguh) kueri = kueri.Where(u => u.SuspendedAt != null);
+
+        // Kata kunci yang terlalu pendek diabaikan alih-alih ditolak saat menyaring yang
+        // tertangguh: admin yang baru mengetik satu huruf sedang di tengah mengetik, dan
+        // membalasnya dengan galat berarti daftar yang sudah tampil lenyap di huruf pertama.
+        if (kunci.Length >= 3)
+        {
+            kueri = kueri.Where(u => EF.Functions.ILike(u.Name, $"%{kunci}%") || u.Phone.Contains(kunci));
+        }
+
+        // Yang tertangguh diurutkan dari yang terbaru: yang paling mungkin ditanyakan
+        // adalah yang barusan dihentikan, bukan yang namanya berawalan A.
+        // ponytail: dipotong 50 seperti pencarian biasa, tanpa halaman. Penangguhan dicabut
+        // sesering ia diberikan, jadi daftarnya tidak tumbuh satu arah seperti catatan audit.
+        var pengguna = await (tertangguh
+                ? kueri.OrderByDescending(u => u.SuspendedAt)
+                : kueri.OrderBy(u => u.Name))
             .Take(50)
             .ToListAsync(batal);
 
