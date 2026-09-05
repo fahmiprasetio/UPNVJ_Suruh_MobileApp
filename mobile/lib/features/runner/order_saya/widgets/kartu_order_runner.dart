@@ -40,6 +40,7 @@ class KartuOrderRunner extends StatelessWidget {
     super.key,
     required this.order,
     this.onSelesaikan,
+    this.onLepas,
     this.onChat,
   });
 
@@ -48,6 +49,10 @@ class KartuOrderRunner extends StatelessWidget {
   /// `null` untuk order yang sudah selesai, tidak ada lagi yang bisa
   /// dilakukan runner terhadapnya.
   final VoidCallback? onSelesaikan;
+
+  /// Runner mundur dari order ini. Hanya ada selama ordernya masih berjalan;
+  /// yang sudah selesai tidak bisa dilepas lagi.
+  final VoidCallback? onLepas;
 
   /// Pintu ke ruang chat order. Tetap tersedia untuk order yang sudah selesai
   /// karena percakapannya masih boleh dibaca, cuma tidak bisa dibalas.
@@ -117,25 +122,43 @@ class KartuOrderRunner extends StatelessWidget {
               )
             else
               _RingkasanPenyelesaian(order: order),
-            if (onChat != null) ...[
+            if (onChat != null || onLepas != null) ...[
               const SizedBox(height: 4),
               // Tombol teks, bukan tombol bergaris. Bergaris membuatnya
               // seukuran dan sekeras tombol maroon di atasnya, dan kartu dengan
               // dua tombol selebar penuh yang sama kerasnya tidak punya tindakan
               // utama lagi, cuma dua pilihan yang sama-sama menuntut. Chat
               // memang jalan sampingan; bentuknya sekarang mengaku begitu.
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: onChat,
-                  icon: const Icon(Icons.forum_outlined, size: 18),
-                  label: Text(
-                    order.jumlahPesan == 0
-                        ? 'Chat Klien'
-                        : 'Chat Klien (${order.jumlahPesan})',
-                  ),
-                  style: TextButton.styleFrom(minimumSize: const Size(0, 44)),
-                ),
+              //
+              // "Lepas order" berdiri di ujung seberang, jauh dari chat dan jauh
+              // dari tombol selesai, dan tanpa ikon. Ia jalan keluar yang memang
+              // harus ada, tapi bukan sesuatu yang pantas ditawarkan sejajar
+              // dengan menyelesaikan pekerjaan; yang mencarinya akan menemukannya,
+              // yang tidak mencarinya tidak akan tersenggol.
+              Row(
+                children: [
+                  if (onChat != null)
+                    TextButton.icon(
+                      onPressed: onChat,
+                      icon: const Icon(Icons.forum_outlined, size: 18),
+                      label: Text(
+                        order.jumlahPesan == 0
+                            ? 'Chat Klien'
+                            : 'Chat Klien (${order.jumlahPesan})',
+                      ),
+                      style: TextButton.styleFrom(minimumSize: const Size(0, 44)),
+                    ),
+                  const Spacer(),
+                  if (onLepas != null)
+                    TextButton(
+                      onPressed: onLepas,
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size(0, 44),
+                        foregroundColor: skema.onSurfaceVariant,
+                      ),
+                      child: const Text('Lepas order'),
+                    ),
+                ],
               ),
             ],
           ],

@@ -61,3 +61,24 @@ public record SelesaikanOrderRequest
     [MaxLength(BatasMasukan.CatatanSerahTerima)]
     public string? CatatanSerahTerima { get; init; }
 }
+
+/// <summary>
+/// Runner melepas order yang sudah dipegangnya, disertai alasan.
+/// </summary>
+/// <remarks>
+/// Alasannya wajib, dan bukan demi kerapian data: yang dilepas adalah pekerjaan yang
+/// sudah dibayar dan sudah ditunggu orang. Klien yang melihat ordernya mundur sendiri
+/// dari "dikerjakan" jadi "mencari runner" tanpa satu kalimat pun akan menyimpulkan
+/// sistemnya rusak, dan itu kesimpulan yang jauh lebih mahal daripada satu kolom teks.
+///
+/// Panjangnya mengikuti batas pesan chat karena ke sanalah ia disimpan, sebagai pesan
+/// biasa dari runner yang bersangkutan. Menambah kolom sendiri di order berarti satu
+/// tempat baru yang harus dibaca layar supaya isinya terlihat; menaruhnya di percakapan
+/// yang sudah dibuka kedua belah pihak membuatnya sampai tanpa satu pun layar baru.
+/// </remarks>
+public record LepasOrderRequest
+{
+    [Required(AllowEmptyStrings = false)]
+    [MaxLength(BatasMasukan.PesanChat)]
+    public string Alasan { get; init; } = string.Empty;
+}

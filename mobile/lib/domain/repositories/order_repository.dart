@@ -158,6 +158,19 @@ abstract interface class OrderRepository {
     String? catatanSerahTerima,
   });
 
+  /// Runner melepas order yang sudah dipegangnya, dan order itu kembali dicari
+  /// runner lain.
+  ///
+  /// Bukan pembatalan: uang klien tetap di tempatnya, ordernya cuma kembali
+  /// disiarkan. Itu jalan keluar yang jauh lebih murah daripada dua yang tersedia
+  /// sebelumnya, yaitu runner memaksa menandai selesai, atau admin membatalkan
+  /// seluruhnya berikut pengembalian dana padahal yang dibutuhkan cuma runner lain.
+  ///
+  /// [alasan] wajib, dan tersimpan sebagai pesan dari runner ini di chat ordernya.
+  /// Klien yang melihat ordernya mundur sendiri tanpa satu kalimat pun akan
+  /// menyimpulkan sistemnya rusak.
+  Future<Order> lepasOrder({required String orderId, required String alasan});
+
   /// Membatalkan order.
   ///
   /// Hanya pemesannya, dan hanya selama belum dibayar. Pembatalan setelah pembayaran

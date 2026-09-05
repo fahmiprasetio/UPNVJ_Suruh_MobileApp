@@ -365,6 +365,113 @@ public class OrdersController(
     }
 
     /// <summary>
+    /// Runner melepas order yang sudah dipegangnya, dan order itu kembali dicari runner.
+    /// </summary>
+    /// <remarks>
+    /// Sebelum ini tidak ada jalan keluar sama sekali bagi runner yang sudah menekan
+    /// terima. Motor mogok, jadwal kuliah bergeser, apa pun: ordernya menggantung di
+    /// Dikerjakan sampai salah satu dari tiga hal terjadi, dan ketiganya buruk. Runner
+    /// memaksa menandainya selesai dengan foto seadanya. Admin membatalkan seluruh order
+    /// dan mengembalikan uangnya, padahal yang dibutuhkan klien cuma runner lain. Atau
+    /// tidak terjadi apa-apa sama sekali, dan itu yang paling sering.
+    ///
+    /// Yang benar jauh lebih murah dari ketiganya: penugasannya dicabut, ordernya kembali
+    /// disiarkan, uang klien tetap di tempatnya, dan runner lain bisa mengambilnya. Klien
+    /// tidak kehilangan apa pun selain waktu.
+    ///
+    /// ## Kenapa barisnya dihapus, bukan ditandai
+    ///
+    /// Menyimpan riwayat siapa pernah melepas apa berarti setiap tempat yang bertanya
+    /// "siapa runner order ini" harus ikut menyaring yang sudah dilepas — <c>AksesOrder</c>,
+    /// dua daftar order runner, siaran, perhitungan payout. Satu saja yang lupa menyaring
+    /// dan runner yang sudah pergi tetap terhitung sebagai pemegangnya, atau tetap bisa
+    /// membaca alamat rumah pelanggan. Alasannya sendiri tidak ikut hilang: ia tertulis di
+    /// percakapan ordernya sebagai pesan dari runner itu, tempat klien dan admin
+    /// sama-sama bisa membacanya.
+    ///
+    /// ponytail: tanpa jejak siapa sering melepas. Kalau pola itu jadi masalah, yang
+    /// dibutuhkan tabel tersendiri, bukan kolom di penugasan yang harus disaring di enam
+    /// tempat.
+    /// </remarks>
+    [EnableRateLimiting(BatasLaju.KebijakanTulis)]
+    [HttpPost("{id:guid}/lepas")]
+    [Authorize(Roles = Peran.Runner)]
+    public async Task<ActionResult<OrderResponse>> Lepas(
+        Guid id,
+        LepasOrderRequest permintaan,
+        CancellationToken batal)
+    {
+        var runnerId = User.Id();
+
+        var order = await db.Orders
+            .Include(o => o.RunnerAssignments)
+            .Include(o => o.Offers)
+            .Include(o => o.Client)
+            .SingleOrDefaultAsync(o => o.Id == id, batal);
+
+        if (order is null) return NotFound();
+
+        var penugasan = order.RunnerAssignments.SingleOrDefault(a => a.RunnerId == runnerId);
+
+        // 404, bukan 403, sama seperti membaca order: runner yang tidak memegang order ini
+        // tidak berhak tahu bahwa ordernya ada.
+        if (penugasan is null) return NotFound();
+
+        // Order yang sudah selesai atau batal tidak bisa dilepas lagi. Bukan cuma tidak ada
+        // gunanya: mengembalikannya ke MencariRunner berarti pekerjaan yang sudah dibayar
+        // dan sudah diserahkan disiarkan ulang untuk dikerjakan kedua kalinya.
+        if (order.Status is not (OrderStatus.MencariRunner or OrderStatus.Dikerjakan))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Order ini sudah tidak berjalan",
+                Detail = $"Order ini sudah {order.Status}.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        // Ditulis selagi runnernya masih pemegang order ini, karena sesudah penugasannya
+        // dicabut ia bukan siapa-siapa di sini lagi dan endpoint chat akan menolaknya.
+        db.OrderMessages.Add(new OrderMessage
+        {
+            OrderId = order.Id,
+            SenderId = runnerId,
+            SenderRole = UserRole.Runner,
+            Text = permintaan.Alasan.Trim(),
+        });
+
+        db.OrderRunnerAssignments.Remove(penugasan);
+
+        // Kembali dicari, apa pun statusnya tadi. Order multi-runner yang kuotanya sempat
+        // penuh mundur ke MencariRunner supaya slot yang baru kosong itu benar-benar
+        // disiarkan lagi; runner lain yang masih memegangnya tidak terganggu sama sekali.
+        order.Status = OrderStatus.MencariRunner;
+
+        await db.SaveChangesAsync(batal);
+
+        // Disiarkan ulang persis seperti order yang baru lunas, karena bagi runner yang
+        // sedang melihat daftar order masuk, inilah yang baru saja terjadi: satu pekerjaan
+        // berbayar kembali tersedia.
+        await hub.Clients.Group(OrderHub.RunnersGroup).SendAsync(
+            "OrderBroadcast",
+            new
+            {
+                OrderId = order.Id,
+                KodeOrder = order.OrderCode,
+                ServiceType = order.ServiceType.ToString(),
+                Harga = order.Price,
+                JumlahRunnerDibutuhkan = order.RequiredRunnerCount,
+            },
+            batal);
+        await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
+
+        return Ok(OrderResponse.Dari(
+            order,
+            order.Client?.Name ?? "Klien",
+            await db.JumlahPesanAsync(order.Id, runnerId, User.Punya(Peran.Admin), batal)));
+    }
+
+    /// <summary>
     /// Runner menandai pekerjaannya selesai.
     /// </summary>
     /// <remarks>

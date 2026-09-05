@@ -215,4 +215,73 @@ void main() {
     expect(find.text('Selesaikan Order'), findsNothing);
     expect(find.text('Foto bukti tersimpan'), findsOneWidget);
   });
+
+  /// Runner yang sudah menekan terima dulu tidak punya jalan keluar sama sekali:
+  /// ordernya menggantung sampai ia memaksa menandainya selesai, atau admin
+  /// membatalkan seluruhnya berikut pengembalian dana padahal yang dibutuhkan klien
+  /// cuma runner lain.
+  group('melepas order', () {
+    testWidgets('ditawarkan untuk order yang sedang dikerjakan', (tester) async {
+      await bukaOrderSaya(tester);
+
+      expect(find.text('Lepas order'), findsOneWidget);
+    });
+
+    /// Mengembalikan order yang sudah diserahkan ke "mencari runner" berarti
+    /// pekerjaan yang sudah dibayar dan sudah selesai disiarkan ulang.
+    testWidgets('tidak ditawarkan untuk order yang sudah selesai', (tester) async {
+      await bukaOrderSaya(
+        tester,
+        orderAwal: [
+          Order(
+            id: 'o-selesai',
+            kodeOrder: 'SRH-9003',
+            klienId: SeedData.klien.id,
+            namaKlien: SeedData.klien.nama,
+            serviceType: ServiceType.anterJemput,
+            status: OrderStatus.selesai,
+            dibuatPada: DateTime.now(),
+            harga: 11000,
+            runnerIds: [SeedData.runner.id],
+            selesaiPada: DateTime.now(),
+            fotoBuktiUrl: 'fake://bukti/o-selesai.jpg',
+          ),
+        ],
+      );
+
+      expect(find.text('Lepas order'), findsNothing);
+    });
+
+    testWidgets('menuntut alasan sebelum tombolnya bisa ditekan', (tester) async {
+      await bukaOrderSaya(tester);
+
+      await tester.tap(find.text('Lepas order'));
+      await tester.pumpAndSettle();
+
+      // Tombol di dialognya, bukan tombol di kartu yang tadi ditekan.
+      final tombolLepas = find.widgetWithText(TextButton, 'Lepas');
+      expect(tester.widget<TextButton>(tombolLepas).onPressed, isNull);
+
+      await tester.enterText(find.byType(TextField), 'Motor saya mogok.');
+      await tester.pump();
+
+      expect(tester.widget<TextButton>(tombolLepas).onPressed, isNotNull);
+    });
+
+    testWidgets('order yang dilepas hilang dari daftar pekerjaan runner', (
+      tester,
+    ) async {
+      await bukaOrderSaya(tester);
+      expect(find.text('Sedang dikerjakan (1)'), findsOneWidget);
+
+      await tester.tap(find.text('Lepas order'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Motor saya mogok.');
+      await tester.pump();
+      await tester.tap(find.widgetWithText(TextButton, 'Lepas'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sedang dikerjakan (1)'), findsNothing);
+    });
+  });
 }
