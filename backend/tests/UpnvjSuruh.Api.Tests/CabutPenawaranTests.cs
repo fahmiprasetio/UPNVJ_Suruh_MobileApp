@@ -360,4 +360,68 @@ public class CabutPenawaranTests(DatabaseApiFactory pabrik) : IClassFixture<Data
             HttpStatusCode.NotFound,
             (await runner.GetAsync($"/api/orders/{order.Id}")).StatusCode);
     }
+
+    // --- Yang terlihat admin ---
+
+    /// <summary>
+    /// Bagian 49.10 menutup pertanyaan "berapa kali runner boleh menawar lalu menarik lalu
+    /// menawar lagi" tanpa melarang apa pun, karena pengulangan bisa sah — tapi dengan
+    /// catatan bahwa yang dibutuhkan kalau ternyata dipakai mengganggu adalah catatan pola.
+    /// Datanya memang sudah tersimpan sejak awal sebagai status, dan yang kurang cuma satu
+    /// kueri yang menanyakannya.
+    /// </summary>
+    [Fact]
+    public async Task AdminBisaMelihatPenawaranYangPernahDitarikRunner()
+    {
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+        var (runner, runnerId) = await AkunAsync(UserRole.Runner);
+        var (admin, _) = await AkunAsync(UserRole.Admin);
+        var order = await PermintaanAsync(klien);
+        var penawaran = await TawarAsync(runner, order.Id, harga: 50000m);
+        (await CabutAsync(runner, order.Id, penawaran.Id)).EnsureSuccessStatusCode();
+
+        var daftar = await admin.GetFromJsonAsync<HalamanResponse<PenawaranDitarikResponse>>(
+            $"/api/admin/pengguna/{runnerId}/penawaran-ditarik");
+
+        var baris = Assert.Single(daftar!.Isi);
+        Assert.Equal(1, daftar.Total);
+        Assert.Equal(order.Id, baris.OrderId);
+        // Kode ordernya ikut, supaya admin tidak perlu membuka satu per satu untuk tahu
+        // order mana yang dimaksud.
+        Assert.Equal(order.KodeOrder, baris.KodeOrder);
+        // Dan harganya, karena penawaran yang ditarik memang tidak menyimpan alasan sama
+        // sekali (bagian 49.5): angkanya sendiri yang membedakan salah ketik dari pola.
+        Assert.Equal(50000m, baris.Harga);
+    }
+
+    /// <summary>
+    /// Yang masih menunggu jawaban bukan penarikan, dan memasukkannya ke daftar ini berarti
+    /// setiap runner yang sedang menawar terlihat seperti runner yang menarik tawarannya.
+    /// </summary>
+    [Fact]
+    public async Task PenawaranYangMasihMenungguTidakIkutDihitungSebagaiDitarik()
+    {
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+        var (runner, runnerId) = await AkunAsync(UserRole.Runner);
+        var (admin, _) = await AkunAsync(UserRole.Admin);
+        var order = await PermintaanAsync(klien);
+        await TawarAsync(runner, order.Id);
+
+        var daftar = await admin.GetFromJsonAsync<HalamanResponse<PenawaranDitarikResponse>>(
+            $"/api/admin/pengguna/{runnerId}/penawaran-ditarik");
+
+        Assert.Empty(daftar!.Isi);
+        Assert.Equal(0, daftar.Total);
+    }
+
+    [Fact]
+    public async Task DaftarPenawaranDitarikTertutupUntukAkunBiasa()
+    {
+        var (runner, runnerId) = await AkunAsync(UserRole.Runner);
+
+        var jawaban = await runner.GetAsync(
+            $"/api/admin/pengguna/{runnerId}/penawaran-ditarik");
+
+        Assert.Equal(HttpStatusCode.Forbidden, jawaban.StatusCode);
+    }
 }

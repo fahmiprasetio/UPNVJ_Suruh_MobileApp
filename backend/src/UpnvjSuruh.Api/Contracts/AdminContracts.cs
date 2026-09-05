@@ -85,6 +85,30 @@ public record PerubahanPenangguhanResponse(
         p.ChangedAt);
 }
 
+/// <summary>Satu penawaran yang ditarik kembali oleh runner yang membuatnya.</summary>
+/// <remarks>
+/// Tidak membawa alasan, karena alasannya memang tidak pernah diwajibkan (bagian 49.5):
+/// yang ditarik tawaran yang belum diterima siapa pun, dan alasan yang paling sering cuma
+/// "salah ketik". Yang menggantikannya di sini <see cref="Harga"/>: angka yang ditarik itu
+/// sendiri yang membedakan salah ketik dari pola yang perlu ditanyakan.
+/// </remarks>
+public record PenawaranDitarikResponse(
+    Guid Id,
+    Guid OrderId,
+    string KodeOrder,
+    Guid RunnerId,
+    decimal Harga,
+    DateTime DitarikPada)
+{
+    public static PenawaranDitarikResponse Dari(OrderOffer p) => new(
+        p.Id,
+        p.OrderId,
+        p.Order?.OrderCode ?? "-",
+        p.CreatedByRunnerId,
+        p.Price,
+        p.RespondedAt ?? p.CreatedAt);
+}
+
 /// <summary>Satu kali seorang runner melepas order yang sudah dipegangnya.</summary>
 /// <remarks>
 /// Membawa kode ordernya, bukan cuma idnya. Yang membacanya sedang menimbang apakah sebuah

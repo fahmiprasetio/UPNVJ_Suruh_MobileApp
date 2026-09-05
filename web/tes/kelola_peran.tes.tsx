@@ -125,7 +125,7 @@ describe('HalamanKelolaPeran', () => {
     const permintaan: { url: string; init: RequestInit }[] = [];
     const ambil = vi.fn().mockImplementation((url: string, init: RequestInit) => {
       permintaan.push({ url, init });
-      if (url.includes('/riwayat') || url.includes('/pelepasan')) {
+      if (url.includes('/riwayat') || url.includes('/pelepasan') || url.includes('/penawaran-ditarik')) {
         return Promise.resolve(
           jawaban(200, { isi: [], total: 0, halaman: 1, ukuranHalaman: 20, totalHalaman: 0 }),
         );
@@ -171,7 +171,7 @@ describe('HalamanKelolaPeran', () => {
 
     const ambil = vi.fn().mockImplementation((url: string) => {
       if (url.includes('/api/auth/saya')) return Promise.resolve(jawaban(200, admin));
-      if (url.includes('/riwayat') || url.includes('/pelepasan')) {
+      if (url.includes('/riwayat') || url.includes('/pelepasan') || url.includes('/penawaran-ditarik')) {
         return Promise.resolve(
           jawaban(200, { isi: [], total: 0, halaman: 1, ukuranHalaman: 20, totalHalaman: 0 }),
         );
@@ -209,7 +209,7 @@ describe('HalamanKelolaPeran', () => {
 describe('PanelPenangguhan', () => {
   function ambilDengan(hasilPencarian: Pengguna) {
     return vi.fn().mockImplementation((url: string, init?: RequestInit) => {
-      if (url.includes('/riwayat') || url.includes('/pelepasan')) {
+      if (url.includes('/riwayat') || url.includes('/pelepasan') || url.includes('/penawaran-ditarik')) {
         return Promise.resolve(
           jawaban(200, { isi: [], total: 0, halaman: 1, ukuranHalaman: 20, totalHalaman: 0 }),
         );
@@ -301,7 +301,7 @@ describe('PanelPenangguhan', () => {
     const saya = pengguna({ roles: ['Admin'] });
     const ambil = vi.fn().mockImplementation((url: string) => {
       if (url.includes('/api/auth/saya')) return Promise.resolve(jawaban(200, saya));
-      if (url.includes('/riwayat') || url.includes('/pelepasan')) {
+      if (url.includes('/riwayat') || url.includes('/pelepasan') || url.includes('/penawaran-ditarik')) {
         return Promise.resolve(
           jawaban(200, { isi: [], total: 0, halaman: 1, ukuranHalaman: 20, totalHalaman: 0 }),
         );
@@ -379,7 +379,7 @@ describe('PanelPenangguhan', () => {
           }),
         );
       }
-      if (String(url).includes('/riwayat')) {
+      if (String(url).includes('/riwayat') || String(url).includes('/penawaran-ditarik')) {
         return Promise.resolve(
           jawaban(200, { isi: [], total: 0, halaman: 1, ukuranHalaman: 20, totalHalaman: 0 }),
         );
@@ -447,7 +447,7 @@ describe('PanelPenangguhan', () => {
           }),
         );
       }
-      if (String(url).includes('/riwayat') || String(url).includes('/pelepasan')) {
+      if (String(url).includes('/riwayat') || String(url).includes('/pelepasan') || String(url).includes('/penawaran-ditarik')) {
         return Promise.resolve(
           jawaban(200, { isi: [], total: 0, halaman: 1, ukuranHalaman: 20, totalHalaman: 0 }),
         );
@@ -497,5 +497,62 @@ describe('PanelPenangguhan', () => {
       ).length;
       expect(sesudah).toBeGreaterThan(sebelum);
     });
+  });
+
+  /**
+   * Bagian 49.10 menutup pertanyaan "berapa kali runner boleh menawar lalu menarik lalu
+   * menawar lagi" tanpa melarang apa pun, karena pengulangan bisa sah, tapi dengan catatan
+   * bahwa yang dibutuhkan kalau ternyata dipakai mengganggu adalah catatan pola. Ini
+   * catatan polanya, dan datanya sudah ada sejak awal sebagai status.
+   */
+  it('menampilkan penawaran yang pernah ditarik beserta angkanya', async () => {
+    const ambil = vi.fn().mockImplementation((url: string) => {
+      if (String(url).includes('/penawaran-ditarik')) {
+        return Promise.resolve(
+          jawaban(200, {
+            isi: [
+              {
+                id: 'w-1',
+                orderId: 'o-9',
+                kodeOrder: 'SRH-0099',
+                runnerId: '44444444-4444-4444-4444-444444444444',
+                harga: 50000,
+                ditarikPada: '2026-09-06T09:00:00Z',
+              },
+            ],
+            total: 1,
+            halaman: 1,
+            ukuranHalaman: 20,
+            totalHalaman: 1,
+          }),
+        );
+      }
+      if (String(url).includes('/riwayat') || String(url).includes('/pelepasan')) {
+        return Promise.resolve(
+          jawaban(200, { isi: [], total: 0, halaman: 1, ukuranHalaman: 20, totalHalaman: 0 }),
+        );
+      }
+      return Promise.resolve(jawaban(200, [pengguna()]));
+    });
+
+    pasang(ambil);
+    fireEvent.change(screen.getByLabelText('Cari nama atau nomor HP'), {
+      target: { value: 'rifqi' },
+    });
+    fireEvent.click(await screen.findByText('Rifqi'));
+
+    // Angkanya ikut karena penarikan tidak menyimpan alasan sama sekali: 50.000 untuk
+    // pindah kos terbaca sebagai salah ketik, dan itu justru bacaan yang membebaskan.
+    expect(await screen.findByText(/SRH-0099/)).toBeInTheDocument();
+    expect(screen.getByText(/Rp\s?50\.000/)).toBeInTheDocument();
+    expect(screen.getByText(/Penawaran yang ditarik \(1\)/)).toBeInTheDocument();
+  });
+
+  it('mengatakan dengan jelas kalau akun ini belum pernah menarik penawaran', async () => {
+    await pilihRifqi(pengguna());
+
+    expect(
+      await screen.findByText('Akun ini belum pernah menarik penawarannya sendiri.'),
+    ).toBeInTheDocument();
   });
 });

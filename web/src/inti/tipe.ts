@@ -159,14 +159,21 @@ export interface Tarif {
 }
 
 /**
- * Satu baris riwayat perubahan peran, dari `PerubahanPeranResponse` di backend.
+ * Satu penawaran yang pernah ditarik kembali runner ini, dari `PenawaranDitarikResponse`
+ * di backend.
  *
- * `sebelum` dan `sesudah` datang sebagai teks (`p.RolesBefore.Select(r => r.ToString())`),
- * bukan sebagai `Peran[]`. Dibiarkan sebagai `string[]` di sini juga, bukan dipaksa jadi
- * union: baris riwayat lama bisa jadi menyimpan nilai yang berbeda dari tiga peran yang
- * berlaku sekarang kalau `UserRole` pernah berubah, dan riwayat audit tidak boleh diam-diam
- * membuang nilai yang tidak dikenalinya.
+ * Membawa `harga`, bukan alasan: menarik penawaran memang tidak pernah menuntut alasan
+ * (bagian 49.5), jadi angkanya sendiri yang membedakan salah ketik dari pola.
  */
+export interface PenawaranDitarik {
+  id: string;
+  orderId: string;
+  kodeOrder: string;
+  runnerId: string;
+  harga: number;
+  ditarikPada: string;
+}
+
 /**
  * Satu kali seorang runner melepas order yang sudah dipegangnya, dari
  * `PelepasanOrderResponse` di backend.
@@ -202,6 +209,15 @@ export interface PerubahanPenangguhan {
   diubahPada: string;
 }
 
+/**
+ * Satu baris riwayat perubahan peran, dari `PerubahanPeranResponse` di backend.
+ *
+ * `sebelum` dan `sesudah` datang sebagai teks (`p.RolesBefore.Select(r => r.ToString())`),
+ * bukan sebagai `Peran[]`. Dibiarkan sebagai `string[]` di sini juga, bukan dipaksa jadi
+ * union: baris riwayat lama bisa jadi menyimpan nilai yang berbeda dari tiga peran yang
+ * berlaku sekarang kalau `UserRole` pernah berubah, dan riwayat audit tidak boleh diam-diam
+ * membuang nilai yang tidak dikenalinya.
+ */
 export interface PerubahanPeran {
   id: string;
   userId: string;

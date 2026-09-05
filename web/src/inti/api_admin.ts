@@ -9,6 +9,7 @@ import type {
   Pengguna,
   Peran,
   PelepasanOrder,
+  PenawaranDitarik,
   PerubahanPenangguhan,
   PerubahanPeran,
   Pesan,
@@ -211,6 +212,25 @@ export function riwayatPenangguhan(
 ): Promise<Halaman<PerubahanPenangguhan>> {
   return api.minta<Halaman<PerubahanPenangguhan>>(
     `/api/admin/pengguna/${userId}/penangguhan/riwayat`,
+    { kueri: { halaman: penyaring.halaman, ukuran: penyaring.ukuran }, sinyal },
+  );
+}
+
+/**
+ * Penawaran yang pernah ditarik kembali runner ini.
+ *
+ * Satu kueri di backend, bukan tabel baru: menarik penawaran menandainya `Dicabut` alih-alih
+ * menghapus barisnya (bagian 49.6), jadi datanya sudah ada sejak endpoint menariknya dibuat
+ * dan cuma belum pernah ditanya dari mana pun.
+ */
+export function penawaranDitarik(
+  api: KlienApi,
+  userId: string,
+  penyaring: PenyaringHalaman = {},
+  sinyal?: AbortSignal,
+): Promise<Halaman<PenawaranDitarik>> {
+  return api.minta<Halaman<PenawaranDitarik>>(
+    `/api/admin/pengguna/${userId}/penawaran-ditarik`,
     { kueri: { halaman: penyaring.halaman, ukuran: penyaring.ukuran }, sinyal },
   );
 }

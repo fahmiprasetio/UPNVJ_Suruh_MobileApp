@@ -211,6 +211,46 @@ public class AdminPenggunaController(
             permintaan.Ukuran));
     }
 
+    /// <summary>Penawaran yang pernah ditarik kembali runner ini.</summary>
+    /// <remarks>
+    /// Satu kueri, bukan tabel baru: menarik penawaran tidak menghapus barisnya melainkan
+    /// menandainya <see cref="OfferStatus.Dicabut"/> (bagian 49.6), jadi datanya memang sudah
+    /// tersimpan sejak endpoint menariknya dibuat dan cuma belum pernah ditanya dari mana pun.
+    ///
+    /// Bagian 49.10 menutup pertanyaan "berapa kali runner boleh menawar lalu menarik lalu
+    /// menawar lagi" dengan jawaban yang tidak melarang apa pun, karena pengulangan bisa sah —
+    /// tapi dengan catatan bahwa yang dibutuhkan kalau ternyata dipakai mengganggu adalah
+    /// catatan pola, bukan larangan. Ini catatan polanya.
+    ///
+    /// Harganya ikut. Penawaran yang ditarik tidak menyimpan alasan sama sekali dan itu
+    /// disengaja (bagian 49.5), jadi angkanya sendiri yang harus membedakan salah ketik yang
+    /// jujur dari deretan tawaran yang ditarik tanpa pola yang masuk akal.
+    /// </remarks>
+    [HttpGet("{id:guid}/penawaran-ditarik")]
+    public async Task<ActionResult<HalamanResponse<PenawaranDitarikResponse>>> PenawaranDitarik(
+        Guid id,
+        [FromQuery] PermintaanHalaman permintaan,
+        CancellationToken batal)
+    {
+        var kueri = db.OrderOffers
+            .Where(p => p.CreatedByRunnerId == id && p.Status == OfferStatus.Dicabut);
+
+        var total = await kueri.CountAsync(batal);
+        var penawaran = await kueri
+            .Include(p => p.Order)
+            .OrderByDescending(p => p.RespondedAt)
+            .ThenByDescending(p => p.Id)
+            .Skip(permintaan.Dilewati)
+            .Take(permintaan.Ukuran)
+            .ToListAsync(batal);
+
+        return Ok(new HalamanResponse<PenawaranDitarikResponse>(
+            [.. penawaran.Select(PenawaranDitarikResponse.Dari)],
+            total,
+            permintaan.Halaman,
+            permintaan.Ukuran));
+    }
+
     /// <summary>Menetapkan peran seseorang.</summary>
     /// <summary>Menangguhkan sebuah akun: pemiliknya tidak bisa memakai aplikasi sama sekali.</summary>
     /// <remarks>

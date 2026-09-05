@@ -4,13 +4,14 @@ import { useSesi, usePengguna } from '../auth/sesi';
 import {
   cariPengguna,
   pelepasanOrder,
+  penawaranDitarik,
   pulihkanAkun,
   riwayatPenangguhan,
   riwayatPeran,
   tangguhkanAkun,
   tetapkanPeran,
 } from '../inti/api_admin';
-import { formatTanggalJam, formatWaktuRelatif } from '../inti/format';
+import { formatRupiah, formatTanggalJam, formatWaktuRelatif } from '../inti/format';
 import { gunakanMuat } from '../inti/gunakan_muat';
 import { gunakanTunda } from '../inti/gunakan_tunda';
 import type { Pengguna, Peran } from '../inti/tipe';
@@ -296,6 +297,12 @@ function PanelPengguna({
           sedang menelusuri apa yang pernah ia lakukan sendiri. */}
       <PelepasanRunner userId={pengguna.id} />
 
+      {/* Bersebelahan dengan daftar pelepasan karena keduanya bukti sejenis: sama-sama
+          jalan keluar yang sah dari komitmen, dan sama-sama baru jadi persoalan kalau
+          terlalu sering. Yang ini lebih ringan — tawarannya belum diterima siapa pun —
+          jadi letaknya di bawahnya, bukan di atasnya. */}
+      <PenawaranDitarikRunner userId={pengguna.id} />
+
       <RiwayatPeran userId={pengguna.id} penanda={penandaRiwayat} />
     </div>
   );
@@ -351,6 +358,54 @@ function PelepasanRunner({ userId }: { userId: string }) {
  * dan memulihkan mengosongkannya. Daftar ini satu-satunya tempat yang bisa menjawab "sudah
  * berapa kali", dan satu-satunya tempat alasan memulihkan bisa dibaca sama sekali.
  */
+/**
+ * Penawaran yang pernah ditarik kembali runner ini.
+ *
+ * Menarik penawaran sepenuhnya sah — alasan yang paling sering cuma salah ketik, dan
+ * karena itu alasannya memang tidak pernah diwajibkan. Yang membuatnya layak dilihat
+ * pengulangannya, dan itu justru yang dijanjikan bagian 49.10 sebagai catatan pola alih-alih
+ * larangan.
+ */
+function PenawaranDitarikRunner({ userId }: { userId: string }) {
+  const { api } = useSesi();
+
+  const ambil = useCallback(
+    (sinyal: AbortSignal) => penawaranDitarik(api, userId, { ukuran: 20 }, sinyal),
+    [api, userId],
+  );
+
+  const { data, memuat, galat, muatUlang } = gunakanMuat(ambil);
+
+  return (
+    <div className="riwayat-peran">
+      <h3>Penawaran yang ditarik{data !== null && data.total > 0 && ` (${data.total})`}</h3>
+
+      {galat !== null && <KotakGalat galat={galat} cobaLagi={muatUlang} />}
+      {memuat && data === null && <Memuat />}
+      {data !== null && data.isi.length === 0 && (
+        <Kosong keterangan="Akun ini belum pernah menarik penawarannya sendiri." />
+      )}
+
+      {data !== null && data.isi.length > 0 && (
+        <ol className="riwayat-peran__daftar">
+          {data.isi.map((baris) => (
+            <li key={baris.id}>
+              {/* Harganya di baris yang sama dengan kode ordernya, karena tanpa alasan
+                  tertulis angkanya sendiri yang harus menjelaskan: 50.000 untuk pindah kos
+                  terbaca sebagai salah ketik, deretan angka wajar yang ditarik berulang kali
+                  tidak. */}
+              <p className="riwayat-peran__perubahan">
+                {baris.kodeOrder} &middot; {formatRupiah(baris.harga)}
+              </p>
+              <time dateTime={baris.ditarikPada}>{formatTanggalJam(baris.ditarikPada)}</time>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
 function RiwayatPenangguhan({ userId, penanda }: { userId: string; penanda: number }) {
   const { api } = useSesi();
 
