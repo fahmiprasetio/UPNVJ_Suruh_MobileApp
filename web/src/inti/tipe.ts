@@ -41,7 +41,8 @@ export type StatusPenawaran =
   | 'Disetujui'
   | 'Ditolak'
   | 'DinegoUlang'
-  | 'Ditutup';
+  | 'Ditutup'
+  | 'Dicabut';
 
 export interface Pengguna {
   id: string;

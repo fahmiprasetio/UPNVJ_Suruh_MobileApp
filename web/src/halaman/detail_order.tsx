@@ -182,11 +182,13 @@ function BarisPenawaran({ penawaran }: { penawaran: Penawaran }) {
 }
 
 /**
- * "Ditutup" dan "Ditolak" sengaja disebut berbeda, mengikuti backend.
+ * Empat cara sebuah penawaran berakhir, dan keempatnya disebut berbeda, mengikuti backend.
  *
  * Ditolak berarti klien menolak penawaran itu secara khusus; ditutup berarti klien memilih
- * runner lain dan penawaran ini gugur tanpa pernah disentuh. Untuk runner yang menanyakan
- * kenapa tawarannya tidak jadi, keduanya jawaban yang berbeda.
+ * runner lain dan penawaran ini gugur tanpa pernah disentuh; dicabut berarti runnernya
+ * sendiri yang menariknya kembali. Untuk admin yang menengahi keluhan "kenapa tawaran saya
+ * tidak jadi", ketiganya jawaban yang berbeda — dan yang ketiga jawabannya "kamu sendiri
+ * yang menariknya".
  */
 function labelStatusPenawaran(status: StatusPenawaran): string {
   switch (status) {
@@ -200,6 +202,8 @@ function labelStatusPenawaran(status: StatusPenawaran): string {
       return 'Diminta hitung ulang';
     case 'Ditutup':
       return 'Gugur, klien pilih runner lain';
+    case 'Dicabut':
+      return 'Ditarik runner';
   }
 }
 
