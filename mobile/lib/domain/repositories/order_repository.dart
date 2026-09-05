@@ -48,6 +48,14 @@ abstract interface class OrderRepository {
   /// Order yang sedang dan pernah dipegang runner yang masuk.
   Stream<Halaman<Order>> watchOrderRunner({required int ukuran});
 
+  /// Order yang sedang ditawar runner yang masuk, dan tawarannya masih hidup.
+  ///
+  /// Daftar ketiga, dan bukan kemewahan: begitu runner menawar, ordernya keluar dari
+  /// [watchOrderTersiar] dan tidak pernah masuk [watchOrderRunner], yang isinya order
+  /// yang sudah punya penugasan. Tanpa daftar ini penawaran yang sudah dikirim lenyap
+  /// dari pandangan runner sepenuhnya.
+  Stream<Halaman<Order>> watchTawaranSaya({required int ukuran});
+
   /// Satu order, atau `null` kalau tidak ada.
   ///
   /// "Tidak ada" dan "ada tapi bukan urusanmu" sengaja tidak dibedakan, mengikuti
@@ -137,6 +145,22 @@ abstract interface class OrderRepository {
     required String orderId,
     required String penawaranId,
     required String alasan,
+  });
+
+  /// Runner menarik kembali penawarannya sendiri.
+  ///
+  /// Boleh selama tawarannya masih menunggu jawaban atau sedang diminta dihitung
+  /// ulang. Yang sudah disetujui tidak bisa: harga ordernya sudah ditetapkan dari
+  /// tawaran itu dan klien mungkin sedang membayarnya.
+  ///
+  /// [alasan] opsional, beda dari melepas order maupun meminta pembatalan. Yang
+  /// ditarik di sini tawaran yang belum diterima siapa pun, jadi belum ada komitmen
+  /// yang dibatalkan, dan mewajibkan alasan untuk kasus yang paling sering terjadi —
+  /// salah ketik angka — cuma memaksa orang mengetik "salah ketik".
+  Future<Order> cabutPenawaran({
+    required String orderId,
+    required String penawaranId,
+    String? alasan,
   });
 
   /// Runner menekan TERIMA.

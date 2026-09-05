@@ -128,6 +128,10 @@ class ApiOrderRepository implements OrderRepository {
       _amati(() => _daftar('/api/orders/runner-saya', ukuran));
 
   @override
+  Stream<Halaman<Order>> watchTawaranSaya({required int ukuran}) =>
+      _amati(() => _daftar('/api/orders/tawaran-saya', ukuran));
+
+  @override
   Stream<Order?> watchOrder(String orderId, {int ukuranPesan = BatasHalaman.bawaan}) =>
       _amati(() => getOrder(orderId, ukuranPesan: ukuranPesan));
 
@@ -284,6 +288,19 @@ class ApiOrderRepository implements OrderRepository {
       'catatanSerahTerima': ?catatanSerahTerima,
     },
   );
+
+  @override
+  Future<Order> cabutPenawaran({
+    required String orderId,
+    required String penawaranId,
+    String? alasan,
+  }) {
+    final bersih = alasan?.trim();
+    return _tindakan(
+      '/api/orders/$orderId/penawaran/$penawaranId/cabut',
+      badan: {'alasan': bersih == null || bersih.isEmpty ? null : bersih},
+    );
+  }
 
   @override
   Future<Order> lepasOrder({required String orderId, required String alasan}) =>

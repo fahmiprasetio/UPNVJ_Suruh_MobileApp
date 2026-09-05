@@ -31,3 +31,17 @@ final orderRunnerProvider = StreamProvider<Halaman<Order>>((ref) {
       .watch(orderRepositoryProvider)
       .watchOrderRunner(ukuran: ref.watch(ukuranOrderRunnerProvider));
 });
+
+/// Order yang sedang ditawar runner yang masuk, dan tawarannya belum berakhir.
+///
+/// Daftar ketiga di sisi runner, dan bukan kemewahan: begitu ia menawar, ordernya
+/// keluar dari [orderTersiarProvider] dan tidak pernah masuk [orderRunnerProvider],
+/// yang isinya order yang sudah punya penugasan. Tanpa daftar ini penawaran yang
+/// sudah dikirim lenyap dari pandangannya sepenuhnya.
+final tawaranSayaProvider = StreamProvider<Halaman<Order>>((ref) {
+  final user = ref.watch(userAktifProvider).value;
+  if (user == null) return Stream.value(const Halaman<Order>.kosong());
+  return ref
+      .watch(orderRepositoryProvider)
+      .watchTawaranSaya(ukuran: ref.watch(ukuranOrderRunnerProvider));
+});

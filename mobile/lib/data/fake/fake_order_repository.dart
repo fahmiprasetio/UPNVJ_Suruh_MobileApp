@@ -161,6 +161,40 @@ class FakeOrderRepository implements OrderRepository {
   Stream<Halaman<Order>> watchOrderRunner({required int ukuran}) =>
       watchOrderRunnerUntuk(_pemanggil(), ukuran: ukuran);
 
+  @override
+  Stream<Halaman<Order>> watchTawaranSaya({required int ukuran}) =>
+      watchTawaranUntuk(_pemanggil(), ukuran: ukuran);
+
+  /// [watchTawaranSaya] untuk runner yang disebutkan langsung, untuk tes.
+  ///
+  /// Yang dihitung "masih hidup" sama dengan aturan di server: menunggu jawaban,
+  /// diminta dihitung ulang, atau sudah disetujui tapi ordernya belum dibayar. Yang
+  /// sudah punya penugasan dikeluarkan, karena order itu sudah pindah ke daftar order
+  /// yang dipegang.
+  Stream<Halaman<Order>> watchTawaranUntuk(
+    String runnerId, {
+    int ukuran = BatasHalaman.maksimal,
+  }) => _stream.map(
+    (orders) => _jendela(
+      _terbaruDiAtas(
+        orders
+            .where(
+              (o) =>
+                  !o.runnerIds.contains(runnerId) &&
+                  o.offers.any(
+                    (f) =>
+                        f.runnerId == runnerId &&
+                        (f.status == OfferStatus.pending ||
+                            f.status == OfferStatus.dinegoUlang ||
+                            f.status == OfferStatus.disetujui),
+                  ),
+            )
+            .toList(),
+      ),
+      ukuran,
+    ),
+  );
+
   /// [watchOrderRunner] untuk runner yang disebutkan langsung, untuk tes.
   Stream<Halaman<Order>> watchOrderRunnerUntuk(
     String runnerId, {
@@ -671,6 +705,51 @@ class FakeOrderRepository implements OrderRepository {
       fotoBuktiUrl: fotoBuktiUrl.trim(),
       catatanSerahTerima: catatanBersih,
       selesaiPada: DateTime.now(),
+    );
+    _ganti(diperbarui);
+    return diperbarui;
+  }
+
+  @override
+  Future<Order> cabutPenawaran({
+    required String orderId,
+    required String penawaranId,
+    String? alasan,
+  }) async {
+    await Future<void>.delayed(_jedaJaringan);
+    final order = _wajibAda(orderId);
+    final runnerId = _pemanggil();
+
+    final penawaran = order.offers
+        .where((f) => f.id == penawaranId && f.runnerId == runnerId)
+        .firstOrNull;
+
+    if (penawaran == null) {
+      throw StateError('Penawaran itu bukan milikmu');
+    }
+
+    // Yang sudah disetujui tidak bisa ditarik: harga ordernya sudah ditetapkan dari
+    // tawaran itu dan klien mungkin sedang membayarnya.
+    if (penawaran.status != OfferStatus.pending &&
+        penawaran.status != OfferStatus.dinegoUlang) {
+      throw StateError('Penawaran ini sudah ${penawaran.status.label}');
+    }
+
+    final bersih = alasan?.trim();
+
+    final diperbarui = order.copyWith(
+      offers: _gantiPenawaran(order, penawaran, OfferStatus.dicabut),
+      messages: bersih == null || bersih.isEmpty
+          ? order.messages
+          : [
+              ...order.messages,
+              _pesanBaru(
+                orderId,
+                MessageSender.runner,
+                bersih,
+                runnerId: runnerId,
+              ),
+            ],
     );
     _ganti(diperbarui);
     return diperbarui;
