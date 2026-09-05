@@ -82,3 +82,35 @@ public record LepasOrderRequest
     [MaxLength(BatasMasukan.PesanChat)]
     public string Alasan { get; init; } = string.Empty;
 }
+
+/// <summary>
+/// Klien meminta order yang sudah dibayar dibatalkan, disertai alasan.
+/// </summary>
+/// <remarks>
+/// Alasannya wajib, dan alasannya sama dengan <see cref="LepasOrderRequest"/>: yang di ujung
+/// permintaan ini adalah keputusan mengembalikan uang, dan admin yang cuma menerima
+/// "seseorang minta batal" tanpa sebab harus mengejarnya lewat chat sebelum bisa memutuskan
+/// apa pun. Panjangnya mengikuti batas pesan chat karena ke sanalah ia disimpan.
+/// </remarks>
+public record MintaBatalRequest
+{
+    [Required(AllowEmptyStrings = false)]
+    [MaxLength(BatasMasukan.PesanChat)]
+    public string Alasan { get; init; } = string.Empty;
+}
+
+/// <summary>
+/// Admin menolak permintaan pembatalan, disertai alasan.
+/// </summary>
+/// <remarks>
+/// Tanpa jalan ini, penanda permintaan menempel selamanya pada order yang tetap berjalan,
+/// dan dashboard terus menampilkannya sebagai menunggu keputusan padahal keputusannya sudah
+/// diambil. Alasannya sampai ke klien lewat percakapan ordernya, jadi ia tahu permintaannya
+/// dibaca dan kenapa jawabannya begitu — bukan sekadar tombolnya hilang.
+/// </remarks>
+public record TolakPembatalanRequest
+{
+    [Required(AllowEmptyStrings = false)]
+    [MaxLength(BatasMasukan.PesanChat)]
+    public string Alasan { get; init; } = string.Empty;
+}

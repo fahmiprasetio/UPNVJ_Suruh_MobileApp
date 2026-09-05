@@ -72,6 +72,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             // ikut tumbuh.
             entity.HasIndex(o => o.Status);
 
+            // Indeks parsial: yang dicari dashboard admin cuma order yang sedang meminta
+            // dibatalkan, dan itu segelintir baris di antara seluruh riwayat. Indeks penuh
+            // di kolom yang hampir selalu null cuma menyimpan daftar null yang tidak pernah
+            // dibaca siapa pun.
+            entity.HasIndex(o => o.CancellationRequestedAt)
+                .HasFilter("\"CancellationRequestedAt\" IS NOT NULL");
+
             entity.Property(o => o.Description).HasMaxLength(BatasMasukan.Deskripsi);
             entity.Property(o => o.PickupAddress).HasMaxLength(BatasMasukan.Alamat);
             entity.Property(o => o.DestinationAddress).HasMaxLength(BatasMasukan.Alamat);

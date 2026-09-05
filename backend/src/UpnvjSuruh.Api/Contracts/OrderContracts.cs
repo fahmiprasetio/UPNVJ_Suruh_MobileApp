@@ -73,7 +73,13 @@ public record OrderResponse(
     int JumlahPesan,
     DateTime DibuatPada,
     DateTime? DibayarPada,
-    DateTime? SelesaiPada)
+    DateTime? SelesaiPada,
+    /// <summary>
+    /// Terisi selama ada permintaan pembatalan dari klien yang belum dijawab admin. Dipakai
+    /// dashboard untuk menandai order yang menunggu keputusan, dan dipakai aplikasi klien
+    /// untuk menjelaskan bahwa permintaannya sudah sampai.
+    /// </summary>
+    DateTime? MintaBatalPada)
 {
     public static OrderResponse Dari(Order order, string namaKlien, int jumlahPesan = 0) => new(
         order.Id,
@@ -102,7 +108,8 @@ public record OrderResponse(
         jumlahPesan,
         order.CreatedAt,
         order.PaidAt,
-        order.CompletedAt);
+        order.CompletedAt,
+        order.CancellationRequestedAt);
 }
 
 public record BuatOrderResponse(OrderResponse Order, IReadOnlyList<RincianTarifResponse> Rincian);

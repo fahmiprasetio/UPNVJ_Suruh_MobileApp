@@ -74,6 +74,24 @@ public class Order
     public DateTime? PaidAt { get; set; }
     public DateTime? CompletedAt { get; set; }
 
+    /// <summary>
+    /// Kapan klien meminta order ini dibatalkan, atau <c>null</c> kalau tidak ada permintaan
+    /// yang sedang menunggu.
+    ///
+    /// Order yang sudah dibayar tidak bisa dibatalkan klien sendiri, karena pembatalannya
+    /// menyangkut pengembalian uang dan itu keputusan admin. Sebelum kolom ini ada, yang
+    /// didapat klien cuma pesan galat "harus lewat admin" — tanpa satu pun cara menghubungi
+    /// admin selain menulis di chat ordernya, yang berarti admin harus kebetulan membuka
+    /// order itu untuk menemukannya.
+    ///
+    /// Yang disimpan cuma waktunya. Alasannya masuk ke percakapan ordernya sebagai pesan
+    /// dari klien, mengikuti pola yang sama dengan runner melepas order (rencana capstone
+    /// bagian 45.4): kolom alasan tersendiri berarti satu tempat baru yang harus dibaca
+    /// layar supaya isinya terlihat, sedangkan percakapan itu sudah dibuka kedua belah pihak
+    /// dan sudah tersambung hub.
+    /// </summary>
+    public DateTime? CancellationRequestedAt { get; set; }
+
     public List<OrderOffer> Offers { get; set; } = [];
     public List<OrderMessage> Messages { get; set; } = [];
     public List<OrderRunnerAssignment> RunnerAssignments { get; set; } = [];

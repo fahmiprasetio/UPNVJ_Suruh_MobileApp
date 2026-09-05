@@ -578,6 +578,98 @@ public class OrdersController(
     /// berarti ada uang yang harus kembali, dan pengembalian uang bukan sesuatu yang boleh
     /// terjadi sebagai efek samping satu tombol.
     /// </remarks>
+    /// <summary>
+    /// Klien meminta order yang sudah dibayar dibatalkan admin.
+    /// </summary>
+    /// <remarks>
+    /// Yang didapat klien sebelum ini cuma penolakan dari <see cref="Batalkan"/>: "pembatalan
+    /// setelah pembayaran menyangkut pengembalian uang, jadi harus lewat admin". Kalimat itu
+    /// benar dan tidak berguna, karena tidak ada satu pun cara menghubungi admin yang
+    /// disediakan aplikasi ini selain menulis di chat ordernya — dan admin harus kebetulan
+    /// membuka order itu untuk menemukannya. Yang tersisa bagi klien: menunggu pekerjaan yang
+    /// sudah tidak ia butuhkan tetap dikerjakan, atau mencari nomor WhatsApp admin, yaitu
+    /// persis kebiasaan yang mau ditinggalkan (rencana capstone bagian 4).
+    ///
+    /// Yang dilakukan endpoint ini cuma menaikkan bendera, bukan membatalkan apa pun.
+    /// Keputusannya tetap milik admin lewat <c>POST /api/admin/orders/{id}/batalkan</c>,
+    /// karena di ujungnya ada uang yang dikembalikan.
+    /// </remarks>
+    [EnableRateLimiting(BatasLaju.KebijakanTulis)]
+    [HttpPost("{id:guid}/minta-batal")]
+    public async Task<ActionResult<OrderResponse>> MintaBatal(
+        Guid id,
+        MintaBatalRequest permintaan,
+        CancellationToken batal)
+    {
+        var order = await db.Orders
+            .Include(o => o.RunnerAssignments)
+            .Include(o => o.Offers)
+            .Include(o => o.Client)
+            .SingleOrDefaultAsync(o => o.Id == id, batal);
+
+        if (order is null) return NotFound();
+
+        var pemanggil = User.Id();
+
+        // Hanya pemesannya. Admin yang ingin membatalkan tidak perlu meminta izin pada
+        // dirinya sendiri, dan runner tidak berhak memutuskan pekerjaan siapa pun batal —
+        // yang tersedia untuknya melepas order (lihat Lepas), bukan membatalkannya.
+        if (order.ClientId != pemanggil) return NotFound();
+
+        if (!order.Status.Aktif())
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Order sudah berakhir",
+                Detail = $"Order ini sudah {order.Status}.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        // Order yang belum dibayar tidak perlu lewat admin sama sekali: klien bisa
+        // membatalkannya sendiri saat itu juga. Menerima permintaan di sini cuma akan
+        // membuat admin mengerjakan sesuatu yang sudah bisa dikerjakan penanyanya sendiri.
+        if (order.PaidAt is null)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Order ini belum dibayar",
+                Detail = "Order yang belum dibayar bisa kamu batalkan sendiri, tidak perlu "
+                         + "menunggu admin.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        if (order.CancellationRequestedAt is not null)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Permintaanmu sudah tercatat",
+                Detail = "Permintaan pembatalan untuk order ini sedang menunggu jawaban admin. "
+                         + "Kalau ada yang mau ditambahkan, tulis saja di chat ordernya.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        order.CancellationRequestedAt = DateTime.UtcNow;
+
+        db.OrderMessages.Add(new OrderMessage
+        {
+            OrderId = order.Id,
+            SenderId = pemanggil,
+            SenderRole = UserRole.Klien,
+            Text = permintaan.Alasan.Trim(),
+        });
+
+        await db.SaveChangesAsync(batal);
+        await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
+
+        return Ok(OrderResponse.Dari(
+            order,
+            order.Client?.Name ?? "Klien",
+            await db.JumlahPesanAsync(order.Id, pemanggil, User.Punya(Peran.Admin), batal)));
+    }
+
     [HttpPost("{id:guid}/batal")]
     public async Task<ActionResult<OrderResponse>> Batalkan(Guid id, CancellationToken batal)
     {

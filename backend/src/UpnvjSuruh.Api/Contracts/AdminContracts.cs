@@ -60,6 +60,20 @@ public record PerubahanPeranResponse(
 public record PermintaanDaftarOrder : PermintaanHalaman
 {
     public OrderStatus? Status { get; init; }
+
+    /// <summary>
+    /// Kalau benar, cuma order yang sedang menunggu keputusan pembatalan yang dikembalikan.
+    /// </summary>
+    /// <remarks>
+    /// Penyaring tersendiri, bukan salah satu nilai <see cref="Status"/>, karena menunggu
+    /// keputusan pembatalan bukan status order: ordernya tetap MencariRunner atau Dikerjakan
+    /// sementara permintaannya menunggu, dan runner yang memegangnya tetap harus melihatnya
+    /// di daftar pekerjaannya sampai admin memutuskan. Menjadikannya status berarti satu
+    /// order harus punya dua status sekaligus.
+    ///
+    /// Boleh dipakai bersama <see cref="Status"/>, dan keduanya menyempit bersama.
+    /// </remarks>
+    public bool? MintaBatal { get; init; }
 }
 
 /// <summary>
