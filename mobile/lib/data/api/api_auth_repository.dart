@@ -143,6 +143,36 @@ class ApiAuthRepository implements AuthRepository {
     return user;
   }
 
+  @override
+  Future<void> mintaKodeGantiNomor({required String noHpBaru}) async {
+    // Jawabannya sengaja tidak dibaca, sama seperti [mintaKode]: 202 tanpa badan
+    // kalau kodenya terkirim. Kalau nomornya ditolak (sama dengan sekarang, atau
+    // sudah dipakai akun lain) atau kena batas laju, `KlienApi` melempar
+    // `GalatApi` yang pesannya sudah layak ditampilkan apa adanya.
+    await _klien.post(
+      '/api/auth/saya/nomor-hp/minta-kode',
+      badan: {'noHpBaru': noHpBaru.trim()},
+    );
+  }
+
+  @override
+  Future<AppUser> konfirmasiGantiNomor({
+    required String noHpBaru,
+    required String kode,
+  }) async {
+    final jawaban = await _klien.post(
+      '/api/auth/saya/nomor-hp/konfirmasi',
+      badan: {'noHpBaru': noHpBaru.trim(), 'kode': kode.trim()},
+    );
+
+    // Diambil dari jawaban server, mengikuti pola yang sama dengan
+    // [perbaruiProfil]: server yang memutuskan bentuk akhirnya.
+    final user = _bacaUser(jawaban);
+    _userAktif = user;
+    _controller.add(user);
+    return user;
+  }
+
   /// Sesi berakhir bukan karena penggunanya menekan keluar, tapi karena server
   /// menolak tokennya di tengah pemakaian.
   ///

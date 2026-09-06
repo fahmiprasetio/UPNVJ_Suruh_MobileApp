@@ -81,14 +81,33 @@ abstract interface class AuthRepository {
   /// kode. Menggantinya lewat satu kolom isian berarti siapa pun yang sempat
   /// memegang HP orang lain sebentar bisa memindahkan akunnya ke nomornya sendiri,
   /// dan pemilik aslinya terkunci di luar tanpa cara kembali. Menggantinya menuntut
-  /// verifikasi kode ke nomor barunya, dan itu pekerjaan tersendiri, bukan satu
-  /// parameter tambahan di sini.
+  /// verifikasi kode ke nomor barunya, lewat [mintaKodeGantiNomor] dan
+  /// [konfirmasiGantiNomor] di bawah, bukan lewat satu parameter tambahan di sini.
   ///
   /// [alamat] boleh null atau kosong, artinya "tidak ada alamat tersimpan". Ini
   /// bukan alamat order: order membawa alamatnya sendiri, karena satu orang memesan
   /// dari tempat yang berbeda-beda. Yang ini cuma jawaban yang paling sering ia
   /// ketik, disimpan supaya tidak diketik ulang setiap kali memesan.
   Future<AppUser> perbaruiProfil({required String nama, String? alamat});
+
+  /// Langkah pertama mengganti nomor HP sendiri: minta kode dikirim ke nomor yang
+  /// BARU, bukan nomor yang sedang dipakai.
+  ///
+  /// Kepemilikan nomor lama sudah terbukti lewat sesi yang sedang berjalan; yang
+  /// belum terbukti justru nomor barunya, dan itulah yang harus dibuktikan sebelum
+  /// ia menggantikan yang lama. Dua langkah, bukan satu langkah nomor+kode
+  /// langsung, karena kodenya belum ada sampai langkah ini terkirim — sama seperti
+  /// [mintaKode] dan [masuk] yang juga dua langkah untuk alasan yang sama persis.
+  Future<void> mintaKodeGantiNomor({required String noHpBaru});
+
+  /// Langkah kedua: menukar kode yang benar dengan nomor HP yang baru.
+  ///
+  /// Sesi yang sedang berjalan tidak berakhir dan tidak perlu diperbarui sesudah
+  /// ini. Yang berubah cuma [AppUser.noHp] pada akun yang sedang masuk.
+  Future<AppUser> konfirmasiGantiNomor({
+    required String noHpBaru,
+    required String kode,
+  });
 
   Future<void> keluar();
 }

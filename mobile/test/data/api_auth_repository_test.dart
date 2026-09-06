@@ -285,6 +285,131 @@ void main() {
     });
   });
 
+  group('mintaKodeGantiNomor', () {
+    test('mengirim POST dengan nomor baru yang sudah dirapikan', () async {
+      final uji = buat((_) => {}, status: 202, badanMentah: '');
+
+      await uji.repo.mintaKodeGantiNomor(noHpBaru: ' 081399998888 ');
+
+      expect(uji.dikirim.single.method, 'POST');
+      expect(uji.dikirim.single.url.path, '/api/auth/saya/nomor-hp/minta-kode');
+      expect(jsonDecode(uji.dikirim.single.body), {'noHpBaru': '081399998888'});
+    });
+
+    test('jawaban 202 tanpa badan bukan galat', () async {
+      final uji = buat((_) => {}, status: 202, badanMentah: '');
+
+      await expectLater(
+        uji.repo.mintaKodeGantiNomor(noHpBaru: '081399998888'),
+        completes,
+      );
+    });
+
+    /// Server menolak nomor yang sama dengan sekarang, atau yang sudah dipakai
+    /// akun lain, sebagai 400 -- lihat `AuthController.MintaKodeGantiNomor`.
+    /// Yang diuji di sini cuma pesannya sampai apa adanya ke pemanggil, bukan
+    /// dibungkus jadi galat generik.
+    test('nomor yang ditolak server muncul sebagai GalatPermintaan', () async {
+      final uji = buat(
+        (_) => {
+          'title': 'Nomor ini sudah dipakai akun lain',
+          'detail': 'Pastikan nomornya benar.',
+        },
+        status: 400,
+      );
+
+      await expectLater(
+        uji.repo.mintaKodeGantiNomor(noHpBaru: '081399998888'),
+        throwsA(
+          isA<GalatPermintaan>().having(
+            (g) => g.pesan,
+            'pesan',
+            'Pastikan nomornya benar.',
+          ),
+        ),
+      );
+    });
+
+    test('tidak mengubah user aktif', () async {
+      final uji = buat((_) => {}, status: 202, badanMentah: '');
+
+      await uji.repo.mintaKodeGantiNomor(noHpBaru: '081399998888');
+
+      // Belum ada apa pun yang berubah pada akunnya di langkah ini -- nomornya
+      // baru berganti sesudah kodenya dikonfirmasi.
+      expect(uji.repo.userAktif, isNull);
+    });
+  });
+
+  group('konfirmasiGantiNomor', () {
+    test('mengirim POST dengan nomor dan kode yang sudah dirapikan', () async {
+      final uji = buat((_) => {...jawabanUser, 'noHp': '081399998888'});
+
+      await uji.repo.konfirmasiGantiNomor(
+        noHpBaru: ' 081399998888 ',
+        kode: ' 123456 ',
+      );
+
+      expect(uji.dikirim.single.method, 'POST');
+      expect(
+        uji.dikirim.single.url.path,
+        '/api/auth/saya/nomor-hp/konfirmasi',
+      );
+      expect(jsonDecode(uji.dikirim.single.body), {
+        'noHpBaru': '081399998888',
+        'kode': '123456',
+      });
+    });
+
+    test('user aktif diambil dari jawaban server, membawa nomor barunya',
+        () async {
+      final uji = buat((_) => {...jawabanUser, 'noHp': '081399998888'});
+
+      final hasil = await uji.repo.konfirmasiGantiNomor(
+        noHpBaru: '081399998888',
+        kode: '123456',
+      );
+
+      expect(hasil.noHp, '081399998888');
+      expect(uji.repo.userAktif?.noHp, '081399998888');
+    });
+
+    test('perubahan disiarkan ke penyimak user aktif', () async {
+      final uji = buat((_) => {...jawabanUser, 'noHp': '081399998888'});
+      final terlihat = <String?>[];
+      final langganan = uji.repo
+          .watchUserAktif()
+          .listen((user) => terlihat.add(user?.noHp));
+      addTearDown(langganan.cancel);
+
+      await uji.repo.konfirmasiGantiNomor(
+        noHpBaru: '081399998888',
+        kode: '123456',
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(terlihat.last, '081399998888');
+    });
+
+    test('kode yang salah muncul sebagai GalatPermintaan', () async {
+      final uji = buat(
+        (_) => {
+          'title': 'Kode salah atau sudah kedaluwarsa',
+          'detail': 'Minta kode baru kalau sudah lewat lima menit sejak dikirim.',
+        },
+        status: 400,
+      );
+
+      await expectLater(
+        uji.repo.konfirmasiGantiNomor(noHpBaru: '081399998888', kode: '000000'),
+        throwsA(isA<GalatPermintaan>()),
+      );
+
+      // Percobaan yang gagal tidak mengubah apa pun.
+      expect(uji.repo.userAktif, isNull);
+    });
+  });
+
   group('keluar', () {
     test('membuang token dan user aktif', () async {
       final uji = buat((_) => {

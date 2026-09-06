@@ -162,6 +162,70 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<void> mintaKodeGantiNomor({required String noHpBaru}) async {
+    await Future<void>.delayed(_jedaJaringan);
+
+    final sekarang = _userAktif;
+    if (sekarang == null) {
+      throw StateError('Belum masuk');
+    }
+
+    final bersih = noHpBaru.trim();
+    if (bersih == sekarang.noHp) {
+      throw StateError('Ini nomor yang sama dengan sekarang');
+    }
+    if (_users.any((u) => u.noHp == bersih && u.id != sekarang.id)) {
+      throw StateError('Nomor ini sudah dipakai akun lain');
+    }
+
+    // Kunci yang sama dengan kode masuk, disengaja: keduanya sama-sama
+    // membuktikan kepemilikan satu nomor HP, dan tiruan ini tidak perlu
+    // membedakan asalnya selama server sungguhan juga tidak (lihat
+    // `AuthController.MintaKodeGantiNomor`).
+    _kode[bersih] = (_acak.nextInt(1000000)).toString().padLeft(6, '0');
+  }
+
+  @override
+  Future<AppUser> konfirmasiGantiNomor({
+    required String noHpBaru,
+    required String kode,
+  }) async {
+    await Future<void>.delayed(_jedaJaringan);
+
+    final sekarang = _userAktif;
+    if (sekarang == null) {
+      throw StateError('Belum masuk');
+    }
+
+    final bersih = noHpBaru.trim();
+    final tersimpan = _kode[bersih];
+    if (tersimpan == null || tersimpan != kode.trim()) {
+      throw StateError('Kode salah atau sudah kedaluwarsa');
+    }
+    if (_users.any((u) => u.noHp == bersih && u.id != sekarang.id)) {
+      throw StateError('Nomor ini sudah dipakai akun lain');
+    }
+
+    // Sekali pakai, sama seperti kode masuk.
+    _kode.remove(bersih);
+
+    final baru = AppUser(
+      id: sekarang.id,
+      nama: sekarang.nama,
+      noHp: bersih,
+      roles: sekarang.roles,
+      alamat: sekarang.alamat,
+    );
+
+    final indeks = _users.indexWhere((u) => u.id == sekarang.id);
+    if (indeks >= 0) _users[indeks] = baru;
+
+    _userAktif = baru;
+    _controller.add(baru);
+    return baru;
+  }
+
+  @override
   Future<void> keluar() async {
     await Future<void>.delayed(_jedaJaringan);
     _userAktif = null;

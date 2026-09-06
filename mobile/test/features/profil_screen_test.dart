@@ -188,15 +188,18 @@ void main() {
     expect(tombol.onPressed, isNull);
   });
 
-  testWidgets('nomor HP tidak punya kolom isian sama sekali', (tester) async {
-    // Bukan kolom mati: kolom yang tidak bisa diisi mengundang orangnya mencoba
-    // lalu menyimpulkan aplikasinya rusak.
-    await buka(tester, SeedData.klien);
+  testWidgets(
+    'nomor HP tidak punya kolom isian di kartu sunting, cuma tombol ganti',
+    (tester) async {
+      // Bukan kolom mati: kolom yang tidak bisa diisi mengundang orangnya
+      // mencoba lalu menyimpulkan aplikasinya rusak.
+      await buka(tester, SeedData.klien);
 
-    expect(
-      find.widgetWithText(TextFormField, SeedData.klien.noHp),
-      findsNothing,
-    );
-    expect(find.textContaining('Nomor HP tidak bisa diubah'), findsOneWidget);
-  });
+      expect(
+        find.widgetWithText(TextFormField, SeedData.klien.noHp),
+        findsNothing,
+      );
+      expect(find.widgetWithText(TextButton, 'Ganti nomor HP'), findsOneWidget);
+    },
+  );
 }

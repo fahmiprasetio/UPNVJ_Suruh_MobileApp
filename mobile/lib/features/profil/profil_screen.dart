@@ -5,6 +5,7 @@ import '../../core/config/batas_masukan.dart';
 import '../../core/theme/app_theme.dart';
 import '../../domain/models/app_user.dart';
 import '../../providers/repository_providers.dart';
+import 'ganti_nomor_hp_dialog.dart';
 
 /// Profil: siapa yang sedang masuk, dan satu-satunya jalan keluar dari akunnya.
 ///
@@ -32,11 +33,13 @@ import '../../providers/repository_providers.dart';
 /// membawa alamatnya sendiri, karena satu orang memesan dari tempat yang
 /// berbeda-beda.
 ///
-/// Nomor HP tetap tidak, dan itu bukan kelupaan. Nomor itu identitas masuk, ia
-/// yang menerima kode; menggantinya lewat satu kolom isian berarti siapa pun
-/// yang sempat memegang HP orang lain sebentar bisa memindahkan akunnya ke
-/// nomornya sendiri. Menggantinya menuntut verifikasi kode ke nomor barunya,
-/// dan itu pekerjaan tersendiri.
+/// Nomor HP tidak ikut kolom isian yang sama dengan nama dan alamat, dan itu
+/// bukan kelupaan. Nomor itu identitas masuk, ia yang menerima kode;
+/// menggantinya lewat satu kolom isian berarti siapa pun yang sempat memegang
+/// HP orang lain sebentar bisa memindahkan akunnya ke nomornya sendiri.
+/// Menggantinya menuntut verifikasi kode ke nomor barunya lewat
+/// [GantiNomorHpDialog], jalan sendiri yang terpisah dari tombol Simpan di
+/// kartu ini.
 class ProfilScreen extends ConsumerWidget {
   const ProfilScreen({super.key});
 
@@ -355,16 +358,26 @@ class _KartuSuntingState extends ConsumerState<_KartuSunting> {
                 ),
               ),
               const SizedBox(height: AppTheme.spasiSedang),
-              // Nomor HP disebut sebagai kalimat, bukan sebagai kolom mati yang
-              // tidak bisa diketik. Kolom yang tidak bisa diisi mengundang
-              // orangnya mencoba lalu menyimpulkan aplikasinya rusak.
-              Text(
-                'Nomor HP tidak bisa diubah dari sini, karena nomor itu yang '
-                'menerima kode saat kamu masuk. Hubungi admin kalau nomormu '
-                'berganti.',
-                style: teks.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              // Nomor HP tidak ikut kolom isian di atas, dan itu bukan lubang
+              // yang belum ditutup: nomor itu identitas masuk, jadi
+              // menggantinya menuntut pembuktian kepemilikan nomor barunya,
+              // bukan sekadar isian yang dipercaya begitu saja seperti nama
+              // dan alamat. Pembuktian itu perlu jeda menunggu SMS, dan
+              // karena itu jalannya sendiri lewat dialog, bukan lewat kolom
+              // yang sama dengan tombol Simpan di atas.
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Nomor HP: ${widget.user.noHp}',
+                      style: teks.bodyMedium,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _sedangSimpan ? null : _gantiNomor,
+                    child: const Text('Ganti nomor HP'),
+                  ),
+                ],
               ),
               const SizedBox(height: AppTheme.spasiSedang),
               FilledButton.tonalIcon(
@@ -409,5 +422,24 @@ class _KartuSuntingState extends ConsumerState<_KartuSunting> {
       // dengan isian akan mati sendiri begitu keduanya sama.
       if (mounted) setState(() => _sedangSimpan = false);
     }
+  }
+
+  /// Membuka dialog dua langkah, lalu memberi tahu hasilnya.
+  ///
+  /// Kartu ini tidak perlu memasang user yang baru sendiri: dialog sudah
+  /// memperbaruinya lewat `authRepositoryProvider` begitu berhasil, dan
+  /// `ProfilScreen` di atasnya menonton provider yang sama, jadi
+  /// `_KartuIdentitas` ikut menampilkan nomor barunya tanpa apa pun dikerjakan
+  /// di sini selain menunjukkan kabar berhasilnya.
+  Future<void> _gantiNomor() async {
+    final hasil = await showDialog<AppUser>(
+      context: context,
+      builder: (context) => GantiNomorHpDialog(noHpSekarang: widget.user.noHp),
+    );
+
+    if (hasil == null || !mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text('Nomor HP diganti ke ${hasil.noHp}.')));
   }
 }
