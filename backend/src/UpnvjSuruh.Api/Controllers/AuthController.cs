@@ -328,6 +328,22 @@ public class AuthController(
             });
         }
 
+        // Diperiksa SEBELUM menyentuh pembatas laju, bukan sesudahnya. Pembatasnya
+        // dikunci per nomor HP dan dibagi dengan alur masuk (lihat di bawah), jadi
+        // permintaan yang sudah pasti gagal di sini tidak boleh ikut membakar jatah nomor
+        // itu — kalau tidak, siapa pun yang tahu sebuah nomor terdaftar bisa mengirim lima
+        // permintaan ganti-nomor ke nomor itu tanpa satu SMS pun benar-benar terkirim, dan
+        // pemilik nomornya kehabisan jatah minta kode masuk tanpa pernah tahu kenapa.
+        if (await db.Users.AnyAsync(u => u.Phone == noHpBaru && u.Id != user.Id, batal))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Nomor ini sudah dipakai akun lain",
+                Detail = "Pastikan nomornya benar, atau hubungi admin kalau menurutmu ini keliru.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
         // Kunci yang sama dengan pembatas di MintaKode: nomor HP, bukan pemanggilnya.
         // Endpoint ini yang membuat SMS terkirim, dan nomor barunya boleh saja bukan milik
         // pemanggil sendiri kalau ia salah ketik — orang lain yang ponselnya berdering
@@ -344,16 +360,6 @@ public class AuthController(
                 Detail = "Kode verifikasi sudah dikirim beberapa kali ke nomor ini. "
                          + "Tunggu sebentar sebelum meminta lagi.",
                 Status = StatusCodes.Status429TooManyRequests,
-            });
-        }
-
-        if (await db.Users.AnyAsync(u => u.Phone == noHpBaru && u.Id != user.Id, batal))
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Nomor ini sudah dipakai akun lain",
-                Detail = "Pastikan nomornya benar, atau hubungi admin kalau menurutmu ini keliru.",
-                Status = StatusCodes.Status400BadRequest,
             });
         }
 

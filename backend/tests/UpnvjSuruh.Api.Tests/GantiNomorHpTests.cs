@@ -285,6 +285,37 @@ public class GantiNomorHpTests(DatabaseApiFactory pabrik) : IClassFixture<Databa
     }
 
     /// <summary>
+    /// Temuan audit keamanan ketiga (bagian 59): urutan pemeriksaan sebelumnya menyentuh
+    /// pembatas laju SEBELUM tahu permintaannya pasti gagal, jadi lima permintaan berturut
+    /// ke nomor yang sudah dipakai akun lain membakar jatah nomor itu tanpa satu SMS pun
+    /// terkirim -- korban lalu kehabisan jatah minta kode masuk tanpa pernah menerima SMS
+    /// mencurigakan sebagai tanda peringatan. Diperbaiki dengan menukar urutannya: nomor
+    /// yang sudah pasti ditolak tidak boleh ikut menyentuh pembatas laju sama sekali.
+    /// </summary>
+    [Fact]
+    public async Task PermintaanKeNomorYangSudahDipakaiTidakIkutMembakarJatahPembatasLaju()
+    {
+        var (klien, _, _) = await AkunAsync();
+        var (_, _, dipakaiOrangLain) = await AkunAsync();
+
+        // Sebanyak jatah penuh, dan seluruhnya harus ditolak karena nomornya sudah
+        // dipakai -- bukan karena pembatas lajunya kehabisan.
+        for (var i = 0; i < BatasLaju.OtpPerNomor; i++)
+        {
+            var jawaban = await MintaKodeAsync(klien, dipakaiOrangLain);
+            Assert.Equal(HttpStatusCode.BadRequest, jawaban.StatusCode);
+        }
+
+        // Nomor itu tetap bisa dipakai masuk sesudahnya -- kalau pembatas lajunya ikut
+        // terbakar, ini akan dijawab 429 walau pemiliknya tidak pernah menerima satu SMS
+        // pun dari rentetan percobaan di atas.
+        var mintaKodeMasuk = await pabrik.CreateClient().PostAsJsonAsync(
+            "/api/auth/minta-kode", new { NoHp = dipakaiOrangLain });
+
+        Assert.Equal(HttpStatusCode.Accepted, mintaKodeMasuk.StatusCode);
+    }
+
+    /// <summary>
     /// Pembatasnya dibagi dengan alur masuk (<c>PembatasOtp</c>, dikunci per nomor HP),
     /// bukan diduakan sebagai penghitung yang berdiri sendiri untuk alur ganti nomor. Yang
     /// dijaga di kedua alur sama persis -- SMS yang sampai ke satu nomor -- dan nomor yang
