@@ -14,9 +14,11 @@ import {
 } from '../inti/api_admin';
 import { formatRupiah, formatTanggalJam, formatWaktuRelatif } from '../inti/format';
 import { gunakanMuat } from '../inti/gunakan_muat';
+import { gunakanPanelKonfirmasi } from '../inti/gunakan_panel_konfirmasi';
 import { gunakanTunda } from '../inti/gunakan_tunda';
 import type { KlienApi } from '../inti/klien_api';
 import type { Halaman, Pengguna, Peran } from '../inti/tipe';
+import { FormAlasan } from '../komponen/form_alasan';
 import { Kosong, KotakGalat, Memuat, pesanGalat } from '../komponen/keadaan';
 
 /**
@@ -522,12 +524,13 @@ function PanelPenangguhan({
   onBerubah: (diperbarui: Pengguna) => void;
 }) {
   const { api } = useSesi();
-  const [terbuka, setTerbuka] = useState(false);
-  const [alasan, setAlasan] = useState('');
-  const [sibuk, setSibuk] = useState(false);
-  const [galat, setGalat] = useState<unknown>(null);
-
   const ditangguhkan = pengguna.ditangguhkanPada !== null;
+  const panel = gunakanPanelKonfirmasi(async (alasan) => {
+    const diperbarui = ditangguhkan
+      ? await pulihkanAkun(api, pengguna.id, alasan)
+      : await tangguhkanAkun(api, pengguna.id, alasan);
+    onBerubah(diperbarui);
+  });
 
   // Backend menolaknya (admin tidak boleh menangguhkan akunnya sendiri), dan alasannya sama
   // dengan peringatan di form peran: menunggu penolakan server untuk hal yang sudah pasti
@@ -540,91 +543,39 @@ function PanelPenangguhan({
     );
   }
 
-  async function kirim(peristiwa: FormEvent) {
-    peristiwa.preventDefault();
-    setSibuk(true);
-    setGalat(null);
-    try {
-      const diperbarui = ditangguhkan
-        ? await pulihkanAkun(api, pengguna.id, alasan.trim())
-        : await tangguhkanAkun(api, pengguna.id, alasan.trim());
-      onBerubah(diperbarui);
-      setAlasan('');
-      setTerbuka(false);
-    } catch (salah) {
-      setGalat(salah);
-    } finally {
-      setSibuk(false);
-    }
-  }
-
   return (
     <div className="panel-pengguna__penangguhan">
-      {!terbuka ? (
-        <button
-          type="button"
-          className="tombol tombol--halus"
-          onClick={() => setTerbuka(true)}
-        >
+      {!panel.terbuka ? (
+        <button type="button" className="tombol tombol--halus" onClick={panel.bukaForm}>
           {ditangguhkan ? 'Pulihkan akun ini' : 'Tangguhkan akun ini'}
         </button>
       ) : (
-        <form onSubmit={kirim}>
-          <label htmlFor="alasanTangguh">
-            {ditangguhkan ? 'Alasan memulihkan' : 'Alasan menangguhkan'}
-          </label>
-          <textarea
-            id="alasanTangguh"
-            rows={2}
-            maxLength={2000}
-            required
-            autoFocus
-            value={alasan}
-            disabled={sibuk}
-            placeholder={
-              ditangguhkan
-                ? 'Misal: sudah dijelaskan, ternyata salah paham.'
-                : 'Misal: memesan lalu minta batal berulang kali.'
-            }
-            onChange={(e) => setAlasan(e.target.value)}
-          />
-          <div className="pembatalan__tombol">
-            <button
-              type="submit"
-              className="tombol"
-              disabled={sibuk || alasan.trim().length === 0}
-            >
-              {sibuk
-                ? 'Menyimpan...'
-                : ditangguhkan
-                  ? 'Ya, pulihkan akun ini'
-                  : 'Ya, tangguhkan akun ini'}
-            </button>
-            <button
-              type="button"
-              className="tombol tombol--halus"
-              disabled={sibuk}
-              onClick={() => {
-                setTerbuka(false);
-                setAlasan('');
-                setGalat(null);
-              }}
-            >
-              Urungkan
-            </button>
-          </div>
-          {!ditangguhkan && (
-            <p className="panel-pengguna__peringatan">
-              Berlaku seketika: orangnya langsung keluar dari aplikasi, tanpa menunggu
-              sesinya habis. Ordernya tidak ikut terhapus.
-            </p>
-          )}
-          {galat !== null && (
-            <p className="keadaan keadaan--galat" role="alert">
-              {pesanGalat(galat)}
-            </p>
-          )}
-        </form>
+        <FormAlasan
+          idAlasan="alasanTangguh"
+          labelAlasan={ditangguhkan ? 'Alasan memulihkan' : 'Alasan menangguhkan'}
+          alasan={panel.alasan}
+          onUbahAlasan={panel.setAlasan}
+          maxPanjangAlasan={2000}
+          placeholderAlasan={
+            ditangguhkan
+              ? 'Misal: sudah dijelaskan, ternyata salah paham.'
+              : 'Misal: memesan lalu minta batal berulang kali.'
+          }
+          sibuk={panel.sibuk}
+          labelKirim={ditangguhkan ? 'Ya, pulihkan akun ini' : 'Ya, tangguhkan akun ini'}
+          labelSedangKirim="Menyimpan..."
+          onKirim={panel.kirim}
+          onUrungkan={panel.urungkan}
+          galat={panel.galat}
+          catatanBawah={
+            !ditangguhkan && (
+              <p className="panel-pengguna__peringatan">
+                Berlaku seketika: orangnya langsung keluar dari aplikasi, tanpa menunggu
+                sesinya habis. Ordernya tidak ikut terhapus.
+              </p>
+            )
+          }
+        />
       )}
     </div>
   );

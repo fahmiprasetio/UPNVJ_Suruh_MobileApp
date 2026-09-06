@@ -18,7 +18,9 @@ import {
   labelLayanan,
 } from '../inti/format';
 import { gunakanMuat } from '../inti/gunakan_muat';
+import { gunakanPanelKonfirmasi } from '../inti/gunakan_panel_konfirmasi';
 import type { Order, Penawaran, Pesan, StatusPenawaran } from '../inti/tipe';
+import { FormAlasan } from '../komponen/form_alasan';
 import { Kosong, KotakGalat, Memuat, pesanGalat } from '../komponen/keadaan';
 import { LencanaJalur, LencanaStatus } from '../komponen/lencana';
 
@@ -240,25 +242,12 @@ function PanelPermintaanBatal({
   onDijawab: () => void;
 }) {
   const { api } = useSesi();
-  const [terbuka, setTerbuka] = useState(false);
-  const [alasan, setAlasan] = useState('');
-  const [sibuk, setSibuk] = useState(false);
-  const [galat, setGalat] = useState<unknown>(null);
+  const panel = gunakanPanelKonfirmasi(async (alasan) => {
+    await tolakPembatalan(api, order.id, alasan);
+    onDijawab();
+  });
 
   if (order.mintaBatalPada === null) return null;
-
-  async function tolak(peristiwa: FormEvent) {
-    peristiwa.preventDefault();
-    setSibuk(true);
-    setGalat(null);
-    try {
-      await tolakPembatalan(api, order.id, alasan.trim());
-      onDijawab();
-    } catch (salah) {
-      setGalat(salah);
-      setSibuk(false);
-    }
-  }
 
   return (
     <article className="kartu kartu--pembatalan">
@@ -269,57 +258,33 @@ function PanelPermintaanBatal({
         bawah; sampai dijawab, ordernya tetap berjalan.
       </p>
 
-      {!terbuka ? (
-        <button type="button" className="tombol tombol--halus" onClick={() => setTerbuka(true)}>
+      {!panel.terbuka ? (
+        <button type="button" className="tombol tombol--halus" onClick={panel.bukaForm}>
           Tolak permintaan
         </button>
       ) : (
-        <form onSubmit={tolak}>
-          <label htmlFor="alasanTolak">Alasan menolak</label>
-          <textarea
-            id="alasanTolak"
-            rows={2}
-            maxLength={1000}
-            required
-            autoFocus
-            value={alasan}
-            disabled={sibuk}
-            placeholder="Misal: runnernya sudah berangkat, jadi tidak bisa dibatalkan."
-            onChange={(e) => setAlasan(e.target.value)}
-          />
-          <div className="pembatalan__tombol">
-            <button
-              type="submit"
-              className="tombol"
-              disabled={sibuk || alasan.trim().length === 0}
-            >
-              {sibuk ? 'Mengirim...' : 'Kirim penolakan'}
-            </button>
-            <button
-              type="button"
-              className="tombol tombol--halus"
-              disabled={sibuk}
-              onClick={() => {
-                setTerbuka(false);
-                setAlasan('');
-                setGalat(null);
-              }}
-            >
-              Urungkan
-            </button>
-          </div>
-          {/* Alasannya sampai ke klien lewat chat ordernya, tempat ia menuliskan
-              permintaannya. Jawaban yang cuma membuat tombolnya hilang tanpa satu kalimat
-              pun sama saja dengan tidak dijawab. */}
-          <p className="pembatalan__keterangan">
-            Kalimat ini dikirim ke klien sebagai pesan di obrolan order.
-          </p>
-          {galat !== null && (
-            <p className="keadaan keadaan--galat" role="alert">
-              {pesanGalat(galat)}
+        <FormAlasan
+          idAlasan="alasanTolak"
+          labelAlasan="Alasan menolak"
+          alasan={panel.alasan}
+          onUbahAlasan={panel.setAlasan}
+          maxPanjangAlasan={1000}
+          placeholderAlasan="Misal: runnernya sudah berangkat, jadi tidak bisa dibatalkan."
+          sibuk={panel.sibuk}
+          labelKirim="Kirim penolakan"
+          labelSedangKirim="Mengirim..."
+          onKirim={panel.kirim}
+          onUrungkan={panel.urungkan}
+          galat={panel.galat}
+          catatanBawah={
+            // Alasannya sampai ke klien lewat chat ordernya, tempat ia menuliskan
+            // permintaannya. Jawaban yang cuma membuat tombolnya hilang tanpa satu
+            // kalimat pun sama saja dengan tidak dijawab.
+            <p className="pembatalan__keterangan">
+              Kalimat ini dikirim ke klien sebagai pesan di obrolan order.
             </p>
-          )}
-        </form>
+          }
+        />
       )}
     </article>
   );
@@ -333,83 +298,43 @@ function PanelPembatalan({
   onDibatalkan: () => void;
 }) {
   const { api } = useSesi();
-  const [terbuka, setTerbuka] = useState(false);
-  const [alasan, setAlasan] = useState('');
-  const [sibuk, setSibuk] = useState(false);
-  const [galat, setGalat] = useState<unknown>(null);
+  const panel = gunakanPanelKonfirmasi(async (alasan) => {
+    await batalkanOrder(api, order.id, alasan);
+    onDibatalkan();
+  });
 
   const sudahBerakhir = order.status === 'Selesai' || order.status === 'Batal';
   if (sudahBerakhir || order.dibayarPada === null) return null;
-
-  async function batalkan(peristiwa: FormEvent) {
-    peristiwa.preventDefault();
-    setSibuk(true);
-    setGalat(null);
-    try {
-      await batalkanOrder(api, order.id, alasan.trim());
-      onDibatalkan();
-    } catch (salah) {
-      setGalat(salah);
-      setSibuk(false);
-    }
-  }
 
   return (
     <article className="kartu kartu--pembatalan">
       <h2>Batalkan &amp; kembalikan dana</h2>
 
-      {!terbuka ? (
+      {!panel.terbuka ? (
         <>
           <p className="pembatalan__keterangan">
             Order ini sudah dibayar. Membatalkannya di sini mencatat uangnya sebagai
             dikembalikan, lalu menutup order.
           </p>
-          <button type="button" className="tombol" onClick={() => setTerbuka(true)}>
+          <button type="button" className="tombol" onClick={panel.bukaForm}>
             Batalkan order ini
           </button>
         </>
       ) : (
-        <form onSubmit={batalkan}>
-          <label htmlFor="alasanBatal">Alasan pembatalan</label>
-          <textarea
-            id="alasanBatal"
-            rows={2}
-            maxLength={2000}
-            required
-            autoFocus
-            value={alasan}
-            disabled={sibuk}
-            placeholder="Misal: klien komplain barang rusak saat diterima."
-            onChange={(e) => setAlasan(e.target.value)}
-          />
-          <div className="pembatalan__tombol">
-            <button
-              type="submit"
-              className="tombol"
-              disabled={sibuk || alasan.trim().length === 0}
-            >
-              {sibuk ? 'Membatalkan...' : 'Ya, batalkan dan catat pengembalian'}
-            </button>
-            <button
-              type="button"
-              className="tombol tombol--halus"
-              disabled={sibuk}
-              onClick={() => {
-                setTerbuka(false);
-                setAlasan('');
-                setGalat(null);
-              }}
-            >
-              Urungkan
-            </button>
-          </div>
-        </form>
-      )}
-
-      {galat !== null && (
-        <p className="keadaan keadaan--galat" role="alert">
-          {pesanGalat(galat)}
-        </p>
+        <FormAlasan
+          idAlasan="alasanBatal"
+          labelAlasan="Alasan pembatalan"
+          alasan={panel.alasan}
+          onUbahAlasan={panel.setAlasan}
+          maxPanjangAlasan={2000}
+          placeholderAlasan="Misal: klien komplain barang rusak saat diterima."
+          sibuk={panel.sibuk}
+          labelKirim="Ya, batalkan dan catat pengembalian"
+          labelSedangKirim="Membatalkan..."
+          onKirim={panel.kirim}
+          onUrungkan={panel.urungkan}
+          galat={panel.galat}
+        />
       )}
     </article>
   );
