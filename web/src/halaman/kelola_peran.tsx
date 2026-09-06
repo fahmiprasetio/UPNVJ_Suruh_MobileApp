@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 
 import { useSesi, usePengguna } from '../auth/sesi';
 import {
@@ -10,11 +10,13 @@ import {
   riwayatPeran,
   tangguhkanAkun,
   tetapkanPeran,
+  type PenyaringHalaman,
 } from '../inti/api_admin';
 import { formatRupiah, formatTanggalJam, formatWaktuRelatif } from '../inti/format';
 import { gunakanMuat } from '../inti/gunakan_muat';
 import { gunakanTunda } from '../inti/gunakan_tunda';
-import type { Pengguna, Peran } from '../inti/tipe';
+import type { KlienApi } from '../inti/klien_api';
+import type { Halaman, Pengguna, Peran } from '../inti/tipe';
 import { Kosong, KotakGalat, Memuat, pesanGalat } from '../komponen/keadaan';
 
 /**
@@ -309,6 +311,88 @@ function PanelPengguna({
 }
 
 /**
+ * Satu daftar riwayat berhalaman: judul (dengan jumlah kalau ada isinya), keadaan
+ * kosong/gagal/memuat, lalu baris-barisnya. Keempat daftar di panel ini (pelepasan
+ * order, penawaran ditarik, riwayat penangguhan, riwayat peran) berbentuk identik di
+ * bagian ini; yang membedakannya cuma dari mana datanya diambil dan bagaimana satu
+ * barisnya digambar, dan keduanya diserahkan lewat props, bukan disalin-tempel empat
+ * kali.
+ *
+ * `penanda` opsional: cuma daftar yang perlu dimuat ulang sesudah tindakan lain berhasil
+ * (riwayat penangguhan, riwayat peran) yang mengirimkannya. Yang tidak mengirimkannya
+ * (pelepasan order, penawaran ditarik) memang tidak punya tindakan di panel ini yang bisa
+ * menambah barisnya, jadi cukup dimuat sekali saat panelnya dibuka.
+ */
+function DaftarRiwayat<T extends { id: string }>({
+  userId,
+  judul,
+  keteranganKosong,
+  ambil: ambilData,
+  renderBaris,
+  penanda,
+  sembunyikanJumlah,
+}: {
+  userId: string;
+  judul: string;
+  keteranganKosong: string;
+  ambil: (
+    api: KlienApi,
+    userId: string,
+    penyaring: PenyaringHalaman,
+    sinyal?: AbortSignal,
+  ) => Promise<Halaman<T>>;
+  renderBaris: (baris: T) => ReactNode;
+  penanda?: number;
+  /**
+   * Riwayat perubahan peran, satu-satunya dari keempat daftar ini, tidak pernah
+   * menyebut jumlahnya di judul -- itu sudah begitu sebelum daftar ini disatukan jadi
+   * komponen generik, dan dipertahankan apa adanya di sini alih-alih diam-diam
+   * diseragamkan. Menyeragamkannya mungkin memang lebih baik, tapi itu keputusan
+   * tersendiri, bukan efek samping dari menggabungkan empat komponen yang mirip.
+   */
+  sembunyikanJumlah?: boolean;
+}) {
+  const { api } = useSesi();
+
+  const ambil = useCallback(
+    (sinyal: AbortSignal) => ambilData(api, userId, { ukuran: 20 }, sinyal),
+    [api, userId, ambilData],
+  );
+
+  const { data, memuat, galat, muatUlang } = gunakanMuat(ambil);
+
+  // `muatUlang` sengaja tidak dimasukkan ke daftar dependensi: ia dibuat ulang setiap
+  // render oleh gunakanMuat, dan memasukkannya akan memicu pengambilan setiap render,
+  // bukan cuma saat penandanya berganti. Daftar yang tidak pernah mengirim `penanda`
+  // (nilainya tetap `undefined`) tidak pernah memuat ulang lewat efek ini.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (penanda !== undefined && penanda > 0) muatUlang();
+  }, [penanda]);
+
+  return (
+    <div className="riwayat-peran">
+      <h3>
+        {judul}
+        {!sembunyikanJumlah && data !== null && data.total > 0 && ` (${data.total})`}
+      </h3>
+
+      {galat !== null && <KotakGalat galat={galat} cobaLagi={muatUlang} />}
+      {memuat && data === null && <Memuat />}
+      {data !== null && data.isi.length === 0 && <Kosong keterangan={keteranganKosong} />}
+
+      {data !== null && data.isi.length > 0 && (
+        <ol className="riwayat-peran__daftar">
+          {data.isi.map((baris) => (
+            <li key={baris.id}>{renderBaris(baris)}</li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
+/**
  * Order yang pernah dilepas runner ini sesudah menerimanya.
  *
  * Ditampilkan untuk setiap akun, bukan cuma yang berperan runner, dan itu bukan
@@ -317,37 +401,50 @@ function PanelPengguna({
  * hilang berarti menyembunyikannya tepat saat ia paling dibutuhkan.
  */
 function PelepasanRunner({ userId }: { userId: string }) {
-  const { api } = useSesi();
-
-  const ambil = useCallback(
-    (sinyal: AbortSignal) => pelepasanOrder(api, userId, { ukuran: 20 }, sinyal),
-    [api, userId],
-  );
-
-  const { data, memuat, galat, muatUlang } = gunakanMuat(ambil);
-
   return (
-    <div className="riwayat-peran">
-      <h3>Order yang pernah dilepas{data !== null && data.total > 0 && ` (${data.total})`}</h3>
-
-      {galat !== null && <KotakGalat galat={galat} cobaLagi={muatUlang} />}
-      {memuat && data === null && <Memuat />}
-      {data !== null && data.isi.length === 0 && (
-        <Kosong keterangan="Akun ini belum pernah melepas order yang sudah diterimanya." />
+    <DaftarRiwayat
+      userId={userId}
+      judul="Order yang pernah dilepas"
+      keteranganKosong="Akun ini belum pernah melepas order yang sudah diterimanya."
+      ambil={pelepasanOrder}
+      renderBaris={(baris) => (
+        <>
+          <p className="riwayat-peran__perubahan">{baris.kodeOrder}</p>
+          <p className="riwayat-peran__alasan">{baris.alasan}</p>
+          <time dateTime={baris.dilepasPada}>{formatTanggalJam(baris.dilepasPada)}</time>
+        </>
       )}
+    />
+  );
+}
 
-      {data !== null && data.isi.length > 0 && (
-        <ol className="riwayat-peran__daftar">
-          {data.isi.map((baris) => (
-            <li key={baris.id}>
-              <p className="riwayat-peran__perubahan">{baris.kodeOrder}</p>
-              <p className="riwayat-peran__alasan">{baris.alasan}</p>
-              <time dateTime={baris.dilepasPada}>{formatTanggalJam(baris.dilepasPada)}</time>
-            </li>
-          ))}
-        </ol>
+/**
+ * Penawaran yang pernah ditarik kembali runner ini.
+ *
+ * Menarik penawaran sepenuhnya sah — alasan yang paling sering cuma salah ketik, dan
+ * karena itu alasannya memang tidak pernah diwajibkan. Yang membuatnya layak dilihat
+ * pengulangannya, dan itu justru yang dijanjikan bagian 49.10 sebagai catatan pola alih-alih
+ * larangan.
+ */
+function PenawaranDitarikRunner({ userId }: { userId: string }) {
+  return (
+    <DaftarRiwayat
+      userId={userId}
+      judul="Penawaran yang ditarik"
+      keteranganKosong="Akun ini belum pernah menarik penawarannya sendiri."
+      ambil={penawaranDitarik}
+      renderBaris={(baris) => (
+        // Harganya di baris yang sama dengan kode ordernya, karena tanpa alasan tertulis
+        // angkanya sendiri yang harus menjelaskan: 50.000 untuk pindah kos terbaca sebagai
+        // salah ketik, deretan angka wajar yang ditarik berulang kali tidak.
+        <>
+          <p className="riwayat-peran__perubahan">
+            {baris.kodeOrder} &middot; {formatRupiah(baris.harga)}
+          </p>
+          <time dateTime={baris.ditarikPada}>{formatTanggalJam(baris.ditarikPada)}</time>
+        </>
       )}
-    </div>
+    />
   );
 }
 
@@ -358,144 +455,49 @@ function PelepasanRunner({ userId }: { userId: string }) {
  * dan memulihkan mengosongkannya. Daftar ini satu-satunya tempat yang bisa menjawab "sudah
  * berapa kali", dan satu-satunya tempat alasan memulihkan bisa dibaca sama sekali.
  */
-/**
- * Penawaran yang pernah ditarik kembali runner ini.
- *
- * Menarik penawaran sepenuhnya sah — alasan yang paling sering cuma salah ketik, dan
- * karena itu alasannya memang tidak pernah diwajibkan. Yang membuatnya layak dilihat
- * pengulangannya, dan itu justru yang dijanjikan bagian 49.10 sebagai catatan pola alih-alih
- * larangan.
- */
-function PenawaranDitarikRunner({ userId }: { userId: string }) {
-  const { api } = useSesi();
-
-  const ambil = useCallback(
-    (sinyal: AbortSignal) => penawaranDitarik(api, userId, { ukuran: 20 }, sinyal),
-    [api, userId],
-  );
-
-  const { data, memuat, galat, muatUlang } = gunakanMuat(ambil);
-
-  return (
-    <div className="riwayat-peran">
-      <h3>Penawaran yang ditarik{data !== null && data.total > 0 && ` (${data.total})`}</h3>
-
-      {galat !== null && <KotakGalat galat={galat} cobaLagi={muatUlang} />}
-      {memuat && data === null && <Memuat />}
-      {data !== null && data.isi.length === 0 && (
-        <Kosong keterangan="Akun ini belum pernah menarik penawarannya sendiri." />
-      )}
-
-      {data !== null && data.isi.length > 0 && (
-        <ol className="riwayat-peran__daftar">
-          {data.isi.map((baris) => (
-            <li key={baris.id}>
-              {/* Harganya di baris yang sama dengan kode ordernya, karena tanpa alasan
-                  tertulis angkanya sendiri yang harus menjelaskan: 50.000 untuk pindah kos
-                  terbaca sebagai salah ketik, deretan angka wajar yang ditarik berulang kali
-                  tidak. */}
-              <p className="riwayat-peran__perubahan">
-                {baris.kodeOrder} &middot; {formatRupiah(baris.harga)}
-              </p>
-              <time dateTime={baris.ditarikPada}>{formatTanggalJam(baris.ditarikPada)}</time>
-            </li>
-          ))}
-        </ol>
-      )}
-    </div>
-  );
-}
-
 function RiwayatPenangguhan({ userId, penanda }: { userId: string; penanda: number }) {
-  const { api } = useSesi();
-
-  const ambil = useCallback(
-    (sinyal: AbortSignal) => riwayatPenangguhan(api, userId, { ukuran: 20 }, sinyal),
-    [api, userId],
-  );
-
-  const { data, memuat, galat, muatUlang } = gunakanMuat(ambil);
-
-  // Alasannya sama dengan riwayat peran: `muatUlang` dibuat ulang setiap render oleh
-  // gunakanMuat, jadi memasukkannya ke dependensi berarti mengambil ulang setiap render.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (penanda > 0) muatUlang();
-  }, [penanda]);
-
   return (
-    <div className="riwayat-peran">
-      <h3>Riwayat penangguhan{data !== null && data.total > 0 && ` (${data.total})`}</h3>
-
-      {galat !== null && <KotakGalat galat={galat} cobaLagi={muatUlang} />}
-      {memuat && data === null && <Memuat />}
-      {data !== null && data.isi.length === 0 && (
-        <Kosong keterangan="Akun ini belum pernah ditangguhkan." />
+    <DaftarRiwayat
+      userId={userId}
+      penanda={penanda}
+      judul="Riwayat penangguhan"
+      keteranganKosong="Akun ini belum pernah ditangguhkan."
+      ambil={riwayatPenangguhan}
+      renderBaris={(baris) => (
+        <>
+          <p className="riwayat-peran__perubahan">
+            {baris.ditangguhkan ? 'Ditangguhkan' : 'Dipulihkan'}
+          </p>
+          <p className="riwayat-peran__alasan">{baris.alasan}</p>
+          <time dateTime={baris.diubahPada}>{formatTanggalJam(baris.diubahPada)}</time>{' '}
+          <span className="riwayat-peran__oleh">oleh {baris.namaAdmin}</span>
+        </>
       )}
-
-      {data !== null && data.isi.length > 0 && (
-        <ol className="riwayat-peran__daftar">
-          {data.isi.map((baris) => (
-            <li key={baris.id}>
-              <p className="riwayat-peran__perubahan">
-                {baris.ditangguhkan ? 'Ditangguhkan' : 'Dipulihkan'}
-              </p>
-              <p className="riwayat-peran__alasan">{baris.alasan}</p>
-              <time dateTime={baris.diubahPada}>{formatTanggalJam(baris.diubahPada)}</time>{' '}
-              <span className="riwayat-peran__oleh">oleh {baris.namaAdmin}</span>
-            </li>
-          ))}
-        </ol>
-      )}
-    </div>
+    />
   );
 }
 
 function RiwayatPeran({ userId, penanda }: { userId: string; penanda: number }) {
-  const { api } = useSesi();
-
-  const ambil = useCallback(
-    (sinyal: AbortSignal) => riwayatPeran(api, userId, { ukuran: 20 }, sinyal),
-    [api, userId],
-  );
-
-  const { data, memuat, galat, muatUlang } = gunakanMuat(ambil);
-
-  // Riwayat dimuat ulang setiap `penanda` berubah, yaitu setiap kali perubahan peran baru
-  // berhasil disimpan. `muatUlang` sengaja tidak dimasukkan ke daftar dependensi: ia
-  // dibuat ulang setiap render oleh gunakanMuat, dan memasukkannya akan memicu pengambilan
-  // setiap render, bukan cuma saat penandanya berganti.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (penanda > 0) muatUlang();
-  }, [penanda]);
-
   return (
-    <div className="riwayat-peran">
-      <h3>Riwayat perubahan</h3>
-
-      {galat !== null && <KotakGalat galat={galat} cobaLagi={muatUlang} />}
-      {memuat && data === null && <Memuat />}
-      {data !== null && data.isi.length === 0 && (
-        <Kosong keterangan="Belum ada perubahan peran untuk akun ini." />
+    <DaftarRiwayat
+      userId={userId}
+      penanda={penanda}
+      judul="Riwayat perubahan"
+      sembunyikanJumlah
+      keteranganKosong="Belum ada perubahan peran untuk akun ini."
+      ambil={riwayatPeran}
+      renderBaris={(baris) => (
+        <>
+          <p className="riwayat-peran__perubahan">
+            {baris.sebelum.join(', ') || 'tanpa peran'} &rarr;{' '}
+            {baris.sesudah.join(', ') || 'tanpa peran'}
+          </p>
+          <p className="riwayat-peran__alasan">{baris.alasan}</p>
+          <time dateTime={baris.diubahPada}>{formatTanggalJam(baris.diubahPada)}</time>{' '}
+          <span className="riwayat-peran__oleh">oleh {baris.namaAdmin}</span>
+        </>
       )}
-
-      {data !== null && data.isi.length > 0 && (
-        <ol className="riwayat-peran__daftar">
-          {data.isi.map((baris) => (
-            <li key={baris.id}>
-              <p className="riwayat-peran__perubahan">
-                {baris.sebelum.join(', ') || 'tanpa peran'} &rarr;{' '}
-                {baris.sesudah.join(', ') || 'tanpa peran'}
-              </p>
-              <p className="riwayat-peran__alasan">{baris.alasan}</p>
-              <time dateTime={baris.diubahPada}>{formatTanggalJam(baris.diubahPada)}</time>{' '}
-              <span className="riwayat-peran__oleh">oleh {baris.namaAdmin}</span>
-            </li>
-          ))}
-        </ol>
-      )}
-    </div>
+    />
   );
 }
 
