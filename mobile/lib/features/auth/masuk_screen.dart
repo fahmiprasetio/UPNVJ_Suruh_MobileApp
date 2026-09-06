@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/api/galat_api.dart';
+import '../../core/api/tindakan_terkelola.dart';
 import '../../core/config/batas_masukan.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/repository_providers.dart';
@@ -51,15 +51,14 @@ class MasukScreen extends ConsumerStatefulWidget {
   ConsumerState<MasukScreen> createState() => _MasukScreenState();
 }
 
-class _MasukScreenState extends ConsumerState<MasukScreen> {
+class _MasukScreenState extends ConsumerState<MasukScreen>
+    with TindakanTerkelola<MasukScreen> {
   final _formKey = GlobalKey<FormState>();
   final _namaController = TextEditingController();
   final _noHpController = TextEditingController();
   final _kodeController = TextEditingController();
 
   _Langkah _langkah = _Langkah.nomor;
-  bool _sedangMengirim = false;
-  String? _galat;
 
   @override
   void dispose() {
@@ -99,41 +98,14 @@ class _MasukScreenState extends ConsumerState<MasukScreen> {
     return null;
   }
 
-  /// Menjalankan satu tindakan yang bicara ke server, sambil menjaga layar tetap
-  /// jujur soal keadaannya.
-  ///
-  /// Semua penanganan galat lewat sini supaya tidak ada satu pun jalur yang lupa
-  /// mematikan keadaan memuat. Tombol yang tinggal berputar selamanya setelah
-  /// permintaan gagal adalah kegagalan yang paling sering lolos ke pengguna.
-  Future<void> _jalankan(Future<void> Function() tindakan) async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() {
-      _sedangMengirim = true;
-      _galat = null;
-    });
-
-    try {
-      await tindakan();
-    } on GalatApi catch (galat) {
-      if (mounted) setState(() => _galat = galat.pesan);
-    } on StateError catch (galat) {
-      // Repository tiruan melempar StateError. Pesannya sudah ditulis untuk
-      // dibaca orang, jadi dipakai apa adanya.
-      if (mounted) setState(() => _galat = galat.message);
-    } finally {
-      if (mounted) setState(() => _sedangMengirim = false);
-    }
-  }
-
-  Future<void> _kirimKode() => _jalankan(() async {
+  Future<void> _kirimKode() => jalankan(_formKey, () async {
     await ref
         .read(authRepositoryProvider)
         .mintaKode(noHp: _noHpController.text.trim());
     if (mounted) setState(() => _langkah = _Langkah.kode);
   });
 
-  Future<void> _daftarLaluKirimKode() => _jalankan(() async {
+  Future<void> _daftarLaluKirimKode() => jalankan(_formKey, () async {
     final repo = ref.read(authRepositoryProvider);
     await repo.daftar(
       nama: _namaController.text.trim(),
@@ -145,7 +117,7 @@ class _MasukScreenState extends ConsumerState<MasukScreen> {
     if (mounted) setState(() => _langkah = _Langkah.kode);
   });
 
-  Future<void> _masuk() => _jalankan(() async {
+  Future<void> _masuk() => jalankan(_formKey, () async {
     await ref
         .read(authRepositoryProvider)
         .masuk(
@@ -166,14 +138,14 @@ class _MasukScreenState extends ConsumerState<MasukScreen> {
     _kodeController.clear();
     setState(() {
       _langkah = _Langkah.nomor;
-      _galat = null;
+      galatTindakan = null;
     });
   }
 
   void _keDaftar() {
     setState(() {
       _langkah = _Langkah.daftar;
-      _galat = null;
+      galatTindakan = null;
     });
   }
 
@@ -215,9 +187,9 @@ class _MasukScreenState extends ConsumerState<MasukScreen> {
                       ],
                       const SizedBox(height: AppTheme.spasiSedang),
                       ..._isiLangkah,
-                      if (_galat != null) ...[
+                      if (galatTindakan != null) ...[
                         const SizedBox(height: AppTheme.spasiSedang),
-                        _KotakGalat(pesan: _galat!),
+                        _KotakGalat(pesan: galatTindakan!),
                       ],
                     ],
                   ),
@@ -244,7 +216,7 @@ class _MasukScreenState extends ConsumerState<MasukScreen> {
       _tombolUtama(label: 'Kirim kode', aksi: _kirimKode),
       const SizedBox(height: AppTheme.spasiKecil),
       TextButton(
-        onPressed: _sedangMengirim ? null : _keDaftar,
+        onPressed: sedangMengirim ? null : _keDaftar,
         child: const Text('Belum punya akun? Daftar'),
       ),
     ],
@@ -277,7 +249,7 @@ class _MasukScreenState extends ConsumerState<MasukScreen> {
       _tombolUtama(label: 'Daftar', aksi: _daftarLaluKirimKode),
       const SizedBox(height: AppTheme.spasiKecil),
       TextButton(
-        onPressed: _sedangMengirim ? null : _kembaliKeNomor,
+        onPressed: sedangMengirim ? null : _kembaliKeNomor,
         child: const Text('Sudah punya akun? Masuk'),
       ),
     ],
@@ -317,11 +289,11 @@ class _MasukScreenState extends ConsumerState<MasukScreen> {
       _tombolUtama(label: 'Masuk', aksi: _masuk),
       const SizedBox(height: 4),
       TextButton(
-        onPressed: _sedangMengirim ? null : _kembaliKeNomor,
+        onPressed: sedangMengirim ? null : _kembaliKeNomor,
         child: const Text('Ganti nomor'),
       ),
       const SizedBox(height: AppTheme.spasiBesar),
-      _JalanKeluarBelumTerdaftar(onDaftar: _sedangMengirim ? null : _keDaftar),
+      _JalanKeluarBelumTerdaftar(onDaftar: sedangMengirim ? null : _keDaftar),
     ],
   };
 
@@ -343,12 +315,12 @@ class _MasukScreenState extends ConsumerState<MasukScreen> {
     required String label,
     required Future<void> Function() aksi,
   }) => FilledButton(
-    onPressed: _sedangMengirim ? null : aksi,
+    onPressed: sedangMengirim ? null : aksi,
     // Tanpa penimpaan tinggi. Temanya sudah menetapkan 52 piksel untuk tombol
     // utama, dan yang di sini dulu 48: satu-satunya tombol utama di aplikasi
     // yang diam-diam lebih pendek daripada tombol utama lainnya, di layar yang
     // paling sering dilihat orang baru.
-    child: _sedangMengirim
+    child: sedangMengirim
         ? const SizedBox(
             height: 20,
             width: 20,

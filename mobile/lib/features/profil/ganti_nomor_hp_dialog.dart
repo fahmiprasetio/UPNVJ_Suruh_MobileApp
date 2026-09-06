@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/api/galat_api.dart';
+import '../../core/api/tindakan_terkelola.dart';
 import '../../core/config/batas_masukan.dart';
 import '../../core/theme/app_theme.dart';
 import '../../domain/models/app_user.dart';
@@ -37,14 +37,13 @@ class GantiNomorHpDialog extends ConsumerStatefulWidget {
 
 enum _Langkah { nomor, kode }
 
-class _GantiNomorHpDialogState extends ConsumerState<GantiNomorHpDialog> {
+class _GantiNomorHpDialogState extends ConsumerState<GantiNomorHpDialog>
+    with TindakanTerkelola<GantiNomorHpDialog> {
   final _formKey = GlobalKey<FormState>();
   final _noHpController = TextEditingController();
   final _kodeController = TextEditingController();
 
   _Langkah _langkah = _Langkah.nomor;
-  bool _sedangMengirim = false;
-  String? _galat;
 
   @override
   void dispose() {
@@ -76,35 +75,14 @@ class _GantiNomorHpDialogState extends ConsumerState<GantiNomorHpDialog> {
     return null;
   }
 
-  /// Menjalankan satu tindakan yang bicara ke server, sambil menjaga dialog
-  /// tetap jujur soal keadaannya. Sepadan dengan `_jalankan` di `MasukScreen`.
-  Future<void> _jalankan(Future<void> Function() tindakan) async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() {
-      _sedangMengirim = true;
-      _galat = null;
-    });
-
-    try {
-      await tindakan();
-    } on GalatApi catch (galat) {
-      if (mounted) setState(() => _galat = galat.pesan);
-    } on StateError catch (galat) {
-      if (mounted) setState(() => _galat = galat.message);
-    } finally {
-      if (mounted) setState(() => _sedangMengirim = false);
-    }
-  }
-
-  Future<void> _kirimKode() => _jalankan(() async {
+  Future<void> _kirimKode() => jalankan(_formKey, () async {
     await ref
         .read(authRepositoryProvider)
         .mintaKodeGantiNomor(noHpBaru: _noHpController.text.trim());
     if (mounted) setState(() => _langkah = _Langkah.kode);
   });
 
-  Future<void> _konfirmasi() => _jalankan(() async {
+  Future<void> _konfirmasi() => jalankan(_formKey, () async {
     final user = await ref.read(authRepositoryProvider).konfirmasiGantiNomor(
       noHpBaru: _noHpController.text.trim(),
       kode: _kodeController.text.trim(),
@@ -116,7 +94,7 @@ class _GantiNomorHpDialogState extends ConsumerState<GantiNomorHpDialog> {
     _kodeController.clear();
     setState(() {
       _langkah = _Langkah.nomor;
-      _galat = null;
+      galatTindakan = null;
     });
   }
 
@@ -133,10 +111,10 @@ class _GantiNomorHpDialogState extends ConsumerState<GantiNomorHpDialog> {
             Text(_penjelasan),
             const SizedBox(height: AppTheme.spasiSedang),
             ..._isiLangkah,
-            if (_galat != null) ...[
+            if (galatTindakan != null) ...[
               const SizedBox(height: AppTheme.spasiSedang),
               Text(
-                _galat!,
+                galatTindakan!,
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ],
@@ -145,19 +123,19 @@ class _GantiNomorHpDialogState extends ConsumerState<GantiNomorHpDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: _sedangMengirim ? null : () => Navigator.of(context).pop(),
+          onPressed: sedangMengirim ? null : () => Navigator.of(context).pop(),
           child: const Text('Batal'),
         ),
         if (_langkah == _Langkah.kode)
           TextButton(
-            onPressed: _sedangMengirim ? null : _kembaliKeNomor,
+            onPressed: sedangMengirim ? null : _kembaliKeNomor,
             child: const Text('Ganti nomor'),
           ),
         FilledButton(
-          onPressed: _sedangMengirim
+          onPressed: sedangMengirim
               ? null
               : (_langkah == _Langkah.nomor ? _kirimKode : _konfirmasi),
-          child: _sedangMengirim
+          child: sedangMengirim
               ? const SizedBox(
                   height: 18,
                   width: 18,
@@ -183,7 +161,7 @@ class _GantiNomorHpDialogState extends ConsumerState<GantiNomorHpDialog> {
         controller: _noHpController,
         keyboardType: TextInputType.phone,
         autofocus: true,
-        enabled: !_sedangMengirim,
+        enabled: !sedangMengirim,
         inputFormatters: [
           FilteringTextInputFormatter.digitsOnly,
           LengthLimitingTextInputFormatter(BatasMasukan.nomorHp),
@@ -200,7 +178,7 @@ class _GantiNomorHpDialogState extends ConsumerState<GantiNomorHpDialog> {
         controller: _kodeController,
         keyboardType: TextInputType.number,
         autofocus: true,
-        enabled: !_sedangMengirim,
+        enabled: !sedangMengirim,
         inputFormatters: [
           FilteringTextInputFormatter.digitsOnly,
           LengthLimitingTextInputFormatter(6),
