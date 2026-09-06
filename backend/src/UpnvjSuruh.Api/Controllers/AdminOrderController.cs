@@ -199,10 +199,7 @@ public class AdminOrderController(
         await db.SaveChangesAsync(batal);
         await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
 
-        return Ok(OrderResponse.Dari(
-            order,
-            order.Client?.Name ?? "Klien",
-            await db.JumlahPesanAsync(order.Id, User.Id(), User.Punya(Peran.Admin), batal)));
+        return Ok(await OrderResponse.DariAsync(db, order, User.Id(), User.Punya(Peran.Admin), batal));
     }
 
     /// <summary>
@@ -259,9 +256,6 @@ public class AdminOrderController(
         await db.SaveChangesAsync(batal);
         await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
 
-        return Ok(OrderResponse.Dari(
-            order,
-            order.Client?.Name ?? "Klien",
-            await db.JumlahPesanAsync(order.Id, User.Id(), User.Punya(Peran.Admin), batal)));
+        return Ok(await OrderResponse.DariAsync(db, order, User.Id(), User.Punya(Peran.Admin), batal));
     }
 }

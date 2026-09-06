@@ -120,6 +120,26 @@ public record OrderResponse(
         order.CompletedAt,
         order.CancellationRequestedAt,
         OrderMacet.Sedang(order, DateTime.UtcNow));
+
+    /// <summary>
+    /// Satu order sebagai jawaban, lengkap dengan jumlah pesan yang terlihat pemanggilnya.
+    /// </summary>
+    /// <remarks>
+    /// Pembungkus <see cref="Dari"/> dan
+    /// <see cref="Data.PesanTerlihat.JumlahPesanAsync(Data.AppDbContext, Guid, Guid, bool, CancellationToken)"/>,
+    /// yang di tiga controller order selalu dipanggil berpasangan setiap kali SATU order
+    /// (bukan daftar) dikirim balik: dua belas kali, kata demi kata sama persis kecuali id
+    /// pemanggilnya.
+    ///
+    /// Bukan untuk daftar order. Daftar order menghitung jumlah pesan sekaligus untuk
+    /// seluruh isinya lewat overload <c>JumlahPesanAsync</c> yang menerima banyak id
+    /// sekaligus, justru supaya tidak satu kueri per baris (lihat komentarnya sendiri di
+    /// <see cref="Data.PesanTerlihat"/>) — memanggil method ini di dalam perulangan atas
+    /// daftar akan mengembalikan N+1 yang sengaja dihindari di sana.
+    /// </remarks>
+    public static async Task<OrderResponse> DariAsync(
+        AppDbContext db, Order order, Guid pemanggil, bool admin, CancellationToken batal) =>
+        Dari(order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, pemanggil, admin, batal));
 }
 
 public record BuatOrderResponse(OrderResponse Order, IReadOnlyList<RincianTarifResponse> Rincian);

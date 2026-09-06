@@ -183,8 +183,7 @@ public class JalurBController(AppDbContext db, IHubContext<OrderHub> hub) : Cont
             return Konflik("Anda sudah punya penawaran yang menunggu jawaban untuk order ini.");
         }
 
-        return Ok(OrderResponse.Dari(
-            order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, User.Id(), User.Punya(Peran.Admin), batal)));
+        return Ok(await OrderResponse.DariAsync(db, order, User.Id(), User.Punya(Peran.Admin), batal));
     }
 
     /// <summary>
@@ -218,8 +217,7 @@ public class JalurBController(AppDbContext db, IHubContext<OrderHub> hub) : Cont
 
         await db.SaveChangesAsync(batal);
         await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
-        return Ok(OrderResponse.Dari(
-            order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, User.Id(), User.Punya(Peran.Admin), batal)));
+        return Ok(await OrderResponse.DariAsync(db, order, User.Id(), User.Punya(Peran.Admin), batal));
     }
 
     /// <summary>
@@ -242,8 +240,7 @@ public class JalurBController(AppDbContext db, IHubContext<OrderHub> hub) : Cont
         Jawab(penawaran!, OfferStatus.Ditolak);
 
         await db.SaveChangesAsync(batal);
-        return Ok(OrderResponse.Dari(
-            order!, order!.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, User.Id(), User.Punya(Peran.Admin), batal)));
+        return Ok(await OrderResponse.DariAsync(db, order!, User.Id(), User.Punya(Peran.Admin), batal));
     }
 
     /// <summary>
@@ -335,10 +332,7 @@ public class JalurBController(AppDbContext db, IHubContext<OrderHub> hub) : Cont
         // dan itu terlihat dari ordernya sendiri.
         await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
 
-        return Ok(OrderResponse.Dari(
-            order,
-            order.Client?.Name ?? "Klien",
-            await db.JumlahPesanAsync(order.Id, runnerId, User.Punya(Peran.Admin), batal)));
+        return Ok(await OrderResponse.DariAsync(db, order, runnerId, User.Punya(Peran.Admin), batal));
     }
 
     /// <summary>
@@ -378,8 +372,7 @@ public class JalurBController(AppDbContext db, IHubContext<OrderHub> hub) : Cont
         });
 
         await db.SaveChangesAsync(batal);
-        return Ok(OrderResponse.Dari(
-            order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, User.Id(), User.Punya(Peran.Admin), batal)));
+        return Ok(await OrderResponse.DariAsync(db, order, User.Id(), User.Punya(Peran.Admin), batal));
     }
 
     private Task<Order?> Muat(Guid id, CancellationToken batal) => db.Orders
