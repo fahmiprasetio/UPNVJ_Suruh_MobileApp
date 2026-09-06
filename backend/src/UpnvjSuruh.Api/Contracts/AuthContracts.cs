@@ -25,7 +25,7 @@ public record DaftarRequest
 
     [Required(AllowEmptyStrings = false)]
     [MaxLength(BatasMasukan.NomorHp)]
-    [RegularExpression(@"^08\d{8,13}$", ErrorMessage = "Nomor HP harus diawali 08 dan berisi 10 sampai 15 angka.")]
+    [NomorHp]
     public string NoHp { get; init; } = string.Empty;
 }
 
@@ -33,7 +33,7 @@ public record MintaKodeRequest
 {
     [Required(AllowEmptyStrings = false)]
     [MaxLength(BatasMasukan.NomorHp)]
-    [RegularExpression(@"^08\d{8,13}$", ErrorMessage = "Nomor HP harus diawali 08 dan berisi 10 sampai 15 angka.")]
+    [NomorHp]
     public string NoHp { get; init; } = string.Empty;
 }
 
@@ -92,7 +92,7 @@ public record MintaKodeGantiNomorRequest
 {
     [Required(AllowEmptyStrings = false)]
     [MaxLength(BatasMasukan.NomorHp)]
-    [RegularExpression(@"^08\d{8,13}$", ErrorMessage = "Nomor HP harus diawali 08 dan berisi 10 sampai 15 angka.")]
+    [NomorHp]
     public string NoHpBaru { get; init; } = string.Empty;
 }
 
@@ -101,7 +101,7 @@ public record KonfirmasiGantiNomorRequest
 {
     [Required(AllowEmptyStrings = false)]
     [MaxLength(BatasMasukan.NomorHp)]
-    [RegularExpression(@"^08\d{8,13}$", ErrorMessage = "Nomor HP harus diawali 08 dan berisi 10 sampai 15 angka.")]
+    [NomorHp]
     public string NoHpBaru { get; init; } = string.Empty;
 
     [Required(AllowEmptyStrings = false)]
