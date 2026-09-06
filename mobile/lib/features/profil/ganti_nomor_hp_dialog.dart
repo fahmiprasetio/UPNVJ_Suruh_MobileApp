@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/tindakan_terkelola.dart';
 import '../../core/config/batas_masukan.dart';
+import '../../core/format/validasi_kontak.dart';
 import '../../core/theme/app_theme.dart';
 import '../../domain/models/app_user.dart';
 import '../../providers/repository_providers.dart';
@@ -52,25 +53,14 @@ class _GantiNomorHpDialogState extends ConsumerState<GantiNomorHpDialog>
     super.dispose();
   }
 
+  /// Sama dengan [validasiNoHp], ditambah satu pemeriksaan yang cuma berlaku
+  /// di sini: nomor yang diketik tidak boleh sama dengan yang sedang dipakai
+  /// sekarang, karena tidak ada yang perlu diganti kalau begitu.
   String? _validasiNoHp(String? nilai) {
-    final bersih = (nilai ?? '').trim();
-    if (bersih.isEmpty) return 'Nomor HP belum diisi';
-    // Pola yang sama dengan yang dipakai server (lihat MintaKodeGantiNomorRequest),
-    // supaya tidak ada nomor yang lolos di sini lalu ditolak di sana.
-    if (!RegExp(r'^08\d{8,13}$').hasMatch(bersih)) {
-      return 'Nomor HP diawali 08 dan berisi 10 sampai 15 angka';
-    }
-    if (bersih == widget.noHpSekarang) {
+    final galat = validasiNoHp(nilai);
+    if (galat != null) return galat;
+    if ((nilai ?? '').trim() == widget.noHpSekarang) {
       return 'Ini nomor yang sekarang, tidak ada yang perlu diganti';
-    }
-    return null;
-  }
-
-  String? _validasiKode(String? nilai) {
-    final bersih = (nilai ?? '').trim();
-    if (bersih.isEmpty) return 'Kode belum diisi';
-    if (!RegExp(r'^\d{6}$').hasMatch(bersih)) {
-      return 'Kode terdiri dari 6 angka';
     }
     return null;
   }
@@ -194,7 +184,7 @@ class _GantiNomorHpDialogState extends ConsumerState<GantiNomorHpDialog>
           floatingLabelAlignment: FloatingLabelAlignment.center,
           counterText: '',
         ),
-        validator: _validasiKode,
+        validator: validasiKode,
       ),
     ],
   };

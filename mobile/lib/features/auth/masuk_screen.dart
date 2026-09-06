@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/tindakan_terkelola.dart';
 import '../../core/config/batas_masukan.dart';
+import '../../core/format/validasi_kontak.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/repository_providers.dart';
 
@@ -68,32 +69,11 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
     super.dispose();
   }
 
-  String? _validasiNoHp(String? nilai) {
-    final bersih = (nilai ?? '').trim();
-    if (bersih.isEmpty) return 'Nomor HP belum diisi';
-    // Pola yang sama dengan yang dipakai server. Kalau berbeda, akan ada nomor
-    // yang lolos di sini lalu ditolak di sana, dan pengguna melihat penolakan
-    // tanpa tahu bagian mana yang salah.
-    if (!RegExp(r'^08\d{8,13}$').hasMatch(bersih)) {
-      return 'Nomor HP diawali 08 dan berisi 10 sampai 15 angka';
-    }
-    return null;
-  }
-
   String? _validasiNama(String? nilai) {
     final bersih = (nilai ?? '').trim();
     if (bersih.isEmpty) return 'Nama belum diisi';
     if (bersih.length > BatasMasukan.nama) {
       return 'Nama maksimal ${BatasMasukan.nama} karakter';
-    }
-    return null;
-  }
-
-  String? _validasiKode(String? nilai) {
-    final bersih = (nilai ?? '').trim();
-    if (bersih.isEmpty) return 'Kode belum diisi';
-    if (!RegExp(r'^\d{6}$').hasMatch(bersih)) {
-      return 'Kode terdiri dari 6 angka';
     }
     return null;
   }
@@ -283,7 +263,7 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
           floatingLabelAlignment: FloatingLabelAlignment.center,
           counterText: '',
         ),
-        validator: _validasiKode,
+        validator: validasiKode,
       ),
       const SizedBox(height: AppTheme.spasiSedang),
       _tombolUtama(label: 'Masuk', aksi: _masuk),
@@ -308,7 +288,7 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
       labelText: 'Nomor HP',
       hintText: '08xxxxxxxxxx',
     ),
-    validator: _validasiNoHp,
+    validator: validasiNoHp,
   );
 
   Widget _tombolUtama({
