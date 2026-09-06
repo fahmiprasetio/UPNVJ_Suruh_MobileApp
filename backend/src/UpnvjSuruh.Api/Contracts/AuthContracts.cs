@@ -56,7 +56,8 @@ public record MasukRequest
 /// karena ia identitas masuk: ia yang menerima kode OTP, jadi mengubahnya lewat endpoint
 /// yang cuma menerima teks berarti siapa pun yang memegang token sesaat bisa memindahkan
 /// akunnya ke nomor lain, dan pemilik aslinya terkunci di luar. Menggantinya menuntut
-/// verifikasi kode ke nomor barunya, dan itu pekerjaan tersendiri.
+/// verifikasi kode ke nomor barunya, lewat <see cref="MintaKodeGantiNomorRequest"/> dan
+/// <see cref="KonfirmasiGantiNomorRequest"/> di bawah, bukan lewat satu field di sini.
 /// </summary>
 public record PerbaruiProfilRequest
 {
@@ -71,6 +72,41 @@ public record PerbaruiProfilRequest
     /// </summary>
     [MaxLength(BatasMasukan.Alamat)]
     public string? Alamat { get; init; }
+}
+
+/// <summary>
+/// Langkah pertama mengganti nomor HP sendiri: minta kode dikirim ke nomor yang BARU.
+/// </summary>
+/// <remarks>
+/// Bukan nomor yang sedang dipakai. Yang harus dibuktikan di sini kepemilikan nomor
+/// barunya; kepemilikan nomor lama sudah terbukti lewat token yang sedang dipegang, dan
+/// itulah yang membuat endpoint ini boleh menuntut lebih sedikit daripada <see
+/// cref="MintaKodeRequest"/>: ia tidak perlu berpura-pura sama untuk semua nomor, karena
+/// pemanggilnya sudah masuk, bukan tamu yang bisa mencoba nomor siapa saja tanpa modal.
+///
+/// Dua langkah, bukan satu langkah nomor+kode langsung: kodenya belum ada sampai
+/// permintaan ini terkirim, sama seperti alur masuk yang juga dua langkah untuk alasan
+/// yang sama persis.
+/// </remarks>
+public record MintaKodeGantiNomorRequest
+{
+    [Required(AllowEmptyStrings = false)]
+    [MaxLength(BatasMasukan.NomorHp)]
+    [RegularExpression(@"^08\d{8,13}$", ErrorMessage = "Nomor HP harus diawali 08 dan berisi 10 sampai 15 angka.")]
+    public string NoHpBaru { get; init; } = string.Empty;
+}
+
+/// <summary>Langkah kedua: menukar kode yang benar dengan nomor HP yang baru.</summary>
+public record KonfirmasiGantiNomorRequest
+{
+    [Required(AllowEmptyStrings = false)]
+    [MaxLength(BatasMasukan.NomorHp)]
+    [RegularExpression(@"^08\d{8,13}$", ErrorMessage = "Nomor HP harus diawali 08 dan berisi 10 sampai 15 angka.")]
+    public string NoHpBaru { get; init; } = string.Empty;
+
+    [Required(AllowEmptyStrings = false)]
+    [RegularExpression(@"^\d{6}$", ErrorMessage = "Kode OTP terdiri dari 6 angka.")]
+    public string Kode { get; init; } = string.Empty;
 }
 
 public record UserResponse(

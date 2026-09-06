@@ -18,7 +18,8 @@ public class AuthController(
     IPenyimpanOtp penyimpanOtp,
     IPembatasOtp pembatasOtp,
     IPembuatKodeOtp pembuatKode,
-    IPengirimOtp pengirimOtp) : ControllerBase
+    IPengirimOtp pengirimOtp,
+    ILogger<AuthController> log) : ControllerBase
 {
     /// <summary>
     /// Mendaftarkan akun baru. Selalu lahir sebagai klien, lihat <see cref="DaftarRequest"/>.
@@ -278,6 +279,160 @@ public class AuthController(
         user.Address = string.IsNullOrEmpty(alamat) ? null : alamat;
 
         await db.SaveChangesAsync(batal);
+
+        return Ok(UserResponse.Dari(user));
+    }
+
+    /// <summary>Langkah pertama mengganti nomor HP sendiri: kirim kode ke nomor barunya.</summary>
+    /// <remarks>
+    /// Sebelum ini, mengganti nomor menuntut menghubungi admin (lihat <see
+    /// cref="PerbaruiProfilRequest"/> untuk alasan kenapa <see cref="PerbaruiSaya"/> sendiri
+    /// tidak bisa dipakai): pemiliknya tidak bisa membuktikan kepemilikan nomor barunya lewat
+    /// satu kolom isian, dan admin pun belum punya endpoint untuk itu.
+    ///
+    /// Dikirim ke nomor BARU, bukan nomor lama. Kepemilikan nomor lama sudah terbukti lewat
+    /// token yang sedang dipegang; yang belum terbukti justru nomor barunya, dan itulah yang
+    /// harus dibuktikan sebelum ia menggantikan yang lama.
+    ///
+    /// Berbeda dari <see cref="MintaKode"/>, jawabannya TIDAK disamarkan sama untuk semua
+    /// keadaan. Penyamaran di sana ada supaya endpoint tanpa token itu tidak bisa dipakai
+    /// memeriksa siapa saja yang punya akun; endpoint ini menuntut token yang sah lebih
+    /// dulu, jadi pemanggilnya sudah bukan tamu yang bisa mencoba nomor siapa saja tanpa
+    /// modal. Menyamarkan "nomor ini sudah dipakai akun lain" di sini cuma membuat kode yang
+    /// tidak akan pernah datang, dan pemiliknya menduga aplikasinya rusak, bukan bahwa
+    /// nomornya keliru.
+    /// </remarks>
+    [Authorize]
+    [EnableRateLimiting(BatasLaju.KebijakanTulis)]
+    [HttpPost("saya/nomor-hp/minta-kode")]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+    public async Task<IActionResult> MintaKodeGantiNomor(
+        MintaKodeGantiNomorRequest permintaan,
+        CancellationToken batal)
+    {
+        var user = await db.Users.SingleOrDefaultAsync(u => u.Id == User.Id(), batal);
+        if (user is null) return Unauthorized();
+
+        var noHpBaru = permintaan.NoHpBaru.Trim();
+
+        if (noHpBaru == user.Phone)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Ini nomor yang sama dengan sekarang",
+                Detail = "Tidak ada yang perlu diganti.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        // Kunci yang sama dengan pembatas di MintaKode: nomor HP, bukan pemanggilnya.
+        // Endpoint ini yang membuat SMS terkirim, dan nomor barunya boleh saja bukan milik
+        // pemanggil sendiri kalau ia salah ketik — orang lain yang ponselnya berdering
+        // karenanya tetap harus dilindungi dari banjir kode.
+        var izin = pembatasOtp.Catat(noHpBaru);
+        if (!izin.Boleh)
+        {
+            Response.Headers.RetryAfter = ((int)Math.Ceiling(izin.TungguLagi.TotalSeconds))
+                .ToString(CultureInfo.InvariantCulture);
+
+            return StatusCode(StatusCodes.Status429TooManyRequests, new ProblemDetails
+            {
+                Title = "Terlalu sering meminta kode",
+                Detail = "Kode verifikasi sudah dikirim beberapa kali ke nomor ini. "
+                         + "Tunggu sebentar sebelum meminta lagi.",
+                Status = StatusCodes.Status429TooManyRequests,
+            });
+        }
+
+        if (await db.Users.AnyAsync(u => u.Phone == noHpBaru && u.Id != user.Id, batal))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Nomor ini sudah dipakai akun lain",
+                Detail = "Pastikan nomornya benar, atau hubungi admin kalau menurutmu ini keliru.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        var kode = pembuatKode.Buat();
+        penyimpanOtp.Simpan(noHpBaru, kode);
+        await pengirimOtp.KirimAsync(noHpBaru, kode, batal);
+
+        return Accepted();
+    }
+
+    /// <summary>Langkah kedua: menukar kode yang benar dengan nomor HP yang baru.</summary>
+    /// <remarks>
+    /// Token yang sedang dipegang tetap berlaku sesudah ini, tidak diterbitkan ulang. Ia
+    /// cuma membawa id akun, nama, dan peran (lihat <see cref="TokenService"/>) — tidak ada
+    /// klaim nomor HP di dalamnya yang perlu disegarkan, persis seperti mengganti nama di
+    /// <see cref="PerbaruiSaya"/> juga tidak menuntut token baru.
+    /// </remarks>
+    [Authorize]
+    [EnableRateLimiting(BatasLaju.KebijakanTulis)]
+    [HttpPost("saya/nomor-hp/konfirmasi")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<UserResponse>> KonfirmasiGantiNomor(
+        KonfirmasiGantiNomorRequest permintaan,
+        CancellationToken batal)
+    {
+        var user = await db.Users.SingleOrDefaultAsync(u => u.Id == User.Id(), batal);
+        if (user is null) return Unauthorized();
+
+        var noHpBaru = permintaan.NoHpBaru.Trim();
+
+        if (!penyimpanOtp.Pakai(noHpBaru, permintaan.Kode))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Kode salah atau sudah kedaluwarsa",
+                Detail = "Minta kode baru kalau sudah lewat lima menit sejak dikirim.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        // Diperiksa lagi di sini, bukan cuma di langkah minta-kode. Jendela lima menit di
+        // antara keduanya cukup lama bagi nomor yang sama diklaim akun lain, dan index unik
+        // di bawah cuma menjaga dari tabrakan yang benar-benar bersamaan, bukan yang
+        // berjarak beberapa menit seperti ini.
+        if (await db.Users.AnyAsync(u => u.Phone == noHpBaru && u.Id != user.Id, batal))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Nomor ini sudah dipakai akun lain",
+                Detail = "Nomor ini terlanjur dipakai akun lain sebelum verifikasimu selesai.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        var lama = user.Phone;
+        user.Phone = noHpBaru;
+
+        try
+        {
+            await db.SaveChangesAsync(batal);
+        }
+        catch (DbUpdateException galat) when (GalatDb.Bentrok(galat))
+        {
+            // Kalah cepat dengan orang lain yang mengklaim nomor yang sama tepat di celah
+            // antara pemeriksaan di atas dan penyimpanan ini. Jarang, tapi index unik di
+            // kolom Phone tetap satu-satunya penjaga yang benar-benar tidak bisa dilewati.
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Nomor ini sudah dipakai akun lain",
+                Detail = "Nomor ini terlanjur dipakai akun lain sebelum verifikasimu selesai.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        log.LogWarning(
+            "Nomor HP akun {UserId} diganti dari {NomorLama} ke {NomorBaru}.",
+            user.Id, lama, user.Phone);
 
         return Ok(UserResponse.Dari(user));
     }
