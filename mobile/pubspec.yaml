@@ -36,8 +36,11 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_riverpod: ^3.3.2
   go_router: ^17.5.0
-  intl: ^0.20.3
-  uuid: ^4.6.0
+  # Tanpa batasan versi dengan sengaja. flutter_localizations yang datang bersama SDK
+  # sudah mematok intl persis di satu versi, dan patokan itu berubah tiap kali Flutter
+  # stable naik. Angka apa pun yang ditulis di sini akan bentrok dengan salah satu SDK:
+  # 0.20.2 ditolak Flutter di CI, ^0.20.3 ditolak Flutter di mesin ini.
+  intl: any
   flutter_localizations:
     sdk: flutter
   qr_flutter: ^4.1.0
