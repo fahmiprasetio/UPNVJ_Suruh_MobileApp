@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { PenyediaSesi } from '../src/auth/sesi';
 import { HalamanDetailOrder } from '../src/halaman/detail_order';
 import { KlienApi } from '../src/inti/klien_api';
-import type { Order } from '../src/inti/tipe';
+import type { Order, PerubahanStatusOrder } from '../src/inti/tipe';
 import { buatKendaliHub, buatTiruanHub } from './dukungan_hub';
 
 /**
@@ -55,6 +55,16 @@ function jawaban(status: number, badan: unknown): Response {
   });
 }
 
+/**
+ * Jawaban untuk order, KECUALI kalau url yang diminta justru riwayat statusnya --
+ * `RiwayatStatus` di layar ini mengambilnya sendiri lewat url yang berbeda, dan setiap
+ * tiruan pengambilan di berkas ini perlu menjawabnya juga, bukan cuma pesannya.
+ */
+function jawabanOrder(url: string, order: Order): Response {
+  if (url.includes('/riwayat-status')) return jawaban(200, []);
+  return jawaban(200, order);
+}
+
 function halamanPesanKosong() {
   return { isi: [], total: 0, halaman: 1, ukuranHalaman: 50, totalHalaman: 0 };
 }
@@ -82,7 +92,7 @@ describe('PanelPembatalan', () => {
   it('tidak muncul untuk order yang belum dibayar', async () => {
     const ambil = vi.fn().mockImplementation((url: string) =>
       Promise.resolve(
-        url.includes('/pesan') ? jawaban(200, halamanPesanKosong()) : jawaban(200, order({ dibayarPada: null })),
+        url.includes('/pesan') ? jawaban(200, halamanPesanKosong()) : jawabanOrder(url, order({ dibayarPada: null })),
       ),
     );
     pasang(ambil);
@@ -96,7 +106,7 @@ describe('PanelPembatalan', () => {
       Promise.resolve(
         url.includes('/pesan')
           ? jawaban(200, halamanPesanKosong())
-          : jawaban(200, order({ status: 'Batal', dibayarPada: new Date().toISOString() })),
+          : jawabanOrder(url, order({ status: 'Batal', dibayarPada: new Date().toISOString() })),
       ),
     );
     pasang(ambil);
@@ -110,7 +120,7 @@ describe('PanelPembatalan', () => {
       Promise.resolve(
         url.includes('/pesan')
           ? jawaban(200, halamanPesanKosong())
-          : jawaban(200, order({ status: 'Dikerjakan', dibayarPada: new Date().toISOString() })),
+          : jawabanOrder(url, order({ status: 'Dikerjakan', dibayarPada: new Date().toISOString() })),
       ),
     );
     pasang(ambil);
@@ -123,7 +133,7 @@ describe('PanelPembatalan', () => {
       Promise.resolve(
         url.includes('/pesan')
           ? jawaban(200, halamanPesanKosong())
-          : jawaban(200, order({ status: 'Dikerjakan', dibayarPada: new Date().toISOString() })),
+          : jawabanOrder(url, order({ status: 'Dikerjakan', dibayarPada: new Date().toISOString() })),
       ),
     );
     pasang(ambil);
@@ -156,7 +166,7 @@ describe('PanelPembatalan', () => {
       // Pengambilan ulang order sesudah dibatalkan (dipicu onDibatalkan -> muatUlang) harus
       // menampilkan statusnya yang baru, sama seperti server sungguhan akan menjawabnya.
       return Promise.resolve(
-        jawaban(200, sudahDibatalkan ? { ...orderDibayar, status: 'Batal' } : orderDibayar),
+        jawabanOrder(url, sudahDibatalkan ? { ...orderDibayar, status: 'Batal' } : orderDibayar),
       );
     });
 
@@ -193,7 +203,7 @@ describe('PanelPembatalan', () => {
       if (init?.method === 'POST' && url.includes('/batalkan')) {
         return Promise.resolve(jawaban(400, { title: 'Order ini belum dibayar' }));
       }
-      return Promise.resolve(jawaban(200, orderDibayar));
+      return Promise.resolve(jawabanOrder(url, orderDibayar));
     });
 
     pasang(ambil);
@@ -223,7 +233,7 @@ describe('kabar hub di layar detail', () => {
     const kendali = buatKendaliHub();
     const ambil = vi.fn().mockImplementation((url: string) =>
       Promise.resolve(
-        url.includes('/pesan') ? jawaban(200, halamanPesanKosong()) : jawaban(200, order()),
+        url.includes('/pesan') ? jawaban(200, halamanPesanKosong()) : jawabanOrder(url, order()),
       ),
     );
 
@@ -285,7 +295,7 @@ describe('PanelPermintaanBatal', () => {
       Promise.resolve(
         url.includes('/pesan')
           ? jawaban(200, halamanPesanKosong())
-          : jawaban(200, order({ dibayarPada: new Date().toISOString() })),
+          : jawabanOrder(url, order({ dibayarPada: new Date().toISOString() })),
       ),
     );
 
@@ -298,7 +308,7 @@ describe('PanelPermintaanBatal', () => {
   it('muncul untuk order yang sedang menunggu keputusan', async () => {
     const ambil = vi.fn().mockImplementation((url: string) =>
       Promise.resolve(
-        url.includes('/pesan') ? jawaban(200, halamanPesanKosong()) : jawaban(200, orderDiminta()),
+        url.includes('/pesan') ? jawaban(200, halamanPesanKosong()) : jawabanOrder(url, orderDiminta()),
       ),
     );
 
@@ -313,7 +323,7 @@ describe('PanelPermintaanBatal', () => {
       if (init?.method === 'POST' && url.includes('/tolak-pembatalan')) {
         return Promise.resolve(jawaban(200, order({ dibayarPada: new Date().toISOString() })));
       }
-      return Promise.resolve(jawaban(200, orderDiminta()));
+      return Promise.resolve(jawabanOrder(url, orderDiminta()));
     });
 
     pasang(ambil);
@@ -338,7 +348,7 @@ describe('PanelPermintaanBatal', () => {
   it('tombol kirim mati selama alasannya kosong', async () => {
     const ambil = vi.fn().mockImplementation((url: string) =>
       Promise.resolve(
-        url.includes('/pesan') ? jawaban(200, halamanPesanKosong()) : jawaban(200, orderDiminta()),
+        url.includes('/pesan') ? jawaban(200, halamanPesanKosong()) : jawabanOrder(url, orderDiminta()),
       ),
     );
 
@@ -347,5 +357,89 @@ describe('PanelPermintaanBatal', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Tolak permintaan' }));
 
     expect(screen.getByRole('button', { name: 'Kirim penolakan' })).toBeDisabled();
+  });
+});
+
+
+/**
+ * Riwayat status: order yang mundur lalu maju lagi harus terlihat sebagai dua baris
+ * terpisah, bukan cuma status terakhirnya. Diuji terpisah dari pembatalan/permintaan
+ * batal di atas karena ini murni menampilkan, tidak ada aksi yang dikirim balik ke server.
+ */
+describe('RiwayatStatus', () => {
+  function perubahan(ubah: Partial<PerubahanStatusOrder> = {}): PerubahanStatusOrder {
+    return {
+      id: 'p-1',
+      orderId: order().id,
+      dariStatus: 'MenungguPembayaran',
+      keStatus: 'MencariRunner',
+      dipicuOlehUserId: null,
+      namaPemicu: null,
+      diubahPada: new Date().toISOString(),
+      ...ubah,
+    };
+  }
+
+  function ambilDengan(riwayat: PerubahanStatusOrder[]) {
+    return vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/pesan')) return Promise.resolve(jawaban(200, halamanPesanKosong()));
+      if (url.includes('/riwayat-status')) return Promise.resolve(jawaban(200, riwayat));
+      return Promise.resolve(jawaban(200, order()));
+    });
+  }
+
+  it('order yang belum pernah berpindah menampilkan keterangan kosong', async () => {
+    pasang(ambilDengan([]));
+
+    expect(
+      await screen.findByText('Order ini belum pernah berpindah status.'),
+    ).toBeInTheDocument();
+  });
+
+  it('menampilkan perpindahan tanpa pemicu sebagai kabar sistem', async () => {
+    pasang(ambilDengan([perubahan()]));
+
+    expect(await screen.findByText('Menunggu Pembayaran → Mencari Runner')).toBeInTheDocument();
+    expect(screen.getByText('Sistem (webhook pembayaran)')).toBeInTheDocument();
+  });
+
+  it('menampilkan nama pemicu ketika perpindahannya lahir dari tindakan seseorang', async () => {
+    pasang(
+      ambilDengan([
+        perubahan({
+          dariStatus: 'Dikerjakan',
+          keStatus: 'MencariRunner',
+          dipicuOlehUserId: 'r-1',
+          namaPemicu: 'Adji',
+        }),
+      ]),
+    );
+
+    expect(await screen.findByText('Dikerjakan → Mencari Runner')).toBeInTheDocument();
+    expect(screen.getByText('Adji')).toBeInTheDocument();
+  });
+
+  it('mundur lalu maju lagi tampil sebagai dua baris terpisah, bukan status terakhir saja', async () => {
+    pasang(
+      ambilDengan([
+        perubahan({
+          id: 'p-1',
+          dariStatus: 'MencariRunner',
+          keStatus: 'Dikerjakan',
+          dipicuOlehUserId: 'r-1',
+          namaPemicu: 'Adji',
+        }),
+        perubahan({
+          id: 'p-2',
+          dariStatus: 'Dikerjakan',
+          keStatus: 'MencariRunner',
+          dipicuOlehUserId: 'r-1',
+          namaPemicu: 'Adji',
+        }),
+      ]),
+    );
+
+    expect(await screen.findByText('Mencari Runner → Dikerjakan')).toBeInTheDocument();
+    expect(await screen.findByText('Dikerjakan → Mencari Runner')).toBeInTheDocument();
   });
 });

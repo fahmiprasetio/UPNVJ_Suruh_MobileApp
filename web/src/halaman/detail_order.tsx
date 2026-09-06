@@ -7,6 +7,7 @@ import {
   batalkanOrder,
   daftarPesan,
   kirimPesan,
+  riwayatStatusOrder,
   tolakPembatalan,
 } from '../inti/api_admin';
 import {
@@ -16,10 +17,18 @@ import {
   formatTanggalJam,
   formatWaktuRelatif,
   labelLayanan,
+  labelStatus,
 } from '../inti/format';
 import { gunakanMuat } from '../inti/gunakan_muat';
 import { gunakanPanelKonfirmasi } from '../inti/gunakan_panel_konfirmasi';
-import type { Order, Penawaran, Pesan, StatusPenawaran } from '../inti/tipe';
+import type {
+  Order,
+  Penawaran,
+  PerubahanStatusOrder,
+  Pesan,
+  StatusOrder,
+  StatusPenawaran,
+} from '../inti/tipe';
 import { FormAlasan } from '../komponen/form_alasan';
 import { Kosong, KotakGalat, Memuat, pesanGalat } from '../komponen/keadaan';
 import { LencanaJalur, LencanaStatus } from '../komponen/lencana';
@@ -85,6 +94,7 @@ export function HalamanDetailOrder() {
         <div className="detail__utama">
           <PanelPermintaanBatal order={order} onDijawab={muatUlang} />
           <RincianOrder order={order} />
+          <RiwayatStatus orderId={order.id} statusTerkini={order.status} />
           <DaftarPenawaran order={order} />
           <PanelPembatalan order={order} onDibatalkan={muatUlang} />
         </div>
@@ -138,6 +148,81 @@ function RincianOrder({ order }: { order: Order }) {
         </p>
       )}
     </article>
+  );
+}
+
+/**
+ * Riwayat perpindahan status order ini, terlama dulu.
+ *
+ * Bukan sekadar rasa ingin tahu. Order yang mundur dari Dikerjakan ke MencariRunner lalu
+ * maju lagi -- yaitu order yang runnernya melepas di tengah jalan -- terlihat persis sama
+ * di `RincianOrder` di atas dengan order yang cuma sekali berpindah, dan itu justru pola
+ * yang paling perlu diketahui admin yang sedang menimbang layak-tidaknya menangguhkan
+ * sebuah akun runner.
+ *
+ * `statusTerkini` dipakai murni sebagai bagian dependensi pengambilan data, bukan
+ * ditampilkan: order ini sudah punya lencana statusnya sendiri di kepala halaman. Setiap
+ * kali status order berganti -- termasuk lewat kabar SignalR yang memuat ulang `order` di
+ * `HalamanDetailOrder` -- daftar ini ikut mengambil ulang, karena perpindahan yang baru
+ * saja terjadi seharusnya langsung terlihat di sini juga.
+ */
+function RiwayatStatus({
+  orderId,
+  statusTerkini,
+}: {
+  orderId: string;
+  statusTerkini: StatusOrder;
+}) {
+  const { api } = useSesi();
+
+  const ambil = useCallback(
+    (sinyal: AbortSignal) => riwayatStatusOrder(api, orderId, sinyal),
+    // `statusTerkini` sengaja ikut di sini walau tidak dipakai isi fungsinya: identitas
+    // callback yang berubah itulah yang memberi tahu `gunakanMuat` untuk mengambil ulang.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [api, orderId, statusTerkini],
+  );
+
+  const { data: riwayat, memuat, galat, muatUlang } = gunakanMuat(ambil);
+
+  return (
+    <article className="kartu">
+      <h2>Riwayat Status</h2>
+
+      {galat !== null && <KotakGalat galat={galat} cobaLagi={muatUlang} />}
+      {memuat && riwayat === null && <Memuat />}
+      {riwayat !== null && riwayat.length === 0 && (
+        <Kosong keterangan="Order ini belum pernah berpindah status." />
+      )}
+
+      {riwayat !== null && riwayat.length > 0 && (
+        <ol className="riwayat-peran__daftar">
+          {riwayat.map((baris) => (
+            <li key={baris.id}>
+              <BarisRiwayatStatus baris={baris} />
+            </li>
+          ))}
+        </ol>
+      )}
+    </article>
+  );
+}
+
+function BarisRiwayatStatus({ baris }: { baris: PerubahanStatusOrder }) {
+  return (
+    <>
+      <p className="riwayat-peran__perubahan">
+        {labelStatus(baris.dariStatus)} &rarr; {labelStatus(baris.keStatus)}
+      </p>
+      <p className="riwayat-peran__oleh">
+        {/* `null` berarti bukan tindakan siapa pun -- order yang lunas berpindah sendiri,
+            dipicu webhook pembayaran, bukan orang. */}
+        {baris.namaPemicu === null ? 'Sistem (webhook pembayaran)' : baris.namaPemicu}
+      </p>
+      <time dateTime={baris.diubahPada} title={formatTanggalJam(baris.diubahPada)}>
+        {formatWaktuRelatif(baris.diubahPada)}
+      </time>
+    </>
   );
 }
 

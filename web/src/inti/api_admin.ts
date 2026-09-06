@@ -12,6 +12,7 @@ import type {
   PenawaranDitarik,
   PerubahanPenangguhan,
   PerubahanPeran,
+  PerubahanStatusOrder,
   Pesan,
   RekapPayout,
   RincianPayout,
@@ -89,6 +90,23 @@ export function daftarOrder(
 
 export function ambilOrder(api: KlienApi, id: string, sinyal?: AbortSignal): Promise<Order> {
   return api.minta<Order>(`/api/orders/${id}`, { sinyal });
+}
+
+/**
+ * Seluruh perpindahan status yang pernah dialami satu order, terlama dulu.
+ *
+ * Tidak berhalaman, mengikuti backend: satu order punya paling banyak segelintir
+ * perpindahan, jadi memotongnya per halaman cuma menambah bolak-balik untuk daftar yang
+ * tidak pernah panjang.
+ */
+export function riwayatStatusOrder(
+  api: KlienApi,
+  orderId: string,
+  sinyal?: AbortSignal,
+): Promise<PerubahanStatusOrder[]> {
+  return api.minta<PerubahanStatusOrder[]>(`/api/admin/orders/${orderId}/riwayat-status`, {
+    sinyal,
+  });
 }
 
 /**

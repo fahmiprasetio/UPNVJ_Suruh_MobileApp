@@ -210,6 +210,24 @@ export interface PerubahanPenangguhan {
 }
 
 /**
+ * Satu kali status sebuah order berpindah, dari `PerubahanStatusOrderResponse` di backend.
+ *
+ * `namaPemicu` (dan `dipicuOlehUserId`) `null` berarti perpindahan ini tidak dipicu siapa
+ * pun -- order yang lunas berpindah sendiri, dipicu webhook pembayaran, bukan orang. Itu
+ * beda dari akun yang sudah tidak ada; kalau nanti kasus itu perlu dibedakan, backend yang
+ * akan menjawabnya dengan nilai yang berbeda, bukan diam-diam disamakan `null` di sini.
+ */
+export interface PerubahanStatusOrder {
+  id: string;
+  orderId: string;
+  dariStatus: StatusOrder;
+  keStatus: StatusOrder;
+  dipicuOlehUserId: string | null;
+  namaPemicu: string | null;
+  diubahPada: string;
+}
+
+/**
  * Satu baris riwayat perubahan peran, dari `PerubahanPeranResponse` di backend.
  *
  * `sebelum` dan `sesudah` datang sebagai teks (`p.RolesBefore.Select(r => r.ToString())`),
