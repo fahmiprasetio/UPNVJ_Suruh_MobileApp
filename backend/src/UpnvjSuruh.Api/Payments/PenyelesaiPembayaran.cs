@@ -185,7 +185,7 @@ public class PenyelesaiPembayaran(
                 // Satu slot yang dibutuhkan sudah terisi oleh pemenang tawaran itu sendiri.
                 // Tidak ada yang perlu disiarkan ke grup runner lagi, tapi admin tetap perlu
                 // tahu: order ini baru saja berpindah dari menunggu pembayaran ke dikerjakan.
-                order.Status = OrderStatus.Dikerjakan;
+                db.OrderStatusChanges.Add(OrderStatusChange.Catat(order, OrderStatus.Dikerjakan, null));
                 await db.SaveChangesAsync(batal);
                 await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
                 await hub.BeriTahuKlienAsync(order.Id, batal);
@@ -198,7 +198,7 @@ public class PenyelesaiPembayaran(
             // menekan terima.
         }
 
-        order.Status = OrderStatus.MencariRunner;
+        db.OrderStatusChanges.Add(OrderStatusChange.Catat(order, OrderStatus.MencariRunner, null));
 
         await db.SaveChangesAsync(batal);
 

@@ -207,7 +207,7 @@ public class JalurBController(AppDbContext db, IHubContext<OrderHub> hub) : Cont
         order!.Price = penawaran!.Price;
         order.EstimatedDuration = penawaran.EstimatedDuration;
         order.ScheduledStart = penawaran.ScheduledStart;
-        order.Status = OrderStatus.MenungguPembayaran;
+        db.OrderStatusChanges.Add(OrderStatusChange.Catat(order, OrderStatus.MenungguPembayaran, User.Id()));
         Jawab(penawaran, OfferStatus.Disetujui);
 
         foreach (var lainnya in order.Offers.Where(f => f.Id != penawaran.Id && f.Status == OfferStatus.Pending))

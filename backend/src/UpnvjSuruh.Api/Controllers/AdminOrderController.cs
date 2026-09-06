@@ -188,7 +188,7 @@ public class AdminOrderController(
             pembayaran.Status = PaymentStatus.Gagal;
         }
 
-        order.Status = OrderStatus.Batal;
+        db.OrderStatusChanges.Add(OrderStatusChange.Catat(order, OrderStatus.Batal, User.Id()));
 
         // Permintaan yang sedang menunggu (kalau pembatalan ini memang menjawabnya) ikut
         // diturunkan benderanya. Membiarkannya berarti order yang sudah batal tetap terhitung

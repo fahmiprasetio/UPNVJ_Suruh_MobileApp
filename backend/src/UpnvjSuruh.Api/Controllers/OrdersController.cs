@@ -382,7 +382,7 @@ public class OrdersController(
 
         if (jumlahSebelum + 1 >= order.RequiredRunnerCount)
         {
-            order.Status = OrderStatus.Dikerjakan;
+            db.OrderStatusChanges.Add(OrderStatusChange.Catat(order, OrderStatus.Dikerjakan, runnerId));
         }
 
         await db.SaveChangesAsync(batal);
@@ -496,7 +496,7 @@ public class OrdersController(
         // Kembali dicari, apa pun statusnya tadi. Order multi-runner yang kuotanya sempat
         // penuh mundur ke MencariRunner supaya slot yang baru kosong itu benar-benar
         // disiarkan lagi; runner lain yang masih memegangnya tidak terganggu sama sekali.
-        order.Status = OrderStatus.MencariRunner;
+        db.OrderStatusChanges.Add(OrderStatusChange.Catat(order, OrderStatus.MencariRunner, runnerId));
 
         await db.SaveChangesAsync(batal);
 
@@ -590,7 +590,7 @@ public class OrdersController(
         penugasan.MarkedDoneAt = sekarang;
         penugasan.CompletionPhotoUrl = permintaan.FotoBuktiUrl.Trim();
 
-        order.Status = OrderStatus.Selesai;
+        db.OrderStatusChanges.Add(OrderStatusChange.Catat(order, OrderStatus.Selesai, runnerId));
         order.CompletedAt = sekarang;
         order.PhotoUrl = permintaan.FotoBuktiUrl.Trim();
         order.HandoverNote = permintaan.CatatanSerahTerima?.Trim();
@@ -750,7 +750,7 @@ public class OrdersController(
             });
         }
 
-        order.Status = OrderStatus.Batal;
+        db.OrderStatusChanges.Add(OrderStatusChange.Catat(order, OrderStatus.Batal, pemanggil));
 
         // Tagihan yang masih menunggu ikut dimatikan.
         //

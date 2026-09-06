@@ -15,6 +15,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<UserRoleChange> UserRoleChanges => Set<UserRoleChange>();
     public DbSet<OrderRelease> OrderReleases => Set<OrderRelease>();
     public DbSet<UserSuspensionChange> UserSuspensionChanges => Set<UserSuspensionChange>();
+    public DbSet<OrderStatusChange> OrderStatusChanges => Set<OrderStatusChange>();
     public DbSet<TarifSetting> TarifSettings => Set<TarifSetting>();
     public DbSet<PayoutSetting> PayoutSettings => Set<PayoutSetting>();
 
@@ -88,6 +89,26 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .HasForeignKey(p => p.RunnerId)
                 // Sama seperti catatan peran: justru akun yang dihapus adalah akun yang
                 // paling mungkin dipertanyakan belakangan.
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<OrderStatusChange>(entity =>
+        {
+            // Diindeks lewat ordernya: pertanyaan yang dijawab tabel ini "apa saja yang
+            // pernah terjadi pada order ini", bukan "seberapa sering orang ini memicu
+            // perpindahan status".
+            entity.HasIndex(p => p.OrderId);
+
+            entity.HasOne(p => p.Order)
+                .WithMany()
+                .HasForeignKey(p => p.OrderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(p => p.ChangedByUser)
+                .WithMany()
+                .HasForeignKey(p => p.ChangedByUserId)
+                // Sama seperti tiga catatan audit lainnya: justru akun yang dihapus adalah
+                // akun yang paling mungkin dipertanyakan belakangan.
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
