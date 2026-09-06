@@ -162,4 +162,45 @@ void main() {
     // menawarkan satu-satunya nilai yang pasti salah.
     expect(find.text(formatJadwal(lama.jadwalMulai!)), findsNothing);
   });
+
+  testWidgets('layar detail order yang sudah kelar juga menawarkan pesan lagi', (
+    tester,
+  ) async {
+    await bukaRiwayat(tester);
+
+    await tester.tap(find.textContaining('SRH-0398'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pesan Lagi'), findsOneWidget);
+
+    await tester.tap(find.text('Pesan Lagi'));
+    await tester.pumpAndSettle();
+
+    expect(isiKolom(tester, 'Diambil di mana?'), seed('SRH-0398').alamatJemput);
+  });
+
+  testWidgets('layar detail order yang masih berjalan tidak menawarkannya', (
+    tester,
+  ) async {
+    await bukaRiwayat(tester);
+
+    await tester.tap(find.textContaining('SRH-0411'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pesan Lagi'), findsNothing);
+  });
+
+  testWidgets(
+    'layar detail order tanpa form yang sudah kelar tidak menawarkannya',
+    (tester) async {
+      await bukaRiwayat(tester, [
+        seed('SRH-0410').copyWith(status: OrderStatus.selesai),
+      ]);
+
+      await tester.tap(find.textContaining('SRH-0410'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Pesan Lagi'), findsNothing);
+    },
+  );
 }

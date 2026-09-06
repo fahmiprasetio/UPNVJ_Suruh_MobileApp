@@ -12,6 +12,7 @@ import '../../../domain/models/order.dart';
 import '../../../domain/service_catalog.dart';
 import '../../../providers/order_providers.dart';
 import '../../../providers/repository_providers.dart';
+import '../buka_form_order.dart';
 import '../widgets/lencana_status.dart';
 import 'widgets/kartu_bukti_pekerjaan.dart';
 import 'widgets/kartu_penawaran.dart';
@@ -33,6 +34,12 @@ class DetailOrderScreen extends ConsumerWidget {
     if (order == null) return null;
     if (order.status == OrderStatus.menungguPembayaran) {
       return _BilahBayar(order: order);
+    }
+    // Order yang batal ikut ditawari, mengikuti alasan yang sama dengan kartu
+    // riwayat (rencana capstone bagian 70): order yang gagal justru yang
+    // paling sering ingin diulang.
+    if (!order.status.isAktif && adaFormOrder(order.serviceType)) {
+      return _BilahPesanLagi(order: order);
     }
     return null;
   }
@@ -574,6 +581,27 @@ class _HargaOrder extends StatelessWidget {
 }
 
 /// Satu-satunya tindakan pada order yang menunggu dibayar.
+class _BilahPesanLagi extends StatelessWidget {
+  const _BilahPesanLagi({required this.order});
+
+  final Order order;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(AppTheme.spasiSedang),
+        child: OutlinedButton.icon(
+          onPressed: () =>
+              bukaFormOrder(context, order.serviceType, contoh: order),
+          icon: const Icon(Icons.replay, size: 18),
+          label: const Text('Pesan Lagi'),
+        ),
+      ),
+    );
+  }
+}
+
 class _BilahBayar extends StatelessWidget {
   const _BilahBayar({required this.order});
 
