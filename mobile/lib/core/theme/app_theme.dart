@@ -68,30 +68,6 @@ class AppTheme {
   /// status tanpa membacanya, jadi ia tidak boleh dipakai untuk hal lain.
   static const double radiusPil = 999;
 
-  // --- Bayangan ---
-  //
-  // Disemir tinta lencana atau warna elemennya sendiri, tidak pernah hitam
-  // murni. Sistem hijau-putih yang dibayangi `#000` terlihat kotor; dibayangi
-  // tintanya sendiri ia terlihat tercetak.
-
-  /// Kartu yang perlu berdiri di atas latar yang ramai.
-  static List<BoxShadow> get bayanganAngkat => [
-    BoxShadow(
-      color: tintaLencana.withValues(alpha: 0.10),
-      blurRadius: 8,
-      offset: const Offset(0, 2),
-    ),
-  ];
-
-  /// Lembar bawah dan panel pembayaran, dicorkan ke atas.
-  static List<BoxShadow> get bayanganLembar => [
-    BoxShadow(
-      color: tintaLencana.withValues(alpha: 0.16),
-      blurRadius: 24,
-      offset: const Offset(0, -4),
-    ),
-  ];
-
   static ThemeData terang() => _bangun(Brightness.light);
 
   static ThemeData gelap() => _bangun(Brightness.dark);
