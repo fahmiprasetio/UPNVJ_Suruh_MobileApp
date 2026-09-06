@@ -15,7 +15,6 @@ import {
 import { formatRupiah, formatTanggalJam, formatWaktuRelatif } from '../inti/format';
 import { gunakanMuat } from '../inti/gunakan_muat';
 import { gunakanPanelKonfirmasi } from '../inti/gunakan_panel_konfirmasi';
-import { gunakanTunda } from '../inti/gunakan_tunda';
 import type { KlienApi } from '../inti/klien_api';
 import type { Halaman, Pengguna, Peran } from '../inti/tipe';
 import { FormAlasan } from '../komponen/form_alasan';
@@ -35,12 +34,28 @@ import { Kosong, KotakGalat, Memuat, pesanGalat } from '../komponen/keadaan';
 
 const PANJANG_KATA_KUNCI_MINIMAL = 3;
 
+/**
+ * Lama pengetikan harus berhenti sebelum kata kuncinya dikirim ke server.
+ *
+ * Backend menolak kata kunci di bawah PANJANG_KATA_KUNCI_MINIMAL huruf, dan tanpa tundaan
+ * ini setiap huruf yang diketik mengirim satu permintaan yang hampir pasti ditolak sebelum
+ * hurufnya lengkap.
+ */
+const JEDA_KETIK_MILIDETIK = 300;
+
 const seluruhPeran: Peran[] = ['Klien', 'Runner', 'Admin'];
 
 export function HalamanKelolaPeran() {
   const { api } = useSesi();
   const [kataKunci, setKataKunci] = useState('');
-  const kataKunciTertunda = gunakanTunda(kataKunci.trim(), 300);
+  const kataKunciDipangkas = kataKunci.trim();
+  const [kataKunciTertunda, setKataKunciTertunda] = useState(kataKunciDipangkas);
+
+  useEffect(() => {
+    const pewaktu = setTimeout(() => setKataKunciTertunda(kataKunciDipangkas), JEDA_KETIK_MILIDETIK);
+    return () => clearTimeout(pewaktu);
+  }, [kataKunciDipangkas]);
+
   const [hanyaTertangguh, setHanyaTertangguh] = useState(false);
   const [dipilih, setDipilih] = useState<Pengguna | null>(null);
 
