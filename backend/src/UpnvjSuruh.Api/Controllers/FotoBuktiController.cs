@@ -75,6 +75,18 @@ public class FotoBuktiController(AppDbContext db, PenyimpanFoto penyimpan) : Con
         }
 
         isi.Position = 0;
+
+        // Metadata Exif -- termasuk lokasi GPS kamera ponsel -- dibuang sebelum disimpan.
+        // Lihat alasannya di PembersihExif. PNG tidak diproses ulang, sesuai batasannya.
+        if (ekstensi == ".jpg")
+        {
+            using var mentah = new MemoryStream();
+            await isi.CopyToAsync(mentah, batal);
+            using var bersih = new MemoryStream(PembersihExif.Buang(mentah.ToArray()));
+            var urlBersih = await penyimpan.SimpanAsync(orderId, bersih, ekstensi, batal);
+            return Ok(new FotoBuktiResponse(urlBersih));
+        }
+
         var url = await penyimpan.SimpanAsync(orderId, isi, ekstensi, batal);
         return Ok(new FotoBuktiResponse(url));
     }

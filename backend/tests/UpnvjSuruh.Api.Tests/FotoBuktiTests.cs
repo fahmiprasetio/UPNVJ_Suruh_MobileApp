@@ -99,9 +99,9 @@ public class FotoBuktiTests(DatabaseApiFactory pabrik) : IClassFixture<DatabaseA
         return klien.PostAsync($"/api/orders/{orderId}/foto-bukti", isi);
     }
 
-    private static async Task<string> FotoAsync(HttpClient runner, Guid orderId)
+    private static async Task<string> FotoAsync(HttpClient runner, Guid orderId, byte[]? isiBerkas = null)
     {
-        var jawaban = await UnggahAsync(runner, orderId);
+        var jawaban = await UnggahAsync(runner, orderId, isiBerkas);
         jawaban.EnsureSuccessStatusCode();
         return (await jawaban.Content.ReadFromJsonAsync<FotoBuktiResponse>())!.Url;
     }
@@ -249,5 +249,39 @@ public class FotoBuktiTests(DatabaseApiFactory pabrik) : IClassFixture<DatabaseA
         var jawaban = await UnggahAsync(klien, order.Id);
 
         Assert.Equal(HttpStatusCode.Forbidden, jawaban.StatusCode);
+    }
+
+    // --- Metadata Exif dibuang sebelum disimpan ---
+
+    /// <summary>Satu segmen JPEG lengkap: penanda, medan panjang, lalu isinya.</summary>
+    private static byte[] Segmen(byte penanda, byte[] isi) =>
+        [0xFF, penanda, (byte)((isi.Length + 2) >> 8), (byte)((isi.Length + 2) & 0xFF), .. isi];
+
+    [Fact]
+    public async Task FotoJpegYangDiunggahKehilanganLokasiGpsnya()
+    {
+        // Ini yang sebenarnya dibuktikan berkas ini: bukan cuma PembersihExif.Buang benar
+        // secara terisolasi (sudah diuji sendiri di PembersihExifTests), tapi endpoint
+        // unggahan sungguhan memanggilnya sebelum menulis ke cakram, bukan cuma memilikinya
+        // di suatu tempat yang tidak pernah dipanggil.
+        byte[] payloadExif = [.. "Exif\0\0GPS_LOKASI_RAHASIA"u8];
+        byte[] jpegBerExif =
+        [
+            0xFF, 0xD8,
+            .. Segmen(0xE1, payloadExif),
+            0xFF, 0xDA, 0x00, 0x02, 0x00, 0x01, 0x02, 0x03,
+            0xFF, 0xD9,
+        ];
+
+        var klien = await AkunAsync(UserRole.Klien);
+        var runner = await AkunAsync(UserRole.Runner);
+        var order = await DikerjakanAsync(klien, runner);
+
+        var url = await FotoAsync(runner, order.Id, jpegBerExif);
+        var tersimpan = await (await runner.GetAsync(url)).Content.ReadAsByteArrayAsync();
+
+        var teks = System.Text.Encoding.ASCII.GetString(tersimpan);
+        Assert.DoesNotContain("GPS_LOKASI_RAHASIA", teks);
+        Assert.True(tersimpan.Length < jpegBerExif.Length);
     }
 }
