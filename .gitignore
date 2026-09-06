@@ -13,9 +13,12 @@ Thumbs.db
 .gemini/
 .impeccable/
 
-# Tidak ada dokumentasi markdown yang ikut masuk repo ini, sama sekali. Boleh
-# dipakai dan disimpan lokal, tapi tidak boleh ke-commit.
+# Dokumentasi markdown kerja (catatan sesi, draf paparan, progres) tidak ikut
+# masuk repo ini. Boleh dipakai dan disimpan lokal, tapi tidak ke-commit.
 *.md
+
+# README dikecualikan: ia halaman depan repo di GitHub, bukan catatan kerja.
+!/README.md
 
 # Berkas tugas dan paparan: bahan kuliah, bukan bagian aplikasi.
 UPNVJ_Suruh_tugas_*.docx
