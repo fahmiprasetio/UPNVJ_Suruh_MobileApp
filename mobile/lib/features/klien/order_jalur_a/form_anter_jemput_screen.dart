@@ -23,7 +23,11 @@ import 'widgets/ringkasan_harga.dart';
 /// totalnya berubah langsung sambil mengisi, tidak ada fase menunggu
 /// penawaran (rencana capstone bagian 3).
 class FormAnterJemputScreen extends ConsumerStatefulWidget {
-  const FormAnterJemputScreen({super.key});
+  const FormAnterJemputScreen({super.key, this.contoh});
+
+  /// Order lama yang isinya dipakai mengisi form ini di muka ("Pesan lagi"),
+  /// dan null untuk form kosong seperti biasa.
+  final Order? contoh;
 
   @override
   ConsumerState<FormAnterJemputScreen> createState() =>
@@ -52,9 +56,23 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
   /// Dibaca sekali di sini lewat `userAktif`, bukan ditonton lewat provider:
   /// alamat yang berubah di tengah orang mengetik formulir order tidak boleh
   /// menimpa apa yang sudah ia ketik.
+  ///
+  /// Order contoh menang atas alamat tersimpan: orang yang menekan "Pesan lagi"
+  /// sedang mengatakan "yang seperti kemarin", dan alamat kemarin itulah
+  /// jawabannya, walaupun alamat di profilnya sudah berubah sejak itu.
   @override
   void initState() {
     super.initState();
+
+    final contoh = widget.contoh;
+    if (contoh != null) {
+      _jemputController.text = contoh.alamatJemput ?? '';
+      _tujuanController.text = contoh.alamatTujuan ?? '';
+      _jarakController.text = tulisJarak(contoh.jarakKm);
+      _catatanController.text = contoh.deskripsi ?? '';
+      return;
+    }
+
     final alamat = ref.read(authRepositoryProvider).userAktif?.alamat;
     if (alamat != null && alamat.isNotEmpty) {
       _jemputController.text = alamat;

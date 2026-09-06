@@ -61,6 +61,9 @@ class SeedData {
         dibuatPada: sekarang.subtract(const Duration(minutes: 4)),
         alamatJemput: 'Kos Melati, Jl. Pondok Labu Raya No. 12',
         alamatTujuan: 'Gedung Fakultas Ilmu Komputer UPNVJ',
+        // Jaraknya bukan angka hiasan: harga di bawah adalah hasil hitungan
+        // kalkulator tarif atasnya, tarif dasar 5.000 + 3 km x 2.000.
+        jarakKm: 3,
         harga: 11000,
         dibayarPada: sekarang.subtract(const Duration(minutes: 3)),
       ),
@@ -128,7 +131,10 @@ class SeedData {
         status: OrderStatus.selesai,
         dibuatPada: sekarang.subtract(const Duration(days: 2)),
         deskripsi: 'Ambil paket di Indomaret Pondok Labu',
+        alamatJemput: 'Indomaret Pondok Labu, Jl. RS Fatmawati',
         alamatTujuan: 'Kos Melati kamar 7',
+        // Ongkos jasa 10.000 + 1 km x 2.000.
+        jarakKm: 1,
         harga: 12000,
         runnerIds: [runner.id],
         dibayarPada: sekarang.subtract(const Duration(days: 2)),

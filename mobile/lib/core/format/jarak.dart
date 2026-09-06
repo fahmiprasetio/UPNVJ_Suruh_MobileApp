@@ -11,6 +11,19 @@ double? bacaJarak(String teks) {
   return angka;
 }
 
+/// Kebalikan [bacaJarak]: menulis jarak kembali ke bentuk yang diketik orang.
+///
+/// Dipakai "Pesan lagi" untuk mengisi ulang kolom jarak dari order lama. Hasilnya
+/// wajib bisa dibaca [bacaJarak] lagi, jadi pemisah desimalnya koma, sama seperti
+/// yang dicontohkan [validasiJarak] di pesan galatnya sendiri.
+///
+/// Bilangan bulat ditulis tanpa ekor ",0": "3 km", bukan "3,0 km".
+String tulisJarak(double? jarak) {
+  if (jarak == null) return '';
+  if (jarak == jarak.roundToDouble()) return jarak.round().toString();
+  return jarak.toString().replaceAll('.', ',');
+}
+
 /// Validator kolom jarak untuk Anter Jemput dan Jastip Barang.
 ///
 /// Keduanya memakai batas jarak yang sama, [Tarif.anjemJarakMaksimalKm] --

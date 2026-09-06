@@ -24,9 +24,17 @@ import '../../../providers/repository_providers.dart';
 /// tidak punya tombol bayar. Menampilkan angka apa pun di sini akan
 /// menjanjikan sesuatu yang belum tentu disetujui admin.
 class FormPermintaanScreen extends ConsumerStatefulWidget {
-  const FormPermintaanScreen({super.key, required this.serviceType});
+  const FormPermintaanScreen({
+    super.key,
+    required this.serviceType,
+    this.contoh,
+  });
 
   final ServiceType serviceType;
+
+  /// Order lama yang isinya dipakai mengisi form ini di muka ("Pesan lagi"),
+  /// dan null untuk form kosong seperti biasa.
+  final Order? contoh;
 
   @override
   ConsumerState<FormPermintaanScreen> createState() =>
@@ -72,9 +80,30 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
   /// Dibaca sekali di sini lewat `userAktif`, bukan ditonton lewat provider:
   /// alamat yang berubah di tengah orang mengetik formulir order tidak boleh
   /// menimpa apa yang sudah ia ketik.
+  ///
+  /// Order contoh menang atas alamat tersimpan, dengan alasan yang sama seperti
+  /// di Jalur A. Yang sengaja TIDAK ikut disalin adalah jadwalnya: jadwal order
+  /// lama sudah lewat, dan mengisinya di muka dengan tanggal kemarin berarti
+  /// menawarkan satu-satunya nilai yang pasti salah. Besok pagi tetap tebakan
+  /// yang lebih benar.
+  ///
+  /// Harga usulan ikut disalin apa adanya, walaupun harga akhir order lamanya
+  /// mungkin berbeda sesudah tawar-menawar. Yang diminta form ini memang usulan
+  /// pembuka, dan usulan yang dulu dipakai orangnya sendiri adalah titik awal
+  /// yang lebih baik daripada kolom kosong.
   @override
   void initState() {
     super.initState();
+
+    final contoh = widget.contoh;
+    if (contoh != null) {
+      _kebutuhanController.text = contoh.deskripsi ?? '';
+      _alamatController.text = contoh.alamatTujuan ?? '';
+      _hargaController.text = contoh.hargaUsulan?.toString() ?? '';
+      _jumlahRunner = contoh.jumlahRunnerDibutuhkan;
+      return;
+    }
+
     final alamat = ref.read(authRepositoryProvider).userAktif?.alamat;
     if (alamat != null && alamat.isNotEmpty) {
       _alamatController.text = alamat;

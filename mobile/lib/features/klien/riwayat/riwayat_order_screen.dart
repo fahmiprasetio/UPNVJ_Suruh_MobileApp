@@ -11,6 +11,7 @@ import '../../../providers/ukuran_daftar.dart';
 import '../../widgets/pesan_kosong.dart';
 import '../../widgets/rangka_daftar_order.dart';
 import '../../widgets/tombol_muat_lagi.dart';
+import '../buka_form_order.dart';
 import '../widgets/kartu_order_ringkas.dart';
 
 /// Daftar order milik klien.
@@ -125,6 +126,16 @@ class RiwayatOrderScreen extends ConsumerWidget {
           child: KartuOrderRingkas(
             order: order,
             onTap: () => context.push(Rute.detailOrder(order.id)),
+            // Ditawarkan dari status ordernya sendiri, bukan dari bagian mana
+            // kartu ini sedang digambar. Keduanya menjawab pertanyaan yang sama,
+            // dan yang dibaca dari ordernya tidak bisa tidak sepakat dengan
+            // pemisahan bagian di atas.
+            //
+            // Order yang batal ikut dapat, dan itu disengaja: order yang gagal
+            // justru yang paling sering ingin diulang.
+            onPesanLagi: order.status.isAktif || !adaFormOrder(order.serviceType)
+                ? null
+                : () => bukaFormOrder(context, order.serviceType, contoh: order),
           ),
         ),
     ];

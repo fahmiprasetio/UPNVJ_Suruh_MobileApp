@@ -17,6 +17,7 @@ import '../../features/profil/profil_screen.dart';
 import '../../features/runner/ajukan_tawaran/ajukan_tawaran_screen.dart';
 import '../../domain/enums.dart';
 import '../../domain/models/app_user.dart';
+import '../../domain/models/order.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../providers/repository_providers.dart';
 
@@ -141,13 +142,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           pengirim: MessageSender.runner,
         ),
       ),
+      // Ketiga form order menerima order lama lewat `extra` untuk "Pesan lagi".
+      // `extra` sengaja tidak divalidasi lebih jauh dari cast ini: yang bisa
+      // mengisinya cuma kode aplikasi sendiri, bukan jalur yang diketik orang.
       GoRoute(
         path: Rute.formAnterJemput,
-        builder: (context, state) => const FormAnterJemputScreen(),
+        builder: (context, state) =>
+            FormAnterJemputScreen(contoh: state.extra as Order?),
       ),
       GoRoute(
         path: Rute.formJastipBarang,
-        builder: (context, state) => const FormJastipBarangScreen(),
+        builder: (context, state) =>
+            FormJastipBarangScreen(contoh: state.extra as Order?),
       ),
       GoRoute(
         path: Rute.formPermintaanPola,
@@ -160,7 +166,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             (s) => s.name == nama && s.track == OrderTrack.jalurB,
             orElse: () => ServiceType.permintaanLain,
           );
-          return FormPermintaanScreen(serviceType: layanan);
+          return FormPermintaanScreen(
+            serviceType: layanan,
+            contoh: state.extra as Order?,
+          );
         },
       ),
       GoRoute(

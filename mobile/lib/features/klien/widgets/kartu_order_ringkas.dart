@@ -19,10 +19,24 @@ import 'lencana_status.dart';
 /// lencana karena hijau di sistem ini berarti sesuatu yang sudah pasti. Nama
 /// layanan dan kode order turun jadi keterangan.
 class KartuOrderRingkas extends StatelessWidget {
-  const KartuOrderRingkas({super.key, required this.order, required this.onTap});
+  const KartuOrderRingkas({
+    super.key,
+    required this.order,
+    required this.onTap,
+    this.onPesanLagi,
+  });
 
   final Order order;
   final VoidCallback onTap;
+
+  /// Membuka form order baru yang sudah terisi dari order ini, dan null kalau
+  /// order ini memang tidak bisa diulang.
+  ///
+  /// Tombolnya hidup di dalam kartu, bukan di layar yang memakai kartu, supaya
+  /// ia ikut ke mana pun kartu ini dipakai. Kartunya sendiri tetap bisa ditekan
+  /// untuk membuka detail: tombol menyerap ketukannya sendiri, jadi keduanya
+  /// tidak berebut.
+  final VoidCallback? onPesanLagi;
 
   @override
   Widget build(BuildContext context) {
@@ -110,6 +124,17 @@ class KartuOrderRingkas extends StatelessWidget {
                   ),
                 ],
               ),
+              if (onPesanLagi != null) ...[
+                const Divider(height: AppTheme.spasiSedang),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: onPesanLagi,
+                    icon: const Icon(Icons.replay, size: 18),
+                    label: const Text('Pesan lagi'),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

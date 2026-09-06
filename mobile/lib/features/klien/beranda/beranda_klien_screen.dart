@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/enums.dart';
 import '../../../domain/service_catalog.dart';
 import '../../../providers/repository_providers.dart';
+import '../buka_form_order.dart';
 import '../../dev/pengalih_akun.dart';
 import '../../peran/tombol_ganti_mode.dart';
 import '../../widgets/tombol_profil.dart';
@@ -105,8 +104,8 @@ class BerandaKlienScreen extends ConsumerWidget {
                     final layanan = layananKatalog[indeks];
                     return KartuLayanan(
                       layanan: layanan,
-                      tersedia: _sudahAdaLayarnya(layanan),
-                      onTap: () => _bukaLayanan(context, layanan),
+                      tersedia: adaFormOrder(layanan.type),
+                      onTap: () => bukaFormOrder(context, layanan.type),
                     );
                   },
                 ),
@@ -115,8 +114,7 @@ class BerandaKlienScreen extends ConsumerWidget {
                 const SizedBox(height: AppTheme.spasiSedang),
                 KartuPermintaanLain(
                   layanan: permintaanLain,
-                  onTap: () =>
-                      context.push(Rute.formPermintaan(permintaanLain.type)),
+                  onTap: () => bukaFormOrder(context, permintaanLain.type),
                 ),
               ],
             ),
@@ -125,41 +123,6 @@ class BerandaKlienScreen extends ConsumerWidget {
       ),
     );
   }
-
-  /// Benar kalau menekan petak ini benar-benar membuka sesuatu.
-  ///
-  /// Seluruh Jalur B bermuara ke satu form permintaan yang sudah ada, jadi yang
-  /// tersisa cuma Jalur A: dua sudah punya formnya sendiri, dan Jastip Makanan
-  /// masih menunggu keputusan siapa yang menalangi harga barangnya.
-  static bool _sudahAdaLayarnya(ServiceInfo layanan) =>
-      layanan.track == OrderTrack.jalurB ||
-      layanan.type == ServiceType.anterJemput ||
-      layanan.type == ServiceType.jastipBarang;
-
-  void _bukaLayanan(BuildContext context, ServiceInfo layanan) {
-    // Seluruh layanan Jalur B bermuara ke satu form permintaan, karena yang
-    // dibutuhkan sama: cerita kebutuhan, tempat, dan berapa orang.
-    if (layanan.track == OrderTrack.jalurB) {
-      context.push(Rute.formPermintaan(layanan.type));
-      return;
-    }
-
-    switch (layanan.type) {
-      case ServiceType.anterJemput:
-        context.push(Rute.formAnterJemput);
-      case ServiceType.jastipBarang:
-        context.push(Rute.formJastipBarang);
-      case _:
-        belumTersedia(context, layanan.nama);
-    }
-  }
-}
-
-/// Pemberitahuan sementara untuk pintu yang layarnya belum dibuat.
-void belumTersedia(BuildContext context, String namaLayar) {
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text('$namaLayar belum dibuat, menyusul.')));
 }
 
 /// Panel sapaan: penutup bawah blok hijau di kepala layar.

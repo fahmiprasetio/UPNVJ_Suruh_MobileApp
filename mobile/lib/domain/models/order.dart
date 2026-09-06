@@ -22,6 +22,7 @@ class Order {
     this.deskripsi,
     this.alamatJemput,
     this.alamatTujuan,
+    this.jarakKm,
     this.harga,
     this.hargaUsulan,
     this.estimasiDurasi,
@@ -53,6 +54,14 @@ class Order {
   final String? deskripsi;
   final String? alamatJemput;
   final String? alamatTujuan;
+
+  /// Perkiraan jarak yang diisi klien saat membuat order Jalur A.
+  ///
+  /// Dipegang walaupun tidak satu layar pun menampilkannya: harga sudah
+  /// dibekukan di [harga], jadi angka ini tidak dipakai menghitung apa pun
+  /// lagi. Yang membutuhkannya adalah "Pesan lagi", yang harus bisa mengisi
+  /// ulang kolom jarak persis seperti yang dulu diketik pemiliknya.
+  final double? jarakKm;
 
   /// Rupiah penuh. `null` selama harga belum disepakati (Jalur B).
   final int? harga;
@@ -172,6 +181,7 @@ class Order {
       deskripsi: deskripsi ?? this.deskripsi,
       alamatJemput: alamatJemput ?? this.alamatJemput,
       alamatTujuan: alamatTujuan ?? this.alamatTujuan,
+      jarakKm: jarakKm,
       harga: harga ?? this.harga,
       hargaUsulan: hargaUsulan ?? this.hargaUsulan,
       estimasiDurasi: estimasiDurasi ?? this.estimasiDurasi,

@@ -27,6 +27,7 @@ class PemetaOrder {
       deskripsi: isi['deskripsi'] as String?,
       alamatJemput: isi['alamatJemput'] as String?,
       alamatTujuan: isi['alamatTujuan'] as String?,
+      jarakKm: (isi['jarakKm'] as num?)?.toDouble(),
       harga: _rupiah(isi['harga']),
       hargaUsulan: _rupiah(isi['hargaUsulan']),
       estimasiDurasi: _menit(isi['estimasiDurasiMenit']),
