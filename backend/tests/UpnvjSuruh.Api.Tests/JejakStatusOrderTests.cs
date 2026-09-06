@@ -199,6 +199,75 @@ public class JejakStatusOrderTests(DatabaseApiFactory pabrik) : IClassFixture<Da
         Assert.Equal(nameof(OrderStatus.MencariRunner), pembatalan.FromStatus.ToString());
     }
 
+    // --- Endpoint pembacanya ---
+
+    [Fact]
+    public async Task AdminBisaMembacaRiwayatStatusUrutTerlamaDuluBesertaNamaPemicunya()
+    {
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+        var (admin, idAdmin) = await AkunAsync(UserRole.Admin);
+        var order = (await (await klien.PostAsJsonAsync("/api/orders/jalur-a", new
+        {
+            ServiceType = nameof(ServiceType.AnterJemput),
+            JarakKm = 3.0,
+        })).Content.ReadFromJsonAsync<BuatOrderResponse>())!.Order;
+
+        // Dibatalkan admin, bukan klien: order yang sudah dibayar memang tidak bisa
+        // dibatalkan sendiri, dan lewat admin justru yang diuji di sini -- perpindahan
+        // pertama tanpa pemicu (webhook), yang kedua dengan pemicu bernama.
+        await BayarAsync(order.Id, order.Harga!.Value);
+        (await admin.PostAsJsonAsync(
+            $"/api/admin/orders/{order.Id}/batalkan", new { Alasan = "Klien komplain." }))
+            .EnsureSuccessStatusCode();
+
+        var riwayat = (await admin.GetFromJsonAsync<List<PerubahanStatusOrderResponse>>(
+            $"/api/admin/orders/{order.Id}/riwayat-status"))!;
+
+        Assert.Equal(2, riwayat.Count);
+
+        // Terlama dulu: cerita dibaca dari awal, kebalikan riwayat peran dan penangguhan.
+        Assert.Equal(nameof(OrderStatus.MencariRunner), riwayat[0].KeStatus);
+        Assert.Equal(nameof(OrderStatus.Batal), riwayat[1].KeStatus);
+
+        // Perpindahan yang dipicu webhook tidak punya pemicu, dan itu dinyatakan sebagai
+        // null -- bukan "-", yang berarti nama yang gagal dicari.
+        Assert.Null(riwayat[0].DipicuOlehUserId);
+        Assert.Null(riwayat[0].NamaPemicu);
+
+        Assert.Equal(idAdmin, riwayat[1].DipicuOlehUserId);
+        Assert.False(string.IsNullOrWhiteSpace(riwayat[1].NamaPemicu));
+        Assert.NotEqual("-", riwayat[1].NamaPemicu);
+    }
+
+    [Fact]
+    public async Task RiwayatStatusOrderYangTidakAdaDijawab404BukanDaftarKosong()
+    {
+        // Daftar kosong berarti "ordernya ada tapi belum pernah berpindah", dan itu jawaban
+        // yang berbeda dari "ordernya tidak ada".
+        var (admin, _) = await AkunAsync(UserRole.Admin);
+
+        var jawaban = await admin.GetAsync($"/api/admin/orders/{Guid.NewGuid()}/riwayat-status");
+
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, jawaban.StatusCode);
+    }
+
+    [Fact]
+    public async Task RiwayatStatusTertutupUntukYangBukanAdmin()
+    {
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+        var order = (await (await klien.PostAsJsonAsync("/api/orders/jalur-a", new
+        {
+            ServiceType = nameof(ServiceType.AnterJemput),
+            JarakKm = 3.0,
+        })).Content.ReadFromJsonAsync<BuatOrderResponse>())!.Order;
+
+        // Pemesannya sendiri pun tidak, karena yang dijawab endpoint ini menyebut nama
+        // admin yang membatalkan ordernya -- itu urusan dashboard, bukan layar klien.
+        var jawaban = await klien.GetAsync($"/api/admin/orders/{order.Id}/riwayat-status");
+
+        Assert.Equal(System.Net.HttpStatusCode.Forbidden, jawaban.StatusCode);
+    }
+
     // --- Jalur B: persetujuan penawaran ---
 
     [Fact]

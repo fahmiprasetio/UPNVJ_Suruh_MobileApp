@@ -36,6 +36,52 @@ public class AdminOrderController(
     IHubContext<OrderHub> hub,
     ILogger<AdminOrderController> log) : ControllerBase
 {
+    /// <summary>Seluruh perpindahan status yang pernah dialami satu order.</summary>
+    /// <remarks>
+    /// Pembaca untuk ledger yang dibuat bersama <see cref="OrderStatusChange"/>. Tanpa ini
+    /// tabelnya cuma bisa ditanya lewat klien basis data, dan catatan yang mengharuskan
+    /// orang membuka psql untuk membacanya adalah catatan yang tidak akan dibaca.
+    ///
+    /// Diurutkan dari yang terlama, kebalikan dari riwayat peran dan penangguhan. Keduanya
+    /// menjawab "apa yang terakhir terjadi pada akun ini", jadi yang terbaru di atas. Yang
+    /// ini menjawab "bagaimana order ini sampai di keadaannya sekarang", dan cerita dibaca
+    /// dari awal.
+    ///
+    /// Tanpa halaman, sengaja. Satu order punya paling banyak segelintir perpindahan --
+    /// order paling berliku pun berhenti di angka belasan -- jadi memotongnya per halaman
+    /// cuma menambah satu bolak-balik untuk daftar yang tidak pernah panjang.
+    /// </remarks>
+    [HttpGet("{id:guid}/riwayat-status")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<IReadOnlyList<PerubahanStatusOrderResponse>>> RiwayatStatus(
+        Guid id,
+        CancellationToken batal)
+    {
+        // Ordernya diperiksa lebih dulu, supaya id yang tidak ada dijawab 404 alih-alih
+        // daftar kosong. Daftar kosong berarti "ordernya ada tapi belum pernah berpindah",
+        // dan itu jawaban yang berbeda.
+        if (!await db.Orders.AnyAsync(o => o.Id == id, batal)) return NotFound();
+
+        var riwayat = await db.OrderStatusChanges
+            .Where(p => p.OrderId == id)
+            .OrderBy(p => p.ChangedAt)
+            .ThenBy(p => p.Id)
+            .Select(p => new
+            {
+                Baris = p,
+                NamaPemicu = db.Users
+                    .Where(u => u.Id == p.ChangedByUserId)
+                    .Select(u => u.Name)
+                    .FirstOrDefault(),
+            })
+            .ToListAsync(batal);
+
+        return Ok(riwayat
+            .Select(b => PerubahanStatusOrderResponse.Dari(b.Baris, b.NamaPemicu))
+            .ToList());
+    }
+
     /// <summary>Order yang ada di sistem, disaring status dan dipotong per halaman.</summary>
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]

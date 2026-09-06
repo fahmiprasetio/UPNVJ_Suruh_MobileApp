@@ -85,6 +85,34 @@ public record PerubahanPenangguhanResponse(
         p.ChangedAt);
 }
 
+/// <summary>Satu perpindahan status pada sebuah order.</summary>
+/// <remarks>
+/// <paramref name="NamaPemicu"/> kosong, bukan "-", kalau perpindahannya memang tidak
+/// dipicu siapa pun. Itu bukan nama yang gagal dicari melainkan keadaan yang sah dan sering:
+/// order yang lunas berpindah sendiri, dipicu webhook gateway. Membedakan keduanya penting
+/// justru bagi yang membacanya, karena "tidak ada yang memicu" dan "pemicunya tidak
+/// ketemu" adalah dua hal yang sangat berbeda saat sesuatu sedang ditelusuri.
+/// </remarks>
+public record PerubahanStatusOrderResponse(
+    Guid Id,
+    Guid OrderId,
+    string DariStatus,
+    string KeStatus,
+    Guid? DipicuOlehUserId,
+    string? NamaPemicu,
+    DateTime DiubahPada)
+{
+    public static PerubahanStatusOrderResponse Dari(
+        OrderStatusChange p, string? namaPemicu = null) => new(
+        p.Id,
+        p.OrderId,
+        p.FromStatus.ToString(),
+        p.ToStatus.ToString(),
+        p.ChangedByUserId,
+        p.ChangedByUserId is null ? null : namaPemicu ?? "-",
+        p.ChangedAt);
+}
+
 /// <summary>Satu penawaran yang ditarik kembali oleh runner yang membuatnya.</summary>
 /// <remarks>
 /// Tidak membawa alasan, karena alasannya memang tidak pernah diwajibkan (bagian 49.5):
