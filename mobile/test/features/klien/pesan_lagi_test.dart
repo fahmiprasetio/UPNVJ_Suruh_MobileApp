@@ -85,19 +85,18 @@ void main() {
     expect(find.text('Pesan lagi'), findsOneWidget);
   });
 
-  testWidgets('layanan yang formnya belum dibuat tidak menawarkan pesan lagi', (
+  testWidgets('jastip makanan yang sudah kelar ikut menawarkan pesan lagi', (
     tester,
   ) async {
-    // Jastip Makanan sudah punya ordernya di data contoh tapi belum punya form
-    // untuk membuatnya (menunggu keputusan mitra soal siapa yang menalangi harga
-    // barangnya). Menawarkan "Pesan lagi" untuknya berarti menjanjikan pintu yang
-    // ujungnya cuma pesan "belum dibuat, menyusul".
+    // Jastip Makanan adalah yang terakhir menyusul punya form (rencana
+    // capstone bagian 70). Sesudahnya seluruh layanan berkatalog seharusnya
+    // ikut menawarkan tombol ini begitu ordernya kelar.
     await bukaRiwayat(tester, [
       seed('SRH-0410').copyWith(status: OrderStatus.selesai),
     ]);
 
     expect(find.text('Sudah selesai (1)'), findsOneWidget);
-    expect(find.text('Pesan lagi'), findsNothing);
+    expect(find.text('Pesan lagi'), findsOneWidget);
   });
 
   testWidgets('order batal ikut bisa dipesan lagi', (tester) async {
@@ -191,7 +190,7 @@ void main() {
   });
 
   testWidgets(
-    'layar detail order tanpa form yang sudah kelar tidak menawarkannya',
+    'layar detail order jastip makanan yang sudah kelar ikut menawarkannya',
     (tester) async {
       await bukaRiwayat(tester, [
         seed('SRH-0410').copyWith(status: OrderStatus.selesai),
@@ -200,7 +199,7 @@ void main() {
       await tester.tap(find.textContaining('SRH-0410'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Pesan Lagi'), findsNothing);
+      expect(find.text('Pesan Lagi'), findsOneWidget);
     },
   );
 }

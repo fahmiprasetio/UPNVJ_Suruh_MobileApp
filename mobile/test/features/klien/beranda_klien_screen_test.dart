@@ -76,29 +76,27 @@ void main() {
     expect(find.text(permintaanLain.deskripsi), findsOneWidget);
   });
 
-  testWidgets('layanan yang layarnya belum ada ditandai sebelum ditekan', (
+  testWidgets('seluruh layanan berkatalog sudah punya layarnya, tidak ada yang ditandai segera', (
     tester,
   ) async {
     // Petak yang menjanjikan sesuatu lalu menjawab "menyusul" setelah ditekan
     // membuat pengguna menanggung penemuan yang seharusnya ditanggung layar.
+    // Jastip Makanan adalah yang terakhir menyusul (rencana capstone bagian
+    // 70); sesudahnya lencana ini seharusnya tidak muncul untuk siapa pun.
     await bukaBeranda(tester);
 
-    expect(find.text('Segera'), findsOneWidget);
+    expect(find.text('Segera'), findsNothing);
   });
 
-  testWidgets('layanan yang layarnya belum ada memberi tahu apa adanya', (
+  testWidgets('jastip makanan membuka form yang cuma menagih ongkos jasanya', (
     tester,
   ) async {
     await bukaBeranda(tester);
 
-    // Tinggal Jastip Makanan yang belum punya layar, karena bentuk formnya
-    // menunggu keputusan mitra soal harga barang (bagian 14.7a).
     await tester.tap(find.text('Jastip Makanan'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(
-      find.text('Jastip Makanan belum dibuat, menyusul.'),
-      findsOneWidget,
-    );
+    expect(find.text('Makanan/minuman apa yang mau dititip?'), findsOneWidget);
+    expect(find.text('Beli di mana?'), findsOneWidget);
   });
 }

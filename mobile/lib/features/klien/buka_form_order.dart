@@ -16,13 +16,13 @@ import '../../domain/service_catalog.dart';
 
 /// Benar kalau layanan ini sudah punya form untuk membuatnya.
 ///
-/// Seluruh Jalur B bermuara ke satu form permintaan yang sama. Yang tersisa cuma
-/// Jalur A: dua sudah punya formnya sendiri, dan Jastip Makanan masih menunggu
-/// keputusan siapa yang menalangi harga barangnya (rencana capstone bagian 14.8).
+/// Seluruh Jalur B bermuara ke satu form permintaan yang sama, dan seluruh
+/// Jalur A sekarang punya formnya sendiri.
 bool adaFormOrder(ServiceType layanan) =>
     layanan.track == OrderTrack.jalurB ||
     layanan == ServiceType.anterJemput ||
-    layanan == ServiceType.jastipBarang;
+    layanan == ServiceType.jastipBarang ||
+    layanan == ServiceType.jastipMakanan;
 
 /// Membuka form order untuk [layanan].
 ///
@@ -51,6 +51,8 @@ void bukaFormOrder(
       context.push(Rute.formAnterJemput, extra: contoh);
     case ServiceType.jastipBarang:
       context.push(Rute.formJastipBarang, extra: contoh);
+    case ServiceType.jastipMakanan:
+      context.push(Rute.formJastipMakanan, extra: contoh);
     case _:
       belumTersedia(context, serviceInfoOf(layanan).nama);
   }

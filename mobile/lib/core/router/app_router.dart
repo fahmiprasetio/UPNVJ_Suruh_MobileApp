@@ -10,6 +10,7 @@ import '../../features/chat/chat_order_screen.dart';
 import '../../features/klien/detail_order/detail_order_screen.dart';
 import '../../features/klien/order_jalur_a/form_anter_jemput_screen.dart';
 import '../../features/klien/order_jalur_a/form_jastip_barang_screen.dart';
+import '../../features/klien/order_jalur_a/form_jastip_makanan_screen.dart';
 import '../../features/klien/order_jalur_b/form_permintaan_screen.dart';
 import '../../features/klien/pembayaran/pembayaran_screen.dart';
 import '../../features/klien/riwayat/riwayat_order_screen.dart';
@@ -36,6 +37,7 @@ class Rute {
   static const String chatOrderRunnerPola = '/runner/order/:orderId/chat';
   static const String formAnterJemput = '/buat/anter-jemput';
   static const String formJastipBarang = '/buat/jastip-barang';
+  static const String formJastipMakanan = '/buat/jastip-makanan';
   static const String formPermintaanPola = '/buat/permintaan/:layanan';
   static const String ajukanTawaranPola = '/runner/order/:orderId/tawar';
 
@@ -154,6 +156,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: Rute.formJastipBarang,
         builder: (context, state) =>
             FormJastipBarangScreen(contoh: state.extra as Order?),
+      ),
+      GoRoute(
+        path: Rute.formJastipMakanan,
+        builder: (context, state) =>
+            FormJastipMakananScreen(contoh: state.extra as Order?),
       ),
       GoRoute(
         path: Rute.formPermintaanPola,
