@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/api/galat_api.dart';
 import '../../../core/config/batas_masukan.dart';
 import '../../../core/format/formatters.dart';
+import '../../../core/format/jarak.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/enums.dart';
@@ -75,7 +76,7 @@ class _FormJastipBarangScreenState
 
   /// `null` selama jarak belum diisi dengan angka yang masuk akal.
   HasilTarif? _hasilTarif(Tarif tarif) {
-    final jarak = _bacaJarak(_jarakController.text);
+    final jarak = bacaJarak(_jarakController.text);
     if (jarak == null) return null;
     return KalkulatorTarif.jastipBarang(jarakKm: jarak, tarif: tarif);
   }
@@ -184,7 +185,7 @@ class _FormJastipBarangScreenState
                 suffixText: 'km',
                 prefixIcon: Icon(Icons.straighten_outlined),
               ),
-              validator: (nilai) => _validasiJarak(nilai, tarif),
+              validator: (nilai) => validasiJarak(nilai, tarif),
             ),
             const SizedBox(height: AppTheme.spasiKecil),
             Text(
@@ -211,7 +212,7 @@ class _FormJastipBarangScreenState
   Future<void> _buatOrder() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final jarak = _bacaJarak(_jarakController.text);
+    final jarak = bacaJarak(_jarakController.text);
     if (jarak == null) return;
 
     setState(() => _sedangMengirim = true);
@@ -265,24 +266,6 @@ class _FormJastipBarangScreenState
     return null;
   }
 
-  static String? _validasiJarak(String? nilai, Tarif tarif) {
-    final bersih = nilai?.trim() ?? '';
-    if (bersih.isEmpty) return 'Perkiraan jarak wajib diisi';
-    final jarak = _bacaJarak(bersih);
-    if (jarak == null) return 'Isi dengan angka, misalnya 2,5';
-    if (jarak > tarif.anjemJarakMaksimalKm) {
-      return 'Di atas ${tarif.anjemJarakMaksimalKm.round()} km belum '
-          'dilayani, pakai Permintaan Lain';
-    }
-    return null;
-  }
-
-  /// Menerima koma maupun titik sebagai pemisah desimal.
-  static double? _bacaJarak(String teks) {
-    final angka = double.tryParse(teks.trim().replaceAll(',', '.'));
-    if (angka == null || angka <= 0) return null;
-    return angka;
-  }
 }
 
 /// Pengakuan bahwa yang dibayar di aplikasi baru ongkos jasanya.

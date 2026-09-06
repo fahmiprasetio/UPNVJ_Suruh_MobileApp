@@ -7,6 +7,7 @@ import '../../../core/api/galat_api.dart';
 import '../../../core/config/batas_masukan.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/format/formatters.dart';
+import '../../../core/format/jarak.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/enums.dart';
 import '../../../domain/models/order.dart';
@@ -72,7 +73,7 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
   /// `null` selama jarak belum diisi dengan angka yang masuk akal, harga
   /// memang belum bisa dihitung, dan menampilkan Rp 0 akan menyesatkan.
   HasilTarif? _hasilTarif(Tarif tarif) {
-    final jarak = _bacaJarak(_jarakController.text);
+    final jarak = bacaJarak(_jarakController.text);
     if (jarak == null) return null;
     return KalkulatorTarif.anterJemput(jarakKm: jarak, tarif: tarif);
   }
@@ -172,7 +173,7 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
                 suffixText: 'km',
                 prefixIcon: Icon(Icons.straighten_outlined),
               ),
-              validator: (nilai) => _validasiJarak(nilai, tarif),
+              validator: (nilai) => validasiJarak(nilai, tarif),
             ),
             const SizedBox(height: AppTheme.spasiKecil),
             Text(
@@ -210,7 +211,7 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
   Future<void> _buatOrder() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final jarak = _bacaJarak(_jarakController.text);
+    final jarak = bacaJarak(_jarakController.text);
     if (jarak == null) return;
 
     setState(() => _sedangMengirim = true);
@@ -261,25 +262,6 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
     return null;
   }
 
-  static String? _validasiJarak(String? nilai, Tarif tarif) {
-    final bersih = nilai?.trim() ?? '';
-    if (bersih.isEmpty) return 'Perkiraan jarak wajib diisi';
-    final jarak = _bacaJarak(bersih);
-    if (jarak == null) return 'Isi dengan angka, misalnya 2,5';
-    if (jarak > tarif.anjemJarakMaksimalKm) {
-      return 'Di atas ${tarif.anjemJarakMaksimalKm.round()} km belum '
-          'dilayani, pakai Permintaan Lain';
-    }
-    return null;
-  }
-
-  /// Menerima koma maupun titik sebagai pemisah desimal, karena orang
-  /// Indonesia mengetik "2,5" sedangkan [double.tryParse] menuntut "2.5".
-  static double? _bacaJarak(String teks) {
-    final angka = double.tryParse(teks.trim().replaceAll(',', '.'));
-    if (angka == null || angka <= 0) return null;
-    return angka;
-  }
 }
 
 class _HargaBelumBisaDihitung extends StatelessWidget {
