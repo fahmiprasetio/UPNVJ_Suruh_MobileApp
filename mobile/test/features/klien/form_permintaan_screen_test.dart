@@ -6,6 +6,7 @@ import 'package:upnvj_suruh/app.dart';
 
 import '../../support/tiruan.dart';
 import 'package:upnvj_suruh/data/fake/fake_order_repository.dart';
+import 'package:upnvj_suruh/data/fake/seed_data.dart';
 import 'package:upnvj_suruh/domain/enums.dart';
 import 'package:upnvj_suruh/providers/repository_providers.dart';
 
@@ -156,5 +157,38 @@ void main() {
 
     final orders = (await repo.watchOrderKlienUntuk('u-klien-1').first).isi;
     expect(orders.single.jumlahRunnerDibutuhkan, 3);
+  });
+
+  /// Kolom alamat Jalur B cuma satu, dan artinya sama untuk seluruh layanannya:
+  /// tempat pekerjaannya dilakukan, yang untuk bersih kos maupun pindah kos
+  /// sama-sama alamat orangnya sendiri. Itu yang membedakannya dari Jalur A,
+  /// tempat pengisian ini harus memilih satu dari sepasang kolom.
+  testWidgets('alamat tersimpan mengisi sendiri kolom alamat', (tester) async {
+    await bukaForm(tester, namaLayanan: 'Bersih-Bersih Kos');
+
+    expect(
+      tester
+          .widget<TextFormField>(find.widgetWithText(TextFormField, 'Alamat'))
+          .controller
+          ?.text,
+      SeedData.klien.alamat,
+    );
+  });
+
+  /// Terisi sendiri bukan berarti tidak bisa diganti. Klien yang memesan untuk
+  /// kos temannya harus bisa menimpanya, dan yang terkirim yang di layar.
+  testWidgets('alamat yang disunting menang atas yang terisi sendiri', (
+    tester,
+  ) async {
+    final repo = await bukaForm(tester, namaLayanan: 'Bersih-Bersih Kos');
+    await isiForm(tester, alamat: 'Kos Anggrek, Jl. RS Fatmawati No. 3');
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Kirim Permintaan'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    final orders = (await repo.watchOrderKlienUntuk('u-klien-1').first).isi;
+    expect(orders.single.alamatTujuan, 'Kos Anggrek, Jl. RS Fatmawati No. 3');
   });
 }

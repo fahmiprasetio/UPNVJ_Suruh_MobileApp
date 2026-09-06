@@ -55,6 +55,32 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
     return DateTime(besok.year, besok.month, besok.day, 9);
   }
 
+  /// Alamat tersimpan mengisi sendiri kolom alamat.
+  ///
+  /// Pengisian ini sempat ditunda karena bentuk formulir Jalur B berbeda dari
+  /// Jalur A: di sana ada sepasang kolom jemput dan tujuan, dan memilih yang
+  /// salah menghasilkan order yang berangkat ke alamat keliru. Di sini
+  /// kolomnya cuma satu, dan artinya sama untuk seluruh layanan Jalur B: tempat
+  /// pekerjaannya dilakukan. Kos yang dibersihkan, kamar mandi yang disikat,
+  /// dan kos asal yang barangnya dipindahkan sama-sama alamat orangnya sendiri;
+  /// tujuan pindahan diceritakan di kolom kebutuhan, bukan di sini.
+  ///
+  /// Diisi, bukan ditawarkan lewat tombol "pakai alamat saya", mengikuti alasan
+  /// yang sama seperti di Jalur A: isinya terlihat, bisa disunting, dan tetap
+  /// divalidasi sebelum dikirim.
+  ///
+  /// Dibaca sekali di sini lewat `userAktif`, bukan ditonton lewat provider:
+  /// alamat yang berubah di tengah orang mengetik formulir order tidak boleh
+  /// menimpa apa yang sudah ia ketik.
+  @override
+  void initState() {
+    super.initState();
+    final alamat = ref.read(authRepositoryProvider).userAktif?.alamat;
+    if (alamat != null && alamat.isNotEmpty) {
+      _alamatController.text = alamat;
+    }
+  }
+
   @override
   void dispose() {
     _kebutuhanController.dispose();
