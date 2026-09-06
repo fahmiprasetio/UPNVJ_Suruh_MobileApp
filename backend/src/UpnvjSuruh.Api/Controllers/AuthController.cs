@@ -115,19 +115,10 @@ public class AuthController(
         var izin = pembatasOtp.Catat(noHp);
         if (!izin.Boleh)
         {
-            // Invariant, bukan budaya mesin. Nilai header HTTP bukan teks untuk dibaca
-            // orang, dan budaya yang memakai pemisah lain akan menghasilkan header yang
-            // tidak bisa diurai klien mana pun.
-            Response.Headers.RetryAfter = ((int)Math.Ceiling(izin.TungguLagi.TotalSeconds))
-                .ToString(CultureInfo.InvariantCulture);
-
-            return StatusCode(StatusCodes.Status429TooManyRequests, new ProblemDetails
-            {
-                Title = "Terlalu sering meminta kode",
-                Detail = "Kode masuk sudah dikirim beberapa kali ke nomor ini. "
-                         + "Tunggu sebentar sebelum meminta lagi.",
-                Status = StatusCodes.Status429TooManyRequests,
-            });
+            return TerlaluSeringMintaKode(
+                izin.TungguLagi,
+                "Kode masuk sudah dikirim beberapa kali ke nomor ini. "
+                + "Tunggu sebentar sebelum meminta lagi.");
         }
 
         var terdaftar = await db.Users.AnyAsync(u => u.Phone == noHp, batal);
@@ -351,16 +342,10 @@ public class AuthController(
         var izin = pembatasOtp.Catat(noHpBaru);
         if (!izin.Boleh)
         {
-            Response.Headers.RetryAfter = ((int)Math.Ceiling(izin.TungguLagi.TotalSeconds))
-                .ToString(CultureInfo.InvariantCulture);
-
-            return StatusCode(StatusCodes.Status429TooManyRequests, new ProblemDetails
-            {
-                Title = "Terlalu sering meminta kode",
-                Detail = "Kode verifikasi sudah dikirim beberapa kali ke nomor ini. "
-                         + "Tunggu sebentar sebelum meminta lagi.",
-                Status = StatusCodes.Status429TooManyRequests,
-            });
+            return TerlaluSeringMintaKode(
+                izin.TungguLagi,
+                "Kode verifikasi sudah dikirim beberapa kali ke nomor ini. "
+                + "Tunggu sebentar sebelum meminta lagi.");
         }
 
         var kode = pembuatKode.Buat();
@@ -441,5 +426,31 @@ public class AuthController(
             user.Id, lama, user.Phone);
 
         return Ok(UserResponse.Dari(user));
+    }
+
+    /// <summary>
+    /// Jawaban 429 untuk endpoint yang mengirim kode, dipakai <see cref="MintaKode"/> dan
+    /// <see cref="MintaKodeGantiNomor"/> -- keduanya mengirim SMS dan keduanya dijaga
+    /// <see cref="IPembatasOtp"/> yang sama.
+    /// </summary>
+    /// <param name="detail">
+    /// Kalimatnya sengaja tidak disamakan sepenuhnya di kedua pemanggil: yang satu bicara
+    /// soal kode masuk, yang satu soal kode verifikasi nomor baru, dan pemanggilnya sudah
+    /// tahu konteks mana yang sedang berjalan sedangkan pengguna belum tentu.
+    /// </param>
+    private ObjectResult TerlaluSeringMintaKode(TimeSpan tungguLagi, string detail)
+    {
+        // Invariant, bukan budaya mesin. Nilai header HTTP bukan teks untuk dibaca orang,
+        // dan budaya yang memakai pemisah lain akan menghasilkan header yang tidak bisa
+        // diurai klien mana pun.
+        Response.Headers.RetryAfter = ((int)Math.Ceiling(tungguLagi.TotalSeconds))
+            .ToString(CultureInfo.InvariantCulture);
+
+        return StatusCode(StatusCodes.Status429TooManyRequests, new ProblemDetails
+        {
+            Title = "Terlalu sering meminta kode",
+            Detail = detail,
+            Status = StatusCodes.Status429TooManyRequests,
+        });
     }
 }
