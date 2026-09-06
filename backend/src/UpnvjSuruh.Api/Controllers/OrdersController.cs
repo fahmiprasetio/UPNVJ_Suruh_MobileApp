@@ -21,7 +21,7 @@ namespace UpnvjSuruh.Api.Controllers;
 [Authorize]
 public class OrdersController(
     AppDbContext db,
-    IKalkulatorTarif kalkulator,
+    KalkulatorTarif kalkulator,
     PenyimpanFoto penyimpanFoto,
     IHubContext<OrderHub> hub) : ControllerBase
 {

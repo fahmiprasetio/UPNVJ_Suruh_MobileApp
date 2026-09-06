@@ -2,11 +2,6 @@ using UpnvjSuruh.Api.Domain;
 
 namespace UpnvjSuruh.Api.Pricing;
 
-public interface IKalkulatorTarif
-{
-    HasilTarif Hitung(ServiceType serviceType, double? jarakKm, TarifSetting tarif);
-}
-
 /// <summary>
 /// Menghitung harga Jalur A di server.
 ///
@@ -26,7 +21,7 @@ public interface IKalkulatorTarif
 /// sekarang dari basis data akan gagal saat kompilasi, bukan diam-diam menghitung dengan
 /// angka yang salah.
 /// </summary>
-public class KalkulatorTarif : IKalkulatorTarif
+public class KalkulatorTarif
 {
     public HasilTarif Hitung(ServiceType serviceType, double? jarakKm, TarifSetting tarif)
     {

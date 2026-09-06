@@ -125,7 +125,7 @@ public class GantiNomorHpTests(DatabaseApiFactory pabrik) : IClassFixture<Databa
         // yang barusan dipakai langkah ganti nomor (lihat
         // JatahTerbagiDenganPermintaanKodeMasukUntukNomorYangSama).
         var tamu = pabrik.CreateClient();
-        pabrik.Services.GetRequiredService<IPenyimpanOtp>().Simpan(noHpBaru, "123456");
+        pabrik.Services.GetRequiredService<PenyimpanOtpMemori>().Simpan(noHpBaru, "123456");
 
         var masuk = await tamu.PostAsJsonAsync(
             "/api/auth/masuk", new { NoHp = noHpBaru, Kode = "123456" });

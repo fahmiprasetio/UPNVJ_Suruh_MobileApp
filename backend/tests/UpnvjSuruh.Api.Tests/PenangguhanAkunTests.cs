@@ -117,7 +117,7 @@ public class PenangguhanAkunTests(DatabaseApiFactory pabrik) : IClassFixture<Dat
         // Kodenya dipasang langsung lewat penyimpan OTP: yang diuji di sini penolakan
         // karena penangguhan, bukan alur kodenya, dan kode yang salah dijawab 401 yang
         // sama untuk semua sebab sehingga tidak bisa membedakan apa pun.
-        pabrik.Services.GetRequiredService<IPenyimpanOtp>().Simpan(noHp, "123456");
+        pabrik.Services.GetRequiredService<PenyimpanOtpMemori>().Simpan(noHp, "123456");
 
         var masuk = await tamu.PostAsJsonAsync(
             "/api/auth/masuk", new { NoHp = noHp, Kode = "123456" });
@@ -138,7 +138,7 @@ public class PenangguhanAkunTests(DatabaseApiFactory pabrik) : IClassFixture<Dat
         var (admin, _, _) = await AkunAsync(UserRole.Admin);
         (await TangguhkanAsync(admin, korbanId, "Nomor palsu.")).EnsureSuccessStatusCode();
 
-        pabrik.Services.GetRequiredService<IPenyimpanOtp>().Simpan(noHp, "123456");
+        pabrik.Services.GetRequiredService<PenyimpanOtpMemori>().Simpan(noHp, "123456");
 
         var masuk = await pabrik.CreateClient().PostAsJsonAsync(
             "/api/auth/masuk", new { NoHp = noHp, Kode = "123456" });

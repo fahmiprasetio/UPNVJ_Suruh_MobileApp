@@ -14,10 +14,10 @@ namespace UpnvjSuruh.Api.Controllers;
 [Route("api/auth")]
 public class AuthController(
     AppDbContext db,
-    ITokenService token,
-    IPenyimpanOtp penyimpanOtp,
-    IPembatasOtp pembatasOtp,
-    IPembuatKodeOtp pembuatKode,
+    TokenService token,
+    PenyimpanOtpMemori penyimpanOtp,
+    PembatasOtpMemori pembatasOtp,
+    PembuatKodeOtp pembuatKode,
     IPengirimOtp pengirimOtp,
     ILogger<AuthController> log) : ControllerBase
 {
@@ -431,7 +431,7 @@ public class AuthController(
     /// <summary>
     /// Jawaban 429 untuk endpoint yang mengirim kode, dipakai <see cref="MintaKode"/> dan
     /// <see cref="MintaKodeGantiNomor"/> -- keduanya mengirim SMS dan keduanya dijaga
-    /// <see cref="IPembatasOtp"/> yang sama.
+    /// <see cref="PembatasOtpMemori"/> yang sama.
     /// </summary>
     /// <param name="detail">
     /// Kalimatnya sengaja tidak disamakan sepenuhnya di kedua pemanggil: yang satu bicara

@@ -14,18 +14,6 @@ public readonly record struct IzinOtp(bool Boleh, TimeSpan TungguLagi)
     public static IzinOtp Silakan => new(true, TimeSpan.Zero);
 }
 
-public interface IPembatasOtp
-{
-    /// <summary>
-    /// Mencatat satu permintaan kode untuk nomor ini, dan mengatakan apakah ia boleh.
-    ///
-    /// Mencatat sekaligus memutuskan, bukan dua panggilan terpisah. Pemeriksaan yang
-    /// terpisah dari pencatatannya berarti dua permintaan yang tiba bersamaan sama-sama
-    /// lolos, yaitu persis keadaan yang sedang dijaga di sini.
-    /// </summary>
-    IzinOtp Catat(string noHp);
-}
-
 /// <summary>
 /// Pembatas permintaan kode masuk, dihitung per nomor HP.
 ///
@@ -47,7 +35,7 @@ public interface IPembatasOtp
 /// proses. Dengan dua instansi di belakang load balancer, jatahnya menjadi dua kali lipat.
 /// Kalau sampai ke sana, yang diganti cukup kelas ini, dengan Redis atau satu tabel.
 /// </summary>
-public class PembatasOtpMemori(IMemoryCache cache, TimeProvider waktu) : IPembatasOtp
+public class PembatasOtpMemori(IMemoryCache cache, TimeProvider waktu)
 {
     private sealed class Jejak
     {
@@ -66,6 +54,13 @@ public class PembatasOtpMemori(IMemoryCache cache, TimeProvider waktu) : IPembat
     /// </summary>
     private readonly Lock _gembok = new();
 
+    /// <summary>
+    /// Mencatat satu permintaan kode untuk nomor ini, dan mengatakan apakah ia boleh.
+    ///
+    /// Mencatat sekaligus memutuskan, bukan dua panggilan terpisah. Pemeriksaan yang
+    /// terpisah dari pencatatannya berarti dua permintaan yang tiba bersamaan sama-sama
+    /// lolos, yaitu persis keadaan yang sedang dijaga di sini.
+    /// </summary>
     public IzinOtp Catat(string noHp)
     {
         var sekarang = waktu.GetUtcNow();

@@ -4,18 +4,6 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace UpnvjSuruh.Api.Auth;
 
-public interface IPenyimpanOtp
-{
-    /// <summary>Menyimpan kode untuk satu nomor, menimpa kode sebelumnya kalau ada.</summary>
-    void Simpan(string noHp, string kode);
-
-    /// <summary>
-    /// Memeriksa kode sekali pakai. Benar berarti kodenya cocok dan belum kedaluwarsa, dan
-    /// kode itu langsung hangus apa pun hasilnya kalau jatah percobaannya habis.
-    /// </summary>
-    bool Pakai(string noHp, string kode);
-}
-
 /// <summary>
 /// Penyimpan OTP di memori proses.
 ///
@@ -24,7 +12,7 @@ public interface IPenyimpanOtp
 /// masuk akan gagal tanpa sebab yang terlihat. Kalau sampai ke sana, yang diganti cukup kelas
 /// ini, dengan Redis atau satu tabel di Postgres.
 /// </summary>
-public class PenyimpanOtpMemori(IMemoryCache cache) : IPenyimpanOtp
+public class PenyimpanOtpMemori(IMemoryCache cache)
 {
     public static readonly TimeSpan MasaBerlaku = TimeSpan.FromMinutes(5);
 
@@ -40,6 +28,7 @@ public class PenyimpanOtpMemori(IMemoryCache cache) : IPenyimpanOtp
         public int Percobaan { get; set; }
     }
 
+    /// <summary>Menyimpan kode untuk satu nomor, menimpa kode sebelumnya kalau ada.</summary>
     public void Simpan(string noHp, string kode)
     {
         cache.Set(
@@ -48,6 +37,10 @@ public class PenyimpanOtpMemori(IMemoryCache cache) : IPenyimpanOtp
             MasaBerlaku);
     }
 
+    /// <summary>
+    /// Memeriksa kode sekali pakai. Benar berarti kodenya cocok dan belum kedaluwarsa, dan
+    /// kode itu langsung hangus apa pun hasilnya kalau jatah percobaannya habis.
+    /// </summary>
     public bool Pakai(string noHp, string kode)
     {
         if (!cache.TryGetValue(Kunci(noHp), out Tantangan? tantangan) || tantangan is null)

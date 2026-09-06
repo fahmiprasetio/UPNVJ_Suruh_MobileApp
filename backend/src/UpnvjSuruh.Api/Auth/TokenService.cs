@@ -7,11 +7,6 @@ using UpnvjSuruh.Api.Domain;
 
 namespace UpnvjSuruh.Api.Auth;
 
-public interface ITokenService
-{
-    (string Token, DateTime KedaluwarsaPada) Terbitkan(User user);
-}
-
 /// <summary>
 /// Menerbitkan token untuk satu user.
 ///
@@ -20,7 +15,7 @@ public interface ITokenService
 /// hilang setelah token lamanya kedaluwarsa. Karena itu masa berlakunya sengaja pendek,
 /// bukan berhari-hari.
 /// </summary>
-public class TokenService(IOptions<JwtOptions> options) : ITokenService
+public class TokenService(IOptions<JwtOptions> options)
 {
     private readonly JwtOptions _opsi = options.Value;
 

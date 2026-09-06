@@ -2,12 +2,7 @@ using System.Security.Cryptography;
 
 namespace UpnvjSuruh.Api.Auth;
 
-public interface IPembuatKodeOtp
-{
-    string Buat();
-}
-
-public class PembuatKodeOtp : IPembuatKodeOtp
+public class PembuatKodeOtp
 {
     /// <summary>
     /// Memakai pembangkit acak kriptografis, bukan <c>Random</c>. <c>Random</c> bisa ditebak

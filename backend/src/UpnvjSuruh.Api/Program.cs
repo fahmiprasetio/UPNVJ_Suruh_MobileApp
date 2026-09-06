@@ -52,7 +52,7 @@ builder.Services
     // ditelusuri daripada server yang menolak menyala sambil menyebut apa yang kurang.
     .ValidateOnStart();
 
-builder.Services.AddSingleton<ITokenService, TokenService>();
+builder.Services.AddSingleton<TokenService>();
 
 builder.Services
     .AddOptions<WebhookOptions>()
@@ -71,14 +71,14 @@ if (string.IsNullOrWhiteSpace(builder.Configuration[$"{WebhookOptions.Section}:S
 // --- OTP ---
 
 builder.Services.AddMemoryCache();
-builder.Services.AddSingleton<IPenyimpanOtp, PenyimpanOtpMemori>();
-builder.Services.AddSingleton<IPembuatKodeOtp, PembuatKodeOtp>();
+builder.Services.AddSingleton<PenyimpanOtpMemori>();
+builder.Services.AddSingleton<PembuatKodeOtp>();
 
 // Jam sistem, didaftarkan sebagai layanan alih-alih dibaca lewat DateTime.UtcNow di dalam
 // kelas yang membutuhkannya. Aturan yang berjendela satu jam hanya bisa diuji kalau jamnya
 // bisa digeser tes, dan aturan yang tidak pernah diuji baru ketahuan rusaknya saat dipakai.
 builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddSingleton<IPembatasOtp, PembatasOtpMemori>();
+builder.Services.AddSingleton<PembatasOtpMemori>();
 
 if (builder.Environment.IsDevelopment())
 {
@@ -277,7 +277,7 @@ builder.Services.AddRateLimiter(opsi =>
     };
 });
 
-builder.Services.AddSingleton<IKalkulatorTarif, KalkulatorTarif>();
+builder.Services.AddSingleton<KalkulatorTarif>();
 builder.Services.AddScoped<PenyelesaiPembayaran>();
 
 // --- Foto bukti pekerjaan ---
