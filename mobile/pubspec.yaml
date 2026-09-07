@@ -48,6 +48,13 @@ dependencies:
   flutter_secure_storage: ^11.0.0
   image_picker: ^1.2.3
   web_socket_channel: ^3.0.3
+  # Notifikasi push. Keduanya tidak menuntut google-services.json maupun plugin Gradle
+  # Google Services: identitas proyeknya diserahkan saat build lewat --dart-define dan
+  # dipasang sendiri lewat Firebase.initializeApp(options:). Alasannya di
+  # lib/core/notifikasi/konfigurasi_firebase.dart, dan yang dibeli dengannya adalah
+  # proyek yang tetap bisa dibangun siapa pun yang belum punya proyek Firebase.
+  firebase_core: ^4.14.0
+  firebase_messaging: ^16.6.0
 
 dev_dependencies:
   flutter_test:

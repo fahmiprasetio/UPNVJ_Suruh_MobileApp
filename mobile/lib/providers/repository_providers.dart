@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -5,6 +7,8 @@ import 'package:http/http.dart' as http;
 import '../core/api/klien_api.dart';
 import '../core/api/konfigurasi_api.dart';
 import '../core/config/sumber_data.dart';
+import '../core/notifikasi/konfigurasi_firebase.dart';
+import '../core/notifikasi/notifikasi_push.dart';
 import '../core/realtime/order_hub_client.dart';
 import '../data/api/api_auth_repository.dart';
 import '../data/api/api_foto_bukti_repository.dart';
@@ -197,6 +201,29 @@ final orderHubClientProvider = Provider<OrderHubClient?>((ref) {
   }, fireImmediately: true);
 
   return client;
+});
+
+/// Pendaftaran perangkat untuk notifikasi push, mengikuti status masuk.
+///
+/// `null` di dua keadaan, dan keduanya disengaja: di jalur data tiruan, yang memang tidak
+/// punya server untuk didaftari, dan di build yang identitas proyek Firebase-nya tidak
+/// diisi sama sekali. Yang kedua yang penting: proyek ini harus tetap bisa dibangun dan
+/// diuji oleh mesin yang belum punya proyek Firebase, termasuk CI.
+///
+/// Polanya sama persis dengan [orderHubClientProvider] di atas, karena persoalannya sama:
+/// keduanya menempel pada akun yang sedang masuk, bukan pada aplikasi yang sedang dibuka.
+final notifikasiPushProvider = Provider<NotifikasiPush?>((ref) {
+  if (ref.watch(sumberDataProvider) == SumberData.tiruan) return null;
+  if (!KonfigurasiFirebase.lengkap) return null;
+
+  final notifikasi = NotifikasiPush(klien: ref.watch(klienApiProvider));
+  ref.onDispose(notifikasi.dispose);
+
+  ref.listen(userAktifProvider, (_, sekarang) {
+    unawaited(sekarang.value != null ? notifikasi.mulai() : notifikasi.berhenti());
+  }, fireImmediately: true);
+
+  return notifikasi;
 });
 
 final orderRepositoryProvider = Provider<OrderRepository>((ref) {
