@@ -70,7 +70,21 @@ public class PerangkatController(AppDbContext db) : ControllerBase
             perangkat.UpdatedAt = DateTime.UtcNow;
         }
 
-        await db.SaveChangesAsync(batal);
+        try
+        {
+            await db.SaveChangesAsync(batal);
+        }
+        catch (DbUpdateException galat) when (GalatDb.Bentrok(galat))
+        {
+            // Perangkat yang sama mendaftar dua kali pada saat yang persis bersamaan, dan
+            // yang satunya sampai lebih dulu. Barisnya sudah ada dengan isi yang sama, jadi
+            // ini bukan kegagalan yang perlu diteruskan ke aplikasi: 500 di jalur ini cuma
+            // membuat perangkat berhenti mencoba mendaftar sampai aplikasi dibuka lagi.
+            //
+            // Ditangani mengikuti pola yang sama dengan pendaftaran akun dan penawaran Jalur
+            // B, dua tempat lain yang index uniknya bisa kalah cepat.
+        }
+
         return NoContent();
     }
 
