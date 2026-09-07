@@ -18,6 +18,7 @@ use rather than by a separate build, and one account may hold both.
 - **Database:** PostgreSQL
 - **Auth:** JWT bearer tokens, one time codes over phone number
 - **Payments:** QRIS through a payment gateway, confirmed by webhook
+- **Push notifications:** Firebase Cloud Messaging
 
 ## Service tracks
 
@@ -114,6 +115,21 @@ dotnet run
 
 Swagger is served at `/swagger` in development only.
 
+Push notifications are the one thing that stays optional in development. Without a
+Firebase service account the server still runs, and every notification it would have sent
+is written to the log instead, which is enough to see who would have been told what. To
+send them for real, add the service account JSON from Firebase Console (Project settings,
+Service accounts) as one more secret:
+
+```
+dotnet user-secrets set "Firebase:KredensialJson" "$(cat service-account.json)"
+```
+
+Outside development that secret is required, and the server refuses to start without it.
+A production server that runs with the logging sender looks entirely healthy while never
+sending a single notification, which is exactly the silent failure the feature exists to
+prevent.
+
 ### App
 
 The API address is supplied at build time rather than written into the source:
@@ -126,6 +142,20 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:5059
 
 `10.0.2.2` is how the Android emulator refers to localhost on the host machine, and it is
 also the default. On a physical device, use the machine's address on the same network.
+
+Push notifications need the Firebase project's identity too. There is no
+`google-services.json` in this repository on purpose: the Gradle plugin that reads it
+fails the build when the file is missing, which would stop anyone without a Firebase
+project from building the app at all, CI included. The same four values are passed in
+instead, and the app runs without notifications when they are absent:
+
+```
+flutter run   --dart-define=API_BASE_URL=http://10.0.2.2:5059   --dart-define=FIREBASE_PROJECT_ID=<project id>   --dart-define=FIREBASE_APP_ID=<android app id, 1:...:android:...>   --dart-define=FIREBASE_API_KEY=<android api key>   --dart-define=FIREBASE_SENDER_ID=<sender id, the project number>
+```
+
+All four come from the Android app entry in Firebase Console. They are not secrets: they
+ship inside every APK, and what guards the project is the service account key on the
+server, which never leaves it.
 
 To work on screens without a server or a database:
 
@@ -169,9 +199,9 @@ test that passes because the provider enforces nothing is worse than no test at 
 
 ## Status
 
-Working end to end across all three surfaces, each covered by its own suite: **513 backend
-tests** (against a real Postgres instance, not an in-memory stand-in), **420 mobile tests**,
-and **84 dashboard tests**. Every push runs all three on CI.
+Working end to end across all three surfaces, each covered by its own suite: **537 backend
+tests** (against a real Postgres instance, not an in-memory stand-in), **433 mobile tests**,
+and **88 dashboard tests**. Every push runs all three on CI.
 
 **Client and runner app.** Registration and sign in, all six catalogued services with their
 own forms, Track B's multi-runner bidding from the runner's side (make an offer, withdraw
@@ -183,21 +213,31 @@ cancellation of a paid order, and repeating a past order in one tap.
 
 **Admin dashboard.** Order monitoring with live updates, cancellation and refunds, role
 management, account suspension and restoration with their own audit trails, tariff
-settings, and runner payout reconciliation.
+settings, runner payout reconciliation, and the audit trail of every order status change.
 
 **Live updates.** The SignalR hub is consumed on every surface now — the runner's incoming
 jobs, the client's payment screen, order chat, and the admin dashboard all react without
 polling.
 
+**Push notifications.** A phone registers itself when someone signs in and is released
+when they sign out. Payment clearing, a new job broadcast, a runner accepting, releasing,
+or finishing, an offer being chosen, and a cancellation all reach the people they concern,
+and never the person who caused them. Messages go out at high priority, which is the only
+lever a server has against the battery savers that kill notifications on the phones
+students actually carry.
+
 Not built yet:
 
-- **Push notifications, and the WhatsApp fallback for critical status changes.** The single
-  largest remaining gap, and the mitigation the plan leans on for its most critical risk:
-  battery savers on the phones students actually carry can kill an app's notifications
-  silently. It needs a Firebase project and a decision on the WhatsApp provider before any
-  of it can be written, let alone proven.
-- **A screen for the order status audit trail.** Every status change is recorded — who moved
-  it, from what to what, when — but nothing reads that table back yet.
+- **The WhatsApp fallback for critical status changes.** Push notifications now exist, but
+  the plan's mitigation for its most critical risk has two halves, and this is the half
+  that still waits on a decision: battery savers can silently kill an app's notifications,
+  and WhatsApp's system-level standing is what the fallback borrows. It needs the provider
+  to be chosen first, the same one the sign-in code is waiting on.
+- **Proof that the notifications actually arrive.** Everything above is covered by tests,
+  and no test can answer the question the risk is actually about. That takes a real handset
+  with a real battery saver on it.
+- **Tapping a notification opening the order it is about.** The order id already travels in
+  the message; what is missing is the route it feeds.
 - Object storage for photo evidence, which starts to matter once there is more than one
   server. Exif metadata is already stripped from uploads, so a photo no longer carries the
   runner's GPS location wherever it is stored.
