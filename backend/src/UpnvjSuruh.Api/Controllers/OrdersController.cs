@@ -10,6 +10,7 @@ using UpnvjSuruh.Api.Contracts;
 using UpnvjSuruh.Api.Data;
 using UpnvjSuruh.Api.Hubs;
 using UpnvjSuruh.Api.Media;
+using UpnvjSuruh.Api.Notifikasi;
 using UpnvjSuruh.Api.Domain;
 using UpnvjSuruh.Api.Payouts;
 using UpnvjSuruh.Api.Pricing;
@@ -23,7 +24,8 @@ public class OrdersController(
     AppDbContext db,
     KalkulatorTarif kalkulator,
     PenyimpanFoto penyimpanFoto,
-    IHubContext<OrderHub> hub) : ControllerBase
+    IHubContext<OrderHub> hub,
+    PengabarOrder pengabar) : ControllerBase
 {
     /// <summary>
     /// Klien membuat order Jalur A. Harganya dihitung di sini, bukan diterima dari klien.
@@ -380,9 +382,15 @@ public class OrdersController(
             RunnerId = runnerId,
         });
 
+        // Null selama kuotanya belum penuh: runner yang bergabung pada order multi-runner
+        // memang tidak memindahkan status apa pun, jadi tidak ada perpindahan yang layak
+        // dikabarkan ke klien sebagai "sudah mulai dikerjakan".
+        OrderStatusChange? perpindahan = null;
+
         if (jumlahSebelum + 1 >= order.RequiredRunnerCount)
         {
-            db.OrderStatusChanges.Add(OrderStatusChange.Catat(order, OrderStatus.Dikerjakan, runnerId));
+            perpindahan = OrderStatusChange.Catat(order, OrderStatus.Dikerjakan, runnerId);
+            db.OrderStatusChanges.Add(perpindahan);
         }
 
         await db.SaveChangesAsync(batal);
@@ -401,6 +409,8 @@ public class OrdersController(
         // bergabung pada order multi-runner tetap perubahan yang layak dilihat admin,
         // walaupun statusnya sendiri belum berpindah selama kuotanya belum penuh.
         await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
+
+        if (perpindahan is not null) await pengabar.KabarkanAsync(perpindahan, batal);
 
         return Ok(new TerimaOrderResponse(true, "Order jadi milikmu."));
     }
@@ -496,7 +506,8 @@ public class OrdersController(
         // Kembali dicari, apa pun statusnya tadi. Order multi-runner yang kuotanya sempat
         // penuh mundur ke MencariRunner supaya slot yang baru kosong itu benar-benar
         // disiarkan lagi; runner lain yang masih memegangnya tidak terganggu sama sekali.
-        db.OrderStatusChanges.Add(OrderStatusChange.Catat(order, OrderStatus.MencariRunner, runnerId));
+        var perpindahan = OrderStatusChange.Catat(order, OrderStatus.MencariRunner, runnerId);
+        db.OrderStatusChanges.Add(perpindahan);
 
         await db.SaveChangesAsync(batal);
 
@@ -515,6 +526,7 @@ public class OrdersController(
             },
             batal);
         await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
+        await pengabar.KabarkanAsync(perpindahan, batal);
 
         return Ok(await OrderResponse.DariAsync(db, order, runnerId, User.Punya(Peran.Admin), batal));
     }
@@ -590,7 +602,8 @@ public class OrdersController(
         penugasan.MarkedDoneAt = sekarang;
         penugasan.CompletionPhotoUrl = permintaan.FotoBuktiUrl.Trim();
 
-        db.OrderStatusChanges.Add(OrderStatusChange.Catat(order, OrderStatus.Selesai, runnerId));
+        var perpindahan = OrderStatusChange.Catat(order, OrderStatus.Selesai, runnerId);
+        db.OrderStatusChanges.Add(perpindahan);
         order.CompletedAt = sekarang;
         order.PhotoUrl = permintaan.FotoBuktiUrl.Trim();
         order.HandoverNote = permintaan.CatatanSerahTerima?.Trim();
@@ -610,6 +623,7 @@ public class OrdersController(
 
         await db.SaveChangesAsync(batal);
         await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
+        await pengabar.KabarkanAsync(perpindahan, batal);
         return Ok(await OrderResponse.DariAsync(db, order, User.Id(), User.Punya(Peran.Admin), batal));
     }
 
@@ -750,7 +764,8 @@ public class OrdersController(
             });
         }
 
-        db.OrderStatusChanges.Add(OrderStatusChange.Catat(order, OrderStatus.Batal, pemanggil));
+        var perpindahan = OrderStatusChange.Catat(order, OrderStatus.Batal, pemanggil);
+        db.OrderStatusChanges.Add(perpindahan);
 
         // Tagihan yang masih menunggu ikut dimatikan.
         //
@@ -771,6 +786,7 @@ public class OrdersController(
 
         await db.SaveChangesAsync(batal);
         await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
+        await pengabar.KabarkanAsync(perpindahan, batal);
         return Ok(await OrderResponse.DariAsync(db, order, User.Id(), User.Punya(Peran.Admin), batal));
     }
 }

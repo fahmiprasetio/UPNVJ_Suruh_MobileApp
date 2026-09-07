@@ -143,6 +143,28 @@ public static class ServiceTypeExtensions
         ServiceType.PermintaanLain => OrderTrack.JalurB,
         _ => throw new ArgumentOutOfRangeException(nameof(serviceType), serviceType, null),
     };
+
+    /// <summary>
+    /// Nama layanan sebagaimana orang membacanya, dipakai isi notifikasi push.
+    ///
+    /// Wajib sama persis dengan <c>serviceCatalog</c> di aplikasi mobile, dan dijaga sama
+    /// oleh <c>NamaLayananSelarasDenganMobileTests</c>. Sisi server memang bukan tempat
+    /// alami untuk teks tampilan -- seluruh nama layanan lain di aplikasi datang dari
+    /// katalog di sisi mobile -- tapi notifikasi push adalah satu-satunya kalimat yang
+    /// disusun server dan dibaca langsung orang, tanpa pernah melewati layar mana pun yang
+    /// bisa menerjemahkannya.
+    /// </summary>
+    public static string NamaTampilan(this ServiceType serviceType) => serviceType switch
+    {
+        ServiceType.AnterJemput => "Anter Jemput",
+        ServiceType.JastipMakanan => "Jastip Makanan",
+        ServiceType.JastipBarang => "Jastip Barang",
+        ServiceType.BantuPindahKos => "Bantu Pindah Kos",
+        ServiceType.BersihKos => "Bersih-Bersih Kos",
+        ServiceType.BersihKamarMandi => "Bersih Kamar Mandi",
+        ServiceType.PermintaanLain => "Permintaan Lain",
+        _ => throw new ArgumentOutOfRangeException(nameof(serviceType), serviceType, null),
+    };
 }
 
 /// <summary>

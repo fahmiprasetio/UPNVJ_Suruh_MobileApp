@@ -8,6 +8,7 @@ using UpnvjSuruh.Api.Contracts;
 using UpnvjSuruh.Api.Data;
 using UpnvjSuruh.Api.Domain;
 using UpnvjSuruh.Api.Hubs;
+using UpnvjSuruh.Api.Notifikasi;
 
 namespace UpnvjSuruh.Api.Controllers;
 
@@ -34,6 +35,7 @@ namespace UpnvjSuruh.Api.Controllers;
 public class AdminOrderController(
     AppDbContext db,
     IHubContext<OrderHub> hub,
+    PengabarOrder pengabar,
     ILogger<AdminOrderController> log) : ControllerBase
 {
     /// <summary>Seluruh perpindahan status yang pernah dialami satu order.</summary>
@@ -234,7 +236,8 @@ public class AdminOrderController(
             pembayaran.Status = PaymentStatus.Gagal;
         }
 
-        db.OrderStatusChanges.Add(OrderStatusChange.Catat(order, OrderStatus.Batal, User.Id()));
+        var perpindahan = OrderStatusChange.Catat(order, OrderStatus.Batal, User.Id());
+        db.OrderStatusChanges.Add(perpindahan);
 
         // Permintaan yang sedang menunggu (kalau pembatalan ini memang menjawabnya) ikut
         // diturunkan benderanya. Membiarkannya berarti order yang sudah batal tetap terhitung
@@ -244,6 +247,7 @@ public class AdminOrderController(
 
         await db.SaveChangesAsync(batal);
         await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
+        await pengabar.KabarkanAsync(perpindahan, batal);
 
         return Ok(await OrderResponse.DariAsync(db, order, User.Id(), User.Punya(Peran.Admin), batal));
     }

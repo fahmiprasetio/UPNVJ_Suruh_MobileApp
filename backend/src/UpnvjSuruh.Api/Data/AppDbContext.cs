@@ -16,6 +16,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<OrderRelease> OrderReleases => Set<OrderRelease>();
     public DbSet<UserSuspensionChange> UserSuspensionChanges => Set<UserSuspensionChange>();
     public DbSet<OrderStatusChange> OrderStatusChanges => Set<OrderStatusChange>();
+    public DbSet<PerangkatNotifikasi> PerangkatNotifikasi => Set<PerangkatNotifikasi>();
     public DbSet<TarifSetting> TarifSettings => Set<TarifSetting>();
     public DbSet<PayoutSetting> PayoutSettings => Set<PayoutSetting>();
 
@@ -110,6 +111,26 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 // Sama seperti tiga catatan audit lainnya: justru akun yang dihapus adalah
                 // akun yang paling mungkin dipertanyakan belakangan.
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PerangkatNotifikasi>(entity =>
+        {
+            entity.Property(p => p.Token).HasMaxLength(BatasMasukan.TokenPerangkat);
+
+            // Unik pada tokennya saja, bukan pada pasangan (akun, token). Alasannya lengkap
+            // di PerangkatNotifikasi: token itu milik pemasangan aplikasi, dan HP yang
+            // dipakai bergantian dua orang akan menyodorkan token yang sama untuk akun yang
+            // berbeda. Baris ini yang membuat pendaftaran ulang jadi pemindahan.
+            entity.HasIndex(p => p.Token).IsUnique();
+
+            entity.HasOne(p => p.User)
+                .WithMany()
+                .HasForeignKey(p => p.UserId)
+                // Berbeda dari tabel-tabel catatan audit, yang sengaja menahan penghapusan
+                // akun: ini bukan catatan, cuma alamat kirim yang berlaku selama akunnya
+                // ada. Akun yang hilang tidak meninggalkan pertanyaan yang bisa dijawab
+                // barisnya.
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Order>(entity =>

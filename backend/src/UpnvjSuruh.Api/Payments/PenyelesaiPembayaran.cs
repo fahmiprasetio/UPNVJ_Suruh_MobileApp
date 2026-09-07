@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using UpnvjSuruh.Api.Data;
 using UpnvjSuruh.Api.Domain;
 using UpnvjSuruh.Api.Hubs;
+using UpnvjSuruh.Api.Notifikasi;
 
 namespace UpnvjSuruh.Api.Payments;
 
@@ -38,6 +39,7 @@ public enum HasilPenyelesaian
 public class PenyelesaiPembayaran(
     AppDbContext db,
     IHubContext<OrderHub> hub,
+    PengabarOrder pengabar,
     ILogger<PenyelesaiPembayaran> log)
 {
     public async Task<HasilPenyelesaian> SelesaikanAsync(
@@ -185,10 +187,12 @@ public class PenyelesaiPembayaran(
                 // Satu slot yang dibutuhkan sudah terisi oleh pemenang tawaran itu sendiri.
                 // Tidak ada yang perlu disiarkan ke grup runner lagi, tapi admin tetap perlu
                 // tahu: order ini baru saja berpindah dari menunggu pembayaran ke dikerjakan.
-                db.OrderStatusChanges.Add(OrderStatusChange.Catat(order, OrderStatus.Dikerjakan, null));
+                var perpindahanLangsung = OrderStatusChange.Catat(order, OrderStatus.Dikerjakan, null);
+                db.OrderStatusChanges.Add(perpindahanLangsung);
                 await db.SaveChangesAsync(batal);
                 await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
                 await hub.BeriTahuKlienAsync(order.Id, batal);
+                await pengabar.KabarkanAsync(perpindahanLangsung, batal);
                 return HasilPenyelesaian.Lunas;
             }
 
@@ -198,7 +202,8 @@ public class PenyelesaiPembayaran(
             // menekan terima.
         }
 
-        db.OrderStatusChanges.Add(OrderStatusChange.Catat(order, OrderStatus.MencariRunner, null));
+        var perpindahan = OrderStatusChange.Catat(order, OrderStatus.MencariRunner, null);
+        db.OrderStatusChanges.Add(perpindahan);
 
         await db.SaveChangesAsync(batal);
 
@@ -218,6 +223,11 @@ public class PenyelesaiPembayaran(
             batal);
         await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
         await hub.BeriTahuKlienAsync(order.Id, batal);
+
+        // Siaran hub di atas cuma sampai ke runner yang aplikasinya sedang terbuka dan
+        // tersambung. Yang ini sampai ke saku mereka, dan itulah butir mitigasi yang
+        // rencana capstone bagian 9 sebut untuk "order baru tersiar".
+        await pengabar.KabarkanAsync(perpindahan, batal);
 
         return HasilPenyelesaian.Lunas;
     }

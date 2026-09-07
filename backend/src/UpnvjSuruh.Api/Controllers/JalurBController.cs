@@ -8,6 +8,7 @@ using UpnvjSuruh.Api.Contracts;
 using UpnvjSuruh.Api.Data;
 using UpnvjSuruh.Api.Domain;
 using UpnvjSuruh.Api.Hubs;
+using UpnvjSuruh.Api.Notifikasi;
 
 namespace UpnvjSuruh.Api.Controllers;
 
@@ -25,7 +26,10 @@ namespace UpnvjSuruh.Api.Controllers;
 [ApiController]
 [Route("api/orders")]
 [Authorize]
-public class JalurBController(AppDbContext db, IHubContext<OrderHub> hub) : ControllerBase
+public class JalurBController(
+    AppDbContext db,
+    IHubContext<OrderHub> hub,
+    PengabarOrder pengabar) : ControllerBase
 {
     /// <summary>Klien mengirim permintaan Jalur B, sekaligus mengusulkan harga.</summary>
     [EnableRateLimiting(BatasLaju.KebijakanTulis)]
@@ -207,7 +211,8 @@ public class JalurBController(AppDbContext db, IHubContext<OrderHub> hub) : Cont
         order!.Price = penawaran!.Price;
         order.EstimatedDuration = penawaran.EstimatedDuration;
         order.ScheduledStart = penawaran.ScheduledStart;
-        db.OrderStatusChanges.Add(OrderStatusChange.Catat(order, OrderStatus.MenungguPembayaran, User.Id()));
+        var perpindahan = OrderStatusChange.Catat(order, OrderStatus.MenungguPembayaran, User.Id());
+        db.OrderStatusChanges.Add(perpindahan);
         Jawab(penawaran, OfferStatus.Disetujui);
 
         foreach (var lainnya in order.Offers.Where(f => f.Id != penawaran.Id && f.Status == OfferStatus.Pending))
@@ -217,6 +222,7 @@ public class JalurBController(AppDbContext db, IHubContext<OrderHub> hub) : Cont
 
         await db.SaveChangesAsync(batal);
         await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
+        await pengabar.KabarkanAsync(perpindahan, batal);
         return Ok(await OrderResponse.DariAsync(db, order, User.Id(), User.Punya(Peran.Admin), batal));
     }
 

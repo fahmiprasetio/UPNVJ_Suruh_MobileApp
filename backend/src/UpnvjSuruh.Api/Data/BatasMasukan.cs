@@ -21,4 +21,12 @@ public static class BatasMasukan
     public const int Url = 500;
     public const int KodeOrder = 20;
     public const int QrPayload = 1000;
+
+    /// <summary>
+    /// Token perangkat dari Firebase. Panjangnya sekarang sekitar 160 karakter dan tidak
+    /// pernah dijanjikan tetap, jadi angkanya dilebihkan: kolom yang kesempitan berarti
+    /// perangkat yang gagal mendaftar tanpa ada yang tahu, dan yang dijaga di sini cuma
+    /// baris yang membengkak, bukan masukan yang dikarang orang.
+    /// </summary>
+    public const int TokenPerangkat = 512;
 }

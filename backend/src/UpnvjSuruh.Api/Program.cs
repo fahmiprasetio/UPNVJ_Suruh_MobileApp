@@ -11,7 +11,10 @@ using UpnvjSuruh.Api.Auth;
 using UpnvjSuruh.Api.Data;
 using UpnvjSuruh.Api.Domain;
 using UpnvjSuruh.Api.Hubs;
+using FirebaseAdmin;
+using Google.Apis.Auth.OAuth2;
 using UpnvjSuruh.Api.Media;
+using UpnvjSuruh.Api.Notifikasi;
 using UpnvjSuruh.Api.Payments;
 using UpnvjSuruh.Api.Perawatan;
 using UpnvjSuruh.Api.Pricing;
@@ -93,6 +96,58 @@ else
     throw new InvalidOperationException(
         "Belum ada IPengirimOtp untuk lingkungan non-Development. Daftarkan penyedia SMS " +
         "atau WhatsApp sungguhan sebelum menjalankan ini di luar mesin pengembang.");
+}
+
+// --- Notifikasi push ---
+//
+// Mitigasi untuk risiko yang rencana capstone bagian 9 sebut paling kritis di versi mobile:
+// order mendesak tersiar, tidak ada runner yang melihatnya, order mati diam-diam.
+//
+// Penyedianya dipilih dari ada-tidaknya kredensial, bukan dari lingkungannya, supaya mesin
+// pengembang yang sudah punya proyek Firebase bisa mengirim notifikasi sungguhan ke ponsel
+// di meja sebelahnya -- satu-satunya cara membuktikan bagian yang paling sulit dari fitur
+// ini, yaitu apakah notifikasinya benar-benar sampai melewati penghemat baterai.
+builder.Services.AddScoped<PengabarOrder>();
+
+var kredensialFirebase = builder.Configuration["Firebase:KredensialJson"];
+
+if (!string.IsNullOrWhiteSpace(kredensialFirebase))
+{
+    // DefaultInstance dipakai ulang kalau sudah ada. FirebaseApp.Create yang dipanggil dua
+    // kali dalam satu proses melempar, dan itu terjadi pada tes yang menyalakan aplikasi
+    // lebih dari sekali di dalam proses yang sama.
+    builder.Services.AddSingleton(
+        FirebaseApp.DefaultInstance
+        ?? FirebaseApp.Create(new AppOptions
+        {
+            // Lewat CredentialFactory, bukan GoogleCredential.FromJson yang lebih pendek:
+            // yang pendek sudah ditandai usang karena ia menerima bentuk kredensial apa pun
+            // yang kebetulan ada di dalam JSON-nya. Menyebut ServiceAccountCredential
+            // terang-terangan berarti berkas yang salah jenis ditolak di sini, bukan
+            // diterima lalu gagal saat notifikasi pertama dikirim.
+            Credential = CredentialFactory
+                .FromJson<ServiceAccountCredential>(kredensialFirebase)
+                .ToGoogleCredential(),
+        }));
+
+    builder.Services.AddSingleton<IPengirimNotifikasi, PengirimNotifikasiFirebase>();
+}
+else if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddSingleton<IPengirimNotifikasi, PengirimNotifikasiLog>();
+}
+else
+{
+    // Sengaja menolak menyala, mengikuti keputusan yang sama dengan IPengirimOtp di atas,
+    // walaupun alasannya berbeda. Yang di sana soal keamanan; yang di sini soal kegagalan
+    // yang tidak terlihat: server produksi dengan pengirim yang cuma menulis log akan
+    // melayani setiap permintaan dengan benar sambil tidak pernah mengirim satu notifikasi
+    // pun, dan tidak ada satu pun layar yang akan menunjukkan itu.
+    throw new InvalidOperationException(
+        "Firebase:KredensialJson belum diisi. Isi dengan seluruh isi berkas JSON akun " +
+        "layanan dari Firebase Console (Project settings > Service accounts). Di mesin " +
+        "pengembang: dotnet user-secrets set \"Firebase:KredensialJson\" \"$(cat berkas.json)\". " +
+        "Tanpa ini, tidak ada satu pun notifikasi push yang terkirim.");
 }
 
 var jwt = builder.Configuration.GetSection(JwtOptions.Section).Get<JwtOptions>();

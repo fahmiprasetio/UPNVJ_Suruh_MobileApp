@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Npgsql;
 using UpnvjSuruh.Api.Auth;
 using UpnvjSuruh.Api.Data;
+using UpnvjSuruh.Api.Notifikasi;
 
 namespace UpnvjSuruh.Api.Tests;
 
@@ -42,6 +43,9 @@ public class DatabaseApiFactory : ApiFactory, IAsyncLifetime
     /// <summary>Kode OTP terakhir yang "dikirim", supaya tes bisa memakainya untuk masuk.</summary>
     public PengirimOtpPencatat Otp { get; } = new();
 
+    /// <summary>Notifikasi push yang "dikirim", supaya tes bisa memeriksa isinya.</summary>
+    public PengirimNotifikasiPencatat Notifikasi { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         // ConfigureTestServices dijamin berjalan setelah seluruh pendaftaran aplikasi, jadi
@@ -50,6 +54,9 @@ public class DatabaseApiFactory : ApiFactory, IAsyncLifetime
         {
             services.RemoveAll<IPengirimOtp>();
             services.AddSingleton<IPengirimOtp>(Otp);
+
+            services.RemoveAll<IPengirimNotifikasi>();
+            services.AddSingleton<IPengirimNotifikasi>(Notifikasi);
         });
 
         base.ConfigureWebHost(builder);
@@ -100,5 +107,45 @@ public class PengirimOtpPencatat : IPengirimOtp
     public string? KodeUntuk(string noHp)
     {
         lock (_kode) return _kode.GetValueOrDefault(noHp);
+    }
+}
+
+/// <summary>
+/// Pengganti pengirim notifikasi yang mencatat kirimannya alih-alih menghubungi Firebase.
+///
+/// Yang diuji lewat ini bukan Firebase-nya, melainkan seluruh keputusan sebelum Firebase:
+/// siapa yang dikirimi, kalimat apa, dan perangkat mana yang dibuang. Itu bagian yang bisa
+/// salah tanpa terlihat, dan bagian yang tidak butuh jaringan untuk dibuktikan.
+/// </summary>
+public class PengirimNotifikasiPencatat : IPengirimNotifikasi
+{
+    private readonly List<(IReadOnlyCollection<string> Token, PesanNotifikasi Pesan)> _terkirim = [];
+
+    /// <summary>
+    /// Token yang akan dijawab "sudah tidak terdaftar", menirukan perangkat yang aplikasinya
+    /// sudah dicopot. Diisi tes yang menguji pembuangan token mati.
+    /// </summary>
+    public HashSet<string> TokenMati { get; } = [];
+
+    public IReadOnlyList<(IReadOnlyCollection<string> Token, PesanNotifikasi Pesan)> Terkirim
+    {
+        get { lock (_terkirim) return [.. _terkirim]; }
+    }
+
+    public Task<IReadOnlyCollection<string>> KirimAsync(
+        IReadOnlyCollection<string> token,
+        PesanNotifikasi pesan,
+        CancellationToken batal = default)
+    {
+        lock (_terkirim) _terkirim.Add((token, pesan));
+
+        return Task.FromResult<IReadOnlyCollection<string>>(
+            [.. token.Where(TokenMati.Contains)]);
+    }
+
+    public void Bersihkan()
+    {
+        lock (_terkirim) _terkirim.Clear();
+        TokenMati.Clear();
     }
 }
