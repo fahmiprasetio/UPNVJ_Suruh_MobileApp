@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:upnvj_suruh/data/fake/fake_order_repository.dart';
 import 'package:upnvj_suruh/domain/enums.dart';
 import 'package:upnvj_suruh/domain/models/order.dart';
+import 'package:upnvj_suruh/domain/models/runner_ringkas.dart';
 
 /// Aturan penutupan order oleh runner.
 ///
@@ -24,7 +25,7 @@ void main() {
       dibuatPada: DateTime.now(),
       harga: 11000,
       jumlahRunnerDibutuhkan: jumlahRunnerDibutuhkan,
-      runnerIds: runnerIds,
+      runners: [for (final id in runnerIds) RunnerRingkas(id: id, nama: 'Runner')],
     );
   }
 

@@ -30,6 +30,7 @@ void main() {
           id: 'f-1',
           orderId: 'o-uji',
           runnerId: runnerId,
+          namaRunner: 'Runner Uji',
           harga: 50000,
           estimasiDurasi: const Duration(hours: 3),
           jadwalMulai: sekarang.add(const Duration(days: 2)),

@@ -8,6 +8,7 @@ import 'package:upnvj_suruh/data/fake/fake_order_repository.dart';
 import 'package:upnvj_suruh/data/fake/seed_data.dart';
 import 'package:upnvj_suruh/domain/enums.dart';
 import 'package:upnvj_suruh/domain/models/order.dart';
+import 'package:upnvj_suruh/domain/models/runner_ringkas.dart';
 import 'package:upnvj_suruh/providers/repository_providers.dart';
 import '../../support/tiruan.dart';
 
@@ -114,7 +115,7 @@ void main() {
       alamatTujuan: 'Gedung FIK UPNVJ',
       harga: 11000,
       jumlahRunnerDibutuhkan: jumlahRunnerDibutuhkan,
-      runnerIds: runnerIds,
+      runners: [for (final id in runnerIds) RunnerRingkas(id: id, nama: 'Runner')],
     );
   }
 

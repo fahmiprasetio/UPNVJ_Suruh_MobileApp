@@ -107,6 +107,14 @@ class _KartuPenawaranState extends ConsumerState<KartuPenawaran> {
             ),
             const SizedBox(height: AppTheme.spasiSedang),
             _BarisPenawaran(
+              icon: Icons.person_outline,
+              label: 'Runner',
+              nilai: penawaran.noHpRunner == null
+                  ? penawaran.namaRunner
+                  : '${penawaran.namaRunner} · ${penawaran.noHpRunner}',
+              menunggu: menunggu,
+            ),
+            _BarisPenawaran(
               icon: Icons.event_outlined,
               label: 'Dikerjakan',
               nilai: formatJadwal(penawaran.jadwalMulai),

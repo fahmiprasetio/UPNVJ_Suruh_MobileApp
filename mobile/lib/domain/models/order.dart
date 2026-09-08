@@ -4,6 +4,7 @@ import '../enums.dart';
 import 'order_message.dart';
 import 'order_offer.dart';
 import 'payment.dart';
+import 'runner_ringkas.dart';
 
 /// Satu order, dari permintaan sampai selesai.
 ///
@@ -28,7 +29,7 @@ class Order {
     this.estimasiDurasi,
     this.jadwalMulai,
     this.jumlahRunnerDibutuhkan = 1,
-    this.runnerIds = const [],
+    this.runners = const [],
     this.fotoBuktiUrl,
     this.catatanSerahTerima,
     this.dibayarPada,
@@ -82,7 +83,17 @@ class Order {
 
   /// Pindah kos bisa butuh 2-3 runner sekaligus (bagian 5).
   final int jumlahRunnerDibutuhkan;
-  final List<String> runnerIds;
+
+  /// Runner yang sudah menerima order ini, lengkap dengan nama dan nomor HP.
+  final List<RunnerRingkas> runners;
+
+  /// Id runner yang sudah menerima order ini, diturunkan dari [runners].
+  ///
+  /// Dipertahankan sebagai getter terpisah karena sebagian besar pemeriksaan
+  /// ("apakah runner ini sudah memegang order ini", "berapa slot yang sudah
+  /// terisi") cuma butuh id, bukan nama atau nomor HP. Diturunkan, bukan
+  /// disimpan sebagai kolom terpisah, supaya keduanya tidak bisa berselisih.
+  List<String> get runnerIds => [for (final r in runners) r.id];
 
   final String? fotoBuktiUrl;
   final String? catatanSerahTerima;
@@ -159,7 +170,7 @@ class Order {
     Duration? estimasiDurasi,
     DateTime? jadwalMulai,
     int? jumlahRunnerDibutuhkan,
-    List<String>? runnerIds,
+    List<RunnerRingkas>? runners,
     String? fotoBuktiUrl,
     String? catatanSerahTerima,
     DateTime? dibayarPada,
@@ -188,7 +199,7 @@ class Order {
       jadwalMulai: jadwalMulai ?? this.jadwalMulai,
       jumlahRunnerDibutuhkan:
           jumlahRunnerDibutuhkan ?? this.jumlahRunnerDibutuhkan,
-      runnerIds: runnerIds ?? this.runnerIds,
+      runners: runners ?? this.runners,
       fotoBuktiUrl: fotoBuktiUrl ?? this.fotoBuktiUrl,
       catatanSerahTerima: catatanSerahTerima ?? this.catatanSerahTerima,
       dibayarPada: dibayarPada ?? this.dibayarPada,

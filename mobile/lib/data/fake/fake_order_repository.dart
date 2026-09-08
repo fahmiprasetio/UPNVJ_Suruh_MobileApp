@@ -8,6 +8,7 @@ import '../../domain/models/halaman.dart';
 import '../../domain/models/order.dart';
 import '../../domain/models/order_message.dart';
 import '../../domain/models/order_offer.dart';
+import '../../domain/models/runner_ringkas.dart';
 import '../../domain/models/tarif.dart';
 import '../../domain/pricing/kalkulator_tarif.dart';
 import '../../domain/repositories/order_repository.dart';
@@ -420,10 +421,13 @@ class FakeOrderRepository implements OrderRepository {
       );
     }
 
+    final identitasRunner = _runnerRingkas(runnerId);
     final penawaran = OrderOffer(
       id: 'p-${DateTime.now().microsecondsSinceEpoch}-${_random.nextInt(999)}',
       orderId: orderId,
       runnerId: runnerId,
+      namaRunner: identitasRunner.nama,
+      noHpRunner: identitasRunner.noHp,
       harga: harga,
       estimasiDurasi: estimasiDurasi,
       jadwalMulai: jadwalMulai,
@@ -586,10 +590,17 @@ class FakeOrderRepository implements OrderRepository {
         );
       }
 
-      final runnerBaru = [...order.runnerIds, disetujui.runnerId];
+      final runnerBaru = [
+        ...order.runners,
+        RunnerRingkas(
+          id: disetujui.runnerId,
+          nama: disetujui.namaRunner,
+          noHp: disetujui.noHpRunner,
+        ),
+      ];
       final kuotaPenuh = runnerBaru.length >= order.jumlahRunnerDibutuhkan;
       final diperbarui = order.copyWith(
-        runnerIds: runnerBaru,
+        runners: runnerBaru,
         // Satu slot yang dibutuhkan sudah terisi oleh pemenang tawaran itu
         // sendiri kalau kuotanya cuma satu orang. Kalau butuh lebih (misal
         // pindahan kos), sisa slotnya tetap disiarkan persis seperti Jalur A.
@@ -638,11 +649,11 @@ class FakeOrderRepository implements OrderRepository {
     if (order.kuotaRunnerPenuh) return false;
     if (order.runnerIds.contains(runnerId)) return false;
 
-    final runnerBaru = [...order.runnerIds, runnerId];
+    final runnerBaru = [...order.runners, _runnerRingkas(runnerId)];
     final kuotaPenuh = runnerBaru.length >= order.jumlahRunnerDibutuhkan;
     _ganti(
       order.copyWith(
-        runnerIds: runnerBaru,
+        runners: runnerBaru,
         status: kuotaPenuh ? OrderStatus.dikerjakan : OrderStatus.mencariRunner,
       ),
     );
@@ -782,7 +793,7 @@ class FakeOrderRepository implements OrderRepository {
 
     final diperbarui = order.copyWith(
       status: OrderStatus.mencariRunner,
-      runnerIds: [...order.runnerIds]..remove(runnerId),
+      runners: [...order.runners]..removeWhere((r) => r.id == runnerId),
       messages: [
         ...order.messages,
         _pesanBaru(orderId, MessageSender.runner, alasan.trim()),
@@ -982,4 +993,13 @@ class FakeOrderRepository implements OrderRepository {
   String _namaKlien(String klienId) =>
       SeedData.semuaUser.where((u) => u.id == klienId).firstOrNull?.nama ??
       'Klien';
+
+  RunnerRingkas _runnerRingkas(String runnerId) {
+    final user = SeedData.semuaUser.where((u) => u.id == runnerId).firstOrNull;
+    return RunnerRingkas(
+      id: runnerId,
+      nama: user?.nama ?? 'Runner',
+      noHp: user?.noHp,
+    );
+  }
 }

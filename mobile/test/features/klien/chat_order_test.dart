@@ -11,6 +11,7 @@ import 'package:upnvj_suruh/data/fake/seed_data.dart';
 import 'package:upnvj_suruh/domain/models/order.dart';
 import 'package:upnvj_suruh/domain/models/order_message.dart';
 import 'package:upnvj_suruh/domain/models/order_offer.dart';
+import 'package:upnvj_suruh/domain/models/runner_ringkas.dart';
 import 'package:upnvj_suruh/providers/repository_providers.dart';
 import 'package:upnvj_suruh/core/config/batas_halaman.dart';
 import 'package:upnvj_suruh/providers/order_providers.dart';
@@ -96,6 +97,8 @@ void main() {
           id: 'p-tawar-uji',
           orderId: 'o-tawar-uji',
           runnerId: SeedData.runner.id,
+          namaRunner: SeedData.runner.nama,
+          noHpRunner: SeedData.runner.noHp,
           harga: 150000,
           estimasiDurasi: const Duration(hours: 2),
           jadwalMulai: sekarang.add(const Duration(days: 2)),
@@ -296,7 +299,13 @@ void main() {
       status: OrderStatus.dikerjakan,
       dibuatPada: mulai,
       harga: 12000,
-      runnerIds: [SeedData.runner.id],
+      runners: [
+        RunnerRingkas(
+          id: SeedData.runner.id,
+          nama: SeedData.runner.nama,
+          noHp: SeedData.runner.noHp,
+        ),
+      ],
       messages: [
         for (var i = 1; i <= jumlahPesan; i++)
           OrderMessage(

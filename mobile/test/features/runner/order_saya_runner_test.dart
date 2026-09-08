@@ -8,6 +8,7 @@ import 'package:upnvj_suruh/data/fake/fake_order_repository.dart';
 import 'package:upnvj_suruh/data/fake/seed_data.dart';
 import 'package:upnvj_suruh/domain/enums.dart';
 import 'package:upnvj_suruh/domain/models/order.dart';
+import 'package:upnvj_suruh/domain/models/runner_ringkas.dart';
 import 'package:upnvj_suruh/providers/repository_providers.dart';
 import '../../support/tiruan.dart';
 
@@ -101,7 +102,13 @@ void main() {
     // bertanya lewat chat.
     final anterJemput = SeedData.orderAwal().first.copyWith(
       status: OrderStatus.dikerjakan,
-      runnerIds: [SeedData.runner.id],
+      runners: [
+        RunnerRingkas(
+          id: SeedData.runner.id,
+          nama: SeedData.runner.nama,
+          noHp: SeedData.runner.noHp,
+        ),
+      ],
     );
     await bukaOrderSaya(tester, orderAwal: [anterJemput]);
 
@@ -205,7 +212,13 @@ void main() {
           status: OrderStatus.selesai,
           dibuatPada: DateTime.now(),
           harga: 11000,
-          runnerIds: [SeedData.runner.id],
+          runners: [
+        RunnerRingkas(
+          id: SeedData.runner.id,
+          nama: SeedData.runner.nama,
+          noHp: SeedData.runner.noHp,
+        ),
+      ],
           selesaiPada: DateTime.now(),
           fotoBuktiUrl: 'fake://bukti/o-selesai.jpg',
         ),
@@ -242,7 +255,13 @@ void main() {
             status: OrderStatus.selesai,
             dibuatPada: DateTime.now(),
             harga: 11000,
-            runnerIds: [SeedData.runner.id],
+            runners: [
+        RunnerRingkas(
+          id: SeedData.runner.id,
+          nama: SeedData.runner.nama,
+          noHp: SeedData.runner.noHp,
+        ),
+      ],
             selesaiPada: DateTime.now(),
             fotoBuktiUrl: 'fake://bukti/o-selesai.jpg',
           ),

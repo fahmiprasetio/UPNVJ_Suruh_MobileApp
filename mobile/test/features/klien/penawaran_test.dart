@@ -67,6 +67,7 @@ void main() {
           id: 'p-uji',
           orderId: 'o-uji',
           runnerId: runnerId,
+          namaRunner: 'Runner Uji',
           harga: 175000,
           estimasiDurasi: const Duration(hours: 2),
           jadwalMulai: jadwalPenawaran ?? jadwalDiminta,
@@ -265,6 +266,7 @@ void main() {
           id: 'p-satu',
           orderId: 'o-uji',
           runnerId: 'u-runner-satu',
+          namaRunner: 'Runner Satu',
           harga: 175000,
           estimasiDurasi: const Duration(hours: 2),
           jadwalMulai: jadwalDiminta,
@@ -275,6 +277,7 @@ void main() {
           id: 'p-dua',
           orderId: 'o-uji',
           runnerId: 'u-runner-dua',
+          namaRunner: 'Runner Dua',
           harga: 150000,
           estimasiDurasi: const Duration(hours: 3),
           jadwalMulai: jadwalDiminta,
@@ -288,5 +291,9 @@ void main() {
     expect(find.text('Rp 175.000'), findsOneWidget);
     expect(find.text('Rp 150.000'), findsOneWidget);
     expect(find.text('Setuju & Bayar'), findsNWidgets(2));
+
+    // Klien tidak boleh memilih cuma dari harga tanpa tahu siapa runnernya.
+    expect(find.text('Runner Satu'), findsOneWidget);
+    expect(find.text('Runner Dua'), findsOneWidget);
   });
 }

@@ -4,6 +4,7 @@ import 'package:upnvj_suruh/data/fake/fake_order_repository.dart';
 import 'package:upnvj_suruh/domain/enums.dart';
 import 'package:upnvj_suruh/domain/models/order.dart';
 import 'package:upnvj_suruh/domain/models/order_offer.dart';
+import 'package:upnvj_suruh/domain/models/runner_ringkas.dart';
 import 'package:upnvj_suruh/data/fake/seed_data.dart';
 
 /// Teks bebas yang tidak dibatasi adalah pintu membebani penyimpanan, dan
@@ -96,6 +97,7 @@ void main() {
           id: 'p-1',
           orderId: 'o-uji',
           runnerId: 'u-runner-1',
+          namaRunner: 'Runner Uji',
           harga: 50000,
           estimasiDurasi: const Duration(hours: 2),
           jadwalMulai: DateTime.now().add(const Duration(days: 1)),
@@ -120,7 +122,7 @@ void main() {
   test('catatan serah terima yang melewati batas ditolak', () async {
     final order = orderAktif().copyWith(
       status: OrderStatus.dikerjakan,
-      runnerIds: const ['u-runner-1'],
+      runners: const [RunnerRingkas(id: 'u-runner-1', nama: 'Runner Uji')],
     );
     final repo = FakeOrderRepository(orderAwal: [order]);
     addTearDown(repo.dispose);

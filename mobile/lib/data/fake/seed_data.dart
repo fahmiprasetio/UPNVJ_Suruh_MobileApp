@@ -2,6 +2,7 @@ import '../../domain/enums.dart';
 import '../../domain/models/app_user.dart';
 import '../../domain/models/order.dart';
 import '../../domain/models/order_message.dart';
+import '../../domain/models/runner_ringkas.dart';
 
 /// Data contoh untuk pengembangan antarmuka.
 ///
@@ -78,7 +79,9 @@ class SeedData {
         deskripsi: 'Ayam geprek level 2 + es teh manis, warung Bu Yati',
         alamatTujuan: 'Kos Melati kamar 7',
         harga: 8000,
-        runnerIds: [runner.id],
+        runners: [
+          RunnerRingkas(id: runner.id, nama: runner.nama, noHp: runner.noHp),
+        ],
         dibayarPada: sekarang.subtract(const Duration(minutes: 36)),
       ),
       Order(
@@ -136,7 +139,9 @@ class SeedData {
         // Ongkos jasa 10.000 + 1 km x 2.000.
         jarakKm: 1,
         harga: 12000,
-        runnerIds: [runner.id],
+        runners: [
+          RunnerRingkas(id: runner.id, nama: runner.nama, noHp: runner.noHp),
+        ],
         dibayarPada: sekarang.subtract(const Duration(days: 2)),
         selesaiPada: sekarang.subtract(
           const Duration(days: 2, hours: -1),

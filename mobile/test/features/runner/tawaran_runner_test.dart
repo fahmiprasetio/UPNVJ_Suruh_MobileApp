@@ -61,6 +61,8 @@ void main() {
           id: 'f-1',
           orderId: 'o-tawar',
           runnerId: SeedData.runner.id,
+          namaRunner: SeedData.runner.nama,
+          noHpRunner: SeedData.runner.noHp,
           harga: 50000,
           estimasiDurasi: const Duration(hours: 3),
           jadwalMulai: sekarang.add(const Duration(days: 2)),

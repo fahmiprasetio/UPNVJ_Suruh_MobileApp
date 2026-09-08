@@ -57,7 +57,6 @@ void main() {
         status: OrderStatus.selesai,
         dibuatPada: DateTime.now().subtract(Duration(hours: jumlah - i)),
         harga: 12000,
-        runnerIds: const [],
         selesaiPada: DateTime.now().subtract(Duration(minutes: jumlah - i)),
       ),
   ];

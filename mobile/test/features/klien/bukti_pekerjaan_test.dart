@@ -10,6 +10,7 @@ import 'package:upnvj_suruh/data/fake/fake_order_repository.dart';
 import 'package:upnvj_suruh/data/fake/seed_data.dart';
 import 'package:upnvj_suruh/domain/enums.dart';
 import 'package:upnvj_suruh/domain/models/order.dart';
+import 'package:upnvj_suruh/domain/models/runner_ringkas.dart';
 import 'package:upnvj_suruh/features/klien/detail_order/widgets/kartu_bukti_pekerjaan.dart';
 import 'package:upnvj_suruh/providers/repository_providers.dart';
 
@@ -86,7 +87,13 @@ void main() {
       status: OrderStatus.selesai,
       dibuatPada: DateTime.now().subtract(const Duration(hours: 2)),
       harga: 12000,
-      runnerIds: [SeedData.runner.id],
+      runners: [
+        RunnerRingkas(
+          id: SeedData.runner.id,
+          nama: SeedData.runner.nama,
+          noHp: SeedData.runner.noHp,
+        ),
+      ],
       selesaiPada: DateTime.now().subtract(const Duration(hours: 1)),
       fotoBuktiUrl: fotoBuktiUrl,
       catatanSerahTerima: catatanSerahTerima,

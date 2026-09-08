@@ -2,6 +2,7 @@ import '../../domain/enums.dart';
 import '../../domain/models/order.dart';
 import '../../domain/models/order_message.dart';
 import '../../domain/models/order_offer.dart';
+import '../../domain/models/runner_ringkas.dart';
 import '../../core/api/konfigurasi_api.dart';
 import 'pemeta_dasar.dart';
 
@@ -33,8 +34,9 @@ class PemetaOrder {
       estimasiDurasi: _menit(isi['estimasiDurasiMenit']),
       jadwalMulai: _waktu(isi, 'jadwalMulai'),
       jumlahRunnerDibutuhkan: (isi['jumlahRunnerDibutuhkan'] as num?)?.toInt() ?? 1,
-      runnerIds: [
-        for (final id in (isi['runnerIds'] as List? ?? const [])) id.toString(),
+      runners: [
+        for (final r in (isi['runners'] as List? ?? const []))
+          runnerRingkas(r as Map<String, dynamic>),
       ],
       // Dilengkapi di sini, satu tempat, bukan di tiap layar yang menggambarnya.
       // Layar yang harus merangkai alamatnya sendiri adalah layar yang bisa lupa.
@@ -56,10 +58,18 @@ class PemetaOrder {
     );
   }
 
+  static RunnerRingkas runnerRingkas(Map<String, dynamic> isi) => RunnerRingkas(
+    id: _teks(isi, 'id'),
+    nama: _teks(isi, 'nama'),
+    noHp: isi['noHp'] as String?,
+  );
+
   static OrderOffer penawaran(Map<String, dynamic> isi) => OrderOffer(
     id: _teks(isi, 'id'),
     orderId: _teks(isi, 'orderId'),
     runnerId: _teks(isi, 'runnerId'),
+    namaRunner: (isi['namaRunner'] as String?) ?? 'Runner',
+    noHpRunner: isi['noHpRunner'] as String?,
     harga: _rupiah(isi['harga']) ?? 0,
     estimasiDurasi: _menit(isi['estimasiDurasiMenit']) ?? Duration.zero,
     jadwalMulai: _waktu(isi, 'jadwalMulai')!,

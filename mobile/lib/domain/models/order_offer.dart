@@ -17,6 +17,8 @@ class OrderOffer {
     required this.id,
     required this.orderId,
     required this.runnerId,
+    required this.namaRunner,
+    this.noHpRunner,
     required this.harga,
     required this.estimasiDurasi,
     required this.jadwalMulai,
@@ -30,6 +32,11 @@ class OrderOffer {
 
   /// Runner yang mengajukan penawaran ini.
   final String runnerId;
+
+  /// Nama runner itu, supaya klien tahu siapa yang ia pilih sebelum
+  /// menyetujui, bukan cuma harga dan jadwalnya.
+  final String namaRunner;
+  final String? noHpRunner;
 
   final int harga;
   final Duration estimasiDurasi;
@@ -49,6 +56,8 @@ class OrderOffer {
       id: id,
       orderId: orderId,
       runnerId: runnerId,
+      namaRunner: namaRunner,
+      noHpRunner: noHpRunner,
       harga: harga,
       estimasiDurasi: estimasiDurasi,
       jadwalMulai: jadwalMulai,

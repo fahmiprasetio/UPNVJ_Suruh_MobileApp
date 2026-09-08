@@ -9,6 +9,7 @@ import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/enums.dart';
 import '../../../domain/models/order.dart';
+import '../../../domain/models/runner_ringkas.dart';
 import '../../../domain/service_catalog.dart';
 import '../../../providers/order_providers.dart';
 import '../../../providers/repository_providers.dart';
@@ -225,6 +226,13 @@ class _Isi extends ConsumerWidget {
                     nilai:
                         '${order.runnerIds.length} dari '
                         '${order.jumlahRunnerDibutuhkan} orang',
+                  ),
+                if (order.runners.isNotEmpty)
+                  _Baris(
+                    label: order.runners.length > 1 ? 'Para runner' : 'Runner',
+                    nilai: order.runners.length == 1
+                        ? _identitasRunner(order.runners.single)
+                        : order.runners.map((r) => r.nama).join(', '),
                   ),
               ],
             ),
@@ -473,6 +481,14 @@ class _JalanBatalState extends ConsumerState<_JalanBatal> {
       );
   }
 }
+
+/// Nama runner, plus nomor HP-nya kalau ada.
+///
+/// Nomor HP cuma ditulis untuk satu runner, bukan digabung untuk beberapa
+/// sekaligus: order multi-runner cukup menyebut nama semuanya, dan klien yang
+/// perlu menghubungi salah satunya bisa lewat chat ordernya.
+String _identitasRunner(RunnerRingkas runner) =>
+    runner.noHp == null ? runner.nama : '${runner.nama} · ${runner.noHp}';
 
 class _Baris extends StatelessWidget {
   const _Baris({required this.label, required this.nilai});
