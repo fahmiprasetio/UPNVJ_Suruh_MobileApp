@@ -15,15 +15,18 @@ import '../api/klien_api.dart';
 /// akun tetap menerima notifikasi order milik pemilik sebelumnya. Persis pola yang sudah
 /// dipakai koneksi hub SignalR (lihat `orderHubClientProvider`).
 ///
+/// ## Ketukan notifikasi
+///
+/// Id order ikut di muatan pesan (kunci `orderId`, lihat `PengirimNotifikasiFirebase` di
+/// backend), jadi ketukan -- baik saat aplikasi masih di latar belakang
+/// (`onMessageOpenedApp`) maupun saat ia membuka aplikasi dari kondisi tertutup
+/// (`getInitialMessage`) -- diteruskan lewat [bukaOrder]. Rute mana yang dituju (layar
+/// klien atau layar runner) bukan urusan kelas ini; itu keputusan pemanggil, yang punya
+/// akses ke peran aktif dan ke router.
+///
 /// ## Yang sengaja belum ada
 ///
-/// Ketukan pada notifikasinya tidak membuka layar order yang bersangkutan, cuma membuka
-/// aplikasinya. Id ordernya sudah ikut di dalam muatan pesan (server mengirimkannya justru
-/// untuk itu), jadi yang kurang tinggal pengarah rutenya. Ditunda dengan sengaja: ia butuh
-/// keputusan rute yang berbeda untuk klien dan runner, dan seluruh perilakunya cuma bisa
-/// dibuktikan di ponsel sungguhan, yang belum pernah terjadi (rencana capstone bagian 39.9).
-///
-/// Notifikasi juga tidak digambar ulang saat aplikasinya sedang dibuka dan terlihat. Android
+/// Notifikasi tidak digambar ulang saat aplikasinya sedang dibuka dan terlihat. Android
 /// memang tidak menampilkannya sendiri dalam keadaan itu, dan yang biasanya dipasang untuk
 /// menutupinya adalah `flutter_local_notifications`. Tidak dipasang: layar yang sedang
 /// terbuka sudah ikut berubah seketika lewat kabar SignalR, jadi yang ditambah paket itu
@@ -32,10 +35,14 @@ import '../api/klien_api.dart';
 class NotifikasiPush {
   NotifikasiPush({
     required KlienApi klien,
+    required void Function(String orderId) bukaOrder,
     Future<bool> Function()? mintaIzin,
     Future<String?> Function()? ambilToken,
     Stream<String>? tokenBerganti,
+    Stream<RemoteMessage>? pesanDibuka,
+    Future<RemoteMessage?> Function()? pesanAwal,
   }) : _klien = klien,
+       _bukaOrder = bukaOrder,
        _mintaIzin = mintaIzin ?? _mintaIzinFirebase,
        _ambilToken = ambilToken ?? (() => FirebaseMessaging.instance.getToken()),
        // Fungsi, bukan aliran yang sudah jadi, dan bedanya bukan gaya: membaca
@@ -47,15 +54,24 @@ class NotifikasiPush {
        // yang menelan galatnya.
        _tokenBerganti = tokenBerganti == null
            ? (() => FirebaseMessaging.instance.onTokenRefresh)
-           : (() => tokenBerganti);
+           : (() => tokenBerganti),
+       _pesanDibuka = pesanDibuka == null
+           ? (() => FirebaseMessaging.onMessageOpenedApp)
+           : (() => pesanDibuka),
+       _pesanAwal = pesanAwal ?? (() => FirebaseMessaging.instance.getInitialMessage());
 
   final KlienApi _klien;
+  final void Function(String orderId) _bukaOrder;
   final Future<bool> Function() _mintaIzin;
   final Future<String?> Function() _ambilToken;
   final Stream<String> Function() _tokenBerganti;
+  final Stream<RemoteMessage> Function() _pesanDibuka;
+  final Future<RemoteMessage?> Function() _pesanAwal;
 
   StreamSubscription<String>? _langganan;
+  StreamSubscription<RemoteMessage>? _langgananPesan;
   String? _tokenTerdaftar;
+  bool _awalDiperiksa = false;
 
   static Future<bool> _mintaIzinFirebase() async {
     final izin = await FirebaseMessaging.instance.requestPermission();
@@ -81,6 +97,17 @@ class NotifikasiPush {
       // pembaruan aplikasi). Tanpa langganan ini, perangkat berhenti menerima apa pun sejak
       // pemutaran pertama, tanpa satu tanda pun di layar siapa pun.
       _langganan ??= _tokenBerganti().listen(_daftarkan);
+      _langgananPesan ??= _pesanDibuka().listen(_tanganiPesan);
+
+      // Cuma diperiksa sekali per proses: begitu dikonsumsi di sini, panggilan
+      // berikutnya ke `getInitialMessage()` menjawab null juga, jadi tidak ada
+      // gunanya diulang tiap kali `mulai()` dipanggil (mis. keluar-masuk akun
+      // dalam satu proses yang sama).
+      if (!_awalDiperiksa) {
+        _awalDiperiksa = true;
+        final awal = await _pesanAwal();
+        if (awal != null) _tanganiPesan(awal);
+      }
     } catch (_) {
       // Sengaja diam, alasannya di atas.
     }
@@ -98,6 +125,8 @@ class NotifikasiPush {
 
     await _langganan?.cancel();
     _langganan = null;
+    await _langgananPesan?.cancel();
+    _langgananPesan = null;
 
     if (token == null) return;
 
@@ -113,8 +142,15 @@ class NotifikasiPush {
     _tokenTerdaftar = token;
   }
 
+  void _tanganiPesan(RemoteMessage pesan) {
+    final orderId = pesan.data['orderId'];
+    if (orderId is String && orderId.isNotEmpty) _bukaOrder(orderId);
+  }
+
   void dispose() {
     _langganan?.cancel();
     _langganan = null;
+    _langgananPesan?.cancel();
+    _langgananPesan = null;
   }
 }

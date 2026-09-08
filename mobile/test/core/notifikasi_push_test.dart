@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -15,13 +17,17 @@ import 'package:upnvj_suruh/core/notifikasi/notifikasi_push.dart';
 /// Perangkat yang tidak pernah dilepas berarti notifikasi order milik akun sebelumnya tetap
 /// muncul di layar orang yang sekarang memakai HP itu.
 void main() {
-  ({NotifikasiPush notifikasi, List<http.Request> dikirim}) buat({
+  ({NotifikasiPush notifikasi, List<http.Request> dikirim, List<String> dibuka})
+  buat({
     bool izin = true,
     String? token = 'token-perangkat',
     Stream<String>? tokenBerganti,
+    Stream<RemoteMessage>? pesanDibuka,
+    Future<RemoteMessage?> Function()? pesanAwal,
     int status = 204,
   }) {
     final dikirim = <http.Request>[];
+    final dibuka = <String>[];
 
     final klien = KlienApi(
       baseUrl: 'http://uji.local',
@@ -38,13 +44,16 @@ void main() {
 
     final notifikasi = NotifikasiPush(
       klien: klien,
+      bukaOrder: dibuka.add,
       mintaIzin: () async => izin,
       ambilToken: () async => token,
       tokenBerganti: tokenBerganti ?? const Stream<String>.empty(),
+      pesanDibuka: pesanDibuka ?? const Stream<RemoteMessage>.empty(),
+      pesanAwal: pesanAwal ?? (() async => null),
     );
     addTearDown(notifikasi.dispose);
 
-    return (notifikasi: notifikasi, dikirim: dikirim);
+    return (notifikasi: notifikasi, dikirim: dikirim, dibuka: dibuka);
   }
 
   group('mulai', () {
@@ -117,7 +126,7 @@ void main() {
         klien: MockClient((_) async => http.Response('{}', 204)),
       );
 
-      final notifikasi = NotifikasiPush(klien: klien);
+      final notifikasi = NotifikasiPush(klien: klien, bukaOrder: (_) {});
       addTearDown(notifikasi.dispose);
 
       await expectLater(notifikasi.mulai(), completes);
@@ -153,6 +162,59 @@ void main() {
       await uji.notifikasi.berhenti();
 
       expect(jsonDecode(uji.dikirim.last.body), {'token': 'token-baru'});
+    });
+  });
+
+  group('ketukan notifikasi', () {
+    test('pesan yang ditekan saat aplikasi terbuka meneruskan orderId', () async {
+      final pengendali = StreamController<RemoteMessage>();
+      addTearDown(pengendali.close);
+      final uji = buat(pesanDibuka: pengendali.stream);
+
+      await uji.notifikasi.mulai();
+      pengendali.add(const RemoteMessage(data: {'orderId': 'order-123'}));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(uji.dibuka, ['order-123']);
+    });
+
+    test('pesan tanpa orderId tidak meneruskan apa pun', () async {
+      final pengendali = StreamController<RemoteMessage>();
+      addTearDown(pengendali.close);
+      final uji = buat(pesanDibuka: pengendali.stream);
+
+      await uji.notifikasi.mulai();
+      pengendali.add(const RemoteMessage(data: {}));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(uji.dibuka, isEmpty);
+    });
+
+    test('pesan yang membuka aplikasi dari kondisi tertutup ikut diteruskan', () async {
+      final uji = buat(
+        pesanAwal: () async => const RemoteMessage(data: {'orderId': 'order-cold-start'}),
+      );
+
+      await uji.notifikasi.mulai();
+
+      expect(uji.dibuka, ['order-cold-start']);
+    });
+
+    test('pesan awal cuma diperiksa sekali per proses', () async {
+      var dipanggil = 0;
+      final uji = buat(
+        pesanAwal: () async {
+          dipanggil++;
+          return const RemoteMessage(data: {'orderId': 'order-cold-start'});
+        },
+      );
+
+      await uji.notifikasi.mulai();
+      await uji.notifikasi.berhenti();
+      await uji.notifikasi.mulai();
+
+      expect(dipanggil, 1);
+      expect(uji.dibuka, ['order-cold-start']);
     });
   });
 

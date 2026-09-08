@@ -10,6 +10,8 @@ import '../core/config/sumber_data.dart';
 import '../core/notifikasi/konfigurasi_firebase.dart';
 import '../core/notifikasi/notifikasi_push.dart';
 import '../core/realtime/order_hub_client.dart';
+import '../core/router/app_router.dart';
+import '../domain/enums.dart';
 import '../data/api/api_auth_repository.dart';
 import '../data/api/api_foto_bukti_repository.dart';
 import '../data/api/api_order_repository.dart';
@@ -216,7 +218,22 @@ final notifikasiPushProvider = Provider<NotifikasiPush?>((ref) {
   if (ref.watch(sumberDataProvider) == SumberData.tiruan) return null;
   if (!KonfigurasiFirebase.lengkap) return null;
 
-  final notifikasi = NotifikasiPush(klien: ref.watch(klienApiProvider));
+  final notifikasi = NotifikasiPush(
+    klien: ref.watch(klienApiProvider),
+    // ponytail: dituju lewat peran bawaan akun, bukan peran yang sedang aktif dipakai
+    // (rencana capstone bagian 14.2 membolehkan satu akun berpindah mode). Founder yang
+    // memegang dua peran bisa saja sedang di mode runner ketika notifikasi klien datang
+    // dan sebaliknya; muatan pesannya cuma berisi orderId, tidak ada penanda peran mana
+    // yang dituju. Upgrade path: server ikut mengirim peran tertuju, atau baca
+    // `peranAktifProvider` sekali `Ref` itu terjangkau tanpa membuat impor melingkar baru.
+    bukaOrder: (orderId) {
+      final peran = ref.read(userAktifProvider).value?.peranBawaan;
+      final tujuan = peran == UserRole.runner
+          ? Rute.chatOrderRunner(orderId)
+          : Rute.detailOrder(orderId);
+      ref.read(routerProvider).go(tujuan);
+    },
+  );
   ref.onDispose(notifikasi.dispose);
 
   ref.listen(userAktifProvider, (_, sekarang) {
