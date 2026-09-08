@@ -60,5 +60,12 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- Nomor HP runner di detail order dibuka lewat url_launcher (skema tel:).
+             Tanpa ini, Android 11 ke atas menyembunyikan aplikasi telepon dari
+             daftar yang boleh dilihat, dan launchUrl gagal diam-diam. -->
+        <intent>
+            <action android:name="android.intent.action.DIAL"/>
+            <data android:scheme="tel"/>
+        </intent>
     </queries>
 </manifest>

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/galat_api.dart';
 import '../../../core/config/batas_masukan.dart';
@@ -227,13 +228,13 @@ class _Isi extends ConsumerWidget {
                         '${order.runnerIds.length} dari '
                         '${order.jumlahRunnerDibutuhkan} orang',
                   ),
-                if (order.runners.isNotEmpty)
+                if (order.runners.length > 1)
                   _Baris(
-                    label: order.runners.length > 1 ? 'Para runner' : 'Runner',
-                    nilai: order.runners.length == 1
-                        ? _identitasRunner(order.runners.single)
-                        : order.runners.map((r) => r.nama).join(', '),
+                    label: 'Para runner',
+                    nilai: order.runners.map((r) => r.nama).join(', '),
                   ),
+                if (order.runners.length == 1)
+                  _BarisRunner(runner: order.runners.single),
               ],
             ),
           ),
@@ -482,13 +483,62 @@ class _JalanBatalState extends ConsumerState<_JalanBatal> {
   }
 }
 
-/// Nama runner, plus nomor HP-nya kalau ada.
+/// Tautan `tel:` untuk satu nomor HP.
+///
+/// Fungsi murni, terpisah dari widget yang memakainya, supaya bentuk URI-nya
+/// bisa diuji tanpa perlu merender apa pun.
+Uri uriTelepon(String noHp) => Uri(scheme: 'tel', path: noHp);
+
+/// Baris "Runner" pada detail order, satu runner saja.
 ///
 /// Nomor HP cuma ditulis untuk satu runner, bukan digabung untuk beberapa
-/// sekaligus: order multi-runner cukup menyebut nama semuanya, dan klien yang
-/// perlu menghubungi salah satunya bisa lewat chat ordernya.
-String _identitasRunner(RunnerRingkas runner) =>
-    runner.noHp == null ? runner.nama : '${runner.nama} · ${runner.noHp}';
+/// sekaligus: order multi-runner cukup menyebut nama semuanya di [_Baris]
+/// biasa, dan klien yang perlu menghubungi salah satunya bisa lewat chat
+/// ordernya. Baris ini terpisah dari [_Baris] karena cuma baris ini yang
+/// pernah punya bagian yang bisa ditekan untuk menelepon langsung.
+class _BarisRunner extends StatelessWidget {
+  const _BarisRunner({required this.runner});
+
+  final RunnerRingkas runner;
+
+  @override
+  Widget build(BuildContext context) {
+    final skema = Theme.of(context).colorScheme;
+    final teks = Theme.of(context).textTheme;
+    final noHp = runner.noHp;
+    final nilai = noHp == null ? runner.nama : '${runner.nama} · $noHp';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppTheme.spasiKecil),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              'Runner',
+              style: teks.bodyMedium?.copyWith(color: skema.onSurfaceVariant),
+            ),
+          ),
+          Expanded(
+            child: noHp == null
+                ? Text(nilai, style: teks.bodyMedium)
+                : InkWell(
+                    onTap: () => launchUrl(uriTelepon(noHp)),
+                    child: Text(
+                      nilai,
+                      style: teks.bodyMedium?.copyWith(
+                        color: skema.primary,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _Baris extends StatelessWidget {
   const _Baris({required this.label, required this.nilai});

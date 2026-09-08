@@ -6,6 +6,8 @@ import 'package:upnvj_suruh/app.dart';
 import 'package:upnvj_suruh/data/fake/fake_order_repository.dart';
 import 'package:upnvj_suruh/data/fake/seed_data.dart';
 import 'package:upnvj_suruh/domain/models/order.dart';
+import 'package:upnvj_suruh/features/klien/detail_order/detail_order_screen.dart'
+    show uriTelepon;
 import 'package:upnvj_suruh/providers/repository_providers.dart';
 
 import '../../support/tiruan.dart';
@@ -119,6 +121,29 @@ void main() {
       );
     },
   );
+
+  testWidgets('nomor HP runner tunggal ditampilkan sebagai tautan tel', (
+    tester,
+  ) async {
+    // SRH-0410 dikerjakan satu runner, SeedData.runner.
+    await bukaRiwayat(tester);
+    await tester.tap(find.textContaining('SRH-0410'));
+    await tester.pumpAndSettle();
+
+    final baris = find.textContaining(SeedData.runner.noHp);
+    expect(baris, findsOneWidget);
+    // Dibungkus InkWell, bukan Text polos, supaya jelas bisa ditekan. Tidak
+    // benar-benar ditekan di sini: menekannya memanggil url_launcher lewat
+    // kanal platform yang tidak ada di lingkungan tes.
+    expect(
+      find.ancestor(of: baris, matching: find.byType(InkWell)),
+      findsOneWidget,
+    );
+  });
+
+  test('uriTelepon membangun URI dengan skema tel', () {
+    expect(uriTelepon('081234567891'), Uri.parse('tel:081234567891'));
+  });
 
   testWidgets('order yang belum dibayar bisa dibatalkan sendiri', (
     tester,
