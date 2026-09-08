@@ -142,12 +142,18 @@ public class AdminOrderController(
             .Take(permintaan.Ukuran)
             .ToListAsync(batal);
 
-        var jumlahPesan = await db.JumlahPesanAsync(
-            [.. orders.Select(o => o.Id)], User.Id(), User.Punya(Peran.Admin), batal);
+        var pemanggil = User.Id();
+        var admin = User.Punya(Peran.Admin);
+        var idOrder = orders.Select(o => o.Id).ToList();
+        var jumlahPesan = await db.JumlahPesanAsync(idOrder, pemanggil, admin, batal);
+        var belumDibaca = await db.JumlahBelumDibacaAsync(idOrder, pemanggil, admin, batal);
 
         return Ok(new HalamanResponse<OrderResponse>(
             [.. orders.Select(o => OrderResponse.Dari(
-                o, o.Client?.Name ?? "Klien", jumlahPesan.GetValueOrDefault(o.Id)))],
+                o,
+                o.Client?.Name ?? "Klien",
+                jumlahPesan.GetValueOrDefault(o.Id),
+                belumDibaca.GetValueOrDefault(o.Id)))],
             total,
             permintaan.Halaman,
             permintaan.Ukuran));

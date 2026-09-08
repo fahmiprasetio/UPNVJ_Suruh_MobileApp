@@ -10,6 +10,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderOffer> OrderOffers => Set<OrderOffer>();
     public DbSet<OrderMessage> OrderMessages => Set<OrderMessage>();
+    public DbSet<OrderMessageRead> OrderMessageReads => Set<OrderMessageRead>();
     public DbSet<OrderRunnerAssignment> OrderRunnerAssignments => Set<OrderRunnerAssignment>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<UserRoleChange> UserRoleChanges => Set<UserRoleChange>();
@@ -236,6 +237,27 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasOne(m => m.Order)
                 .WithMany(o => o.Messages)
                 .HasForeignKey(m => m.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<OrderMessageRead>(entity =>
+        {
+            // Satu baris per (order, pengguna, jalur). Menandai ulang jalur yang sama
+            // menimpa penanda waktunya, bukan menambah baris -- lihat OrderMessageRead
+            // soal kenapa jalur umum memakai Guid.Empty, bukan null, di kolom ini.
+            entity.HasIndex(r => new { r.OrderId, r.UserId, r.RunnerPenawarId }).IsUnique();
+
+            entity.HasOne(r => r.Order)
+                .WithMany()
+                .HasForeignKey(r => r.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(r => r.User)
+                .WithMany()
+                .HasForeignKey(r => r.UserId)
+                // Sama seperti PerangkatNotifikasi: penanda baca bukan catatan yang perlu
+                // bertahan sesudah akunnya hilang, cuma keadaan yang berlaku selama akunnya
+                // ada.
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

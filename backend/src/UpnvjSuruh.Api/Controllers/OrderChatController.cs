@@ -153,6 +153,55 @@ public class OrderChatController(AppDbContext db, IHubContext<OrderHub> hub, Pen
         return Ok(OrderMessageResponse.Dari(pesan));
     }
 
+    /// <summary>Menandai jalur obrolan ini sudah dibaca pemanggil, sampai saat ini.</summary>
+    /// <remarks>
+    /// Dipanggil aplikasi setiap kali layar chat dibuka atau jendela pesannya diambil ulang,
+    /// jadi ia harus tahan dipanggil berulang -- upsert, bukan Add polos, mengikuti pola yang
+    /// sama dengan <c>PerangkatController.Daftarkan</c>. Tidak menyaring pesan mana yang
+    /// "sudah dibaca": satu penanda waktu per jalur sudah cukup, dan pesan yang belum dibaca
+    /// dihitung ulang dari situ lewat <see cref="Data.PesanTerlihat"/> setiap kali order
+    /// ini diminta lagi.
+    /// </remarks>
+    [HttpPost("dibaca")]
+    public async Task<IActionResult> TandaiDibaca(Guid id, [FromQuery] Guid? runnerId, CancellationToken batal)
+    {
+        var order = await Muat(id, batal);
+        var pemanggil = User.Id();
+        if (order is null || !AksesOrder.BolehLihat(order, pemanggil, User)) return NotFound();
+
+        var jalur = JalurObrolan(order, pemanggil, runnerId) ?? Guid.Empty;
+
+        var baris = await db.OrderMessageReads.SingleOrDefaultAsync(
+            r => r.OrderId == id && r.UserId == pemanggil && r.RunnerPenawarId == jalur, batal);
+
+        if (baris is null)
+        {
+            db.OrderMessageReads.Add(new OrderMessageRead
+            {
+                OrderId = id,
+                UserId = pemanggil,
+                RunnerPenawarId = jalur,
+            });
+        }
+        else
+        {
+            baris.LastReadAt = DateTime.UtcNow;
+        }
+
+        try
+        {
+            await db.SaveChangesAsync(batal);
+        }
+        catch (DbUpdateException galat) when (GalatDb.Bentrok(galat))
+        {
+            // Dua permintaan tandai-dibaca dari perangkat yang sama datang nyaris bersamaan
+            // (jendela chat yang dibuka lalu langsung diambil ulang berkala). Barisnya sudah
+            // ada dengan isi yang hampir sama, bukan kegagalan yang layak dijawab 500.
+        }
+
+        return NoContent();
+    }
+
     /// <summary>
     /// Jalur obrolan mana yang berlaku untuk satu pemanggil pada satu order: <c>null</c>
     /// untuk obrolan umum, atau id runner pemilik jalur obrolan pribadi Jalur B.

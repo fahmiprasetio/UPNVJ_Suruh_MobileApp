@@ -80,6 +80,12 @@ public record OrderResponse(
     /// yang tumbuh seiring ramainya chat.
     /// </summary>
     int JumlahPesan,
+    /// <summary>
+    /// Dari <see cref="JumlahPesan"/>, berapa yang belum dibaca pemanggil sendiri. Pesan
+    /// yang dikirim pemanggil sendiri tidak pernah terhitung -- lihat
+    /// <see cref="Data.PesanTerlihat"/>.
+    /// </summary>
+    int JumlahPesanBelumDibaca,
     DateTime DibuatPada,
     DateTime? DibayarPada,
     DateTime? SelesaiPada,
@@ -99,7 +105,8 @@ public record OrderResponse(
     /// </summary>
     bool Macet)
 {
-    public static OrderResponse Dari(Order order, string namaKlien, int jumlahPesan = 0) => new(
+    public static OrderResponse Dari(
+        Order order, string namaKlien, int jumlahPesan = 0, int jumlahPesanBelumDibaca = 0) => new(
         order.Id,
         order.OrderCode,
         order.ServiceType.ToString(),
@@ -125,6 +132,7 @@ public record OrderResponse(
         // memisahkannya cuma menambah satu permintaan yang selalu menyusul.
         [.. order.Offers.OrderBy(f => f.CreatedAt).Select(OrderOfferResponse.Dari)],
         jumlahPesan,
+        jumlahPesanBelumDibaca,
         order.CreatedAt,
         order.PaidAt,
         order.CompletedAt,
@@ -148,8 +156,15 @@ public record OrderResponse(
     /// daftar akan mengembalikan N+1 yang sengaja dihindari di sana.
     /// </remarks>
     public static async Task<OrderResponse> DariAsync(
-        AppDbContext db, Order order, Guid pemanggil, bool admin, CancellationToken batal) =>
-        Dari(order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, pemanggil, admin, batal));
+        AppDbContext db, Order order, Guid pemanggil, bool admin, CancellationToken batal)
+    {
+        // Berurutan, bukan Task.WhenAll: satu DbContext tidak boleh menjalankan dua kueri
+        // sekaligus, dan yang memanggil ini selalu satu order saja, bukan daftar, jadi satu
+        // perjalanan tambahan ke basis data tidak tumbuh seiring panjangnya apa pun.
+        var jumlahPesan = await db.JumlahPesanAsync(order.Id, pemanggil, admin, batal);
+        var jumlahBelumDibaca = await db.JumlahBelumDibacaAsync(order.Id, pemanggil, admin, batal);
+        return Dari(order, order.Client?.Name ?? "Klien", jumlahPesan, jumlahBelumDibaca);
+    }
 }
 
 /// <summary>Satu runner yang sudah menerima order, sebagaimana klien perlu mengenalinya.</summary>

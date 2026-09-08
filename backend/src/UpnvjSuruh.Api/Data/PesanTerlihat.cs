@@ -98,4 +98,48 @@ public static class PesanTerlihat
             .Select(g => new { OrderId = g.Key, Jumlah = g.Count() })
             .ToDictionaryAsync(x => x.OrderId, x => x.Jumlah, batal);
     }
+
+    /// <summary>
+    /// Satu pesan belum terhitung dibaca kalau pemanggil bukan pengirimnya sendiri dan
+    /// tidak ada penanda baca di jalur pesan itu yang sudah sampai waktu pesan ini dikirim.
+    /// </summary>
+    private static IQueryable<OrderMessage> BelumDibacaOleh(this AppDbContext db, IQueryable<OrderMessage> pesan, Guid pemanggil) =>
+        pesan
+            .Where(m => m.SenderId != pemanggil)
+            .Where(m => !db.OrderMessageReads.Any(r =>
+                r.OrderId == m.OrderId
+                && r.UserId == pemanggil
+                && r.RunnerPenawarId == (m.RunnerPenawarId ?? Guid.Empty)
+                && r.LastReadAt >= m.CreatedAt));
+
+    /// <summary>Jumlah pesan yang terlihat pemanggil pada satu order dan belum ia baca.</summary>
+    public static Task<int> JumlahBelumDibacaAsync(
+        this AppDbContext db,
+        Guid orderId,
+        Guid pemanggil,
+        bool admin,
+        CancellationToken batal = default) =>
+        db.BelumDibacaOleh(db.PesanUntuk(pemanggil, admin), pemanggil)
+            .CountAsync(m => m.OrderId == orderId, batal);
+
+    /// <summary>
+    /// Jumlah pesan belum dibaca, untuk sekumpulan order sekaligus. Sama alasannya dengan
+    /// <see cref="JumlahPesanAsync(AppDbContext, IReadOnlyCollection{Guid}, Guid, bool, CancellationToken)"/>:
+    /// satu kueri untuk seluruh halaman, bukan satu per order.
+    /// </summary>
+    public static async Task<Dictionary<Guid, int>> JumlahBelumDibacaAsync(
+        this AppDbContext db,
+        IReadOnlyCollection<Guid> orderIds,
+        Guid pemanggil,
+        bool admin,
+        CancellationToken batal = default)
+    {
+        if (orderIds.Count == 0) return [];
+
+        return await db.BelumDibacaOleh(db.PesanUntuk(pemanggil, admin), pemanggil)
+            .Where(m => orderIds.Contains(m.OrderId))
+            .GroupBy(m => m.OrderId)
+            .Select(g => new { OrderId = g.Key, Jumlah = g.Count() })
+            .ToDictionaryAsync(x => x.OrderId, x => x.Jumlah, batal);
+    }
 }
