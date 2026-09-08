@@ -8,6 +8,7 @@ using UpnvjSuruh.Api.Contracts;
 using UpnvjSuruh.Api.Data;
 using UpnvjSuruh.Api.Domain;
 using UpnvjSuruh.Api.Hubs;
+using UpnvjSuruh.Api.Notifikasi;
 
 namespace UpnvjSuruh.Api.Controllers;
 
@@ -22,7 +23,7 @@ namespace UpnvjSuruh.Api.Controllers;
 [ApiController]
 [Route("api/orders/{id:guid}/pesan")]
 [Authorize]
-public class OrderChatController(AppDbContext db, IHubContext<OrderHub> hub) : ControllerBase
+public class OrderChatController(AppDbContext db, IHubContext<OrderHub> hub, PengabarOrder pengabar) : ControllerBase
 {
     /// <summary>Pesan di satu order, terlama di atas, sebanyak jendela yang diminta.</summary>
     /// <remarks>
@@ -147,6 +148,7 @@ public class OrderChatController(AppDbContext db, IHubContext<OrderHub> hub) : C
         // penerimanya mengambil ulang percakapan yang belum berisi pesan itu, lalu diam
         // sampai pengambilan berkala berikutnya — persis kelambatan yang mau dihapus di sini.
         await hub.BeriTahuPesanBaruAsync(order.Id, batal);
+        await pengabar.KabarkanPesanAsync(pesan, order, batal);
 
         return Ok(OrderMessageResponse.Dari(pesan));
     }

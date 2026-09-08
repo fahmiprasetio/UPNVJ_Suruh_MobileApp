@@ -92,6 +92,61 @@ public class PengabarOrder(
             .ExecuteDeleteAsync(batal);
     }
 
+    /// <summary>
+    /// Kabar untuk satu pesan chat baru, ke lawan bicaranya saja: runner yang mengirim
+    /// mengabari klien, klien yang mengirim mengabari runner di jalur obrolan yang sama
+    /// (jalur pribadi Jalur B kalau <see cref="OrderMessage.RunnerPenawarId"/> terisi, atau
+    /// seluruh runner yang sedang memegang ordernya kalau obrolan umum).
+    /// </summary>
+    public async Task KabarkanPesanAsync(OrderMessage pesan, Order order, CancellationToken batal = default)
+    {
+        try
+        {
+            await KirimPesanAsync(pesan, order, batal);
+        }
+        catch (Exception galat)
+        {
+            log.LogError(
+                galat,
+                "Notifikasi pesan chat untuk order {OrderId} gagal dikirim.",
+                pesan.OrderId);
+        }
+    }
+
+    private async Task KirimPesanAsync(OrderMessage pesan, Order order, CancellationToken batal)
+    {
+        Guid[] penerima;
+        if (pesan.SenderRole == UserRole.Runner)
+        {
+            penerima = [order.ClientId];
+        }
+        else if (pesan.RunnerPenawarId is { } runnerId)
+        {
+            penerima = [runnerId];
+        }
+        else
+        {
+            penerima = [.. order.RunnerAssignments.Select(a => a.RunnerId).Distinct()];
+        }
+
+        if (penerima.Length == 0) return;
+
+        var isi = pesan.Text is not { Length: > 0 } teks
+            ? "Mengirim lampiran"
+            : teks.Length > 120 ? teks[..117] + "..." : teks;
+        var kabar = new PesanNotifikasi("Pesan baru: " + order.OrderCode, isi, order.Id);
+
+        var token = await TokenAsync(SasaranKabar.Akun(penerima), order, pesan.SenderId, batal);
+        if (token.Count == 0) return;
+
+        var mati = await pengirim.KirimAsync(token, kabar, batal);
+        if (mati.Count == 0) return;
+
+        await db.PerangkatNotifikasi
+            .Where(p => mati.Contains(p.Token))
+            .ExecuteDeleteAsync(batal);
+    }
+
     private Task<List<string>> TokenAsync(
         SasaranKabar sasaran,
         Order order,

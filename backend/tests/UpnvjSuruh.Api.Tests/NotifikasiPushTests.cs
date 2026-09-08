@@ -271,4 +271,48 @@ public class NotifikasiPushTests(DatabaseApiFactory pabrik) : IClassFixture<Data
         var db = lingkup.ServiceProvider.GetRequiredService<AppDbContext>();
         Assert.False(await db.PerangkatNotifikasi.AnyAsync(p => p.Token == token));
     }
+
+    // --- Kabar pesan chat ---
+
+    [Fact]
+    public async Task PesanDariRunnerMengabariKlienBukanRunnerSendiri()
+    {
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+        var (runner, _) = await AkunAsync(UserRole.Runner);
+
+        var tokenKlien = await DaftarkanAsync(klien);
+        var tokenRunner = await DaftarkanAsync(runner);
+
+        var order = await OrderDibayarAsync(klien);
+        (await runner.PostAsync($"/api/orders/{order.Id}/terima", null)).EnsureSuccessStatusCode();
+
+        pabrik.Notifikasi.Bersihkan();
+        (await runner.PostAsJsonAsync($"/api/orders/{order.Id}/pesan", new { Isi = "Aku otw ya" }))
+            .EnsureSuccessStatusCode();
+
+        var judul = "Pesan baru: " + order.KodeOrder;
+        Assert.Equal(tokenKlien, Assert.Single(TokenPenerima(judul)));
+        Assert.DoesNotContain(tokenRunner, pabrik.Notifikasi.Terkirim.SelectMany(k => k.Token));
+    }
+
+    [Fact]
+    public async Task PesanDariKlienMengabariRunnerYangSedangMemegangOrder()
+    {
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+        var (runner, _) = await AkunAsync(UserRole.Runner);
+
+        var tokenKlien = await DaftarkanAsync(klien);
+        var tokenRunner = await DaftarkanAsync(runner);
+
+        var order = await OrderDibayarAsync(klien);
+        (await runner.PostAsync($"/api/orders/{order.Id}/terima", null)).EnsureSuccessStatusCode();
+
+        pabrik.Notifikasi.Bersihkan();
+        (await klien.PostAsJsonAsync($"/api/orders/{order.Id}/pesan", new { Isi = "Ditunggu ya" }))
+            .EnsureSuccessStatusCode();
+
+        var judul = "Pesan baru: " + order.KodeOrder;
+        Assert.Equal(tokenRunner, Assert.Single(TokenPenerima(judul)));
+        Assert.DoesNotContain(tokenKlien, pabrik.Notifikasi.Terkirim.SelectMany(k => k.Token));
+    }
 }
