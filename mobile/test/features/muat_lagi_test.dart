@@ -81,13 +81,29 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  // Layar riwayat sekarang punya kolom pencarian (lihat riwayat_order_screen.dart),
+  // dan `EditableText` di dalamnya membawa `Scrollable`-nya sendiri untuk gulir kursor.
+  // `scrollUntilVisible` tanpa parameter `scrollable` memilih lewat `find.byType(Scrollable)`
+  // dan menuntut hasilnya tunggal, jadi begitu ada dua Scrollable di pohon widget ia
+  // gagal dengan "Too many elements". `ListView` riwayat selalu jadi Scrollable pertama
+  // yang ditemui penelusuran karena ia leluhur kolom pencarian itu, bukan sebaliknya.
+  Future<void> gulirSampaiTerlihat(
+    WidgetTester tester,
+    Finder target,
+    double delta,
+  ) => tester.scrollUntilVisible(
+    target,
+    delta,
+    scrollable: find.byType(Scrollable).first,
+  );
+
   testWidgets('riwayat yang lebih panjang dari jendela menawarkan muat lagi', (
     tester,
   ) async {
     await bukaRiwayat(tester, orderSebanyak(BatasHalaman.bawaan + 5));
 
     final tombol = find.textContaining('Muat 5 order lagi');
-    await tester.scrollUntilVisible(tombol, 300);
+    await gulirSampaiTerlihat(tester, tombol, 300);
 
     expect(tombol, findsOneWidget);
   });
@@ -106,7 +122,7 @@ void main() {
     await bukaRiwayat(tester, orderSebanyak(BatasHalaman.bawaan + 5));
 
     final tombol = find.textContaining('Muat 5 order lagi');
-    await tester.scrollUntilVisible(tombol, 300);
+    await gulirSampaiTerlihat(tester, tombol, 300);
     // scrollUntilVisible berhenti begitu widgetnya ketemu, belum tentu setelah
     // ia utuh di layar. Kalau tombolnya berhenti tepat di tepi bawah, ketukan
     // di titik tengahnya jatuh di luar viewport dan tidak sampai ke mana-mana,
@@ -122,7 +138,7 @@ void main() {
     // Judul bagiannya menyebut jumlah yang benar-benar terbawa. Digulung ke atas dulu
     // karena menekan tombol tadi meninggalkan layar di ujung bawah daftar.
     final judul = find.textContaining('Sudah selesai (25)');
-    await tester.scrollUntilVisible(judul, -300);
+    await gulirSampaiTerlihat(tester, judul, -300);
     expect(judul, findsOneWidget);
   });
 
@@ -134,7 +150,7 @@ void main() {
     await bukaRiwayat(tester, orderSebanyak(BatasHalaman.bawaan + 5));
 
     final tombol = find.textContaining('Muat 5 order lagi');
-    await tester.scrollUntilVisible(tombol, 300);
+    await gulirSampaiTerlihat(tester, tombol, 300);
     // scrollUntilVisible berhenti begitu widgetnya ketemu, belum tentu setelah
     // ia utuh di layar. Kalau tombolnya berhenti tepat di tepi bawah, ketukan
     // di titik tengahnya jatuh di luar viewport dan tidak sampai ke mana-mana,

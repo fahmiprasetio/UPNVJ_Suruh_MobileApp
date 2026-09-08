@@ -5,9 +5,12 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:upnvj_suruh/app.dart';
 import 'package:upnvj_suruh/data/fake/fake_order_repository.dart';
 import 'package:upnvj_suruh/data/fake/seed_data.dart';
+import 'package:upnvj_suruh/domain/enums.dart';
 import 'package:upnvj_suruh/domain/models/order.dart';
 import 'package:upnvj_suruh/features/klien/detail_order/detail_order_screen.dart'
     show uriTelepon;
+import 'package:upnvj_suruh/features/klien/riwayat/riwayat_order_screen.dart'
+    show cocokPencarianOrder;
 import 'package:upnvj_suruh/providers/repository_providers.dart';
 
 import '../../support/tiruan.dart';
@@ -77,6 +80,93 @@ void main() {
 
     expect(find.text('Sedang berjalan (3)'), findsOneWidget);
     expect(find.text('Sudah selesai (1)'), findsOneWidget);
+  });
+
+  group('pencarian riwayat', () {
+    testWidgets('kode order menyaring ke satu hasil saja', (tester) async {
+      await bukaRiwayat(tester);
+
+      await tester.enterText(
+        find.byType(TextField),
+        '0398',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('SRH-0398'), findsOneWidget);
+      expect(find.textContaining('SRH-0411'), findsNothing);
+      expect(find.text('Sedang berjalan (3)'), findsNothing);
+    });
+
+    testWidgets('nama layanan ikut dicocokkan, bukan cuma kode', (
+      tester,
+    ) async {
+      await bukaRiwayat(tester);
+
+      // SRH-0410 (Jastip Makanan) dan SRH-0398 (Jastip Barang) sama-sama
+      // berawalan "Jastip".
+      await tester.enterText(
+        find.byType(TextField),
+        'jastip',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('SRH-0410'), findsOneWidget);
+      expect(find.textContaining('SRH-0398'), findsOneWidget);
+      expect(find.textContaining('SRH-0411'), findsNothing);
+      expect(find.textContaining('SRH-0409'), findsNothing);
+    });
+
+    testWidgets('kata kunci tanpa hasil menampilkan keterangannya', (
+      tester,
+    ) async {
+      await bukaRiwayat(tester);
+
+      await tester.enterText(
+        find.byType(TextField),
+        'tidak ada order seperti ini',
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('Tidak ada order yang cocok'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('tombol hapus mengosongkan pencarian lagi', (tester) async {
+      await bukaRiwayat(tester);
+
+      await tester.enterText(
+        find.byType(TextField),
+        '0398',
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('SRH-0411'), findsNothing);
+
+      await tester.tap(find.byIcon(Icons.close));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('SRH-0411'), findsOneWidget);
+    });
+  });
+
+  test('cocokPencarianOrder cocok ke kode, layanan, dan catatan', () {
+    final order = Order(
+      id: 'o-1',
+      kodeOrder: 'SRH-0412',
+      klienId: 'k-1',
+      namaKlien: 'Dina',
+      serviceType: ServiceType.jastipBarang,
+      status: OrderStatus.dikerjakan,
+      dibuatPada: DateTime(2026, 1, 1),
+      deskripsi: 'Ambil paket di Indomaret',
+    );
+
+    expect(cocokPencarianOrder(order, ''), isTrue);
+    expect(cocokPencarianOrder(order, 'srh-0412'), isTrue);
+    expect(cocokPencarianOrder(order, 'jastip barang'), isTrue);
+    expect(cocokPencarianOrder(order, 'indomaret'), isTrue);
+    expect(cocokPencarianOrder(order, 'tidak cocok'), isFalse);
   });
 
   testWidgets('order Jalur B tanpa harga ditandai menunggu penawaran', (
