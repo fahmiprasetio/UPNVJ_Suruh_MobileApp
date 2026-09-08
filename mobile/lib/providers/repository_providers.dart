@@ -12,6 +12,7 @@ import '../core/notifikasi/notifikasi_push.dart';
 import '../core/realtime/order_hub_client.dart';
 import '../core/router/app_router.dart';
 import '../domain/enums.dart';
+import 'peran_providers.dart';
 import '../data/api/api_auth_repository.dart';
 import '../data/api/api_foto_bukti_repository.dart';
 import '../data/api/api_order_repository.dart';
@@ -220,14 +221,15 @@ final notifikasiPushProvider = Provider<NotifikasiPush?>((ref) {
 
   final notifikasi = NotifikasiPush(
     klien: ref.watch(klienApiProvider),
-    // ponytail: dituju lewat peran bawaan akun, bukan peran yang sedang aktif dipakai
-    // (rencana capstone bagian 14.2 membolehkan satu akun berpindah mode). Founder yang
-    // memegang dua peran bisa saja sedang di mode runner ketika notifikasi klien datang
-    // dan sebaliknya; muatan pesannya cuma berisi orderId, tidak ada penanda peran mana
-    // yang dituju. Upgrade path: server ikut mengirim peran tertuju, atau baca
-    // `peranAktifProvider` sekali `Ref` itu terjangkau tanpa membuat impor melingkar baru.
+    // Peran yang sedang AKTIF dipakai, bukan peran bawaan akun: founder yang
+    // memegang dua peran melihat permukaan yang sedang ia buka, dan notifikasi
+    // seharusnya membuka layar yang cocok dengan permukaan itu juga. Muatan
+    // pesannya sendiri cuma berisi orderId, tidak ada penanda peran tertuju,
+    // jadi ini masih tebakan (lihat rencana capstone bagian 14.2 soal
+    // berpindah mode) -- tapi tebakan yang lebih dekat daripada peran bawaan
+    // yang bisa sudah lama ditinggalkan.
     bukaOrder: (orderId) {
-      final peran = ref.read(userAktifProvider).value?.peranBawaan;
+      final peran = ref.read(peranAktifProvider);
       final tujuan = peran == UserRole.runner
           ? Rute.chatOrderRunner(orderId)
           : Rute.detailOrder(orderId);
