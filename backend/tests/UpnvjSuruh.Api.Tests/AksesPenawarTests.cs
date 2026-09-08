@@ -319,7 +319,7 @@ public class AksesPenawarTests(DatabaseApiFactory pabrik) : IClassFixture<Databa
         // Belum dibayar, jadi belum ada penugasan sama sekali: yang membuka pintu memang
         // penawarannya, bukan penugasan yang kebetulan sudah ada.
         var isi = (await jawaban.Content.ReadFromJsonAsync<OrderResponse>())!;
-        Assert.DoesNotContain(runnerId, isi.RunnerIds);
+        Assert.DoesNotContain(runnerId, isi.Runners.Select(r => r.Id));
     }
 
     /// <summary>

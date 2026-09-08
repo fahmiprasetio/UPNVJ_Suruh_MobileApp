@@ -596,7 +596,14 @@ public class OrderEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
 
         var sesudah = await runner.GetFromJsonAsync<OrderResponse>($"/api/orders/{order.Id}");
         Assert.Equal(nameof(OrderStatus.Dikerjakan), sesudah!.Status);
-        Assert.Contains(runnerId, sesudah.RunnerIds);
+        Assert.Contains(runnerId, sesudah.Runners.Select(r => r.Id));
+
+        // Bukan cuma idnya: klien yang membuka order ini perlu tahu siapa yang sedang
+        // mengerjakannya, bukan cuma bahwa "seseorang" sudah menerimanya.
+        var profilRunner = (await runner.GetFromJsonAsync<UserResponse>("/api/auth/saya"))!;
+        var runnerYangDitampilkan = sesudah.Runners.Single(r => r.Id == runnerId);
+        Assert.Equal(profilRunner.Nama, runnerYangDitampilkan.Nama);
+        Assert.Equal(profilRunner.NoHp, runnerYangDitampilkan.NoHp);
     }
 
     [Fact]

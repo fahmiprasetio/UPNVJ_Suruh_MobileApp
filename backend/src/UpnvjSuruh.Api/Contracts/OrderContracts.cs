@@ -59,7 +59,16 @@ public record OrderResponse(
     string? AlamatTujuan,
     double? JarakKm,
     int JumlahRunnerDibutuhkan,
-    IReadOnlyList<Guid> RunnerIds,
+    /// <summary>
+    /// Runner yang sudah menerima order ini, lengkap dengan nama dan nomor HP-nya.
+    ///
+    /// Sebelumnya cuma id, dan klien yang ordernya sedang dikerjakan tidak punya cara
+    /// mengetahui siapa yang sedang menuju kosnya selain menunggu chat. Nomor HP ikut
+    /// karena runner adalah pegawai mitra yang dipercaya (lihat <see cref="Domain.User.Roles"/>),
+    /// bukan orang asing dari pasar terbuka, jadi risikonya sepadan dengan gunanya:
+    /// klien bisa langsung menelepon runner yang mengerjakan ordernya.
+    /// </summary>
+    IReadOnlyList<RunnerRingkasResponse> Runners,
     int? EstimasiDurasiMenit,
     DateTime? JadwalMulai,
     string? FotoBuktiUrl,
@@ -105,7 +114,8 @@ public record OrderResponse(
         order.DestinationAddress,
         order.DistanceKm,
         order.RequiredRunnerCount,
-        [.. order.RunnerAssignments.Select(a => a.RunnerId)],
+        [.. order.RunnerAssignments.Select(a =>
+            new RunnerRingkasResponse(a.RunnerId, a.Runner?.Name ?? "Runner", a.Runner?.Phone))],
         order.EstimatedDuration is null ? null : (int)order.EstimatedDuration.Value.TotalMinutes,
         order.ScheduledStart,
         order.PhotoUrl,
@@ -141,6 +151,9 @@ public record OrderResponse(
         AppDbContext db, Order order, Guid pemanggil, bool admin, CancellationToken batal) =>
         Dari(order, order.Client?.Name ?? "Klien", await db.JumlahPesanAsync(order.Id, pemanggil, admin, batal));
 }
+
+/// <summary>Satu runner yang sudah menerima order, sebagaimana klien perlu mengenalinya.</summary>
+public record RunnerRingkasResponse(Guid Id, string Nama, string? NoHp);
 
 public record BuatOrderResponse(OrderResponse Order, IReadOnlyList<RincianTarifResponse> Rincian);
 

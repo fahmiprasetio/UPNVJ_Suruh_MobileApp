@@ -110,7 +110,7 @@ public class LepasOrderTests(DatabaseApiFactory pabrik) : IClassFixture<Database
 
         var sesudah = (await jawaban.Content.ReadFromJsonAsync<OrderResponse>())!;
         Assert.Equal(nameof(OrderStatus.MencariRunner), sesudah.Status);
-        Assert.Empty(sesudah.RunnerIds);
+        Assert.Empty(sesudah.Runners);
 
         // Dibaca ulang lewat mata klien, bukan cuma dari jawaban tindakannya sendiri: yang
         // penting keadaan tersimpannya, bukan objek yang kebetulan dikembalikan endpoint.
@@ -136,7 +136,7 @@ public class LepasOrderTests(DatabaseApiFactory pabrik) : IClassFixture<Database
         Assert.True((await terima.Content.ReadFromJsonAsync<TerimaOrderResponse>())!.Dapat);
 
         var dipegang = await DaftarAsync(runnerLain, "/api/orders/runner-saya");
-        Assert.Contains(dipegang, o => o.Id == order.Id && o.RunnerIds.Contains(runnerLainId));
+        Assert.Contains(dipegang, o => o.Id == order.Id && o.Runners.Any(r => r.Id == runnerLainId));
     }
 
     /// <summary>
@@ -274,7 +274,7 @@ public class LepasOrderTests(DatabaseApiFactory pabrik) : IClassFixture<Database
 
         var dilihatKlien = (await DaftarAsync(klien, "/api/orders/saya")).Single(o => o.Id == order.Id);
         Assert.Equal(nameof(OrderStatus.MencariRunner), dilihatKlien.Status);
-        Assert.Equal([pertamaId], dilihatKlien.RunnerIds);
+        Assert.Equal([pertamaId], dilihatKlien.Runners.Select(r => r.Id));
         Assert.NotEqual(keduaId, klienId);
 
         // Dan slot yang kosong itu sungguh terbuka lagi untuk orang lain.

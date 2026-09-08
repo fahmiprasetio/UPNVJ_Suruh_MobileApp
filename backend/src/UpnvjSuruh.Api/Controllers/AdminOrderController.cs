@@ -124,7 +124,9 @@ public class AdminOrderController(
 
         var orders = await kueri
             .Include(o => o.RunnerAssignments)
+            .ThenInclude(a => a.Runner)
             .Include(o => o.Offers)
+            .ThenInclude(f => f.CreatedByRunner)
             .Include(o => o.Client)
             // Terbaru di atas, sama seperti seluruh daftar order lain di API ini.
             //
@@ -180,7 +182,9 @@ public class AdminOrderController(
         var order = await db.Orders
             .Include(o => o.Payments)
             .Include(o => o.RunnerAssignments)
+            .ThenInclude(a => a.Runner)
             .Include(o => o.Offers)
+            .ThenInclude(f => f.CreatedByRunner)
             .Include(o => o.Client)
             .SingleOrDefaultAsync(o => o.Id == id, batal);
 
@@ -277,7 +281,9 @@ public class AdminOrderController(
     {
         var order = await db.Orders
             .Include(o => o.RunnerAssignments)
+            .ThenInclude(a => a.Runner)
             .Include(o => o.Offers)
+            .ThenInclude(f => f.CreatedByRunner)
             .Include(o => o.Client)
             .SingleOrDefaultAsync(o => o.Id == id, batal);
 

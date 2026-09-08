@@ -17,6 +17,7 @@ public class OrderOffer
     public Order? Order { get; set; }
 
     public required Guid CreatedByRunnerId { get; set; }
+    public User? CreatedByRunner { get; set; }
 
     public decimal Price { get; set; }
     public TimeSpan EstimatedDuration { get; set; }

@@ -220,6 +220,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .WithMany(o => o.Offers)
                 .HasForeignKey(f => f.OrderId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(f => f.CreatedByRunner)
+                .WithMany()
+                .HasForeignKey(f => f.CreatedByRunnerId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<OrderMessage>(entity =>

@@ -169,6 +169,13 @@ public class JalurBController(
         // `order.Offers` begitu terlacak, dan penawarannya jadi muncul dua kali di jawaban.
         db.OrderOffers.Add(penawaran);
 
+        // Muat() memuat CreatedByRunner untuk penawaran yang SUDAH ADA, bukan yang baru
+        // saja dibuat di atas. Tanpa baris ini, OrderOfferResponse.Dari jatuh ke "Runner"
+        // generik persis untuk penawaran yang baru saja dikirim, satu-satunya saat nama
+        // sebenarnya paling penting: klien yang sedang menunggu justru melihat notifikasi
+        // penawaran baru duluan, sebelum sempat memuat ulang layarnya.
+        penawaran.CreatedByRunner = await db.Users.FindAsync([runnerId], batal);
+
         // Status ordernya sengaja tidak berubah di sini. Runner lain masih boleh menawar
         // selama klien belum memilih siapa pun, dan harga ordernya baru terisi begitu
         // klien menyetujui satu penawaran, bukan begitu penawaran pertama masuk.
@@ -383,7 +390,9 @@ public class JalurBController(
 
     private Task<Order?> Muat(Guid id, CancellationToken batal) => db.Orders
         .Include(o => o.Offers)
+        .ThenInclude(f => f.CreatedByRunner)
         .Include(o => o.RunnerAssignments)
+        .ThenInclude(a => a.Runner)
         .Include(o => o.Client)
         .SingleOrDefaultAsync(o => o.Id == id, batal);
 

@@ -95,6 +95,12 @@ public record OrderOfferResponse(
     Guid Id,
     Guid OrderId,
     Guid RunnerId,
+    /// <summary>
+    /// Nama runner yang mengajukan penawaran ini, supaya klien tahu siapa yang ia pilih
+    /// sebelum menyetujui, bukan cuma harga dan jadwalnya.
+    /// </summary>
+    string NamaRunner,
+    string? NoHpRunner,
     decimal Harga,
     int EstimasiDurasiMenit,
     DateTime JadwalMulai,
@@ -107,6 +113,8 @@ public record OrderOfferResponse(
         offer.Id,
         offer.OrderId,
         offer.CreatedByRunnerId,
+        offer.CreatedByRunner?.Name ?? "Runner",
+        offer.CreatedByRunner?.Phone,
         offer.Price,
         (int)offer.EstimatedDuration.TotalMinutes,
         offer.ScheduledStart,

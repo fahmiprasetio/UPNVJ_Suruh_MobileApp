@@ -181,6 +181,31 @@ public class JalurBEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Data
         Assert.Null(sesudah.Harga);
     }
 
+    /// <summary>
+    /// Klien tidak boleh memilih penawaran cuma dari harga tanpa tahu siapa runnernya.
+    /// Sengaja diperiksa dari JAWABAN LANGSUNG endpoint kirim penawaran, bukan dari
+    /// pengambilan ulang sesudahnya: penawaran yang baru dibuat adalah entitas yang belum
+    /// pernah dimuat dari basis data sama sekali, jadi navigasi CreatedByRunner-nya kosong
+    /// kecuali diisi eksplisit. Tanpa tes ini, kesalahan itu cuma kelihatan sebagai "Runner"
+    /// generik pada penawaran pertama yang dikirim, lalu hilang begitu layarnya dimuat ulang
+    /// -- persis jenis galat yang tidak pernah ketahuan dari mencoba manual.
+    /// </summary>
+    [Fact]
+    public async Task PenawaranMembawaNamaDanNoHpRunnerSejakJawabanPertama()
+    {
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+        var (runner, _) = await AkunAsync(UserRole.Runner);
+        var profilRunner = (await runner.GetFromJsonAsync<UserResponse>("/api/auth/saya"))!;
+        var order = await BuatPermintaanAsync(klien);
+
+        var jawaban = await TawarAsync(runner, order.Id);
+        jawaban.EnsureSuccessStatusCode();
+        var sesudah = (await jawaban.Content.ReadFromJsonAsync<OrderResponse>())!;
+
+        Assert.Equal(profilRunner.Nama, sesudah.Penawaran[0].NamaRunner);
+        Assert.Equal(profilRunner.NoHp, sesudah.Penawaran[0].NoHpRunner);
+    }
+
     [Fact]
     public async Task KlienYangJugaRunnerTidakBisaMenawarOrdernyaSendiri()
     {
