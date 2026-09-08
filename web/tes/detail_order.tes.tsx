@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { PenyediaSesi } from '../src/auth/sesi';
 import { HalamanDetailOrder } from '../src/halaman/detail_order';
 import { KlienApi } from '../src/inti/klien_api';
-import type { Order, PerubahanStatusOrder } from '../src/inti/tipe';
+import type { Order, Penawaran, PerubahanStatusOrder } from '../src/inti/tipe';
 import { buatKendaliHub, buatTiruanHub } from './dukungan_hub';
 
 /**
@@ -32,7 +32,7 @@ function order(ubah: Partial<Order> = {}): Order {
     alamatTujuan: null,
     jarakKm: null,
     jumlahRunnerDibutuhkan: 1,
-    runnerIds: [],
+    runners: [],
     estimasiDurasiMenit: null,
     jadwalMulai: null,
     fotoBuktiUrl: null,
@@ -44,6 +44,24 @@ function order(ubah: Partial<Order> = {}): Order {
     selesaiPada: null,
     mintaBatalPada: null,
     macet: false,
+    ...ubah,
+  };
+}
+
+function penawaran(ubah: Partial<Penawaran> = {}): Penawaran {
+  return {
+    id: 'p-1',
+    orderId: order().id,
+    runnerId: '44444444-4444-4444-4444-444444444444',
+    namaRunner: 'Adji',
+    noHpRunner: '081234567890',
+    harga: 25000,
+    estimasiDurasiMenit: 60,
+    jadwalMulai: new Date().toISOString(),
+    status: 'Pending',
+    catatan: null,
+    dibuatPada: new Date().toISOString(),
+    dijawabPada: null,
     ...ubah,
   };
 }
@@ -441,5 +459,52 @@ describe('RiwayatStatus', () => {
 
     expect(await screen.findByText('Mencari Runner → Dikerjakan')).toBeInTheDocument();
     expect(await screen.findByText('Dikerjakan → Mencari Runner')).toBeInTheDocument();
+  });
+});
+
+/**
+ * Sebelum `runners` ada di kontrak, admin cuma bisa melihat berapa slot runner terisi,
+ * bukan siapa yang mengisinya -- lihat komentar yang dulu ada persis di baris ini.
+ * Begitu juga tabel penawaran Jalur B: cuma harga dan jadwal, tanpa nama runner yang
+ * mengajukannya, padahal itulah yang paling dulu ditanyakan admin yang menengahi keluhan.
+ */
+describe('identitas runner', () => {
+  it('Rincian menyebut nama dan nomor HP runner yang sudah menerima order', async () => {
+    const ambil = vi.fn().mockImplementation((url: string) =>
+      Promise.resolve(
+        url.includes('/pesan')
+          ? jawaban(200, halamanPesanKosong())
+          : jawabanOrder(
+              url,
+              order({
+                status: 'Dikerjakan',
+                runners: [{ id: 'r-1', nama: 'Adji', noHp: '081234567890' }],
+              }),
+            ),
+      ),
+    );
+    pasang(ambil);
+
+    expect(await screen.findByText('Adji (081234567890)')).toBeInTheDocument();
+  });
+
+  it('tabel penawaran Jalur B menyebut nama runner yang menawar', async () => {
+    const ambil = vi.fn().mockImplementation((url: string) =>
+      Promise.resolve(
+        url.includes('/pesan')
+          ? jawaban(200, halamanPesanKosong())
+          : jawabanOrder(
+              url,
+              order({
+                track: 'JalurB',
+                harga: null,
+                penawaran: [penawaran({ namaRunner: 'Budi' })],
+              }),
+            ),
+      ),
+    );
+    pasang(ambil);
+
+    expect(await screen.findByText('Budi')).toBeInTheDocument();
   });
 });

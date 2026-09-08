@@ -24,7 +24,7 @@ function order(ubah: Partial<Order> = {}): Order {
     alamatTujuan: null,
     jarakKm: null,
     jumlahRunnerDibutuhkan: 1,
-    runnerIds: [],
+    runners: [],
     estimasiDurasiMenit: null,
     jadwalMulai: null,
     fotoBuktiUrl: null,

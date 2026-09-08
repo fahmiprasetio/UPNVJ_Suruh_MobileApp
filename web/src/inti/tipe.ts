@@ -68,6 +68,8 @@ export interface Penawaran {
   id: string;
   orderId: string;
   runnerId: string;
+  namaRunner: string;
+  noHpRunner: string | null;
   harga: number;
   estimasiDurasiMenit: number;
   jadwalMulai: string;
@@ -75,6 +77,12 @@ export interface Penawaran {
   catatan: string | null;
   dibuatPada: string;
   dijawabPada: string | null;
+}
+
+export interface RunnerRingkas {
+  id: string;
+  nama: string;
+  noHp: string | null;
 }
 
 export interface Order {
@@ -92,7 +100,7 @@ export interface Order {
   alamatTujuan: string | null;
   jarakKm: number | null;
   jumlahRunnerDibutuhkan: number;
-  runnerIds: string[];
+  runners: RunnerRingkas[];
   estimasiDurasiMenit: number | null;
   jadwalMulai: string | null;
   fotoBuktiUrl: string | null;

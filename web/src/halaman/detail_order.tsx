@@ -125,10 +125,13 @@ function RincianOrder({ order }: { order: Order }) {
           <Baris label="Estimasi durasi">{formatDurasi(order.estimasiDurasiMenit)}</Baris>
         )}
         <Baris label="Runner">
-          {/* Yang dipunya API cuma id runnernya, bukan namanya, jadi yang ditampilkan
-              apa adanya jumlahnya berbanding kuota. Menampilkan id mentah tidak menolong
-              siapa pun, dan nama runner butuh endpoint yang belum ada. */}
-          {order.runnerIds.length} dari {order.jumlahRunnerDibutuhkan} terisi
+          {order.runners.length === 0
+            ? `0 dari ${order.jumlahRunnerDibutuhkan} terisi`
+            : order.runners
+                .map((r) => (r.noHp ? `${r.nama} (${r.noHp})` : r.nama))
+                .join(', ')}
+          {order.jumlahRunnerDibutuhkan > 1 &&
+            ` — ${order.runners.length} dari ${order.jumlahRunnerDibutuhkan} terisi`}
         </Baris>
         {order.dibayarPada && <Baris label="Dibayar">{formatTanggalJam(order.dibayarPada)}</Baris>}
         {order.selesaiPada && <Baris label="Selesai">{formatTanggalJam(order.selesaiPada)}</Baris>}
@@ -238,6 +241,7 @@ function DaftarPenawaran({ order }: { order: Order }) {
         <table className="tabel tabel--rapat">
           <thead>
             <tr>
+              <th scope="col">Runner</th>
               <th scope="col">Harga</th>
               <th scope="col">Durasi</th>
               <th scope="col">Jadwal</th>
@@ -259,6 +263,7 @@ function DaftarPenawaran({ order }: { order: Order }) {
 function BarisPenawaran({ penawaran }: { penawaran: Penawaran }) {
   return (
     <tr>
+      <td>{penawaran.namaRunner}</td>
       <td className="tabel__angka">{formatRupiah(penawaran.harga)}</td>
       <td>{formatDurasi(penawaran.estimasiDurasiMenit)}</td>
       <td>{formatJadwal(penawaran.jadwalMulai)}</td>
