@@ -137,6 +137,11 @@ void main() {
                       dikirimPada: DateTime.now(),
                     ),
                   ],
+                  // Label kartu membaca yang belum dibaca, bukan totalnya --
+                  // lihat kartu_order_runner.dart. Data contoh sendiri tidak
+                  // pernah menghitung ulang angka ini dari daftar pesannya,
+                  // jadi harus diisi terang-terangan di sini.
+                  jumlahPesanBelumDibaca: 1,
                 ),
         )
         .toList();

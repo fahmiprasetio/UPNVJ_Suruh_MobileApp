@@ -151,6 +151,20 @@ void main() {
       expect(halaman.isi.single.jumlahPesan, 3);
     });
 
+    test('jumlah pesan belum dibaca terbaca dari jawaban server', () async {
+      final uji = buat((p) => halamanJson([
+        {...orderJson, 'jumlahPesanBelumDibaca': 2},
+      ]));
+      final halaman = await uji.repo.watchOrderKlien(ukuran: 20).first;
+      expect(halaman.isi.single.jumlahPesanBelumDibaca, 2);
+    });
+
+    test('jumlah pesan belum dibaca nol kalau tidak disebutkan server', () async {
+      final uji = buat(jawabanUmum);
+      final order = (await uji.repo.getOrder('x'))!;
+      expect(order.jumlahPesanBelumDibaca, 0);
+    });
+
     test('penawaran ikut terbaca', () async {
       final uji = buat((p) {
         if (p.url.path.endsWith('/pesan')) return halamanJson(const []);
@@ -238,6 +252,22 @@ void main() {
       final kirim = uji.dikirim.firstWhere((p) => p.method == 'POST');
       final badan = jsonDecode(kirim.body) as Map<String, dynamic>;
       expect(badan.keys, ['isi']);
+    });
+
+    test('menandai dibaca memanggil jalur obrolan umum tanpa runnerId', () async {
+      final uji = buat(jawabanUmum);
+      await uji.repo.tandaiPesanDibaca(orderId: 'x');
+      final panggilan = uji.dikirim.firstWhere((p) => p.url.path.endsWith('/dibaca'));
+      expect(panggilan.method, 'POST');
+      expect(panggilan.url.path, '/api/orders/x/pesan/dibaca');
+      expect(panggilan.url.queryParameters, isEmpty);
+    });
+
+    test('menandai dibaca menyebutkan runnerId untuk jalur pribadi', () async {
+      final uji = buat(jawabanUmum);
+      await uji.repo.tandaiPesanDibaca(orderId: 'x', runnerId: 'r1');
+      final panggilan = uji.dikirim.firstWhere((p) => p.url.path.endsWith('/dibaca'));
+      expect(panggilan.url.queryParameters['runnerId'], 'r1');
     });
 
     test('terima order membaca penanda menang atau kalah dari badan', () async {

@@ -200,6 +200,35 @@ void main() {
     expect(find.textContaining('SRH-9200'), findsWidgets);
   });
 
+  testWidgets('membuka chat menandainya dibaca di jalur yang benar', (
+    tester,
+  ) async {
+    final repo = _RepoTerekam(orderAwal: [orderJalurBDenganTawaran()]);
+    addTearDown(repo.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sumberTiruan,
+          orderRepositoryProvider.overrideWith((ref) => repo),
+        ],
+        child: const UpnvjSuruhApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Order Saya'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('SRH-9200'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Chat dengan runner ini'));
+    await tester.pumpAndSettle();
+
+    // Jalur pribadi runner yang menawar, bukan obrolan umum: klien membuka
+    // chat lewat kartu tawaran runner itu, jadi yang ditandai harus jalurnya,
+    // bukan jalur order secara umum.
+    expect(repo.panggilanDibaca, [('o-tawar-uji', SeedData.runner.id)]);
+  });
+
   testWidgets('order tanpa percakapan menjelaskan gunanya', (tester) async {
     await bukaChat(tester, 'SRH-0411');
 
@@ -384,4 +413,22 @@ void main() {
 
     expect(jendela.untuk('o-lain'), BatasHalaman.bawaan);
   });
+}
+
+/// [FakeOrderRepository] yang mencatat setiap panggilan [tandaiPesanDibaca],
+/// sebagai (orderId, runnerId), supaya tesnya bisa membuktikan chat_order_screen
+/// benar-benar memanggilnya begitu dibuka, ke jalur obrolan yang benar.
+class _RepoTerekam extends FakeOrderRepository {
+  _RepoTerekam({super.orderAwal});
+
+  final panggilanDibaca = <(String, String?)>[];
+
+  @override
+  Future<void> tandaiPesanDibaca({
+    required String orderId,
+    String? runnerId,
+  }) async {
+    panggilanDibaca.add((orderId, runnerId));
+    await super.tandaiPesanDibaca(orderId: orderId, runnerId: runnerId);
+  }
 }

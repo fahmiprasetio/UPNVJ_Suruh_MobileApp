@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -56,12 +58,41 @@ class _ChatOrderScreenState extends ConsumerState<ChatOrderScreen> {
   final _scrollController = ScrollController();
 
   bool _sedangMengirim = false;
+  bool _sudahDitandaiDibaca = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Order yang datanya sudah tercache dari layar sebelumnya (mis. detail
+    // order yang membuka chat) tidak pernah memicu `ref.listen` di [build]:
+    // listener itu cuma bereaksi pada PERUBAHAN nilai provider, bukan nilai
+    // yang sudah ada saat listener dipasang. Dibaca sekali di sini menutup
+    // celah itu; `ref.listen` di [build] menutup sisanya, order yang datanya
+    // baru datang belakangan.
+    final order = ref.read(orderProvider(widget.orderId)).value;
+    if (order != null) unawaited(_tandaiDibaca(order));
+  }
 
   @override
   void dispose() {
     _pesanController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _tandaiDibaca(Order order) async {
+    if (_sudahDitandaiDibaca) return;
+    _sudahDitandaiDibaca = true;
+    try {
+      await ref
+          .read(orderRepositoryProvider)
+          .tandaiPesanDibaca(orderId: order.id, runnerId: _jalurObrolan(order));
+    } catch (_) {
+      // Kegagalan diam-diam dan boleh dicoba lagi: penanda yang gagal
+      // diperbarui paling buruk membuat badge menyala satu putaran lagi,
+      // bukan sesuatu yang layak menyela orang yang sedang membaca chat.
+      _sudahDitandaiDibaca = false;
+    }
   }
 
   /// Jalur obrolan mana yang berlaku di layar ini: `null` untuk obrolan
@@ -87,6 +118,14 @@ class _ChatOrderScreenState extends ConsumerState<ChatOrderScreen> {
   @override
   Widget build(BuildContext context) {
     final order = ref.watch(orderProvider(widget.orderId));
+
+    // Sekali per kunjungan layar, bukan tiap kali order-nya diambil ulang
+    // (setiap lima belas detik selama layar ini terbuka): yang menandai bukan
+    // "pesannya sedang terlihat", cuma "layar chat order ini sudah dibuka".
+    ref.listen(orderProvider(widget.orderId), (_, selanjutnya) {
+      final order = selanjutnya.value;
+      if (order != null) unawaited(_tandaiDibaca(order));
+    });
 
     return Scaffold(
       appBar: AppBar(

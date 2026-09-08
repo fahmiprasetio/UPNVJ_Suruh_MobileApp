@@ -868,6 +868,12 @@ class FakeOrderRepository implements OrderRepository {
   }
 
   @override
+  Future<void> tandaiPesanDibaca({required String orderId, String? runnerId}) async {
+    // Tanpa efek: data contoh tidak pernah mengisi jumlahPesanBelumDibaca sama
+    // sekali, jadi tidak ada apa pun yang perlu ditandai di sini.
+  }
+
+  @override
   Future<Order> kirimPesan({
     required String orderId,
     required String isi,

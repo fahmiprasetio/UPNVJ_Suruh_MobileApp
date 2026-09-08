@@ -142,9 +142,9 @@ class KartuOrderRunner extends StatelessWidget {
                       onPressed: onChat,
                       icon: const Icon(Icons.forum_outlined, size: 18),
                       label: Text(
-                        order.jumlahPesan == 0
+                        order.jumlahPesanBelumDibaca == 0
                             ? 'Chat Klien'
-                            : 'Chat Klien (${order.jumlahPesan})',
+                            : 'Chat Klien (${order.jumlahPesanBelumDibaca})',
                       ),
                       style: TextButton.styleFrom(minimumSize: const Size(0, 44)),
                     ),

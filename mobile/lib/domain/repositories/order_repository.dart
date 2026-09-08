@@ -233,4 +233,12 @@ abstract interface class OrderRepository {
     required String isi,
     String? runnerId,
   });
+
+  /// Menandai satu jalur obrolan sudah dibaca pengguna yang sedang masuk, sampai saat ini.
+  ///
+  /// Dipanggil layar chat setiap kali dibuka, supaya penanda "N pesan baru" di daftar
+  /// order tidak terus menyala untuk percakapan yang sudah dilihat. [runnerId] punya arti
+  /// yang sama dengan di [kirimPesan]: jalur obrolan mana yang ditandai, cuma berarti buat
+  /// klien selama order Jalur B masih menerima penawaran.
+  Future<void> tandaiPesanDibaca({required String orderId, String? runnerId});
 }

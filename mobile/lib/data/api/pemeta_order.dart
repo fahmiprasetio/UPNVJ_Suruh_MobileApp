@@ -55,6 +55,7 @@ class PemetaOrder {
       // datang terpisah dari server.
       messages: pesan ?? const [],
       jumlahPesan: (isi['jumlahPesan'] as num?)?.toInt() ?? 0,
+      jumlahPesanBelumDibaca: (isi['jumlahPesanBelumDibaca'] as num?)?.toInt() ?? 0,
     );
   }
 

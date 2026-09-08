@@ -76,6 +76,10 @@ class KartuOrderRingkas extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  if (order.jumlahPesanBelumDibaca > 0) ...[
+                    Badge.count(count: order.jumlahPesanBelumDibaca),
+                    const SizedBox(width: AppTheme.spasiKecil),
+                  ],
                   const SizedBox(width: AppTheme.spasiKecil),
                   LencanaStatus(status: order.status),
                 ],

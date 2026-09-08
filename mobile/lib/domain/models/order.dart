@@ -40,6 +40,7 @@ class Order {
     this.messages = const [],
     this.payment,
     this.jumlahPesan = 0,
+    this.jumlahPesanBelumDibaca = 0,
   });
 
   final String id;
@@ -125,6 +126,13 @@ class Order {
   /// Di layar chat pesannya memang dimuat, dan [messages] terisi; di daftar ia
   /// kosong sementara angka ini tetap benar.
   final int jumlahPesan;
+
+  /// Dari [jumlahPesan], berapa yang belum dibaca pengguna yang sedang masuk.
+  ///
+  /// Dihitung server dari penanda baca per jalur obrolan (bagian 10 rencana capstone),
+  /// bukan ditebak di sini: aplikasi tidak menyimpan sendiri pesan mana yang sudah
+  /// dilihat, cuma menampilkan angka yang dikirim server apa adanya.
+  final int jumlahPesanBelumDibaca;
   final Payment? payment;
 
   OrderTrack get track => serviceType.track;
@@ -180,6 +188,7 @@ class Order {
     List<OrderOffer>? offers,
     List<OrderMessage>? messages,
     Payment? payment,
+    int? jumlahPesanBelumDibaca,
   }) {
     return Order(
       id: id,
@@ -211,6 +220,8 @@ class Order {
       // Kalau daftar pesannya diganti, jumlahnya ikut dihitung ulang dari daftar
       // baru itu; kalau tidak, angka dari server dipertahankan apa adanya.
       jumlahPesan: messages?.length ?? jumlahPesan,
+      jumlahPesanBelumDibaca:
+          jumlahPesanBelumDibaca ?? this.jumlahPesanBelumDibaca,
       payment: payment ?? this.payment,
     );
   }

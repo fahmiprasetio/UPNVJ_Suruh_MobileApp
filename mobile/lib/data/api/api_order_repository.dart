@@ -344,6 +344,13 @@ class ApiOrderRepository implements OrderRepository {
     return order;
   }
 
+  @override
+  Future<void> tandaiPesanDibaca({required String orderId, String? runnerId}) async {
+    final jalur = '/api/orders/$orderId/pesan/dibaca';
+    await _klien.post(runnerId == null ? jalur : '$jalur?runnerId=$runnerId');
+    _tandaiBerubah();
+  }
+
   Future<Order> _tindakan(String jalur, {Object? badan}) async {
     final jawaban = await _klien.post(jalur, badan: badan);
     _tandaiBerubah();

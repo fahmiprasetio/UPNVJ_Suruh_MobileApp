@@ -35,4 +35,26 @@ void main() {
 
     expect(sesudah.jumlahPesan, order.jumlahPesan);
   });
+
+  test('mengubah hal lain tidak menyentuh jumlah yang belum dibaca', () {
+    // Beda dari jumlahPesan: angka ini tidak pernah dihitung ulang dari
+    // [Order.messages] sama sekali, cuma dibawa apa adanya dari server, jadi
+    // tidak ada jalan untuk keliru menganggapnya nol begitu daftar pesan
+    // diganti.
+    final order = SeedData.orderAwal().first.copyWith(jumlahPesanBelumDibaca: 3);
+
+    final sesudah = order.copyWith(harga: 12345);
+
+    expect(sesudah.jumlahPesanBelumDibaca, 3);
+  });
+
+  test('mengganti daftar pesan tidak ikut menghapus jumlah yang belum dibaca', () {
+    final order = SeedData.orderAwal()
+        .firstWhere((o) => o.messages.isNotEmpty)
+        .copyWith(jumlahPesanBelumDibaca: 2);
+
+    final sesudah = order.copyWith(messages: [...order.messages, order.messages.first]);
+
+    expect(sesudah.jumlahPesanBelumDibaca, 2);
+  });
 }
