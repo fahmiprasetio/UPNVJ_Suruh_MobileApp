@@ -89,11 +89,11 @@ class BerandaKlienScreen extends ConsumerWidget {
                   // menyesuaikan lebar layar.
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 3,
-                    // 52 ikon + 8 jarak + dua baris label (labelMedium, 16px
-                    // per baris) + 12 padding = 104, dibulatkan naik supaya
-                    // nama layanan terpanjang ("Bersih Kamar Mandi") tidak
-                    // meluap dari petaknya.
-                    mainAxisExtent: 108,
+                    // 68 ikon + 8 jarak + dua baris label (13px, ~18px per
+                    // baris) + 12 padding = 124, dibulatkan naik supaya nama
+                    // layanan terpanjang ("Bersih Kamar Mandi") tidak meluap
+                    // dari petaknya.
+                    mainAxisExtent: 128,
                     crossAxisSpacing: AppTheme.spasiKecil,
                     mainAxisSpacing: AppTheme.spasiSedang - 4,
                   ),
@@ -107,7 +107,7 @@ class BerandaKlienScreen extends ConsumerWidget {
                     );
                   },
                 ),
-                const SizedBox(height: AppTheme.spasiBesar),
+                const SizedBox(height: AppTheme.spasiKecil),
                 const _PemisahPintu(),
                 const SizedBox(height: AppTheme.spasiSedang),
                 KartuPermintaanLain(
@@ -154,12 +154,14 @@ class _KepalaBeranda extends StatelessWidget {
       ),
       // Jarak atas mengikuti inset status bar sendiri, bukan `SafeArea`:
       // warnanya harus tetap menyambung sampai ke tepi layar, cuma isinya
-      // yang tidak boleh tertutup jam dan ikon sinyal. Kiri-kanan lebih lebar
-      // dari kartu biasa (`spasiBesar`, bukan `spasiSedang`) supaya kolom cari
-      // tidak terbaca mepet ke lengkungan besar di bawahnya.
+      // yang tidak boleh tertutup jam dan ikon sinyal. Ditambah `spasiSedang`
+      // penuh, bukan `spasiKecil`, supaya kolom cari punya jarak napas dari
+      // status bar, tidak langsung menempel di bawahnya. Kiri-kanan lebih
+      // lebar dari kartu biasa (`spasiBesar`, bukan `spasiSedang`) supaya
+      // kolom cari tidak terbaca mepet ke lengkungan besar di bawahnya.
       padding: EdgeInsets.fromLTRB(
         AppTheme.spasiBesar,
-        MediaQuery.paddingOf(context).top + AppTheme.spasiKecil,
+        MediaQuery.paddingOf(context).top + AppTheme.spasiSedang,
         AppTheme.spasiBesar,
         AppTheme.spasiBesar,
       ),
@@ -233,9 +235,11 @@ class _KolomCari extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppTheme.radiusKontrol),
         onTap: () => belumTersedia(context, 'Pencarian'),
         child: const Padding(
+          // Vertikalnya diturunkan dari 12: bilah ini cuma butuh cukup tinggi
+          // untuk ikon dan satu baris teks, bukan setinggi kolom isian form.
           padding: EdgeInsets.symmetric(
             horizontal: AppTheme.spasiSedang,
-            vertical: 12,
+            vertical: 8,
           ),
           child: Row(
             children: [

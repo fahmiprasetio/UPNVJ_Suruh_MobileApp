@@ -57,8 +57,11 @@ class KartuLayanan extends StatelessWidget {
                 clipBehavior: Clip.none,
                 children: [
                   Container(
-                    width: 52,
-                    height: 52,
+                    // Dinaikkan dari 52: grid sekarang dipatok 3 kolom, jadi
+                    // tiap petak lebih lebar dari sebelumnya, dan keping ikon
+                    // sekecil 52 menyisakan banyak ruang kosong di kiri-kanan.
+                    width: 68,
+                    height: 68,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: skema.primaryContainer,
@@ -68,7 +71,7 @@ class KartuLayanan extends StatelessWidget {
                     ),
                     child: Icon(
                       layanan.icon,
-                      size: 24,
+                      size: 30,
                       color: skema.onPrimaryContainer,
                     ),
                   ),
@@ -81,8 +84,8 @@ class KartuLayanan extends StatelessWidget {
                       top: -2,
                       right: -2,
                       child: Container(
-                        width: 14,
-                        height: 14,
+                        width: 16,
+                        height: 16,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: skema.outline,
@@ -93,7 +96,7 @@ class KartuLayanan extends StatelessWidget {
                         ),
                         child: const Icon(
                           Icons.schedule,
-                          size: 8,
+                          size: 9,
                           color: Colors.white,
                         ),
                       ),
@@ -107,7 +110,10 @@ class KartuLayanan extends StatelessWidget {
               child: Text(
                 layanan.nama,
                 textAlign: TextAlign.center,
-                style: teks.labelMedium?.copyWith(fontWeight: FontWeight.w600),
+                style: teks.labelMedium?.copyWith(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
