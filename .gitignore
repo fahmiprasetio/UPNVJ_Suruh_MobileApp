@@ -24,3 +24,10 @@ Thumbs.db
 UPNVJ_Suruh_tugas_*.docx
 
 Capstone_Proposal_070_076_087.pdf
+
+# Gambar lepas di akar repo (tangkapan layar, diagram): bahan kerja, bukan
+# aset aplikasi. Aset sungguhan aplikasi hidup di bawah mobile/assets/ dan
+# web/ ; apa pun yang ditaruh langsung di akar repo bukan itu.
+/*.png
+/*.jpg
+/*.jpeg
