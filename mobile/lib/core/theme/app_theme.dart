@@ -49,6 +49,16 @@ class AppTheme {
   /// Dipakai menyemir bayangan, supaya bayangannya terbaca tercetak, bukan kotor.
   static const Color tintaLencana = Color(0xFF1E302E);
 
+  /// `onSurfaceVariant` tema terang, dipatok lepas dari tema yang sedang aktif.
+  ///
+  /// Dipakai satu-satunya tempat yang latarnya sengaja putih murni di kedua
+  /// tema sekaligus (kolom cari di kepala beranda, meniru pil putih Gojek di
+  /// atas hijau): teks di atas putih tidak boleh ikut memucat kalau temanya
+  /// gelap, karena putihnya sendiri tidak ikut menggelap. Mengambil `abu-abu`
+  /// Material langsung di sini melanggar aturan sumber lencana (rencana
+  /// capstone bagian 9.26); ini tetap dari lencana, cuma dipatok satu sisi.
+  static const Color onKertasVariantTerang = Color(0xFF4A5A50);
+
   // --- Jarak dan sudut ---
 
   static const double spasiKecil = 8;

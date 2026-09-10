@@ -9,7 +9,7 @@ import '../buka_form_order.dart';
 import '../../dev/pengalih_akun.dart';
 import '../../peran/tombol_ganti_mode.dart';
 import '../../widgets/tombol_notifikasi.dart';
-import '../../widgets/tombol_pengaturan.dart';
+import '../../widgets/tombol_profil.dart';
 import 'widgets/kartu_layanan.dart';
 
 /// Beranda klien, layar pertama, dua pintu.
@@ -31,6 +31,14 @@ import 'widgets/kartu_layanan.dart';
 /// yang dipakai `primaryContainer`, bukan `primary`: hijau muda selebar layar di
 /// tengah malam menyilaukan, dan blok merek yang membuat orang memicingkan mata
 /// sudah kalah sebelum sempat berarti apa-apa.
+///
+/// ## Kenapa tanpa `AppBar`
+///
+/// Referensi utamanya (Gojek) tidak punya bilah judul terpisah: kolom pencarian
+/// itu sendiri yang jadi baris paling atas, langsung di bawah jam dan sinyal.
+/// Menaruhnya di dalam `AppBar` memaksa dua baris (judul, lalu pencarian) yang
+/// tidak diminta siapa pun; menaruhnya sebagai anak pertama blok hijau membuat
+/// warnanya menyambung utuh sampai ke tepi status bar, persis rujukannya.
 class BerandaKlienScreen extends ConsumerWidget {
   const BerandaKlienScreen({super.key});
 
@@ -51,40 +59,12 @@ class BerandaKlienScreen extends ConsumerWidget {
     final permintaanLain = serviceInfoOf(ServiceType.permintaanLain);
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: warnaKepala,
-        foregroundColor: teksKepala,
-        // Nol, bukan satu. Yang ada di bawah bilah ini bukan isi yang menggulung
-        // melainkan panel sapaan berwarna sama, jadi bayangan "ada isi lewat di
-        // bawah sini" akan muncul sebagai garis yang membelah satu blok utuh.
-        scrolledUnderElevation: 0,
-        title: const Text('UPNVJ Suruh'),
-        // Disalin dari tema lalu diganti warnanya saja. Menulis ulang gayanya
-        // dari nol di sini berarti ukuran dan tebalnya berhenti mengikuti tema,
-        // dan judul layar ini diam-diam menyimpang dari judul layar lain begitu
-        // temanya disetel.
-        titleTextStyle: Theme.of(
-          context,
-        ).appBarTheme.titleTextStyle?.copyWith(color: teksKepala),
-        actions: const [
-          TombolGantiMode(),
-          PengalihAkun(),
-          TombolNotifikasi(),
-          TombolPengaturan(),
-          // Tombol terakhir tidak dibiarkan menempel tepi layar. Bawaan
-          // AppBar menyisakan empat piksel, dan di layar melengkung sisi itu
-          // yang pertama tertutup lengkungan kacanya.
-          SizedBox(width: AppTheme.spasiKecil),
-        ],
-      ),
-      // Satu ListView, bukan panel tetap di luar area gulir: panel sapaan ikut
+      // Satu ListView, bukan panel tetap di luar area gulir: kepala hijau ikut
       // naik seperti bagian lain layar ini begitu digulir, tidak diam di
-      // tempat menimpa isi di bawahnya. Panelnya sendiri yang jadi anak
-      // pertama daftar ini, tanpa padding tambahan, supaya tetap menyentuh
-      // tepi atas persis di bawah bilah judul seperti sebelumnya.
+      // tempat menimpa isi di bawahnya.
       body: ListView(
         children: [
-          _PanelSapaan(
+          _KepalaBeranda(
             nama: user?.nama,
             warna: warnaKepala,
             warnaTeks: teksKepala,
@@ -92,26 +72,28 @@ class BerandaKlienScreen extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(
               AppTheme.spasiSedang,
-              AppTheme.spasiBesar,
+              AppTheme.spasiSedang,
               AppTheme.spasiSedang,
               AppTheme.spasiBesar,
             ),
             child: Column(
               children: [
+                const _BannerPromo(),
+                const SizedBox(height: AppTheme.spasiBesar),
                 GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    // Petaknya mengalir sendiri dari dua kolom di ponsel jadi
-                    // lebih banyak di tablet, tanpa satu pun titik putus yang
-                    // harus ditulis dan dijaga.
-                    maxCrossAxisExtent: 220,
-                    // Diturunkan dari 148. Enam petak setinggi itu memenuhi
-                    // hampir seluruh layar ponsel, dan beranda yang penuh
-                    // membuat pintu kedua di bawahnya nyaris tidak pernah
-                    // terlihat tanpa menggulir.
-                    mainAxisExtent: 124,
-                    crossAxisSpacing: AppTheme.spasiSedang - 4,
+                    // Empat kolom di ponsel biasa, mengalir sendiri jadi lebih
+                    // banyak di tablet, tanpa satu pun titik putus yang harus
+                    // ditulis dan dijaga.
+                    maxCrossAxisExtent: 100,
+                    // 52 ikon + 8 jarak + dua baris label (labelMedium, 16px
+                    // per baris) + 12 padding = 104, dibulatkan naik supaya
+                    // nama layanan terpanjang ("Bersih Kamar Mandi") tidak
+                    // meluap dari petaknya.
+                    mainAxisExtent: 108,
+                    crossAxisSpacing: AppTheme.spasiKecil,
                     mainAxisSpacing: AppTheme.spasiSedang - 4,
                   ),
                   itemCount: layananKatalog.length,
@@ -140,14 +122,14 @@ class BerandaKlienScreen extends ConsumerWidget {
   }
 }
 
-/// Panel sapaan: penutup bawah blok hijau di kepala layar.
+/// Kepala hijau: bilah cari + notifikasi + profil, lalu sapaan.
 ///
 /// Sudut bawahnya dibulatkan supaya latar kertas terlihat menyembul di kedua
 /// pojoknya. Tanpa itu blok hijaunya berakhir dengan garis lurus melintang
 /// layar, dan yang terbaca adalah dua bidang yang kebetulan bertemu, bukan satu
 /// bentuk yang memang berhenti di situ.
-class _PanelSapaan extends StatelessWidget {
-  const _PanelSapaan({
+class _KepalaBeranda extends StatelessWidget {
+  const _KepalaBeranda({
     required this.nama,
     required this.warna,
     required this.warnaTeks,
@@ -169,15 +151,31 @@ class _PanelSapaan extends StatelessWidget {
           bottom: Radius.circular(AppTheme.spasiBesar),
         ),
       ),
-      padding: const EdgeInsets.fromLTRB(
+      // Jarak atas mengikuti inset status bar sendiri, bukan `SafeArea`:
+      // warnanya harus tetap menyambung sampai ke tepi layar, cuma isinya
+      // yang tidak boleh tertutup jam dan ikon sinyal.
+      padding: EdgeInsets.fromLTRB(
         AppTheme.spasiSedang,
-        AppTheme.spasiKecil,
+        MediaQuery.paddingOf(context).top + AppTheme.spasiKecil,
         AppTheme.spasiSedang,
         AppTheme.spasiBesar,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              Expanded(child: _KolomCari(warnaTeks: warnaTeks)),
+              // Kedua tombol ini cuma kelihatan untuk akun yang benar-benar
+              // punya dua peran atau sedang diuji lewat akun tiruan; bagi
+              // pengguna biasa baris ini tetap dua ikon saja seperti rujukan.
+              const TombolGantiMode(),
+              const PengalihAkun(),
+              const TombolNotifikasi(),
+              const TombolProfil(),
+            ],
+          ),
+          const SizedBox(height: AppTheme.spasiSedang),
           Text(
             // Nama depan saja. Nama lengkap membuat sapaan terbaca seperti surat
             // resmi, dan yang dituju di sini justru kebalikannya.
@@ -198,6 +196,82 @@ class _PanelSapaan extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Kolom cari, bentuknya saja untuk sekarang.
+///
+/// Belum ada apa pun untuk dicari: tidak ada indeks layanan, tidak ada riwayat
+/// yang bisa disaring dari sini. Ketukannya menjawab "menyusul", sama seperti
+/// pintu lain yang layarnya belum dibuat, supaya bentuknya tidak menjanjikan
+/// sesuatu yang belum ada.
+class _KolomCari extends StatelessWidget {
+  const _KolomCari({required this.warnaTeks});
+
+  final Color warnaTeks;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(AppTheme.radiusPil),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppTheme.radiusPil),
+        onTap: () => belumTersedia(context, 'Pencarian'),
+        child: const Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: AppTheme.spasiSedang,
+            vertical: 12,
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.search,
+                size: 20,
+                color: AppTheme.onKertasVariantTerang,
+              ),
+              SizedBox(width: AppTheme.spasiKecil),
+              Text(
+                'Cari layanan',
+                style: TextStyle(
+                  color: AppTheme.onKertasVariantTerang,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Bentuk banner promo, kosong untuk sekarang.
+///
+/// Isinya (gambar, teks, promo) menyusul dan sengaja belum ditulis di sini
+/// -- ini cuma bentuk dan warnanya, secukupnya supaya tempatnya sudah kelihatan
+/// di beranda sebelum isinya jadi.
+class _BannerPromo extends StatelessWidget {
+  const _BannerPromo();
+
+  @override
+  Widget build(BuildContext context) {
+    final skema = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      height: 140,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: skema.primaryContainer,
+        borderRadius: BorderRadius.circular(AppTheme.radiusKartu),
+      ),
+      child: Icon(
+        Icons.campaign_outlined,
+        size: 32,
+        color: skema.onPrimaryContainer.withValues(alpha: 0.5),
       ),
     );
   }

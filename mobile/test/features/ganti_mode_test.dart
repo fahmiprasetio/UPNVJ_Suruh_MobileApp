@@ -68,7 +68,9 @@ void main() {
   ) async {
     await bukaAplikasi(tester, SeedData.klienRunner);
 
-    expect(find.text('UPNVJ Suruh'), findsOneWidget);
+    // Beranda klien tidak lagi punya judul bilah atas (bagian 83); kolom cari
+    // yang jadi anak pertamanya adalah penanda yang sama-sama uniknya.
+    expect(find.text('Cari layanan'), findsOneWidget);
     expect(find.byTooltip('Ganti Mode'), findsOneWidget);
   });
 
@@ -88,7 +90,9 @@ void main() {
     await gantiMode(tester, 'Mode Runner');
     await gantiMode(tester, 'Mode Klien');
 
-    expect(find.text('UPNVJ Suruh'), findsOneWidget);
+    // Beranda klien tidak lagi punya judul bilah atas (bagian 83); kolom cari
+    // yang jadi anak pertamanya adalah penanda yang sama-sama uniknya.
+    expect(find.text('Cari layanan'), findsOneWidget);
   });
 
   testWidgets('akun satu peran tidak diberi tombol ganti mode', (tester) async {
@@ -145,7 +149,9 @@ void main() {
     await tester.tap(find.text(SeedData.klien.nama));
     await tester.pumpAndSettle();
 
-    expect(find.text('UPNVJ Suruh'), findsOneWidget);
+    // Beranda klien tidak lagi punya judul bilah atas (bagian 83); kolom cari
+    // yang jadi anak pertamanya adalah penanda yang sama-sama uniknya.
+    expect(find.text('Cari layanan'), findsOneWidget);
     expect(find.byTooltip('Ganti Mode'), findsNothing);
   });
 }

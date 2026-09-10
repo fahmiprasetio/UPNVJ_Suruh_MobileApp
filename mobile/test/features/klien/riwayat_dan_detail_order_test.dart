@@ -60,7 +60,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Order Saya'));
+    await tester.tap(find.byTooltip('Pesanan'));
     await tester.pumpAndSettle();
   }
 
@@ -69,7 +69,7 @@ void main() {
       ProviderScope(overrides: [sumberTiruan], child: const UpnvjSuruhApp()),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Order Saya'));
+    await tester.tap(find.byTooltip('Pesanan'));
     await tester.pumpAndSettle();
   }
 

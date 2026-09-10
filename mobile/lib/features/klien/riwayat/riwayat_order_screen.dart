@@ -69,7 +69,7 @@ class _RiwayatOrderScreenState extends ConsumerState<RiwayatOrderScreen> {
     final orders = ref.watch(orderKlienProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Order Saya')),
+      appBar: AppBar(title: const Text('Pesanan')),
       body: orders.when(
         // Jendela yang baru diperbesar membuat provider ini dihitung ulang. Tanpa ini
         // daftar yang sudah tampil berkedip jadi pemuat setiap kali "muat lagi"

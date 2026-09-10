@@ -3,18 +3,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/models/order.dart';
 import '../../providers/order_providers.dart';
-import '../profil/profil_screen.dart';
+import '../chat/daftar_chat_screen.dart';
 import '../widgets/bilah_navigasi_bawah.dart';
 import 'beranda/beranda_klien_screen.dart';
+import 'riwayat/riwayat_order_screen.dart';
 
-/// Permukaan klien: dua tempat yang dipakai bergantian.
+/// Permukaan klien: tiga tempat yang dipakai bergantian.
 ///
-/// Beranda untuk memesan, Profil untuk urusan akun. Riwayat order pernah punya
-/// tab sendiri di sini dan sekarang tidak lagi, atas permintaan pemilik produk:
-/// pintunya sudah ada di Profil, dan dua pintu ke tempat yang sama membuat
-/// bilah navigasi menjanjikan dua hal berbeda yang ternyata satu.
+/// Beranda untuk memesan, Pesanan untuk memantau, Chat untuk percakapan yang
+/// menempel pada order. Profil bukan tab di sini lagi -- pintunya pindah ke
+/// pojok kanan atas beranda (rujukan Gojek/Grab: profil bukan sesuatu yang
+/// dibuka bergantian dengan tugas utama, jadi tempatnya bukan bilah bawah).
 ///
 /// Dipasang di [IndexedStack] supaya berpindah tab tidak membuang keadaan layar.
+/// Daftar order tidak dimuat ulang dari awal setiap kali pengguna mengintip
+/// beranda, dan posisi gulungnya tidak lompat ke atas saat ia kembali.
 class CangkangKlien extends ConsumerStatefulWidget {
   const CangkangKlien({super.key});
 
@@ -31,15 +34,29 @@ class _CangkangKlienState extends ConsumerState<CangkangKlien> {
 
     // Order yang masih berjalan tidak boleh cuma diingat pemesannya sendiri.
     // Yang paling sering terlupakan justru yang paling mendesak: order yang
-    // menunggu dibayar berhenti di situ sampai ada yang membukanya lagi. Sejak
-    // tab riwayat dilepas, angka ini menumpang di Profil, satu-satunya tempat
-    // yang tersisa di bilah ini yang memuat jalan ke riwayatnya.
+    // menunggu dibayar berhenti di situ sampai ada yang membukanya lagi.
     final jumlahAktif = order.where((o) => o.status.isAktif).length;
+
+    // Dijumlahkan dari seluruh order, bukan dihitung ulang di [DaftarChatScreen]:
+    // angka di bilah bawah harus tetap benar sekalipun tab Chat belum pernah
+    // dibuka sama sekali, dan [orderKlienProvider] sudah dipantau di sini juga.
+    final belumDibaca = order.fold<int>(
+      0,
+      (jumlah, o) => jumlah + o.jumlahPesanBelumDibaca,
+    );
 
     return Scaffold(
       body: IndexedStack(
         index: _tab,
-        children: const [BerandaKlienScreen(), ProfilScreen()],
+        children: [
+          const BerandaKlienScreen(),
+          // Riwayat yang kosong menawarkan mulai memesan, dan yang dituju tab
+          // sebelah, bukan rute baru. Mendorong beranda sebagai rute akan
+          // menumpuk dua beranda di riwayat navigasi, dan tombol kembali
+          // sesudahnya mengantar pengguna ke beranda kedua yang tidak ia buka.
+          RiwayatOrderScreen(onMintaBeranda: () => setState(() => _tab = 0)),
+          const DaftarChatScreen(),
+        ],
       ),
       bottomNavigationBar: BilahNavigasiBawah(
         terpilih: _tab,
@@ -54,14 +71,27 @@ class _CangkangKlienState extends ConsumerState<CangkangKlien> {
             icon: Badge.count(
               count: jumlahAktif,
               isLabelVisible: jumlahAktif > 0,
-              child: const Icon(Icons.person_outline),
+              child: const Icon(Icons.receipt_long_outlined),
             ),
             selectedIcon: Badge.count(
               count: jumlahAktif,
               isLabelVisible: jumlahAktif > 0,
-              child: const Icon(Icons.person),
+              child: const Icon(Icons.receipt_long),
             ),
-            label: 'Profil',
+            label: 'Pesanan',
+          ),
+          NavigationDestination(
+            icon: Badge.count(
+              count: belumDibaca,
+              isLabelVisible: belumDibaca > 0,
+              child: const Icon(Icons.chat_bubble_outline),
+            ),
+            selectedIcon: Badge.count(
+              count: belumDibaca,
+              isLabelVisible: belumDibaca > 0,
+              child: const Icon(Icons.chat_bubble),
+            ),
+            label: 'Chat',
           ),
         ],
       ),

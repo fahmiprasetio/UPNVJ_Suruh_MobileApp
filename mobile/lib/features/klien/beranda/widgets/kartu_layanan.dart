@@ -3,11 +3,14 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../domain/service_catalog.dart';
 
-/// Satu petak layanan di beranda klien.
+/// Satu petak layanan di beranda klien, gaya pintasan super app: ikon dan
+/// nama saja, tanpa penjelasan.
 ///
-/// Ikonnya duduk di keping hijau di atas, nama dan keterangannya dipaku ke
-/// bawah oleh [Spacer]. Pemakuan itu yang membuat enam petak terlihat rata
-/// walaupun namanya membungkus ke jumlah baris yang berbeda-beda.
+/// Sebelumnya tiap petak membawa satu baris keterangan di bawah namanya.
+/// Dilepas atas permintaan pemilik produk, mencontoh referensi Gojek/Grab:
+/// pintasan sebanyak ini terasa beragam justru karena tiap petak menuntut
+/// dibaca, bukan sekadar dikenali dari ikon dan satu kata. Nama layanan sudah
+/// cukup menjelaskan dirinya sendiri begitu ikonnya duduk di sampingnya.
 class KartuLayanan extends StatelessWidget {
   const KartuLayanan({
     super.key,
@@ -36,99 +39,80 @@ class KartuLayanan extends StatelessWidget {
     // keterangannya bisa dibaca; yang berubah cuma seberapa keras ia memanggil.
     final kepekatan = tersedia ? 1.0 : 0.55;
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spasiKecil + 4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    // Tanpa `Card`: gaya pintasan tidak punya garis rambut atau bayangan
+    // sendiri, ikon dan namanya berdiri langsung di atas latar beranda, sama
+    // seperti rujukannya. `InkWell` dibulatkan sendiri secukupnya supaya
+    // sambutan ketukan tidak persegi mentah.
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppTheme.radiusKontrol),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Opacity(
+              opacity: kepekatan,
+              child: Stack(
+                clipBehavior: Clip.none,
                 children: [
-                  Opacity(
-                    opacity: kepekatan,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: skema.primaryContainer,
-                        borderRadius: BorderRadius.circular(
-                          AppTheme.radiusKontrol,
-                        ),
+                  Container(
+                    width: 52,
+                    height: 52,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: skema.primaryContainer,
+                      borderRadius: BorderRadius.circular(
+                        AppTheme.radiusKontrol,
                       ),
-                      child: Icon(
-                        layanan.icon,
-                        size: 18,
-                        color: skema.onPrimaryContainer,
-                      ),
+                    ),
+                    child: Icon(
+                      layanan.icon,
+                      size: 24,
+                      color: skema.onPrimaryContainer,
                     ),
                   ),
-                  const Spacer(),
-                  if (!tersedia) const _LencanaSegera(),
+                  // Bukan hijau atau maroon, keduanya sudah berarti sesuatu di
+                  // sistem ini. Titik netral kecil di pojok cukup untuk
+                  // membedakan "belum ada" dari "biasa saja" tanpa menuntut
+                  // ruang teks yang sudah tidak ada di petak sekecil ini.
+                  if (!tersedia)
+                    Positioned(
+                      top: -2,
+                      right: -2,
+                      child: Container(
+                        width: 14,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: skema.outline,
+                          border: Border.all(
+                            color: skema.surface,
+                            width: 2,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.schedule,
+                          size: 8,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
                 ],
               ),
-              const Spacer(),
-              Opacity(
-                opacity: kepekatan,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      layanan.nama,
-                      style: teks.titleSmall?.copyWith(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      layanan.deskripsi,
-                      style: teks.bodySmall?.copyWith(
-                        fontSize: 11,
-                        color: skema.onSurfaceVariant,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
+            ),
+            const SizedBox(height: AppTheme.spasiKecil),
+            Opacity(
+              opacity: kepekatan,
+              child: Text(
+                layanan.nama,
+                textAlign: TextAlign.center,
+                style: teks.labelMedium?.copyWith(fontWeight: FontWeight.w600),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Penanda layanan yang layarnya belum dibuat.
-///
-/// Bentuknya pil penuh, sama seperti lencana status order, karena yang
-/// disampaikannya juga sebuah keadaan: mata mencari pil untuk tahu keadaan
-/// sesuatu tanpa harus membacanya.
-class _LencanaSegera extends StatelessWidget {
-  const _LencanaSegera();
-
-  @override
-  Widget build(BuildContext context) {
-    final skema = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: skema.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(AppTheme.radiusPil),
-      ),
-      child: Text(
-        'Segera',
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: skema.onSurfaceVariant,
+            ),
+          ],
         ),
       ),
     );

@@ -69,6 +69,8 @@ class ProfilScreen extends ConsumerWidget {
                   const _KartuRiwayat(),
                 ],
                 const SizedBox(height: AppTheme.spasiSedang),
+                const _KartuPengaturan(),
+                const SizedBox(height: AppTheme.spasiSedang),
                 // `key` mengikat isian ke identitas akunnya, bukan sekadar ke
                 // posisinya di daftar: alat ganti akun bisa menukar pengguna
                 // tanpa layar ini dibongkar, dan tanpa key ini isian tetap
@@ -199,8 +201,9 @@ class _KartuIdentitas extends StatelessWidget {
   }
 }
 
-/// Pintu ke riwayat order, dan sejak tab riwayat dilepas dari bilah navigasi,
-/// satu-satunya pintu ke sana.
+/// Pintu kedua ke riwayat order, yang juga punya tab sendiri (Pesanan) di
+/// bilah navigasi. Dipertahankan untuk orang yang sedang ada di Profil dan
+/// mau menengok pesanannya tanpa berpindah tab dulu.
 class _KartuRiwayat extends StatelessWidget {
   const _KartuRiwayat();
 
@@ -213,6 +216,28 @@ class _KartuRiwayat extends StatelessWidget {
         subtitle: const Text('Lihat semua pesanan yang pernah kamu buat'),
         trailing: const Icon(Icons.chevron_right),
         onTap: () => context.push(Rute.riwayat),
+      ),
+    );
+  }
+}
+
+/// Pintu ke Pengaturan.
+///
+/// Sebelumnya ikon roda gigi tersendiri di bilah atas beranda. Dipindahkan ke
+/// sini supaya bilah atas beranda tetap dua ikon saja (notifikasi, profil),
+/// mengikuti rujukan Gojek/Grab: pengaturan bukan hal yang dibuka tiap hari,
+/// jadi tempatnya di balik profil, bukan di baris paling sering dilihat.
+class _KartuPengaturan extends StatelessWidget {
+  const _KartuPengaturan();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.settings_outlined),
+        title: const Text('Pengaturan'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => context.push(Rute.pengaturan),
       ),
     );
   }
