@@ -6,24 +6,15 @@ import '../../providers/order_providers.dart';
 import '../profil/profil_screen.dart';
 import '../widgets/bilah_navigasi_bawah.dart';
 import 'beranda/beranda_klien_screen.dart';
-import 'riwayat/riwayat_order_screen.dart';
 
-/// Permukaan klien: tiga tempat yang dipakai bergantian.
+/// Permukaan klien: dua tempat yang dipakai bergantian.
 ///
-/// Beranda dibuka untuk memesan, Order Saya dibuka untuk menengok apa yang sudah
-/// dipesan. Sebelum ini Order Saya cuma ikon di pojok bilah atas, dan itu salah
-/// tempat: memesan dan memantau adalah dua hal yang sama seringnya dilakukan
-/// orang, sementara pojok bilah atas adalah tempat yang dipakai untuk hal yang
-/// jarang. Permukaan runner sudah lebih dulu berbentuk begini; klien menyusul,
-/// dan sekarang keduanya bisa dipelajari sekali.
-///
-/// Profil menyusul di tab ketiga dengan alasan yang sama: siapa yang sedang
-/// masuk dan jalan keluar dari akun bukan hal yang jarang dibuka, jadi bukan
-/// tempatnya di balik ikon pojok bilah atas.
+/// Beranda untuk memesan, Profil untuk urusan akun. Riwayat order pernah punya
+/// tab sendiri di sini dan sekarang tidak lagi, atas permintaan pemilik produk:
+/// pintunya sudah ada di Profil, dan dua pintu ke tempat yang sama membuat
+/// bilah navigasi menjanjikan dua hal berbeda yang ternyata satu.
 ///
 /// Dipasang di [IndexedStack] supaya berpindah tab tidak membuang keadaan layar.
-/// Daftar order tidak dimuat ulang dari awal setiap kali pengguna mengintip
-/// beranda, dan posisi gulungnya tidak lompat ke atas saat ia kembali.
 class CangkangKlien extends ConsumerStatefulWidget {
   const CangkangKlien({super.key});
 
@@ -40,21 +31,15 @@ class _CangkangKlienState extends ConsumerState<CangkangKlien> {
 
     // Order yang masih berjalan tidak boleh cuma diingat pemesannya sendiri.
     // Yang paling sering terlupakan justru yang paling mendesak: order yang
-    // menunggu dibayar berhenti di situ sampai ada yang membukanya lagi.
+    // menunggu dibayar berhenti di situ sampai ada yang membukanya lagi. Sejak
+    // tab riwayat dilepas, angka ini menumpang di Profil, satu-satunya tempat
+    // yang tersisa di bilah ini yang memuat jalan ke riwayatnya.
     final jumlahAktif = order.where((o) => o.status.isAktif).length;
 
     return Scaffold(
       body: IndexedStack(
         index: _tab,
-        children: [
-          const BerandaKlienScreen(),
-          // Riwayat yang kosong menawarkan mulai memesan, dan yang dituju tab
-          // sebelah, bukan rute baru. Mendorong beranda sebagai rute akan
-          // menumpuk dua beranda di riwayat navigasi, dan tombol kembali
-          // sesudahnya mengantar pengguna ke beranda kedua yang tidak ia buka.
-          RiwayatOrderScreen(onMintaBeranda: () => setState(() => _tab = 0)),
-          const ProfilScreen(),
-        ],
+        children: const [BerandaKlienScreen(), ProfilScreen()],
       ),
       bottomNavigationBar: BilahNavigasiBawah(
         terpilih: _tab,
@@ -69,18 +54,13 @@ class _CangkangKlienState extends ConsumerState<CangkangKlien> {
             icon: Badge.count(
               count: jumlahAktif,
               isLabelVisible: jumlahAktif > 0,
-              child: const Icon(Icons.receipt_long_outlined),
+              child: const Icon(Icons.person_outline),
             ),
             selectedIcon: Badge.count(
               count: jumlahAktif,
               isLabelVisible: jumlahAktif > 0,
-              child: const Icon(Icons.receipt_long),
+              child: const Icon(Icons.person),
             ),
-            label: 'Order Saya',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
             label: 'Profil',
           ),
         ],

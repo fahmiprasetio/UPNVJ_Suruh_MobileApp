@@ -5,9 +5,11 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'app.dart';
 import 'core/notifikasi/konfigurasi_firebase.dart';
+import 'core/theme/preferensi_tema.dart';
 import 'data/api/sesi_token.dart';
 import 'providers/pembuka_providers.dart';
 import 'providers/repository_providers.dart';
+import 'providers/tema_providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,8 +40,17 @@ Future<void> main() async {
   final sesi = SesiToken();
   await sesi.muat();
 
+  // Ditunggu di sini dengan alasan yang sama: kalau dibaca setelah bingkai
+  // pertama, aplikasi berkedip sekali dari tema bawaan ke tema pilihan
+  // penggunanya setiap kali dibuka.
+  final preferensiTema = PreferensiTema();
+  await preferensiTema.muat();
+
   final wadah = ProviderContainer(
-    overrides: [sesiTokenProvider.overrideWithValue(sesi)],
+    overrides: [
+      sesiTokenProvider.overrideWithValue(sesi),
+      preferensiTemaProvider.overrideWithValue(preferensiTema),
+    ],
   );
 
   // Dipicu sekarang, bukan ditunggu. Tanya-ke-server siapa pemilik tokennya

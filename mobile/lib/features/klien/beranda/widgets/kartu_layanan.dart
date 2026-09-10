@@ -41,7 +41,7 @@ class KartuLayanan extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spasiSedang),
+          padding: const EdgeInsets.all(AppTheme.spasiKecil + 4),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -51,7 +51,7 @@ class KartuLayanan extends StatelessWidget {
                   Opacity(
                     opacity: kepekatan,
                     child: Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: skema.primaryContainer,
                         borderRadius: BorderRadius.circular(
@@ -60,7 +60,7 @@ class KartuLayanan extends StatelessWidget {
                       ),
                       child: Icon(
                         layanan.icon,
-                        size: 22,
+                        size: 18,
                         color: skema.onPrimaryContainer,
                       ),
                     ),
@@ -78,6 +78,7 @@ class KartuLayanan extends StatelessWidget {
                     Text(
                       layanan.nama,
                       style: teks.titleSmall?.copyWith(
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
                       maxLines: 2,
@@ -87,6 +88,7 @@ class KartuLayanan extends StatelessWidget {
                     Text(
                       layanan.deskripsi,
                       style: teks.bodySmall?.copyWith(
+                        fontSize: 11,
                         color: skema.onSurfaceVariant,
                       ),
                       maxLines: 2,
@@ -141,8 +143,21 @@ class _LencanaSegera extends StatelessWidget {
 /// pengguna belajar bahwa ada dua jalan, jadi ia tidak boleh dilebur jadi petak
 /// ketujuh di petak atas.
 ///
-/// Ini juga satu-satunya kartu berisi warna penuh di beranda. Warnanya maroon,
-/// warna yang di sistem ini selalu berarti "tekan ini".
+/// Ini juga satu-satunya kartu berisi warna penuh di beranda.
+///
+/// ## Kenapa hijau, bukan maroon
+///
+/// Sebelumnya bidang ini maroon, mengikuti aturan "maroon berarti tekan ini".
+/// Diganti atas permintaan pemilik produk dengan alasan yang mengalahkan
+/// aturan itu di tempat ini: merah dibaca orang sebagai bahaya atau
+/// peringatan, sesuatu yang sebaiknya dipikir dulu sebelum ditekan. Padahal
+/// memesan adalah pekerjaan utama aplikasi ini, hal yang memang harus sering
+/// ditekan. Merah dipakai untuk yang perlu diwaspadai, bukan untuk pintu
+/// masuk fitur utama.
+///
+/// Yang membedakan pintu ini dari petak di atasnya tetap utuh, karena
+/// pembedanya memang bukan warna melainkan bentuk: bilah selebar layar
+/// melawan petak.
 class KartuPermintaanLain extends StatelessWidget {
   const KartuPermintaanLain({
     super.key,
@@ -157,23 +172,12 @@ class KartuPermintaanLain extends StatelessWidget {
   Widget build(BuildContext context) {
     final skema = Theme.of(context).colorScheme;
     final teks = Theme.of(context).textTheme;
-    final gelap = Theme.of(context).brightness == Brightness.dark;
-
-    // Terang memakai maroon penuh, gelap memakai wadahnya.
-    //
-    // Bukan demi variasi. Di Material, peran berkekuatan penuh pada tema gelap
-    // adalah warna muda yang dibuat untuk teks, bukan untuk isian: maroon muda
-    // selebar bilah ini akan menyala merah jambu di tengah malam. Yang dicari
-    // sama di kedua tema, yaitu satu bidang maroon yang meyakinkan, dan peran
-    // yang menghasilkannya kebetulan berbeda nama.
-    //
-    // Sebelumnya keduanya memakai wadah, dan di tema terang hasilnya merah muda
-    // pucat: bukan pintu yang mengundang, melainkan bidang yang terbaca seperti
-    // peringatan yang lupa diselesaikan.
-    final warnaPintu = gelap ? skema.secondaryContainer : skema.secondary;
-    final warnaTeksPintu = gelap
-        ? skema.onSecondaryContainer
-        : skema.onSecondary;
+    // Wadah hijau, dan sama di kedua tema. Peran wadah memang yang dibuat
+    // Material untuk bidang selebar ini: ia sudah punya pasangan warna teksnya
+    // sendiri yang terbaca di terang maupun gelap, jadi tidak perlu dua cabang
+    // warna yang harus dijaga bersamaan.
+    final warnaPintu = skema.primaryContainer;
+    final warnaTeksPintu = skema.onPrimaryContainer;
 
     return Card(
       clipBehavior: Clip.antiAlias,

@@ -199,11 +199,8 @@ class _KartuIdentitas extends StatelessWidget {
   }
 }
 
-/// Pintasan ke riwayat order, dari profil.
-///
-/// Riwayat sudah punya tab sendiri di bilah navigasi klien; kartu ini bukan
-/// gantinya, cuma jalan kedua untuk orang yang sedang ada di profil dan mau
-/// menengok pesanannya tanpa berpindah tab dulu.
+/// Pintu ke riwayat order, dan sejak tab riwayat dilepas dari bilah navigasi,
+/// satu-satunya pintu ke sana.
 class _KartuRiwayat extends StatelessWidget {
   const _KartuRiwayat();
 

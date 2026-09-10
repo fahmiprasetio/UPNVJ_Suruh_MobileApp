@@ -8,6 +8,7 @@ import '../../../providers/repository_providers.dart';
 import '../buka_form_order.dart';
 import '../../dev/pengalih_akun.dart';
 import '../../peran/tombol_ganti_mode.dart';
+import '../../widgets/tombol_notifikasi.dart';
 import '../../widgets/tombol_pengaturan.dart';
 import 'widgets/kartu_layanan.dart';
 
@@ -68,7 +69,12 @@ class BerandaKlienScreen extends ConsumerWidget {
         actions: const [
           TombolGantiMode(),
           PengalihAkun(),
+          TombolNotifikasi(),
           TombolPengaturan(),
+          // Tombol terakhir tidak dibiarkan menempel tepi layar. Bawaan
+          // AppBar menyisakan empat piksel, dan di layar melengkung sisi itu
+          // yang pertama tertutup lengkungan kacanya.
+          SizedBox(width: AppTheme.spasiKecil),
         ],
       ),
       // Satu ListView, bukan panel tetap di luar area gulir: panel sapaan ikut
@@ -100,7 +106,11 @@ class BerandaKlienScreen extends ConsumerWidget {
                     // lebih banyak di tablet, tanpa satu pun titik putus yang
                     // harus ditulis dan dijaga.
                     maxCrossAxisExtent: 220,
-                    mainAxisExtent: 148,
+                    // Diturunkan dari 148. Enam petak setinggi itu memenuhi
+                    // hampir seluruh layar ponsel, dan beranda yang penuh
+                    // membuat pintu kedua di bawahnya nyaris tidak pernah
+                    // terlihat tanpa menggulir.
+                    mainAxisExtent: 124,
                     crossAxisSpacing: AppTheme.spasiSedang - 4,
                     mainAxisSpacing: AppTheme.spasiSedang - 4,
                   ),

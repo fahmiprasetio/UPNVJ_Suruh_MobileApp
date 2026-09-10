@@ -6,6 +6,7 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/pembuka/pembuka_overlay.dart';
 import 'providers/pembuka_providers.dart';
+import 'providers/tema_providers.dart';
 
 class UpnvjSuruhApp extends ConsumerWidget {
   const UpnvjSuruhApp({super.key});
@@ -17,6 +18,7 @@ class UpnvjSuruhApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.terang(),
       darkTheme: AppTheme.gelap(),
+      themeMode: ref.watch(modeTemaProvider),
       locale: const Locale('id', 'ID'),
       supportedLocales: const [Locale('id', 'ID')],
       localizationsDelegates: const [
