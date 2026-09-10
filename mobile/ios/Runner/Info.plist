@@ -71,5 +71,10 @@
 	     bukan sekadar meminta. -->
 	<key>NSCameraUsageDescription</key>
 	<string>Kamera dipakai runner untuk memotret bukti pekerjaan yang sudah selesai.</string>
+	<!-- Wajib ada, kalau tidak iOS menghentikan aplikasi begitu lokasi diminta.
+	     Dibaca sekali saat tombol "Pakai lokasi saat ini" ditekan di pemilih
+	     lokasi Anter Jemput, bukan diikuti terus-menerus di latar belakang. -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Lokasi dipakai mengisi titik jemput atau tujuan secara akurat saat kamu menekan "Pakai lokasi saat ini".</string>
 </dict>
 </plist>

@@ -202,6 +202,10 @@ class _FormJastipBarangScreenState
                 suffixText: 'km',
                 prefixIcon: Icon(Icons.straighten_outlined),
               ),
+              // Cuma kolom ini, bukan seluruh form: tanpa ini, jarak di atas
+              // batas dijepit diam-diam di pratinjau harga tanpa penjelasan
+              // apa pun sampai "Buat Order" ditekan.
+              autovalidateMode: AutovalidateMode.onUserInteraction,
               validator: (nilai) => validasiJarak(nilai, tarif),
             ),
             const SizedBox(height: AppTheme.spasiKecil),

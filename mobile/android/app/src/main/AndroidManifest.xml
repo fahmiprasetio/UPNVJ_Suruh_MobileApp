@@ -11,6 +11,12 @@
          izin yang kurang melainkan seperti server yang mati. -->
     <uses-permission android:name="android.permission.INTERNET"/>
 
+    <!-- Untuk tombol "Pakai lokasi saat ini" di pemilih lokasi Anter Jemput.
+         Cuma FINE, bukan BACKGROUND_LOCATION: lokasi dibaca sekali saat
+         tombolnya ditekan, bukan diikuti terus-menerus di latar belakang. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+
     <application
         android:label="upnvj_suruh"
         android:name="${applicationName}"

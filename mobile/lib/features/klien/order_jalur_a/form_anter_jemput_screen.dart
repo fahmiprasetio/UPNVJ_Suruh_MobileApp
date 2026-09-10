@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../../core/api/galat_api.dart';
 import '../../../core/config/batas_masukan.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/format/formatters.dart';
 import '../../../core/format/jarak.dart';
+import '../../../core/peta/jarak_rute.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/enums.dart';
 import '../../../domain/models/order.dart';
@@ -15,6 +17,7 @@ import '../../../domain/models/tarif.dart';
 import '../../../domain/pricing/kalkulator_tarif.dart';
 import '../../../providers/repository_providers.dart';
 import '../../widgets/pesan_kosong.dart';
+import '../peta/pemilih_lokasi_screen.dart';
 import 'widgets/ringkasan_harga.dart';
 
 /// Form Jalur A untuk Anter Jemput.
@@ -42,6 +45,17 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
   final _catatanController = TextEditingController();
 
   bool _sedangMengirim = false;
+  bool _sedangHitungRute = false;
+
+  /// Titik dari peta, kalau kolom alamat yang bersangkutan diisi lewat sana.
+  ///
+  /// Cuma dipakai sekali untuk menghitung ulang kolom jarak begitu keduanya
+  /// terisi (lihat [_pilihDiPeta]); sesudah itu kolom jarak kembali jadi
+  /// teks biasa yang bebas disunting, sama seperti sebelum peta ada. Tidak
+  /// ada usaha menjaganya tetap sinkron kalau alamatnya diketik ulang manual
+  /// sesudahnya -- itu bukan kontrak yang diminta, cuma kenyamanan sekali isi.
+  LatLng? _posisiJemput;
+  LatLng? _posisiTujuan;
 
   /// Alamat tersimpan mengisi sendiri kolom "Dijemput di mana?".
   ///
@@ -153,11 +167,20 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
               textCapitalization: TextCapitalization.sentences,
               maxLines: 2,
               minLines: 1,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 counterText: '',
                 labelText: 'Dijemput di mana?',
                 hintText: 'Kos Melati, Jl. Pondok Labu Raya No. 12',
-                prefixIcon: Icon(Icons.my_location_outlined),
+                prefixIcon: const Icon(Icons.my_location_outlined),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.map_outlined),
+                  tooltip: 'Pilih di peta',
+                  onPressed: () => _pilihDiPeta(
+                    controller: _jemputController,
+                    judul: 'Titik jemput',
+                    untukJemput: true,
+                  ),
+                ),
               ),
               validator: (nilai) => _wajibAlamat(nilai, 'jemput'),
             ),
@@ -168,29 +191,49 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
               textCapitalization: TextCapitalization.sentences,
               maxLines: 2,
               minLines: 1,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 counterText: '',
                 labelText: 'Diantar ke mana?',
                 hintText: 'Gedung Fakultas Ilmu Komputer UPNVJ',
-                prefixIcon: Icon(Icons.place_outlined),
+                prefixIcon: const Icon(Icons.place_outlined),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.map_outlined),
+                  tooltip: 'Pilih di peta',
+                  onPressed: () => _pilihDiPeta(
+                    controller: _tujuanController,
+                    judul: 'Titik tujuan',
+                    untukJemput: false,
+                  ),
+                ),
               ),
               validator: (nilai) => _wajibAlamat(nilai, 'tujuan'),
             ),
             const SizedBox(height: AppTheme.spasiSedang),
             TextFormField(
               controller: _jarakController,
+              enabled: !_sedangHitungRute,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
               ],
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 counterText: '',
                 labelText: 'Perkiraan jarak',
                 suffixText: 'km',
-                prefixIcon: Icon(Icons.straighten_outlined),
+                prefixIcon: const Icon(Icons.straighten_outlined),
+                // Bukan sekadar hiasan: tanpa ini kolomnya cuma terlihat mati
+                // sebentar tanpa penjelasan sementara rute jalannya dihitung.
+                helperText: _sedangHitungRute
+                    ? 'Menghitung jarak rute jalan...'
+                    : null,
               ),
+              // Cuma kolom ini, bukan seluruh form: tanpa ini, jarak di atas
+              // batas dijepit diam-diam di pratinjau harga tanpa penjelasan
+              // apa pun sampai "Buat Order" ditekan, dan harga yang kelihatan
+              // macet terbaca seperti aplikasi rusak.
+              autovalidateMode: AutovalidateMode.onUserInteraction,
               validator: (nilai) => validasiJarak(nilai, tarif),
             ),
             const SizedBox(height: AppTheme.spasiKecil),
@@ -271,6 +314,63 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
     // Form diganti, bukan ditumpuk: menekan kembali dari detail order
     // sebaiknya pulang ke beranda, bukan balik ke form yang sudah terkirim.
     context.pushReplacement(Rute.detailOrder(order.id));
+  }
+
+  /// Membuka pemilih peta untuk satu kolom alamat, dan mengisi kolom jarak
+  /// otomatis begitu jemput maupun tujuan sudah sama-sama punya titik.
+  Future<void> _pilihDiPeta({
+    required TextEditingController controller,
+    required String judul,
+    required bool untukJemput,
+  }) async {
+    final posisiSekarang = untukJemput ? _posisiJemput : _posisiTujuan;
+    final hasil = await Navigator.of(context).push<HasilPilihLokasi>(
+      MaterialPageRoute(
+        builder: (context) => PemilihLokasiScreen(
+          judul: judul,
+          posisiAwal: posisiSekarang,
+        ),
+      ),
+    );
+    if (hasil == null || !mounted) return;
+
+    controller.text = hasil.alamat;
+    setState(() {
+      if (untukJemput) {
+        _posisiJemput = hasil.posisi;
+      } else {
+        _posisiTujuan = hasil.posisi;
+      }
+    });
+
+    final jemput = _posisiJemput;
+    final tujuan = _posisiTujuan;
+    if (jemput == null || tujuan == null) return;
+
+    setState(() => _sedangHitungRute = true);
+    // Jarak jalan sungguhan lewat OSRM, bukan garis lurus -- garis lurus
+    // mengabaikan jalan memutar, jalan satu arah, dan sungai di antara dua
+    // titik, dan bisa jauh meleset dari jarak yang sungguh ditempuh runner.
+    final km = await JarakRuteOsrm.kilometer(jemput, tujuan);
+    if (!mounted) return;
+    setState(() => _sedangHitungRute = false);
+
+    if (km == null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Jarak rute gagal dihitung. Isi kolom jarak secara manual.',
+            ),
+          ),
+        );
+      return;
+    }
+
+    setState(() {
+      _jarakController.text = tulisJarak(double.parse(km.toStringAsFixed(1)));
+    });
   }
 
   static String? _wajibAlamat(String? nilai, String jenis) {
