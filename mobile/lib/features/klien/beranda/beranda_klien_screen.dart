@@ -83,11 +83,12 @@ class BerandaKlienScreen extends ConsumerWidget {
                 GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    // Empat kolom di ponsel biasa, mengalir sendiri jadi lebih
-                    // banyak di tablet, tanpa satu pun titik putus yang harus
-                    // ditulis dan dijaga.
-                    maxCrossAxisExtent: 100,
+                  // Tiga kolom tetap, bukan mengalir sendiri: enam layanan
+                  // katalognya tetap (bagian 4), jadi baris 3-3 yang rapi
+                  // lebih penting di sini daripada grid yang otomatis
+                  // menyesuaikan lebar layar.
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
                     // 52 ikon + 8 jarak + dua baris label (labelMedium, 16px
                     // per baris) + 12 padding = 104, dibulatkan naik supaya
                     // nama layanan terpanjang ("Bersih Kamar Mandi") tidak
@@ -148,32 +149,43 @@ class _KepalaBeranda extends StatelessWidget {
       decoration: BoxDecoration(
         color: warna,
         borderRadius: const BorderRadius.vertical(
-          bottom: Radius.circular(AppTheme.spasiBesar),
+          bottom: Radius.circular(AppTheme.radiusKepala),
         ),
       ),
       // Jarak atas mengikuti inset status bar sendiri, bukan `SafeArea`:
       // warnanya harus tetap menyambung sampai ke tepi layar, cuma isinya
-      // yang tidak boleh tertutup jam dan ikon sinyal.
+      // yang tidak boleh tertutup jam dan ikon sinyal. Kiri-kanan lebih lebar
+      // dari kartu biasa (`spasiBesar`, bukan `spasiSedang`) supaya kolom cari
+      // tidak terbaca mepet ke lengkungan besar di bawahnya.
       padding: EdgeInsets.fromLTRB(
-        AppTheme.spasiSedang,
+        AppTheme.spasiBesar,
         MediaQuery.paddingOf(context).top + AppTheme.spasiKecil,
-        AppTheme.spasiSedang,
+        AppTheme.spasiBesar,
         AppTheme.spasiBesar,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(child: _KolomCari(warnaTeks: warnaTeks)),
-              // Kedua tombol ini cuma kelihatan untuk akun yang benar-benar
-              // punya dua peran atau sedang diuji lewat akun tiruan; bagi
-              // pengguna biasa baris ini tetap dua ikon saja seperti rujukan.
-              const TombolGantiMode(),
-              const PengalihAkun(),
-              const TombolNotifikasi(),
-              const TombolProfil(),
-            ],
+          // Ikon-ikon disemir putih lewat satu `IconTheme`, bukan satu-satu:
+          // bawaannya `onSurfaceVariant`, warna gelap yang nyaris tidak
+          // terlihat di atas hijau tua kepala ini.
+          IconTheme.merge(
+            data: IconThemeData(color: warnaTeks),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(child: _KolomCari(warnaTeks: warnaTeks)),
+                const SizedBox(width: AppTheme.spasiKecil),
+                // Kedua tombol ini cuma kelihatan untuk akun yang benar-benar
+                // punya dua peran atau sedang diuji lewat akun tiruan; bagi
+                // pengguna biasa baris ini tetap dua ikon saja seperti
+                // rujukan.
+                const TombolGantiMode(),
+                const PengalihAkun(),
+                const TombolNotifikasi(),
+                const TombolProfil(),
+              ],
+            ),
           ),
           const SizedBox(height: AppTheme.spasiSedang),
           Text(
@@ -216,9 +228,9 @@ class _KolomCari extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(AppTheme.radiusPil),
+      borderRadius: BorderRadius.circular(AppTheme.radiusKontrol),
       child: InkWell(
-        borderRadius: BorderRadius.circular(AppTheme.radiusPil),
+        borderRadius: BorderRadius.circular(AppTheme.radiusKontrol),
         onTap: () => belumTersedia(context, 'Pencarian'),
         child: const Padding(
           padding: EdgeInsets.symmetric(

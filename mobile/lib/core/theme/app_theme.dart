@@ -78,6 +78,12 @@ class AppTheme {
   /// status tanpa membacanya, jadi ia tidak boleh dipakai untuk hal lain.
   static const double radiusPil = 999;
 
+  /// Sudut bawah blok kepala hijau di beranda. Sengaja lebih besar dari
+  /// [radiusKartu]: ini satu-satunya bentuk selebar layar, jadi lengkungannya
+  /// perlu terlihat dari jarak baca normal, bukan cuma jarak dekat seperti
+  /// sudut kartu biasa.
+  static const double radiusKepala = 40;
+
   static ThemeData terang() => _bangun(Brightness.light);
 
   static ThemeData gelap() => _bangun(Brightness.dark);
