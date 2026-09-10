@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/config/batas_masukan.dart';
+import '../../core/router/app_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../domain/models/app_user.dart';
 import '../../providers/repository_providers.dart';
@@ -59,6 +61,13 @@ class ProfilScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(AppTheme.spasiSedang),
               children: [
                 _KartuIdentitas(user: user),
+                // Cuma untuk akun yang punya peran klien: riwayatnya milik
+                // permukaan klien, dan akun runner murni tidak punya order
+                // Jalur A/B atas namanya sendiri untuk ditengok di sini.
+                if (user.isKlien) ...[
+                  const SizedBox(height: AppTheme.spasiSedang),
+                  const _KartuRiwayat(),
+                ],
                 const SizedBox(height: AppTheme.spasiSedang),
                 // `key` mengikat isian ke identitas akunnya, bukan sekadar ke
                 // posisinya di daftar: alat ganti akun bisa menukar pengguna
@@ -185,6 +194,28 @@ class _KartuIdentitas extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Pintasan ke riwayat order, dari profil.
+///
+/// Riwayat sudah punya tab sendiri di bilah navigasi klien; kartu ini bukan
+/// gantinya, cuma jalan kedua untuk orang yang sedang ada di profil dan mau
+/// menengok pesanannya tanpa berpindah tab dulu.
+class _KartuRiwayat extends StatelessWidget {
+  const _KartuRiwayat();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.receipt_long_outlined),
+        title: const Text('Riwayat Order'),
+        subtitle: const Text('Lihat semua pesanan yang pernah kamu buat'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => context.push(Rute.riwayat),
       ),
     );
   }

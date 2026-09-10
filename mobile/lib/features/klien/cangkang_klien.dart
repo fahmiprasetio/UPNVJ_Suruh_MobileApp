@@ -3,11 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/models/order.dart';
 import '../../providers/order_providers.dart';
+import '../profil/profil_screen.dart';
 import '../widgets/bilah_navigasi_bawah.dart';
 import 'beranda/beranda_klien_screen.dart';
 import 'riwayat/riwayat_order_screen.dart';
 
-/// Permukaan klien: dua tempat yang dipakai bergantian.
+/// Permukaan klien: tiga tempat yang dipakai bergantian.
 ///
 /// Beranda dibuka untuk memesan, Order Saya dibuka untuk menengok apa yang sudah
 /// dipesan. Sebelum ini Order Saya cuma ikon di pojok bilah atas, dan itu salah
@@ -15,6 +16,10 @@ import 'riwayat/riwayat_order_screen.dart';
 /// orang, sementara pojok bilah atas adalah tempat yang dipakai untuk hal yang
 /// jarang. Permukaan runner sudah lebih dulu berbentuk begini; klien menyusul,
 /// dan sekarang keduanya bisa dipelajari sekali.
+///
+/// Profil menyusul di tab ketiga dengan alasan yang sama: siapa yang sedang
+/// masuk dan jalan keluar dari akun bukan hal yang jarang dibuka, jadi bukan
+/// tempatnya di balik ikon pojok bilah atas.
 ///
 /// Dipasang di [IndexedStack] supaya berpindah tab tidak membuang keadaan layar.
 /// Daftar order tidak dimuat ulang dari awal setiap kali pengguna mengintip
@@ -48,6 +53,7 @@ class _CangkangKlienState extends ConsumerState<CangkangKlien> {
           // menumpuk dua beranda di riwayat navigasi, dan tombol kembali
           // sesudahnya mengantar pengguna ke beranda kedua yang tidak ia buka.
           RiwayatOrderScreen(onMintaBeranda: () => setState(() => _tab = 0)),
+          const ProfilScreen(),
         ],
       ),
       bottomNavigationBar: BilahNavigasiBawah(
@@ -71,6 +77,11 @@ class _CangkangKlienState extends ConsumerState<CangkangKlien> {
               child: const Icon(Icons.receipt_long),
             ),
             label: 'Order Saya',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'Profil',
           ),
         ],
       ),

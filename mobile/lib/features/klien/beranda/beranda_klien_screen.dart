@@ -8,7 +8,7 @@ import '../../../providers/repository_providers.dart';
 import '../buka_form_order.dart';
 import '../../dev/pengalih_akun.dart';
 import '../../peran/tombol_ganti_mode.dart';
-import '../../widgets/tombol_profil.dart';
+import '../../widgets/tombol_pengaturan.dart';
 import 'widgets/kartu_layanan.dart';
 
 /// Beranda klien, layar pertama, dua pintu.
@@ -68,24 +68,29 @@ class BerandaKlienScreen extends ConsumerWidget {
         actions: const [
           TombolGantiMode(),
           PengalihAkun(),
-          TombolProfil(),
+          TombolPengaturan(),
         ],
       ),
-      body: Column(
+      // Satu ListView, bukan panel tetap di luar area gulir: panel sapaan ikut
+      // naik seperti bagian lain layar ini begitu digulir, tidak diam di
+      // tempat menimpa isi di bawahnya. Panelnya sendiri yang jadi anak
+      // pertama daftar ini, tanpa padding tambahan, supaya tetap menyentuh
+      // tepi atas persis di bawah bilah judul seperti sebelumnya.
+      body: ListView(
         children: [
           _PanelSapaan(
             nama: user?.nama,
             warna: warnaKepala,
             warnaTeks: teksKepala,
           ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(
-                AppTheme.spasiSedang,
-                AppTheme.spasiBesar,
-                AppTheme.spasiSedang,
-                AppTheme.spasiBesar,
-              ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppTheme.spasiSedang,
+              AppTheme.spasiBesar,
+              AppTheme.spasiSedang,
+              AppTheme.spasiBesar,
+            ),
+            child: Column(
               children: [
                 GridView.builder(
                   shrinkWrap: true,
