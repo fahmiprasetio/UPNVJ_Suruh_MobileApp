@@ -65,7 +65,7 @@ class AppTheme {
 
   /// Jarak antar elemen di dalam satu kelompok, dan sisi dalam kartu.
   static const double spasiSedang = 16;
-  static const double spasiBesar = 24;
+  static const double spasiBesar = 40;
 
   /// Sudut terlembut, untuk wadah yang memuat satu satuan isi.
   static const double radiusKartu = 16;
@@ -82,7 +82,7 @@ class AppTheme {
   /// [radiusKartu]: ini satu-satunya bentuk selebar layar, jadi lengkungannya
   /// perlu terlihat dari jarak baca normal, bukan cuma jarak dekat seperti
   /// sudut kartu biasa.
-  static const double radiusKepala = 40;
+  static const double radiusKepala = 56;
 
   static ThemeData terang() => _bangun(Brightness.light);
 
