@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../domain/models/app_user.dart';
@@ -95,5 +96,12 @@ class KartuGantiAkun extends ConsumerWidget {
 
     if (dipilih == null || dipilih.id == aktif?.id) return;
     ref.read(pengalihAkunProvider)?.call(dipilih);
+
+    // Ditutup sendiri kembali ke layar yang tadi dibuka dari Profil.
+    // Berpindah akun tidak mengubah status masuk, jadi `redirect` GoRouter
+    // tidak ikut memindahkan lokasi (beda dari Keluar, yang memang membuat
+    // sesinya berakhir) -- tanpa ini pemakainya tertinggal di Profil milik
+    // akun yang baru saja ditinggalkan.
+    if (context.mounted && context.canPop()) context.pop();
   }
 }

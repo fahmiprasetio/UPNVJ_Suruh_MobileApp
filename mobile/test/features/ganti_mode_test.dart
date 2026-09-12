@@ -144,10 +144,15 @@ void main() {
     await bukaAplikasi(tester, SeedData.klienRunner);
     await gantiMode(tester, 'Mode Runner');
 
-    await tester.tap(find.byTooltip('Ganti Akun (alat penguji)'));
+    // Ganti akun sekarang ada di dalam Profil (bukan di bilah atas lagi),
+    // jadi harus dibuka dulu sebelum tombolnya bisa ditekan.
+    await tester.tap(find.byTooltip('Profil'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ganti Akun (alat penguji)'));
     await tester.pumpAndSettle();
     await tester.tap(find.text(SeedData.klien.nama));
     await tester.pumpAndSettle();
+
 
     // Beranda klien tidak lagi punya judul bilah atas (bagian 83); kolom cari
     // yang jadi anak pertamanya adalah penanda yang sama-sama uniknya.
