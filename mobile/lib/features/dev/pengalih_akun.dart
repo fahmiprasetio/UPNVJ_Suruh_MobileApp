@@ -10,11 +10,16 @@ import '../../providers/repository_providers.dart';
 ///
 /// Layar login belum bisa dibuat karena cara masuk akun masih menunggu jawaban
 /// mitra (rencana capstone bagian 14.8), sementara sisi runner tidak ada
-/// gunanya kalau tidak bisa dibuka sama sekali. Tombol ini menutup jurang itu
+/// gunanya kalau tidak bisa dibuka sama sekali. Kartu ini menutup jurang itu
 /// tanpa mengarang alur login: ia hilang dengan sendirinya begitu autentikasi
 /// sungguhan terpasang, karena penyedianya mengembalikan `null`.
-class PengalihAkun extends ConsumerWidget {
-  const PengalihAkun({super.key});
+///
+/// Ditaruh di dalam Profil, bukan di bilah atas: ganti akun bukan hal yang
+/// dilakukan tiap layar dibuka, dan Profil sudah jadi tempat semua urusan
+/// identitas akun (nama, keluar, dst.), jadi wajar alat penguji perannya ikut
+/// ke situ juga daripada nebeng di bilah atas tiap layar klien/runner.
+class KartuGantiAkun extends ConsumerWidget {
+  const KartuGantiAkun({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -22,10 +27,13 @@ class PengalihAkun extends ConsumerWidget {
     if (akunUji == null) return const SizedBox.shrink();
     if (ref.watch(pengalihAkunProvider) == null) return const SizedBox.shrink();
 
-    return IconButton(
-      onPressed: () => _pilihAkun(context, ref, akunUji),
-      icon: const Icon(Icons.science_outlined),
-      tooltip: 'Ganti Akun (alat penguji)',
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.science_outlined),
+        title: const Text('Ganti Akun (alat penguji)'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => _pilihAkun(context, ref, akunUji),
+      ),
     );
   }
 

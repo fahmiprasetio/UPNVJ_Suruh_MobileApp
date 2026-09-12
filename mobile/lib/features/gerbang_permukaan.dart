@@ -5,7 +5,6 @@ import '../core/api/galat_api.dart';
 import '../domain/enums.dart';
 import '../providers/peran_providers.dart';
 import '../providers/repository_providers.dart';
-import 'dev/pengalih_akun.dart';
 import 'klien/cangkang_klien.dart';
 import 'runner/beranda_runner_screen.dart';
 import 'widgets/pesan_kosong.dart';
@@ -96,7 +95,7 @@ class _PermukaanKosong extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('UPNVJ Suruh'),
-        actions: const [PengalihAkun(), TombolProfil()],
+        actions: const [TombolProfil()],
       ),
       // Widget kosong yang sama dengan daftar order dan chat, bukan salinan
       // keempat.

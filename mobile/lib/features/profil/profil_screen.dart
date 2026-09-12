@@ -7,6 +7,7 @@ import '../../core/router/app_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../domain/models/app_user.dart';
 import '../../providers/repository_providers.dart';
+import '../dev/pengalih_akun.dart';
 import 'ganti_nomor_hp_dialog.dart';
 
 /// Profil: siapa yang sedang masuk, dan satu-satunya jalan keluar dari akunnya.
@@ -70,6 +71,8 @@ class ProfilScreen extends ConsumerWidget {
                 ],
                 const SizedBox(height: AppTheme.spasiSedang),
                 const _KartuPengaturan(),
+                const SizedBox(height: AppTheme.spasiSedang),
+                const KartuGantiAkun(),
                 const SizedBox(height: AppTheme.spasiSedang),
                 // `key` mengikat isian ke identitas akunnya, bukan sekadar ke
                 // posisinya di daftar: alat ganti akun bisa menukar pengguna

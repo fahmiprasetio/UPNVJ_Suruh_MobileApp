@@ -6,7 +6,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../../domain/models/order.dart';
 import '../../../providers/repository_providers.dart';
 import '../../../providers/runner_providers.dart';
-import '../../dev/pengalih_akun.dart';
 import '../../peran/tombol_ganti_mode.dart';
 import '../../widgets/tombol_profil.dart';
 import 'widgets/kartu_order_siaran.dart';
@@ -41,7 +40,7 @@ class _OrderMasukScreenState extends ConsumerState<OrderMasukScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Order Masuk'),
-        actions: const [TombolGantiMode(), PengalihAkun(), TombolProfil()],
+        actions: const [TombolGantiMode(), TombolProfil()],
       ),
       body: SafeArea(
         child: tersiar.when(

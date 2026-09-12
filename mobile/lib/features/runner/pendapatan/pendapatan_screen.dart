@@ -7,7 +7,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../../domain/models/pendapatan.dart';
 import '../../../domain/service_catalog.dart';
 import '../../../providers/repository_providers.dart';
-import '../../dev/pengalih_akun.dart';
 import '../../peran/tombol_ganti_mode.dart';
 import '../../widgets/pesan_kosong.dart';
 import '../../widgets/tombol_profil.dart';
@@ -36,7 +35,7 @@ class PendapatanScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Pendapatan Saya'),
-        actions: const [TombolGantiMode(), PengalihAkun(), TombolProfil()],
+        actions: const [TombolGantiMode(), TombolProfil()],
       ),
       body: SafeArea(
         child: pendapatan.when(
