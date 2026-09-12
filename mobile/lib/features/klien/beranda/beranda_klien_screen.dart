@@ -6,7 +6,6 @@ import '../../../domain/enums.dart';
 import '../../../domain/service_catalog.dart';
 import '../../../providers/repository_providers.dart';
 import '../buka_form_order.dart';
-import '../../dev/pengalih_akun.dart';
 import '../../peran/tombol_ganti_mode.dart';
 import '../../widgets/tombol_notifikasi.dart';
 import '../../widgets/tombol_profil.dart';
@@ -64,50 +63,49 @@ class BerandaKlienScreen extends ConsumerWidget {
       // tempat menimpa isi di bawahnya.
       body: ListView(
         children: [
-          _KepalaBeranda(
-            nama: user?.nama,
-            warna: warnaKepala,
-            warnaTeks: teksKepala,
+          // Banner tertumpuk separuh di kepala hijau, separuh di kertas putih
+          // di bawahnya, pas sampai ke tengah bannernya: bukan `Column`
+          // biasa, karena bagian atas banner harus menggambar di atas hijau
+          // kepala, bukan berhenti tepat di batasnya. Sapaan "Halo, ..." tetap
+          // aman dari tumpukan ini karena kepalanya sendiri sudah diberi
+          // jarak napas ekstra di bawah teksnya (lihat `_KepalaBeranda`).
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              _KepalaBeranda(
+                nama: user?.nama,
+                warna: warnaKepala,
+                warnaTeks: teksKepala,
+              ),
+              Positioned(
+                left: AppTheme.spasiSedang,
+                right: AppTheme.spasiSedang,
+                bottom: -_BannerPromo.tinggiDiLuarKepala,
+                child: const _BannerPromo(),
+              ),
+            ],
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(
+            padding: EdgeInsets.fromLTRB(
               AppTheme.spasiSedang,
-              AppTheme.spasiSedang,
+              _BannerPromo.tinggiDiLuarKepala + AppTheme.spasiBesar,
               AppTheme.spasiSedang,
               AppTheme.spasiBesar,
             ),
             child: Column(
               children: [
-                const _BannerPromo(),
-                const SizedBox(height: AppTheme.spasiBesar),
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  // Tiga kolom tetap, bukan mengalir sendiri: enam layanan
-                  // katalognya tetap (bagian 4), jadi baris 3-3 yang rapi
-                  // lebih penting di sini daripada grid yang otomatis
-                  // menyesuaikan lebar layar.
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    // 68 ikon + 8 jarak + dua baris label (13px, ~18px per
-                    // baris) + 12 padding = 124, dibulatkan naik supaya nama
-                    // layanan terpanjang ("Bersih Kamar Mandi") tidak meluap
-                    // dari petaknya.
-                    mainAxisExtent: 128,
-                    crossAxisSpacing: AppTheme.spasiKecil,
-                    mainAxisSpacing: AppTheme.spasiSedang - 4,
-                  ),
-                  itemCount: layananKatalog.length,
-                  itemBuilder: (context, indeks) {
-                    final layanan = layananKatalog[indeks];
-                    return KartuLayanan(
-                      layanan: layanan,
-                      tersedia: adaFormOrder(layanan.type),
-                      onTap: () => bukaFormOrder(context, layanan.type),
-                    );
-                  },
-                ),
-                const SizedBox(height: AppTheme.spasiKecil),
+                // Dua `Row` manual, bukan `GridView`: `GridView` memaksa
+                // SEMUA sel (kedua baris sekaligus) memakai satu tinggi yang
+                // sama lewat `mainAxisExtent`, dan itu wajib dihitung ulang
+                // tangan tiap kali kontennya berubah (jebakan nomor 30).
+                // `IntrinsicHeight` di tiap baris cukup menyamakan tinggi
+                // ANTAR kartu SEBARIS -- kalau satu nama jadi dua baris,
+                // tetangga sebarisnya ikut menyesuaikan -- tanpa memaksa
+                // baris kedua ikut setinggi baris pertama.
+                _BarisLayanan(layanan: layananKatalog.sublist(0, 3)),
+                const SizedBox(height: 4),
+                _BarisLayanan(layanan: layananKatalog.sublist(3, 6)),
+                const SizedBox(height: AppTheme.spasiSedang),
                 const _PemisahPintu(),
                 const SizedBox(height: AppTheme.spasiSedang),
                 KartuPermintaanLain(
@@ -117,6 +115,39 @@ class BerandaKlienScreen extends ConsumerWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Satu baris berisi tiga kartu layanan, sama tinggi sesama sebaris lewat
+/// `IntrinsicHeight` -- kalau salah satu namanya jadi dua baris, tetangga
+/// sebarisnya ikut menyesuaikan, tapi baris lain di luar ini tidak ikut
+/// terpengaruh (beda dari `GridView` yang memaksa seluruh sel di kedua baris
+/// memakai satu tinggi yang sama, lihat jebakan nomor 30 di
+/// `Progres capstone.md`).
+class _BarisLayanan extends StatelessWidget {
+  const _BarisLayanan({required this.layanan});
+
+  final List<ServiceInfo> layanan;
+
+  @override
+  Widget build(BuildContext context) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final (indeks, item) in layanan.indexed) ...[
+            if (indeks > 0) const SizedBox(width: 2),
+            Expanded(
+              child: KartuLayanan(
+                layanan: item,
+                tersedia: adaFormOrder(item.type),
+                onTap: () => bukaFormOrder(context, item.type),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -139,6 +170,15 @@ class _KepalaBeranda extends StatelessWidget {
   final String? nama;
   final Color warna;
   final Color warnaTeks;
+
+  /// Jarak dari baris sapaan ke ujung bawah kepala.
+  ///
+  /// Lebih besar dari `spasiBesar` biasa dengan sengaja: banner di bawahnya
+  /// tumpuk masuk cukup dalam (lihat `_BannerPromo.tinggiDiLuarKepala`), dan
+  /// tanpa jarak napas ekstra ini sapaan "Halo, ..." ikut ketutup tumpukan
+  /// itu, bukan cuma kurva bawah kepalanya saja yang kelihatan menyentuh
+  /// banner.
+  static const double _jarakBawah = 128;
 
   @override
   Widget build(BuildContext context) {
@@ -163,7 +203,7 @@ class _KepalaBeranda extends StatelessWidget {
         AppTheme.spasiBesar,
         MediaQuery.paddingOf(context).top + AppTheme.spasiSedang,
         AppTheme.spasiBesar,
-        AppTheme.spasiBesar,
+        _jarakBawah,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -178,12 +218,11 @@ class _KepalaBeranda extends StatelessWidget {
               children: [
                 Expanded(child: _KolomCari(warnaTeks: warnaTeks)),
                 const SizedBox(width: AppTheme.spasiKecil),
-                // Kedua tombol ini cuma kelihatan untuk akun yang benar-benar
-                // punya dua peran atau sedang diuji lewat akun tiruan; bagi
-                // pengguna biasa baris ini tetap dua ikon saja seperti
-                // rujukan.
+                // Cuma kelihatan untuk akun yang benar-benar punya dua
+                // peran; bagi pengguna biasa baris ini tetap dua ikon saja
+                // seperti rujukan. Ganti akun (alat penguji) sudah pindah ke
+                // dalam Profil, bukan di sini.
                 const TombolGantiMode(),
-                const PengalihAkun(),
                 const TombolNotifikasi(),
                 const TombolProfil(),
               ],
@@ -272,17 +311,31 @@ class _KolomCari extends StatelessWidget {
 class _BannerPromo extends StatelessWidget {
   const _BannerPromo();
 
+  static const double tinggi = 140;
+
+  /// Berapa banyak tingginya yang tetap tinggal di kertas putih, di luar
+  /// kepala hijau. Lebih kecil dari separuh dengan sengaja: kepala hijau
+  /// turun lebih jauh dari sekadar tengah banner, sesuai rancangan.
+  static const double tinggiDiLuarKepala = 40;
+
   @override
   Widget build(BuildContext context) {
     final skema = Theme.of(context).colorScheme;
 
     return Container(
       width: double.infinity,
-      height: 140,
+      height: tinggi,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: skema.primaryContainer,
         borderRadius: BorderRadius.circular(AppTheme.radiusKartu),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 10,
+            offset: const Offset(2, 4),
+          ),
+        ],
       ),
       child: Icon(
         Icons.campaign_outlined,
