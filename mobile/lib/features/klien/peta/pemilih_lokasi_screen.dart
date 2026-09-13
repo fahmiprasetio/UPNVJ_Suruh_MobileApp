@@ -54,6 +54,15 @@ class _PemilihLokasiScreenState extends State<PemilihLokasiScreen> {
   bool _sedangMenerjemahkan = false;
   bool _sedangCariLokasi = false;
 
+  /// Sampai lima kandidat dari pencarian terakhir, menunggu dipilih.
+  ///
+  /// Dulu hasil pertama langsung dipakai tanpa ditanya, dan itu yang membuat
+  /// "UPN Veteran Jakarta" bisa nyasar ke kampus Limo padahal yang dimaksud
+  /// Pondok Labu -- Nominatim memang mengembalikan lebih dari satu kandidat,
+  /// cuma aplikasinya yang menebak buta kandidat teratas. Daftar ini dikosongkan
+  /// begitu satu dipilih atau peta diketuk langsung.
+  List<HasilPencarianAlamat> _kandidat = const [];
+
   @override
   void initState() {
     super.initState();
@@ -103,6 +112,35 @@ class _PemilihLokasiScreenState extends State<PemilihLokasiScreen> {
               ],
             ),
           ),
+          if (_kandidat.isNotEmpty)
+            Card(
+              margin: const EdgeInsets.symmetric(
+                horizontal: AppTheme.spasiSedang,
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 240),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: _kandidat.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final kandidat = _kandidat[index];
+                    return ListTile(
+                      leading: Icon(
+                        Icons.place_outlined,
+                        color: skema.primary,
+                      ),
+                      title: Text(
+                        kandidat.alamat,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onTap: () => _pilihKandidat(kandidat),
+                    );
+                  },
+                ),
+              ),
+            ),
           Expanded(
             child: Stack(
               alignment: Alignment.center,
@@ -223,22 +261,40 @@ class _PemilihLokasiScreenState extends State<PemilihLokasiScreen> {
     if (hasil.isEmpty) {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(const SnackBar(content: Text('Alamat tidak ketemu.')));
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Alamat tidak ketemu di peta gratis ini. Coba nama jalan atau '
+              'patokan yang lebih umum, atau ketuk langsung titiknya di peta.',
+            ),
+          ),
+        );
       return;
     }
 
-    final teratas = hasil.first;
+    // Kandidat ditampilkan, bukan langsung dipakai -- lihat alasannya di
+    // deklarasi `_kandidat`. Kalau cuma satu, tidak ada yang perlu dipilih.
+    if (hasil.length == 1) {
+      _pilihKandidat(hasil.first);
+      return;
+    }
+    setState(() => _kandidat = hasil);
+  }
+
+  void _pilihKandidat(HasilPencarianAlamat kandidat) {
     setState(() {
-      _posisi = teratas.posisi;
-      _alamat = teratas.alamat;
+      _posisi = kandidat.posisi;
+      _alamat = kandidat.alamat;
+      _kandidat = const [];
     });
-    _mapController.move(teratas.posisi, 16);
+    _mapController.move(kandidat.posisi, 16);
   }
 
   Future<void> _pilihTitik(LatLng titik) async {
     setState(() {
       _posisi = titik;
       _alamat = null;
+      _kandidat = const [];
       _sedangMenerjemahkan = true;
     });
 
