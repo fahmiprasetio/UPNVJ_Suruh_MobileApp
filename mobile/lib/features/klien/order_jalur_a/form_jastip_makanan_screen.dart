@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../../core/api/galat_api.dart';
 import '../../../core/config/batas_masukan.dart';
@@ -12,6 +13,7 @@ import '../../../domain/models/order.dart';
 import '../../../domain/pricing/kalkulator_tarif.dart';
 import '../../../providers/repository_providers.dart';
 import '../../widgets/pesan_kosong.dart';
+import '../peta/pemilih_lokasi_screen.dart';
 import 'widgets/ringkasan_harga.dart';
 
 /// Form Jalur A untuk Jastip Makanan.
@@ -47,6 +49,13 @@ class _FormJastipMakananScreenState
   final _tujuanController = TextEditingController();
 
   bool _sedangMengirim = false;
+
+  /// Titik peta untuk kolom warung, kalau diisi lewat sana.
+  ///
+  /// Tidak ada kolom jarak di form ini -- tarif Jastip Makanan flat, tidak
+  /// menghitung rute -- jadi titiknya cuma dipakai membuka kembali peta di
+  /// posisi terakhir, sama sekali tidak dikirim ke server.
+  LatLng? _posisiBeli;
 
   /// Alamat tersimpan mengisi sendiri kolom "Diantar ke mana?", mengikuti
   /// alasan yang sama seperti Jastip Barang: yang dibeli ada di warung, yang
@@ -139,11 +148,16 @@ class _FormJastipMakananScreenState
               textCapitalization: TextCapitalization.sentences,
               maxLines: 2,
               minLines: 1,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 counterText: '',
                 labelText: 'Beli di mana?',
                 hintText: 'Warung Bu Yati',
-                prefixIcon: Icon(Icons.store_outlined),
+                prefixIcon: const Icon(Icons.store_outlined),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.map_outlined),
+                  tooltip: 'Pilih di peta',
+                  onPressed: _pilihDiPeta,
+                ),
               ),
               validator: (nilai) => _wajibAlamat(nilai, 'warung'),
             ),
@@ -206,6 +220,23 @@ class _FormJastipMakananScreenState
       );
 
     context.pushReplacement(Rute.detailOrder(order.id));
+  }
+
+  Future<void> _pilihDiPeta() async {
+    final hasil = await Navigator.of(context).push<HasilPilihLokasi>(
+      MaterialPageRoute(
+        builder: (context) => PemilihLokasiScreen(
+          judul: 'Lokasi warung',
+          posisiAwal: _posisiBeli,
+        ),
+      ),
+    );
+    if (hasil == null || !mounted) return;
+
+    setState(() {
+      _belipController.text = hasil.alamat;
+      _posisiBeli = hasil.posisi;
+    });
   }
 
   static String? _validasiMakanan(String? nilai) {
