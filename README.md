@@ -19,6 +19,9 @@ use rather than by a separate build, and one account may hold both.
 - **Auth:** JWT bearer tokens, one time codes over phone number
 - **Payments:** QRIS through a payment gateway, confirmed by webhook
 - **Push notifications:** Firebase Cloud Messaging
+- **Maps:** OpenStreetMap tiles via `flutter_map`, geocoding via Nominatim, driving
+  distance via OSRM, all free and requiring no API key, used for the ride and drop off
+  pickup point
 
 ## Service tracks
 
@@ -199,17 +202,20 @@ test that passes because the provider enforces nothing is worse than no test at 
 
 ## Status
 
-Working end to end across all three surfaces, each covered by its own suite: **537 backend
-tests** (against a real Postgres instance, not an in-memory stand-in), **433 mobile tests**,
-and **88 dashboard tests**. Every push runs all three on CI.
+Working end to end across all three surfaces, each covered by its own suite: **547 backend
+tests** (against a real Postgres instance, not an in-memory stand-in), **454 mobile tests**,
+and **90 dashboard tests**. Every push runs all three on CI.
 
 **Client and runner app.** Registration and sign in, all six catalogued services with their
 own forms, Track B's multi-runner bidding from the runner's side (make an offer, withdraw
 it, negotiate in a private thread) and the client's side (compare competing offers, accept
 one, ask for a recalculation), payment, claiming broadcast jobs, releasing a job already
-taken, order chat, completion with photo evidence, runner earnings, editing one's own
-profile, changing one's own phone number through a code sent to the new one, requesting
-cancellation of a paid order, and repeating a past order in one tap.
+taken, order chat with unread badges, completion with photo evidence, runner earnings,
+editing one's own profile, changing one's own phone number through a code sent to the new
+one, requesting cancellation of a paid order, repeating a past order in one tap, and picking
+a pickup and destination point on a map for ride and drop off, with the distance computed
+from a real driving route rather than a straight line. The client also sees who their
+runner is (name and phone, tappable to call) once one is assigned.
 
 **Admin dashboard.** Order monitoring with live updates, cancellation and refunds, role
 management, account suspension and restoration with their own audit trails, tariff
@@ -236,8 +242,6 @@ Not built yet:
 - **Proof that the notifications actually arrive.** Everything above is covered by tests,
   and no test can answer the question the risk is actually about. That takes a real handset
   with a real battery saver on it.
-- **Tapping a notification opening the order it is about.** The order id already travels in
-  the message; what is missing is the route it feeds.
 - Object storage for photo evidence, which starts to matter once there is more than one
   server. Exif metadata is already stripped from uploads, so a photo no longer carries the
   runner's GPS location wherever it is stored.
@@ -246,3 +250,9 @@ Not built yet:
   picked.
 - An APK installed and run on a real handset. Release builds are produced and signed; what
   has not happened is someone holding the phone.
+- A working settings screen. The screen itself exists (theme switch is live; the rest,
+  notifications, language, etc., answer "coming soon" on purpose) but most of it is
+  display only.
+- Tests for the map picker and its two network calls (Nominatim, OSRM): the failure path
+  ("fill it in manually" instead of a raw error) is untested, along with the settings
+  screen and the client's profile tab.
