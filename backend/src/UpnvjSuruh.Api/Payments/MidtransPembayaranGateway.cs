@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Options;
 using UpnvjSuruh.Api.Domain;
 
 namespace UpnvjSuruh.Api.Payments;
@@ -14,12 +15,26 @@ namespace UpnvjSuruh.Api.Payments;
 /// sekarang QRIS asli.
 ///
 /// <c>HttpClient</c>-nya (Authorization Basic dengan Server Key, BaseAddress Sandbox/Production)
-/// dipasang sekali di <c>Program.cs</c>, bukan di sini -- kelas ini tidak pernah menyentuh
-/// <see cref="MidtransOptions"/> secara langsung.
+/// dipasang sekali di <c>Program.cs</c>. <see cref="MidtransOptions"/> cuma disentuh untuk satu
+/// hal: <see cref="MidtransOptions.NotificationUrl"/>, lihat <see cref="XOverrideNotification"/>.
 /// </summary>
-public class MidtransPembayaranGateway(HttpClient http, ILogger<MidtransPembayaranGateway> log)
+public class MidtransPembayaranGateway(
+    HttpClient http, IOptions<MidtransOptions> opsi, ILogger<MidtransPembayaranGateway> log)
     : IPembayaranGateway
 {
+    /// <summary>
+    /// Header Midtrans yang menimpa alamat webhook dari pengaturan dashboard, khusus
+    /// transaksi ini saja.
+    ///
+    /// Server Key Sandbox terikat ke SATU akun merchant, bukan satu proyek -- akun Sandbox
+    /// yang sama sudah dipakai proyek lain milik pemilik produk sebelum ini, dan dashboard
+    /// Midtrans cuma punya satu alamat webhook bawaan untuk seluruh akun itu. Tanpa header
+    /// ini, notifikasi transaksi proyek ini akan mendarat di alamat webhook proyek lain itu
+    /// (atau sebaliknya), tergantung mana yang kebetulan tersimpan di dashboard duluan.
+    /// Didokumentasikan Midtrans di https://docs.midtrans.com/reference/override-notification-url.
+    /// </summary>
+    private const string XOverrideNotification = "X-Override-Notification";
+
     public async Task<(string ReferensiGateway, string QrPayload)> BuatTransaksiAsync(
         Order order,
         Guid paymentId,
@@ -31,9 +46,9 @@ public class MidtransPembayaranGateway(HttpClient http, ILogger<MidtransPembayar
         // capstone), dan Midtrans menolak order_id yang dipakai ulang untuk transaksi baru.
         var orderIdMidtrans = paymentId.ToString("N");
 
-        var jawaban = await http.PostAsJsonAsync(
-            "v2/charge",
-            new
+        using var permintaan = new HttpRequestMessage(HttpMethod.Post, "v2/charge")
+        {
+            Content = JsonContent.Create(new
             {
                 payment_type = "qris",
                 transaction_details = new
@@ -42,8 +57,11 @@ public class MidtransPembayaranGateway(HttpClient http, ILogger<MidtransPembayar
                     // QRIS tidak mengenal pecahan rupiah.
                     gross_amount = (long)jumlah,
                 },
-            },
-            batal);
+            }),
+        };
+        permintaan.Headers.Add(XOverrideNotification, opsi.Value.NotificationUrl);
+
+        var jawaban = await http.SendAsync(permintaan, batal);
 
         var isi = await jawaban.Content.ReadFromJsonAsync<MidtransChargeResponse>(
             cancellationToken: batal);

@@ -90,6 +90,21 @@ builder.Services
 var midtransServerKey = builder.Configuration["Midtrans:ServerKey"];
 if (!string.IsNullOrWhiteSpace(midtransServerKey))
 {
+    if (string.IsNullOrWhiteSpace(builder.Configuration["Midtrans:NotificationUrl"]))
+    {
+        // Server Key Sandbox terikat ke satu akun merchant, bukan satu proyek. Tanpa alamat
+        // ini, MidtransPembayaranGateway tidak tahu ke mana harus menyuruh Midtrans mengirim
+        // notifikasi transaksi proyek ini secara khusus (lihat MidtransOptions.NotificationUrl),
+        // dan diam-diam jatuh ke apa pun yang tersimpan di dashboard untuk proyek lain yang
+        // kebetulan memakai akun Sandbox yang sama.
+        throw new InvalidOperationException(
+            "Midtrans:NotificationUrl belum diisi. Di mesin pengembang jalankan: " +
+            "dotnet user-secrets set \"Midtrans:NotificationUrl\" " +
+            "\"<alamat lengkap /api/webhooks/midtrans milik proyek ini>\". Tanpa ini, notifikasi " +
+            "pembayaran proyek ini bisa mendarat di proyek lain yang berbagi akun Midtrans yang " +
+            "sama, atau sebaliknya.");
+    }
+
     var midtransProduction = builder.Configuration.GetValue<bool>("Midtrans:Production");
     builder.Services.AddHttpClient<IPembayaranGateway, MidtransPembayaranGateway>(client =>
     {
@@ -115,9 +130,10 @@ else
     // satu layar pun yang menunjukkan itu.
     throw new InvalidOperationException(
         "Midtrans:ServerKey belum diisi. Di mesin pengembang jalankan: " +
-        "dotnet user-secrets set \"Midtrans:ServerKey\" \"<server key Sandbox/Production>\" " +
-        "dan dotnet user-secrets set \"Midtrans:ClientKey\" \"<client key>\". Tanpa ini tidak " +
-        "ada satu pun cara klien membayar order.");
+        "dotnet user-secrets set \"Midtrans:ServerKey\" \"<server key Sandbox/Production>\", " +
+        "dotnet user-secrets set \"Midtrans:ClientKey\" \"<client key>\", dan " +
+        "dotnet user-secrets set \"Midtrans:NotificationUrl\" \"<alamat webhook proyek ini>\". " +
+        "Tanpa ini tidak ada satu pun cara klien membayar order.");
 }
 
 // --- OTP ---

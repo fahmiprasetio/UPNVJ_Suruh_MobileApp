@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using UpnvjSuruh.Api.Domain;
 using UpnvjSuruh.Api.Payments;
 
@@ -14,6 +15,8 @@ namespace UpnvjSuruh.Api.Tests;
 /// </summary>
 public class MidtransPembayaranGatewayTests
 {
+    private const string NotificationUrlUji = "https://uji.contoh/api/webhooks/midtrans";
+
     private static Order OrderUji() => new()
     {
         ClientId = Guid.NewGuid(),
@@ -25,16 +28,27 @@ public class MidtransPembayaranGatewayTests
     private static MidtransPembayaranGateway Gateway(
         Func<HttpRequestMessage, HttpResponseMessage> jawab) => new(
         new HttpClient(new HandlerTiruan(jawab)) { BaseAddress = new Uri("https://api.sandbox.midtrans.com/") },
+        Options.Create(new MidtransOptions { NotificationUrl = NotificationUrlUji }),
         NullLogger<MidtransPembayaranGateway>.Instance);
 
     [Fact]
     public async Task JawabanSuksesMenghasilkanQrStringDanReferensiDariPaymentId()
     {
-        HttpRequestMessage? permintaanTertangkap = null;
+        string? jalur = null;
+        JsonElement badan = default;
+        IEnumerable<string>? headerOverride = null;
 
         var gateway = Gateway(permintaan =>
         {
-            permintaanTertangkap = permintaan;
+            // Dibaca sinkron di sini, selagi permintaannya masih hidup -- BuatTransaksiAsync
+            // membuang HttpRequestMessage-nya (`using`) begitu selesai, jadi menyimpan
+            // referensinya untuk dibaca sesudah await di bawah akan mengenai objek yang
+            // sudah dibuang.
+            jalur = permintaan.RequestUri!.AbsolutePath.TrimStart('/');
+            badan = JsonSerializer.Deserialize<JsonElement>(
+                permintaan.Content!.ReadAsStringAsync().GetAwaiter().GetResult());
+            permintaan.Headers.TryGetValues("X-Override-Notification", out headerOverride);
+
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = JsonContent.Create(new { status_code = "201", qr_string = "00020101021226610014ID.CO.QRIS" }),
@@ -48,15 +62,15 @@ public class MidtransPembayaranGatewayTests
         Assert.Equal(paymentId.ToString("N"), referensi);
         Assert.Equal("00020101021226610014ID.CO.QRIS", qr);
 
-        Assert.NotNull(permintaanTertangkap);
-        Assert.Equal("v2/charge", permintaanTertangkap!.RequestUri!.AbsolutePath.TrimStart('/'));
-        var badan = JsonSerializer.Deserialize<JsonElement>(
-            await permintaanTertangkap.Content!.ReadAsStringAsync());
+        Assert.Equal("v2/charge", jalur);
         Assert.Equal("qris", badan.GetProperty("payment_type").GetString());
         Assert.Equal(
             paymentId.ToString("N"),
             badan.GetProperty("transaction_details").GetProperty("order_id").GetString());
         Assert.Equal(15000, badan.GetProperty("transaction_details").GetProperty("gross_amount").GetInt64());
+
+        Assert.NotNull(headerOverride);
+        Assert.Equal(NotificationUrlUji, Assert.Single(headerOverride!));
     }
 
     [Fact]

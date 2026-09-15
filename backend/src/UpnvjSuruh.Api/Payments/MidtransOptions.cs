@@ -26,6 +26,20 @@ public class MidtransOptions
     public bool Production { get; set; }
 
     /// <summary>
+    /// Alamat lengkap <c>MidtransWebhookController</c> milik aplikasi INI (misalnya
+    /// <c>https://api.upnvjsuruh.my.id/api/webhooks/midtrans</c>), dikirim lewat header
+    /// <c>X-Override-Notification</c> di tiap permintaan <c>/v2/charge</c>
+    /// (<see cref="MidtransPembayaranGateway"/>).
+    ///
+    /// Server Key Sandbox terikat ke satu akun merchant, bukan satu proyek -- kalau akun
+    /// Sandbox yang sama dipakai proyek lain, dashboard Midtrans cuma punya satu alamat
+    /// webhook bawaan untuk keduanya. Header inilah yang membuat notifikasi transaksi
+    /// proyek ini selalu mendarat ke sini, apa pun yang tersimpan di dashboard untuk proyek
+    /// lain.
+    /// </summary>
+    public string NotificationUrl { get; set; } = string.Empty;
+
+    /// <summary>
     /// Sah kalau <paramref name="signatureKey"/> yang dikirim Midtrans cocok dengan
     /// SHA512(order_id+status_code+gross_amount+ServerKey), persis rumus di dokumentasi
     /// Midtrans.

@@ -225,6 +225,10 @@ public class MidtransWebhookTests(MidtransWebhookTests.MidtransApiFactory pabrik
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["Midtrans:ServerKey"] = ServerKey,
+                    // Wajib diisi begitu ServerKey diisi (lihat Program.cs) -- nilainya tidak
+                    // dipanggil jaringan mana pun di tes ini, cuma perlu ada supaya server
+                    // tidak menolak menyala.
+                    ["Midtrans:NotificationUrl"] = "https://uji.contoh/api/webhooks/midtrans",
                 });
             });
 
