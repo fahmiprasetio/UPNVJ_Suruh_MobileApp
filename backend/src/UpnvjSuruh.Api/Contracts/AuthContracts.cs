@@ -41,6 +41,7 @@ public record MasukRequest
 {
     [Required(AllowEmptyStrings = false)]
     [MaxLength(BatasMasukan.NomorHp)]
+    [NomorHp]
     public string NoHp { get; init; } = string.Empty;
 
     [Required(AllowEmptyStrings = false)]
