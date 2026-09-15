@@ -25,7 +25,7 @@ namespace UpnvjSuruh.Api.Tests;
 /// </summary>
 public class BerkasBuktiTests(DatabaseApiFactory pabrik) : IClassFixture<DatabaseApiFactory>
 {
-    private static readonly byte[] JpegTerkecil = [0xFF, 0xD8, 0xFF, 0xE0];
+    private static readonly byte[] JpegTerkecil = [0xFF, 0xD8, 0xFF, 0xDA, 0x00, 0x02, 0xFF, 0xD9];
 
     private static string NomorBaru() => "08" + Random.Shared.NextInt64(100000000, 999999999);
 

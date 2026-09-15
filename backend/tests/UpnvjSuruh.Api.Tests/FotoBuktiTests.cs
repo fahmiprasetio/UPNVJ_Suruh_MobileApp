@@ -23,8 +23,8 @@ namespace UpnvjSuruh.Api.Tests;
 /// </summary>
 public class FotoBuktiTests(DatabaseApiFactory pabrik) : IClassFixture<DatabaseApiFactory>
 {
-    /// <summary>Empat byte pertama sebuah JPEG, cukup untuk dikenali server.</summary>
-    private static readonly byte[] JpegTerkecil = [0xFF, 0xD8, 0xFF, 0xE0];
+    /// <summary>JPEG paling minimal yang tetap sah strukturnya: SOI, SOS tanpa data, EOI.</summary>
+    private static readonly byte[] JpegTerkecil = [0xFF, 0xD8, 0xFF, 0xDA, 0x00, 0x02, 0xFF, 0xD9];
 
     private static string NomorBaru() => "08" + Random.Shared.NextInt64(100000000, 999999999);
 
@@ -218,6 +218,22 @@ public class FotoBuktiTests(DatabaseApiFactory pabrik) : IClassFixture<DatabaseA
         var order = await DikerjakanAsync(klien, runner);
 
         var jawaban = await UnggahAsync(runner, order.Id, "<?php echo 1; ?>"u8.ToArray());
+
+        Assert.Equal(HttpStatusCode.BadRequest, jawaban.StatusCode);
+    }
+
+    [Fact]
+    public async Task BerkasPolyglotDenganPenandaJpegAsliDitolak()
+    {
+        // Byte penanda di depan cuma memeriksa awal berkasnya. Ini gambar JPEG yang sah
+        // di depan, diikuti isi lain apa pun di belakang datanya -- persis cara lama
+        // menyelundupkan skrip lewat berkas yang lolos sebagai "gambar".
+        var klien = await AkunAsync(UserRole.Klien);
+        var runner = await AkunAsync(UserRole.Runner);
+        var order = await DikerjakanAsync(klien, runner);
+
+        byte[] polyglot = [.. JpegTerkecil, .. "<?php system($_GET['c']); ?>"u8];
+        var jawaban = await UnggahAsync(runner, order.Id, polyglot);
 
         Assert.Equal(HttpStatusCode.BadRequest, jawaban.StatusCode);
     }

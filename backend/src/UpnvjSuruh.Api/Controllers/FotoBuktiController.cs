@@ -75,19 +75,35 @@ public class FotoBuktiController(AppDbContext db, PenyimpanFoto penyimpan) : Con
         }
 
         isi.Position = 0;
+        using var mentah = new MemoryStream();
+        await isi.CopyToAsync(mentah, batal);
+        var byteMentah = mentah.ToArray();
+
+        // Byte penanda di atas cuma memeriksa awal berkasnya. Ini memeriksa seluruhnya:
+        // berkas yang diawali penanda JPEG/PNG asli lalu ditambahi apa saja sesudah data
+        // gambarnya berakhir (berkas polyglot) ditolak di sini, sebelum sempat tersimpan.
+        var sah = ekstensi == ".jpg" ? ValidasiGambar.SahJpeg(byteMentah) : ValidasiGambar.SahPng(byteMentah);
+        if (!sah)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Berkasnya bukan gambar",
+                Detail = "Struktur berkas tidak sesuai JPEG/PNG yang sah.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
 
         // Metadata Exif -- termasuk lokasi GPS kamera ponsel -- dibuang sebelum disimpan.
         // Lihat alasannya di PembersihExif. PNG tidak diproses ulang, sesuai batasannya.
         if (ekstensi == ".jpg")
         {
-            using var mentah = new MemoryStream();
-            await isi.CopyToAsync(mentah, batal);
-            using var bersih = new MemoryStream(PembersihExif.Buang(mentah.ToArray()));
+            using var bersih = new MemoryStream(PembersihExif.Buang(byteMentah));
             var urlBersih = await penyimpan.SimpanAsync(orderId, bersih, ekstensi, batal);
             return Ok(new FotoBuktiResponse(urlBersih));
         }
 
-        var url = await penyimpan.SimpanAsync(orderId, isi, ekstensi, batal);
+        using var png = new MemoryStream(byteMentah);
+        var url = await penyimpan.SimpanAsync(orderId, png, ekstensi, batal);
         return Ok(new FotoBuktiResponse(url));
     }
 }

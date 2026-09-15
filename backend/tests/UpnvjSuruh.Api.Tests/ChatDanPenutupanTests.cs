@@ -64,12 +64,12 @@ public class ChatDanPenutupanTests(DatabaseApiFactory pabrik) : IClassFixture<Da
     }
 
     /// <summary>
-    /// Empat byte pertama sebuah JPEG. Server mengenali jenis berkas dari isinya, bukan dari
-    /// nama atau Content-Type kiriman, jadi inilah berkas terkecil yang ia terima sebagai
-    /// gambar. Gambar sungguhan cuma akan membuat tes ini lebih besar tanpa menguji apa pun
-    /// yang belum diuji.
+    /// JPEG paling minimal yang tetap sah strukturnya (SOI, SOS tanpa data, EOI). Server
+    /// memeriksa jenis dan struktur berkas dari isinya, bukan dari nama atau Content-Type
+    /// kiriman, jadi inilah berkas terkecil yang ia terima sebagai gambar. Gambar sungguhan
+    /// cuma akan membuat tes ini lebih besar tanpa menguji apa pun yang belum diuji.
     /// </summary>
-    private static readonly byte[] JpegTerkecil = [0xFF, 0xD8, 0xFF, 0xE0];
+    private static readonly byte[] JpegTerkecil = [0xFF, 0xD8, 0xFF, 0xDA, 0x00, 0x02, 0xFF, 0xD9];
 
     /// <summary>Mengunggah satu foto bukti untuk order ini, mengembalikan URL-nya.</summary>
     private static async Task<string> UnggahFotoAsync(HttpClient runner, Guid orderId)

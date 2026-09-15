@@ -217,7 +217,7 @@ public class LepasOrderTests(DatabaseApiFactory pabrik) : IClassFixture<Database
         var (_, runner, order) = await OrderDipegangAsync();
 
         using var isi = new MultipartFormDataContent();
-        var berkas = new ByteArrayContent([0xFF, 0xD8, 0xFF, 0xE0]);
+        var berkas = new ByteArrayContent([0xFF, 0xD8, 0xFF, 0xDA, 0x00, 0x02, 0xFF, 0xD9]);
         berkas.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
         isi.Add(berkas, "berkas", "bukti.jpg");
         var unggah = await runner.PostAsync($"/api/orders/{order.Id}/foto-bukti", isi);

@@ -54,8 +54,8 @@ public class PayoutEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Data
         return (klien, user.Id);
     }
 
-    /// <summary>Empat byte pertama sebuah JPEG, cukup untuk dikenali server sebagai gambar.</summary>
-    private static readonly byte[] JpegTerkecil = [0xFF, 0xD8, 0xFF, 0xE0];
+    /// <summary>JPEG paling minimal yang tetap sah strukturnya: SOI, SOS tanpa data, EOI.</summary>
+    private static readonly byte[] JpegTerkecil = [0xFF, 0xD8, 0xFF, 0xDA, 0x00, 0x02, 0xFF, 0xD9];
 
     private static async Task<string> UnggahFotoAsync(HttpClient runner, Guid orderId)
     {

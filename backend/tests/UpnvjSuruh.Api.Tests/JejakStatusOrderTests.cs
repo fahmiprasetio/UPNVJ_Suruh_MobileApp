@@ -124,7 +124,7 @@ public class JejakStatusOrderTests(DatabaseApiFactory pabrik) : IClassFixture<Da
             $"/api/orders/{order.Id}/foto-bukti",
             new MultipartFormDataContent
             {
-                { new ByteArrayContent([0xFF, 0xD8, 0xFF, 0xE0]) { Headers = { ContentType = new MediaTypeHeaderValue("image/jpeg") } }, "berkas", "bukti.jpg" },
+                { new ByteArrayContent([0xFF, 0xD8, 0xFF, 0xDA, 0x00, 0x02, 0xFF, 0xD9]) { Headers = { ContentType = new MediaTypeHeaderValue("image/jpeg") } }, "berkas", "bukti.jpg" },
             });
         var fotoUrl = (await jawabanFoto.Content.ReadFromJsonAsync<FotoBuktiResponse>())!.Url;
         (await runnerKedua.PostAsJsonAsync($"/api/orders/{order.Id}/selesai", new { FotoBuktiUrl = fotoUrl }))
