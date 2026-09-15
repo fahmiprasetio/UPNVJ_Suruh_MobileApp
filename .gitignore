@@ -32,5 +32,14 @@ Capstone_Proposal_070_076_087.pdf
 /*.jpg
 /*.jpeg
 
+# Sama seperti di atas, tapi berkas mentah desain yang sempat ditaruh di
+# assets/icon*.png (bukan mobile/assets/layanan/ tempat ikon layanan yang
+# sudah jadi dipasang) -- bahan kerja, bukan aset final.
+/assets/icon*.png
+
 cara_jalanain_app_di_browser.md
 catatan_ukuran_beranda.md
+
+# Skrip pratinjau web lokal (lihat bagian 13 Progres capstone.md) -- alat
+# pengembang mesin ini, bukan bagian aplikasi.
+/jalanin_app.py
