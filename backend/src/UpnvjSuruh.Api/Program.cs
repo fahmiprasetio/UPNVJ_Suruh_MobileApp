@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Globalization;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
@@ -83,7 +84,37 @@ builder.Services.AddSingleton<PembuatKodeOtp>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<PembatasOtpMemori>();
 
-if (builder.Environment.IsDevelopment())
+var twilioAccountSid = builder.Configuration["Whatsapp:Twilio:AccountSid"];
+var tokenWhatsapp = builder.Configuration["Whatsapp:AccessToken"];
+if (!string.IsNullOrWhiteSpace(twilioAccountSid))
+{
+    // Dicek lebih dulu daripada Meta: sandbox Twilio tidak butuh template yang disetujui
+    // lebih dulu, jadi ini jalur yang lebih cepat dicoba begitu kredensialnya sudah ada.
+    var authTokenTwilio = builder.Configuration["Whatsapp:Twilio:AuthToken"] ?? "";
+    builder.Services.AddHttpClient<IPengirimOtp, PengirimOtpWhatsappTwilio>(client =>
+    {
+        client.BaseAddress = new Uri("https://api.twilio.com");
+        client.DefaultRequestHeaders.Authorization = PengirimOtpWhatsappTwilio.BuatHeaderOtorisasi(
+            twilioAccountSid,
+            authTokenTwilio
+        );
+    });
+}
+else if (!string.IsNullOrWhiteSpace(tokenWhatsapp))
+{
+    // Dipilih lebih dulu daripada mengecek lingkungan: begitu kredensialnya diisi lewat
+    // dotnet user-secrets, mesin pengembang pun mengirim OTP sungguhan, karena itu justru
+    // yang dibutuhkan untuk mencoba jalur WhatsApp-nya sendiri sebelum dipasang di produksi.
+    builder.Services.AddHttpClient<IPengirimOtp, PengirimOtpWhatsapp>(client =>
+    {
+        client.BaseAddress = new Uri("https://graph.facebook.com");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            tokenWhatsapp
+        );
+    });
+}
+else if (builder.Environment.IsDevelopment())
 {
     builder.Services.AddSingleton<IPengirimOtp, PengirimOtpLog>();
 }
@@ -91,11 +122,11 @@ else
 {
     // Sengaja tidak ada pengirim bawaan untuk produksi. Menyala tanpa pengirim yang benar
     // lebih berbahaya daripada tidak menyala: pengirim yang menulis kode ke log berarti
-    // siapa pun yang bisa membaca log bisa masuk sebagai siapa pun. Begitu mitra memilih
-    // penyedia SMS atau WhatsApp (bagian 14.8), daftarkan di sini.
+    // siapa pun yang bisa membaca log bisa masuk sebagai siapa pun.
     throw new InvalidOperationException(
-        "Belum ada IPengirimOtp untuk lingkungan non-Development. Daftarkan penyedia SMS " +
-        "atau WhatsApp sungguhan sebelum menjalankan ini di luar mesin pengembang.");
+        "Belum ada IPengirimOtp untuk lingkungan non-Development. Isi kredensial Twilio atau " +
+        "Meta WhatsApp lewat dotnet user-secrets sebelum menjalankan ini di luar mesin " +
+        "pengembang.");
 }
 
 // --- Notifikasi push ---
