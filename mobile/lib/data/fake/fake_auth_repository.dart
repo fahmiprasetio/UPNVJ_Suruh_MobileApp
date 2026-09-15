@@ -34,6 +34,12 @@ class FakeAuthRepository implements AuthRepository {
   /// ditolak.
   final Map<String, String> _kode = {};
 
+  /// Password per nomor, cuma untuk akun yang sudah mengaturnya. Tiruan ini
+  /// menyimpannya apa adanya karena cuma dipakai pengembangan lokal, bukan
+  /// jalur sungguhan -- server sungguhan yang menyidiknya, lihat
+  /// `ApiAuthRepository`.
+  final Map<String, String> _password = {};
+
   final Random _acak = Random();
 
   final StreamController<AppUser?> _controller =
@@ -121,6 +127,58 @@ class FakeAuthRepository implements AuthRepository {
     _userAktif = user;
     _controller.add(user);
     return user;
+  }
+
+  @override
+  Future<AppUser> masukPassword({
+    required String noHp,
+    required String password,
+  }) async {
+    await Future<void>.delayed(_jedaJaringan);
+
+    final bersihNoHp = noHp.trim();
+    final tersimpan = _password[bersihNoHp];
+    final user = _users.where((u) => u.noHp == bersihNoHp).firstOrNull;
+
+    // Satu galat untuk semua sebab, sama seperti [masuk]: nomor tidak
+    // terdaftar, belum mengatur password, dan password salah tidak boleh
+    // dibedakan penebaknya.
+    if (tersimpan == null || tersimpan != password || user == null) {
+      throw StateError('Nomor atau password tidak cocok');
+    }
+
+    _userAktif = user;
+    _controller.add(user);
+    return user;
+  }
+
+  @override
+  Future<AppUser> aturPassword({
+    required String kode,
+    required String password,
+  }) async {
+    await Future<void>.delayed(_jedaJaringan);
+
+    final sekarang = _userAktif;
+    if (sekarang == null) {
+      throw StateError('Belum masuk');
+    }
+
+    final tersimpan = _kode[sekarang.noHp];
+    if (tersimpan == null || tersimpan != kode.trim()) {
+      throw StateError('Kode salah atau sudah kedaluwarsa');
+    }
+
+    _kode.remove(sekarang.noHp);
+    _password[sekarang.noHp] = password;
+
+    final baru = sekarang.copyWith(punyaPassword: true);
+    final indeks = _users.indexWhere((u) => u.id == sekarang.id);
+    if (indeks >= 0) _users[indeks] = baru;
+
+    _userAktif = baru;
+    _controller.add(baru);
+    return baru;
   }
 
   @override

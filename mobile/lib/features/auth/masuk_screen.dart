@@ -14,7 +14,7 @@ import '../../providers/repository_providers.dart';
 /// nomor HP yang sama. Memecahnya jadi beberapa rute berarti nomor itu harus
 /// dioper lewat jalur atau disimpan di suatu tempat di luar layar, dan keduanya
 /// menambah bagian yang bisa salah demi perpindahan yang tidak diminta siapa pun.
-enum _Langkah { nomor, daftar, kode }
+enum _Langkah { nomor, daftar, kode, password }
 
 /// Layar masuk: nomor HP, lalu kode sekali pakai yang dikirim ke nomor itu.
 ///
@@ -58,6 +58,7 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
   final _namaController = TextEditingController();
   final _noHpController = TextEditingController();
   final _kodeController = TextEditingController();
+  final _passwordController = TextEditingController();
 
   _Langkah _langkah = _Langkah.nomor;
 
@@ -66,6 +67,7 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
     _namaController.dispose();
     _noHpController.dispose();
     _kodeController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -114,8 +116,19 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
     // tumpukan belakang.
   });
 
+  Future<void> _masukPassword() => jalankan(_formKey, () async {
+    await ref
+        .read(authRepositoryProvider)
+        .masukPassword(
+          noHp: _noHpController.text.trim(),
+          password: _passwordController.text,
+        );
+    ref.read(sesiDitolakProvider.notifier).padamkan();
+  });
+
   void _kembaliKeNomor() {
     _kodeController.clear();
+    _passwordController.clear();
     setState(() {
       _langkah = _Langkah.nomor;
       galatTindakan = null;
@@ -125,6 +138,13 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
   void _keDaftar() {
     setState(() {
       _langkah = _Langkah.daftar;
+      galatTindakan = null;
+    });
+  }
+
+  void _kePassword() {
+    setState(() {
+      _langkah = _Langkah.password;
       galatTindakan = null;
     });
   }
@@ -187,6 +207,7 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
     _Langkah.daftar => 'Daftar dulu, sebentar saja.',
     _Langkah.kode =>
       'Masukkan 6 angka yang dikirim ke ${_noHpController.text.trim()}.',
+    _Langkah.password => 'Masuk pakai nomor HP dan password, tanpa menunggu kode.',
   };
 
   List<Widget> get _isiLangkah => switch (_langkah) {
@@ -198,6 +219,10 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
       TextButton(
         onPressed: sedangMengirim ? null : _keDaftar,
         child: const Text('Belum punya akun? Daftar'),
+      ),
+      TextButton(
+        onPressed: sedangMengirim ? null : _kePassword,
+        child: const Text('Sudah atur password? Masuk pakai itu'),
       ),
     ],
     _Langkah.daftar => [
@@ -274,6 +299,24 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
       ),
       const SizedBox(height: AppTheme.spasiBesar),
       _JalanKeluarBelumTerdaftar(onDaftar: sedangMengirim ? null : _keDaftar),
+    ],
+    _Langkah.password => [
+      _kolomNoHp(),
+      const SizedBox(height: AppTheme.spasiSedang),
+      TextFormField(
+        controller: _passwordController,
+        obscureText: true,
+        decoration: const InputDecoration(labelText: 'Password'),
+        validator: (nilai) =>
+            (nilai == null || nilai.isEmpty) ? 'Password belum diisi' : null,
+      ),
+      const SizedBox(height: AppTheme.spasiSedang),
+      _tombolUtama(label: 'Masuk', aksi: _masukPassword),
+      const SizedBox(height: AppTheme.spasiKecil),
+      TextButton(
+        onPressed: sedangMengirim ? null : _kembaliKeNomor,
+        child: const Text('Masuk pakai kode OTP saja'),
+      ),
     ],
   };
 

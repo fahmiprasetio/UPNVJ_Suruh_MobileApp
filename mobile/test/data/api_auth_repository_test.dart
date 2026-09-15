@@ -285,6 +285,97 @@ void main() {
     });
   });
 
+  group('masukPassword', () {
+    Map<String, Object?> jawabanMasuk({List<String> roles = const ['Klien']}) => {
+      'token': 'token-abc',
+      'kedaluwarsaPada': '2026-08-28T12:00:00Z',
+      'user': {...jawabanUser, 'roles': roles, 'punyaPassword': true},
+    };
+
+    test('mengirim POST dengan nomor dirapikan dan password apa adanya', () async {
+      final uji = buat((_) => jawabanMasuk());
+
+      await uji.repo.masukPassword(noHp: ' 081234567890 ', password: 'sandiAman123');
+
+      expect(uji.dikirim.single.method, 'POST');
+      expect(uji.dikirim.single.url.path, '/api/auth/masuk-password');
+      expect(jsonDecode(uji.dikirim.single.body), {
+        'noHp': '081234567890',
+        'password': 'sandiAman123',
+      });
+    });
+
+    test('menyimpan token lalu mengumumkan usernya, sama seperti masuk lewat OTP',
+        () async {
+      final uji = buat((_) => jawabanMasuk());
+
+      final user = await uji.repo.masukPassword(
+        noHp: '081234567890',
+        password: 'sandiAman123',
+      );
+
+      expect(uji.sesi.nilai, 'token-abc');
+      expect(uji.repo.userAktif, user);
+      expect(user.punyaPassword, isTrue);
+    });
+
+    test('password salah muncul sebagai GalatTidakBerwenang dan tidak membuat sesi',
+        () async {
+      final uji = buat(
+        (_) => {'title': 'Nomor atau password tidak cocok'},
+        status: 401,
+      );
+
+      await expectLater(
+        uji.repo.masukPassword(noHp: '081234567890', password: 'salah'),
+        throwsA(isA<GalatTidakBerwenang>()),
+      );
+      expect(uji.sesi.adaSesi, isFalse);
+      expect(uji.repo.userAktif, isNull);
+    });
+  });
+
+  group('aturPassword', () {
+    test('mengirim POST dengan kode dirapikan dan password apa adanya', () async {
+      final uji = buat((_) => {...jawabanUser, 'punyaPassword': true});
+
+      await uji.repo.aturPassword(kode: ' 123456 ', password: 'sandiAman123');
+
+      expect(uji.dikirim.single.method, 'POST');
+      expect(uji.dikirim.single.url.path, '/api/auth/saya/password');
+      expect(jsonDecode(uji.dikirim.single.body), {
+        'kode': '123456',
+        'password': 'sandiAman123',
+      });
+    });
+
+    test('user aktif diambil dari jawaban server, membawa PunyaPassword benar',
+        () async {
+      final uji = buat((_) => {...jawabanUser, 'punyaPassword': true});
+
+      final hasil = await uji.repo.aturPassword(kode: '123456', password: 'sandiAman123');
+
+      expect(hasil.punyaPassword, isTrue);
+      expect(uji.repo.userAktif?.punyaPassword, isTrue);
+    });
+
+    test('kode yang salah muncul sebagai GalatPermintaan', () async {
+      final uji = buat(
+        (_) => {
+          'title': 'Kode salah atau sudah kedaluwarsa',
+          'detail': 'Minta kode baru lewat /minta-kode kalau sudah lewat lima menit sejak dikirim.',
+        },
+        status: 400,
+      );
+
+      await expectLater(
+        uji.repo.aturPassword(kode: '000000', password: 'sandiAman123'),
+        throwsA(isA<GalatPermintaan>()),
+      );
+      expect(uji.repo.userAktif, isNull);
+    });
+  });
+
   group('mintaKodeGantiNomor', () {
     test('mengirim POST dengan nomor baru yang sudah dirapikan', () async {
       final uji = buat((_) => {}, status: 202, badanMentah: '');

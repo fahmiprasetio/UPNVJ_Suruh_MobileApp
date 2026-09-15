@@ -70,6 +70,25 @@ abstract interface class AuthRepository {
   /// tidak memberi tahu bahwa setengah jawabannya sudah benar.
   Future<AppUser> masuk({required String noHp, required String kode});
 
+  /// Masuk pakai nomor HP dan password, jalur kedua di samping [masuk].
+  ///
+  /// OTP tetap jalur utama dan selalu tersedia -- order di aplikasi ini kadang
+  /// mendesak dan tidak boleh menunggu pengguna mengingat password. Ini cuma
+  /// alternatif bagi yang sudah mengatur password lewat [aturPassword] dan
+  /// tidak mau menunggu kode setiap kali. Nomor yang belum mengatur password
+  /// dan password yang salah gagal dengan cara yang sama persis, sama seperti
+  /// [masuk] menyamakan "nomor tidak terdaftar" dengan "kode salah".
+  Future<AppUser> masukPassword({required String noHp, required String password});
+
+  /// Mengatur atau mengganti password sendiri, dibuktikan lewat kode OTP ke
+  /// nomor akun yang sedang masuk -- diminta lewat [mintaKode] yang sama,
+  /// bukan endpoint terpisah.
+  ///
+  /// Menuntut kode, bukan cuma sesi yang sedang berjalan: sesi yang dicuri
+  /// sesaat berlaku cuma sampai kedaluwarsa, sedangkan password yang diatur
+  /// lewatnya bertahan jauh lebih lama. Sama seperti [konfirmasiGantiNomor].
+  Future<AppUser> aturPassword({required String kode, required String password});
+
   /// Menyunting profil sendiri: nama, dan alamat bawaan.
   ///
   /// PERHATIKAN APA YANG TIDAK ADA DI SINI, dan keduanya disengaja.

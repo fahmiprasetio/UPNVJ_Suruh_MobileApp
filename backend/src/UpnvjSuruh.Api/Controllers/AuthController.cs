@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -19,8 +20,15 @@ public class AuthController(
     PembatasOtpMemori pembatasOtp,
     PembuatKodeOtp pembuatKode,
     IPengirimOtp pengirimOtp,
+    IPasswordHasher<User> passwordHasher,
     ILogger<AuthController> log) : ControllerBase
 {
+    /// <summary>
+    /// Anggaran percobaan masuk pakai password, dipisahkan dari anggaran kode OTP lewat
+    /// <see cref="PembatasOtpMemori.Catat"/>. Lihat penjelasan lengkapnya di sana.
+    /// </summary>
+    private const string AnggaranPassword = "password";
+
     /// <summary>
     /// Mendaftarkan akun baru. Selalu lahir sebagai klien, lihat <see cref="DaftarRequest"/>.
     /// </summary>
@@ -191,6 +199,79 @@ public class AuthController(
         return Ok(new MasukResponse(nilai, kedaluwarsa, UserResponse.Dari(user)));
     }
 
+    /// <summary>Masuk pakai nomor HP dan password, jalur kedua di samping OTP.</summary>
+    /// <remarks>
+    /// Dibatasi lajunya per nomor HP lewat anggaran <see cref="AnggaranPassword"/>, terpisah
+    /// dari anggaran kode OTP -- ini jalur yang bisa dicoba berulang-ulang tanpa satu SMS
+    /// pun terkirim, jadi yang menahannya bukan biaya SMS seperti di <see cref="MintaKode"/>,
+    /// melainkan jumlah tebakan mentah. Nomor yang belum mengatur password ditolak dengan
+    /// pesan yang sama seperti password salah, supaya endpoint ini tidak bisa dipakai
+    /// memeriksa siapa saja yang sudah mengatur password.
+    /// </remarks>
+    [EnableRateLimiting(BatasLaju.KebijakanTamu)]
+    [HttpPost("masuk-password")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+    public async Task<ActionResult<MasukResponse>> MasukPassword(
+        MasukPasswordRequest permintaan,
+        CancellationToken batal)
+    {
+        var noHp = permintaan.NoHp.Trim();
+
+        var izin = pembatasOtp.Catat(noHp, AnggaranPassword);
+        if (!izin.Boleh)
+        {
+            return TerlaluSeringMintaKode(
+                izin.TungguLagi,
+                "Terlalu sering mencoba masuk pakai password. Tunggu sebentar, "
+                + "atau masuk pakai kode OTP seperti biasa.");
+        }
+
+        var user = await db.Users.SingleOrDefaultAsync(u => u.Phone == noHp, batal);
+
+        var gagal = Unauthorized(new ProblemDetails
+        {
+            Title = "Nomor atau password tidak cocok",
+            Status = StatusCodes.Status401Unauthorized,
+        });
+
+        // Akun yang tidak ada dan akun yang belum mengatur password dijawab sama: keduanya
+        // tidak punya sidik untuk dibandingkan, dan membedakannya memberi tahu penebak nomor
+        // mana saja yang sudah mengatur password.
+        if (user is null || user.PasswordHash is null) return gagal;
+
+        var hasil = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, permintaan.Password);
+        if (hasil == PasswordVerificationResult.Failed) return gagal;
+
+        // Sama seperti di Masuk: disebut apa adanya di sini karena passwordnya sudah benar,
+        // jadi yang bertanya sudah membuktikan diri sebagai pemiliknya.
+        if (user.Ditangguhkan)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new ProblemDetails
+            {
+                Title = "Akun ini sedang ditangguhkan",
+                Detail = user.SuspendedReason is { Length: > 0 } alasan
+                    ? $"Alasannya: {alasan}. Hubungi admin kalau menurutmu ini keliru."
+                    : "Hubungi admin kalau menurutmu ini keliru.",
+                Status = StatusCodes.Status403Forbidden,
+            });
+        }
+
+        // ASP.NET Core menandai sidik lama yang masih sah tapi dibuat dengan parameter
+        // hashing yang sudah dianggap usang (mis. jumlah putaran yang lebih rendah).
+        // Menulis ulang sidiknya di sini membuat seluruh akun lama ikut naik ke parameter
+        // terbaru begitu pemiliknya masuk, tanpa perlu migrasi massal.
+        if (hasil == PasswordVerificationResult.SuccessRehashNeeded)
+        {
+            user.PasswordHash = passwordHasher.HashPassword(user, permintaan.Password);
+            await db.SaveChangesAsync(batal);
+        }
+
+        var (nilai, kedaluwarsa) = token.Terbitkan(user);
+        return Ok(new MasukResponse(nilai, kedaluwarsa, UserResponse.Dari(user)));
+    }
+
     /// <summary>Siapa pemilik token yang sedang dipakai.</summary>
     /// <remarks>
     /// Dipanggil aplikasi saat dibuka kembali, ketika ia punya token tersimpan tapi belum
@@ -269,6 +350,43 @@ public class AuthController(
         var alamat = permintaan.Alamat?.Trim();
         user.Address = string.IsNullOrEmpty(alamat) ? null : alamat;
 
+        await db.SaveChangesAsync(batal);
+
+        return Ok(UserResponse.Dari(user));
+    }
+
+    /// <summary>Mengatur atau mengganti password sendiri, dibuktikan lewat kode OTP.</summary>
+    /// <remarks>
+    /// Kodenya diminta lewat <see cref="MintaKode"/> yang sudah ada -- tidak ada endpoint
+    /// baru untuk mengirim kode di sini, karena nomor tujuannya sudah pasti nomor akun yang
+    /// sedang masuk, persis yang sudah dilayani endpoint itu. Yang baru cuma langkah
+    /// penukarannya, dan itu bukan kelonggaran: OTP tetap syarat wajib supaya password yang
+    /// diatur lewat token curian sesaat tidak bertahan lebih lama dari token itu sendiri.
+    /// </remarks>
+    [Authorize]
+    [EnableRateLimiting(BatasLaju.KebijakanTulis)]
+    [HttpPost("saya/password")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<UserResponse>> AturPassword(
+        AturPasswordRequest permintaan,
+        CancellationToken batal)
+    {
+        var user = await db.Users.SingleOrDefaultAsync(u => u.Id == User.Id(), batal);
+        if (user is null) return Unauthorized();
+
+        if (!penyimpanOtp.Pakai(user.Phone, permintaan.Kode))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Kode salah atau sudah kedaluwarsa",
+                Detail = "Minta kode baru lewat /minta-kode kalau sudah lewat lima menit sejak dikirim.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        user.PasswordHash = passwordHasher.HashPassword(user, permintaan.Password);
         await db.SaveChangesAsync(batal);
 
         return Ok(UserResponse.Dari(user));

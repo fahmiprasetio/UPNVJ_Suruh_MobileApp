@@ -12,6 +12,7 @@ class AppUser {
     required this.noHp,
     required this.roles,
     this.alamat,
+    this.punyaPassword = false,
   });
 
   final String id;
@@ -19,6 +20,12 @@ class AppUser {
   final String noHp;
   final Set<UserRole> roles;
   final String? alamat;
+
+  /// Benar kalau akun ini sudah pernah mengatur password (bagian 7). Cuma
+  /// penanda untuk layar Pengaturan tahu menawarkan "atur" atau "ganti" --
+  /// passwordnya sendiri tidak pernah ada di sisi aplikasi dalam bentuk apa
+  /// pun, apalagi di model ini.
+  final bool punyaPassword;
 
   bool get isKlien => roles.contains(UserRole.klien);
   bool get isRunner => roles.contains(UserRole.runner);
@@ -57,6 +64,7 @@ class AppUser {
     String? noHp,
     Set<UserRole>? roles,
     String? alamat,
+    bool? punyaPassword,
   }) {
     return AppUser(
       id: id,
@@ -64,6 +72,7 @@ class AppUser {
       noHp: noHp ?? this.noHp,
       roles: roles ?? this.roles,
       alamat: alamat ?? this.alamat,
+      punyaPassword: punyaPassword ?? this.punyaPassword,
     );
   }
 
@@ -74,8 +83,10 @@ class AppUser {
       other.nama == nama &&
       other.noHp == noHp &&
       setEquals(other.roles, roles) &&
-      other.alamat == alamat;
+      other.alamat == alamat &&
+      other.punyaPassword == punyaPassword;
 
   @override
-  int get hashCode => Object.hash(id, nama, noHp, Object.hashAllUnordered(roles), alamat);
+  int get hashCode =>
+      Object.hash(id, nama, noHp, Object.hashAllUnordered(roles), alamat, punyaPassword);
 }

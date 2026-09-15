@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/models/app_user.dart';
+import '../../providers/repository_providers.dart';
 import '../../providers/tema_providers.dart';
 import '../klien/buka_form_order.dart' show belumTersedia;
+import '../profil/atur_password_dialog.dart';
 
 /// Pengaturan aplikasi.
 ///
@@ -16,6 +19,7 @@ class PengaturanScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(modeTemaProvider);
+    final user = ref.watch(userAktifProvider).value;
 
     final butir = <Widget>[
       _pintuMenyusul(
@@ -37,7 +41,18 @@ class PengaturanScreen extends ConsumerWidget {
         'Bahasa',
         'Bahasa Indonesia',
       ),
-      _pintuMenyusul(context, Icons.lock_outline, 'Privasi & Keamanan', null),
+      if (user != null)
+        ListTile(
+          leading: const Icon(Icons.password_outlined),
+          title: const Text('Password'),
+          subtitle: Text(
+            user.punyaPassword
+                ? 'Sudah diatur, jalur masuk kedua di samping OTP'
+                : 'Belum diatur, masuk masih lewat OTP',
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _aturPassword(context, ref, user),
+        ),
       _pintuMenyusul(context, Icons.help_outline, 'Pusat Bantuan', null),
       _pintuMenyusul(
         context,
@@ -84,6 +99,16 @@ class PengaturanScreen extends ConsumerWidget {
     ThemeMode.dark => 'Gelap',
     ThemeMode.system => 'Ikuti sistem',
   };
+
+  Future<void> _aturPassword(BuildContext context, WidgetRef ref, AppUser user) async {
+    await showDialog<AppUser>(
+      context: context,
+      builder: (context) => AturPasswordDialog(
+        noHp: user.noHp,
+        sudahPunyaPassword: user.punyaPassword,
+      ),
+    );
+  }
 
   Future<void> _pilihTema(
     BuildContext context,

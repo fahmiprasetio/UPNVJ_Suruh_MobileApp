@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -57,6 +58,10 @@ builder.Services
     .ValidateOnStart();
 
 builder.Services.AddSingleton<TokenService>();
+
+// Sidik password: bawaan ASP.NET Core (PBKDF2), bukan pustaka pihak ketiga. Password
+// sendiri opsional, lihat User.PasswordHash.
+builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
 
 builder.Services
     .AddOptions<WebhookOptions>()

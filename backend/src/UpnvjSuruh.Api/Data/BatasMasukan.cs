@@ -23,6 +23,21 @@ public static class BatasMasukan
     public const int QrPayload = 1000;
 
     /// <summary>
+    /// Sidik password. <see cref="Microsoft.AspNetCore.Identity.PasswordHasher{TUser}"/>
+    /// bawaan ASP.NET Core menghasilkan sekitar 84 karakter base64 untuk formatnya sekarang,
+    /// dan angka ini dilebihkan supaya format berikutnya (kalau ada) tidak kesempitan.
+    /// </summary>
+    public const int HashPassword = 200;
+
+    /// <summary>
+    /// Panjang password yang diterima dari pengguna, bukan sidiknya. Batas atas menahan
+    /// permintaan raksasa membebani penghitungan hash; delapan sebagai batas bawah ditulis
+    /// langsung di <c>AturPasswordRequest</c>, bukan di sini, karena itu aturan bisnis
+    /// tentang kekuatan password, bukan batas ukuran kolom.
+    /// </summary>
+    public const int Password = 100;
+
+    /// <summary>
     /// Token perangkat dari Firebase. Panjangnya sekarang sekitar 160 karakter dan tidak
     /// pernah dijanjikan tetap, jadi angkanya dilebihkan: kolom yang kesempitan berarti
     /// perangkat yang gagal mendaftar tanpa ada yang tahu, dan yang dijaga di sini cuma

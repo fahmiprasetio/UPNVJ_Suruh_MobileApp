@@ -49,6 +49,45 @@ public record MasukRequest
     public string Kode { get; init; } = string.Empty;
 }
 
+/// <summary>Masuk pakai nomor HP dan password, jalur kedua di samping OTP.</summary>
+/// <remarks>
+/// Cuma berlaku untuk akun yang sudah pernah mengatur password lewat
+/// <see cref="AturPasswordRequest"/>. OTP tetap jalur utama dan selalu tersedia -- ini
+/// cuma alternatif bagi yang sudah mengaturnya dan tidak mau menunggu kode setiap kali.
+/// </remarks>
+public record MasukPasswordRequest
+{
+    [Required(AllowEmptyStrings = false)]
+    [MaxLength(BatasMasukan.NomorHp)]
+    [NomorHp]
+    public string NoHp { get; init; } = string.Empty;
+
+    [Required(AllowEmptyStrings = false)]
+    [MaxLength(BatasMasukan.Password)]
+    public string Password { get; init; } = string.Empty;
+}
+
+/// <summary>Mengatur atau mengganti password sendiri.</summary>
+/// <remarks>
+/// Menuntut kode OTP ke nomor sendiri, bukan cuma token yang sedang dipegang -- sama
+/// seperti mengganti nomor HP di <see cref="KonfirmasiGantiNomorRequest"/>, dan alasannya
+/// sama persis: token yang dicuri sesaat berlaku cuma sampai ia kedaluwarsa, sedangkan
+/// password yang diatur lewatnya bertahan selamanya sampai diganti lagi. Kodenya diminta
+/// lewat endpoint <c>minta-kode</c> yang sudah ada, dikirim ke nomor akun yang sedang
+/// masuk.
+/// </remarks>
+public record AturPasswordRequest
+{
+    [Required(AllowEmptyStrings = false)]
+    [RegularExpression(@"^\d{6}$", ErrorMessage = "Kode OTP terdiri dari 6 angka.")]
+    public string Kode { get; init; } = string.Empty;
+
+    [Required(AllowEmptyStrings = false)]
+    [MinLength(8, ErrorMessage = "Password minimal 8 karakter.")]
+    [MaxLength(BatasMasukan.Password)]
+    public string Password { get; init; } = string.Empty;
+}
+
 /// <summary>
 /// Menyunting profil sendiri.
 ///
@@ -122,7 +161,13 @@ public record UserResponse(
     /// ditangguhkan tidak bisa melewati validasi token sama sekali.
     /// </summary>
     DateTime? DitangguhkanPada = null,
-    string? AlasanPenangguhan = null)
+    string? AlasanPenangguhan = null,
+    /// <summary>
+    /// Benar kalau akun ini sudah pernah mengatur password. Bukan passwordnya sendiri --
+    /// itu tidak pernah keluar dari server dalam bentuk apa pun -- cuma penanda supaya
+    /// aplikasi tahu menawarkan "atur password" atau "ganti password".
+    /// </summary>
+    bool PunyaPassword = false)
 {
     public static UserResponse Dari(User user) =>
         new(
@@ -132,7 +177,8 @@ public record UserResponse(
             user.Address,
             [.. user.Roles.Select(r => r.ToString())],
             user.SuspendedAt,
-            user.SuspendedReason);
+            user.SuspendedReason,
+            user.PasswordHash is not null);
 }
 
 public record MasukResponse(string Token, DateTime KedaluwarsaPada, UserResponse User);

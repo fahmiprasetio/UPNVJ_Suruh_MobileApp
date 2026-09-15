@@ -117,6 +117,47 @@ class ApiAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<AppUser> masukPassword({
+    required String noHp,
+    required String password,
+  }) async {
+    final jawaban = await _klien.post(
+      '/api/auth/masuk-password',
+      badan: {'noHp': noHp.trim(), 'password': password},
+    );
+
+    final token = jawaban['token'];
+    if (token is! String || token.isEmpty) {
+      throw StateError('Jawaban masuk tidak membawa token.');
+    }
+
+    final user = _bacaUser(jawaban['user']);
+
+    // Urutan yang sama dengan [masuk]: token dipasang lebih dulu.
+    await _sesi.isi(token);
+    _userAktif = user;
+    _controller.add(user);
+
+    return user;
+  }
+
+  @override
+  Future<AppUser> aturPassword({
+    required String kode,
+    required String password,
+  }) async {
+    final jawaban = await _klien.post(
+      '/api/auth/saya/password',
+      badan: {'kode': kode.trim(), 'password': password},
+    );
+
+    final user = _bacaUser(jawaban);
+    _userAktif = user;
+    _controller.add(user);
+    return user;
+  }
+
+  @override
   Future<AppUser> perbaruiProfil({required String nama, String? alamat}) async {
     final bersih = alamat?.trim();
 
@@ -218,6 +259,7 @@ class ApiAuthRepository implements AuthRepository {
       noHp: isi['noHp'] as String,
       alamat: isi['alamat'] as String?,
       roles: _bacaPeran(isi['roles']),
+      punyaPassword: isi['punyaPassword'] as bool? ?? false,
     );
   }
 

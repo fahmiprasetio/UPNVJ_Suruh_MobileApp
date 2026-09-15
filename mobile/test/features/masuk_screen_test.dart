@@ -201,6 +201,79 @@ void main() {
     expect(find.widgetWithText(TextFormField, 'Kode'), findsNothing);
   });
 
+  group('masuk pakai password', () {
+    /// Mengatur password langsung lewat repository, tanpa lewat UI: yang
+    /// diuji di sini alur masuknya, bukan alur mengaturnya (sudah diuji
+    /// sendiri di `atur_password_dialog_test.dart`).
+    Future<void> siapkanAkunDenganPassword(
+      FakeAuthRepository repo,
+      String password,
+    ) async {
+      repo.pakaiAkunUji(SeedData.klien);
+      await repo.mintaKode(noHp: SeedData.klien.noHp);
+      await repo.aturPassword(
+        kode: repo.kodeUntuk(SeedData.klien.noHp)!,
+        password: password,
+      );
+      await repo.keluar();
+    }
+
+    testWidgets('tautan dari langkah nomor membuka langkah password', (
+      tester,
+    ) async {
+      await bukaBelumMasuk(tester);
+
+      await tekan(tester, 'Sudah atur password? Masuk pakai itu');
+
+      expect(find.widgetWithText(TextFormField, 'Nomor HP'), findsOneWidget);
+      expect(find.widgetWithText(TextFormField, 'Password'), findsOneWidget);
+    });
+
+    testWidgets(
+      'password yang benar memasukkan pengguna dan layar masuk ditinggalkan',
+      (tester) async {
+        final repo = await bukaBelumMasuk(tester);
+        await siapkanAkunDenganPassword(repo, 'sandiAman123');
+
+        await tekan(tester, 'Sudah atur password? Masuk pakai itu');
+        await isi(tester, 'Nomor HP', SeedData.klien.noHp);
+        await isi(tester, 'Password', 'sandiAman123');
+        await tekan(tester, 'Masuk');
+
+        expect(find.widgetWithText(TextFormField, 'Password'), findsNothing);
+        expect(repo.userAktif?.noHp, SeedData.klien.noHp);
+      },
+    );
+
+    testWidgets(
+      'password yang salah menampilkan galat dan tetap di langkah password',
+      (tester) async {
+        final repo = await bukaBelumMasuk(tester);
+        await siapkanAkunDenganPassword(repo, 'sandiAman123');
+
+        await tekan(tester, 'Sudah atur password? Masuk pakai itu');
+        await isi(tester, 'Nomor HP', SeedData.klien.noHp);
+        await isi(tester, 'Password', 'salahTotal99');
+        await tekan(tester, 'Masuk');
+
+        expect(find.text('Nomor atau password tidak cocok'), findsOneWidget);
+        expect(repo.userAktif, isNull);
+      },
+    );
+
+    testWidgets('masuk pakai kode OTP saja kembali ke langkah nomor', (
+      tester,
+    ) async {
+      await bukaBelumMasuk(tester);
+
+      await tekan(tester, 'Sudah atur password? Masuk pakai itu');
+      await tekan(tester, 'Masuk pakai kode OTP saja');
+
+      expect(find.text('Kirim kode'), findsOneWidget);
+      expect(find.widgetWithText(TextFormField, 'Password'), findsNothing);
+    });
+  });
+
   testWidgets('langkah kode menawarkan jalan keluar bagi yang belum punya akun', (
     tester,
   ) async {

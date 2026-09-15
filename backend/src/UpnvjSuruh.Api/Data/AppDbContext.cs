@@ -35,6 +35,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(u => u.Name).HasMaxLength(BatasMasukan.Nama);
             entity.Property(u => u.Phone).HasMaxLength(BatasMasukan.NomorHp);
             entity.Property(u => u.Address).HasMaxLength(BatasMasukan.Alamat);
+            entity.Property(u => u.PasswordHash).HasMaxLength(BatasMasukan.HashPassword);
 
             // Disimpan sebagai integer[] Postgres, bukan JSON, supaya "cari semua runner"
             // tetap bisa dijawab satu query berindeks nanti.

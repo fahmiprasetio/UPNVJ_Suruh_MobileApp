@@ -61,10 +61,19 @@ public class PembatasOtpMemori(IMemoryCache cache, TimeProvider waktu)
     /// terpisah dari pencatatannya berarti dua permintaan yang tiba bersamaan sama-sama
     /// lolos, yaitu persis keadaan yang sedang dijaga di sini.
     /// </summary>
-    public IzinOtp Catat(string noHp)
+    /// <param name="jenis">
+    /// Nama anggaran yang dicatat, bukan cuma nomor HP-nya. Dipakai juga untuk percobaan
+    /// masuk pakai password (lihat <c>AuthController.MasukPassword</c>), yang ancamannya
+    /// beda dari membanjiri SMS orang tapi bentuk penjagaannya sama persis: batas
+    /// percobaan per nomor dalam satu jendela waktu. Anggarannya sengaja terpisah dari
+    /// OTP (kunci cache-nya ikut memuat <paramref name="jenis"/>) supaya orang yang
+    /// mencoba menebak password korban tidak ikut menghabiskan jatah kode masuk OTP
+    /// korbannya, dan sebaliknya.
+    /// </param>
+    public IzinOtp Catat(string noHp, string jenis = "otp")
     {
         var sekarang = waktu.GetUtcNow();
-        var kunci = $"batas-otp:{noHp}";
+        var kunci = $"batas-{jenis}:{noHp}";
 
         lock (_gembok)
         {

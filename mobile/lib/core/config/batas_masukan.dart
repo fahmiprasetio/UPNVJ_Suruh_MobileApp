@@ -33,4 +33,12 @@ class BatasMasukan {
   /// dan sengaja tidak longgar: kolom nomor yang menerima ratusan karakter cuma
   /// mengundang isian yang bukan nomor.
   static const int nomorHp = 20;
+
+  /// Panjang maksimal password. Kembaran `BatasMasukan.Password` di backend.
+  static const int password = 100;
+
+  /// Panjang minimal password, ditegakkan server lewat `MinLength` di
+  /// `AturPasswordRequest`. Diulang di sini supaya kolomnya menolak sebelum
+  /// sempat mengirim, bukan cuma aturan bisnis tentang kekuatan password.
+  static const int passwordMinimal = 8;
 }

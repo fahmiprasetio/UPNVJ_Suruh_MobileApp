@@ -8,6 +8,18 @@ public class User
     public string? Address { get; set; }
 
     /// <summary>
+    /// Sidik password, atau <c>null</c> kalau akun ini belum pernah mengaturnya.
+    ///
+    /// Opsional dan sengaja begitu: jalur masuk utama tetap OTP, karena order di aplikasi
+    /// ini kadang mendesak dan tidak boleh menunggu pengguna mengingat password. Password
+    /// cuma jalur kedua bagi yang mau mengaturnya sendiri. Mengaturnya menuntut kode OTP ke
+    /// nomor sendiri (lihat <c>AuthController.AturPassword</c>), sama seperti mengganti
+    /// nomor HP -- token yang sedang dipegang saja tidak cukup, sebab password yang diatur
+    /// lewat token curian bertahan jauh lebih lama daripada masa berlaku token itu sendiri.
+    /// </summary>
+    public string? PasswordHash { get; set; }
+
+    /// <summary>
     /// Peran melekat pada pekerjaan, bukan pada orang, jadi satu akun boleh memegang
     /// lebih dari satu. Bentuknya koleksi supaya cocok dengan <c>AppUser.roles</c> di
     /// aplikasi mobile, yang sudah memperlakukannya sebagai himpunan sejak awal.
