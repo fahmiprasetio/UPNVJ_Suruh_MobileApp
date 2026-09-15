@@ -7,6 +7,7 @@ import 'package:upnvj_suruh/app.dart';
 import '../../support/tiruan.dart';
 import 'package:upnvj_suruh/domain/enums.dart';
 import 'package:upnvj_suruh/domain/service_catalog.dart';
+import 'package:upnvj_suruh/features/klien/beranda/widgets/kartu_layanan.dart';
 
 void main() {
   setUpAll(() async {
@@ -62,6 +63,31 @@ void main() {
       );
     }
   });
+
+  testWidgets(
+    'petak layanan tampil sesuai urutan dua baris rancangan sesi 84',
+    (tester) async {
+      await bukaBeranda(tester);
+
+      final nama = tester
+          .widgetList<KartuLayanan>(find.byType(KartuLayanan))
+          .map((k) => k.layanan.nama)
+          .toList();
+
+      // Baris 1: Anter Jemput/Jastip Makanan/Bersih Kamar Mandi, baris 2:
+      // Bersih-Bersih Kos/Bantu Pindah Kos/Jastip Barang -- lihat urutan
+      // `serviceCatalog` dan `_BarisLayanan.sublist` di layarnya. Permintaan
+      // Lain tidak ikut, ia `KartuPermintaanLain`, bukan `KartuLayanan`.
+      expect(nama, [
+        'Anter Jemput',
+        'Jastip Makanan',
+        'Bersih Kamar Mandi',
+        'Bersih-Bersih Kos',
+        'Bantu Pindah Kos',
+        'Jastip Barang',
+      ]);
+    },
+  );
 
   testWidgets('permintaan bebas dipisahkan sebagai pintu kedua', (
     tester,
