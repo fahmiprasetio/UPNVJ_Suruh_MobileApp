@@ -205,17 +205,27 @@ void main() {
     /// Mengatur password langsung lewat repository, tanpa lewat UI: yang
     /// diuji di sini alur masuknya, bukan alur mengaturnya (sudah diuji
     /// sendiri di `atur_password_dialog_test.dart`).
+    ///
+    /// Dibungkus [WidgetTester.runAsync]. Tanpa itu, `Future.delayed`
+    /// sungguhan yang dipakai `FakeAuthRepository` untuk menirukan jeda
+    /// jaringan tidak pernah selesai: `testWidgets` berjalan di zona waktu
+    /// semu yang cuma maju lewat `tester.pump`, dan di sini belum ada satu
+    /// pun pump yang dipanggil untuk memajukannya.
     Future<void> siapkanAkunDenganPassword(
+      WidgetTester tester,
       FakeAuthRepository repo,
       String password,
     ) async {
-      repo.pakaiAkunUji(SeedData.klien);
-      await repo.mintaKode(noHp: SeedData.klien.noHp);
-      await repo.aturPassword(
-        kode: repo.kodeUntuk(SeedData.klien.noHp)!,
-        password: password,
-      );
-      await repo.keluar();
+      await tester.runAsync(() async {
+        repo.pakaiAkunUji(SeedData.klien);
+        await repo.mintaKode(noHp: SeedData.klien.noHp);
+        await repo.aturPassword(
+          kode: repo.kodeUntuk(SeedData.klien.noHp)!,
+          password: password,
+        );
+        await repo.keluar();
+      });
+      await tester.pump();
     }
 
     testWidgets('tautan dari langkah nomor membuka langkah password', (
@@ -233,7 +243,7 @@ void main() {
       'password yang benar memasukkan pengguna dan layar masuk ditinggalkan',
       (tester) async {
         final repo = await bukaBelumMasuk(tester);
-        await siapkanAkunDenganPassword(repo, 'sandiAman123');
+        await siapkanAkunDenganPassword(tester, repo, 'sandiAman123');
 
         await tekan(tester, 'Sudah atur password? Masuk pakai itu');
         await isi(tester, 'Nomor HP', SeedData.klien.noHp);
@@ -249,7 +259,7 @@ void main() {
       'password yang salah menampilkan galat dan tetap di langkah password',
       (tester) async {
         final repo = await bukaBelumMasuk(tester);
-        await siapkanAkunDenganPassword(repo, 'sandiAman123');
+        await siapkanAkunDenganPassword(tester, repo, 'sandiAman123');
 
         await tekan(tester, 'Sudah atur password? Masuk pakai itu');
         await isi(tester, 'Nomor HP', SeedData.klien.noHp);
