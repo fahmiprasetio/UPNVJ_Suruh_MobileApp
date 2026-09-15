@@ -30,6 +30,16 @@ public class AuthController(
     private const string AnggaranPassword = "password";
 
     /// <summary>
+    /// Sidik palsu untuk MasukPassword: dibandingkan lewat PasswordHasher yang sama supaya
+    /// nomor yang belum punya password menjalankan satu putaran PBKDF2 juga, alih-alih
+    /// menjawab seketika. Tanpa ini, waktu respons membedakan "nomor belum atur password"
+    /// dari "nomor sudah atur, tebakan salah" -- oracle timing untuk daftar siapa saja
+    /// yang sudah mengatur password.
+    /// </summary>
+    private static readonly string HashPalsu = new PasswordHasher<User>().HashPassword(
+        new User { Name = "-", Phone = "-" }, "ponytail-dummy-tidak-pernah-cocok");
+
+    /// <summary>
     /// Mendaftarkan akun baru. Selalu lahir sebagai klien, lihat <see cref="DaftarRequest"/>.
     /// </summary>
     /// <remarks>
@@ -238,8 +248,13 @@ public class AuthController(
 
         // Akun yang tidak ada dan akun yang belum mengatur password dijawab sama: keduanya
         // tidak punya sidik untuk dibandingkan, dan membedakannya memberi tahu penebak nomor
-        // mana saja yang sudah mengatur password.
-        if (user is null || user.PasswordHash is null) return gagal;
+        // mana saja yang sudah mengatur password. Tetap dibandingkan ke HashPalsu, bukan
+        // langsung dijawab, supaya waktu responsnya juga sama (lihat HashPalsu).
+        if (user is null || user.PasswordHash is null)
+        {
+            passwordHasher.VerifyHashedPassword(new User { Name = "-", Phone = "-" }, HashPalsu, permintaan.Password);
+            return gagal;
+        }
 
         var hasil = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, permintaan.Password);
         if (hasil == PasswordVerificationResult.Failed) return gagal;
