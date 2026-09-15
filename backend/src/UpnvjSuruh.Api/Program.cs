@@ -77,6 +77,49 @@ if (string.IsNullOrWhiteSpace(builder.Configuration[$"{WebhookOptions.Section}:S
         "Tanpa ini, endpoint yang menandai order lunas terbuka untuk siapa saja.");
 }
 
+// --- Gateway pembayaran ---
+//
+// Dibaca langsung dari IOptions<MidtransOptions>, tanpa syarat, supaya
+// MidtransWebhookController selalu bisa memverifikasi tanda tangan (dan gagal tertutup kalau
+// ServerKey kosong, lihat MidtransOptions.SignatureValid) tidak peduli gateway mana yang
+// sedang aktif di bawah ini.
+builder.Services
+    .AddOptions<MidtransOptions>()
+    .Bind(builder.Configuration.GetSection(MidtransOptions.Section));
+
+var midtransServerKey = builder.Configuration["Midtrans:ServerKey"];
+if (!string.IsNullOrWhiteSpace(midtransServerKey))
+{
+    var midtransProduction = builder.Configuration.GetValue<bool>("Midtrans:Production");
+    builder.Services.AddHttpClient<IPembayaranGateway, MidtransPembayaranGateway>(client =>
+    {
+        client.BaseAddress = new Uri(midtransProduction
+            ? "https://api.midtrans.com/"
+            : "https://api.sandbox.midtrans.com/");
+        // Basic Auth dengan Server Key sebagai username, kata sandi kosong -- persis format
+        // yang dituntut Core API Midtrans.
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Basic",
+            Convert.ToBase64String(Encoding.ASCII.GetBytes($"{midtransServerKey}:")));
+    });
+}
+else if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddSingleton<IPembayaranGateway, PembayaranGatewaySimulasi>();
+}
+else
+{
+    // Sengaja menolak menyala, mengikuti pola yang sama dengan IPengirimOtp dan
+    // IPengirimNotifikasi di bawah: server produksi tanpa gateway sungguhan akan melayani
+    // setiap permintaan bayar dengan QR yang tidak bisa dipindai bank mana pun, dan tidak ada
+    // satu layar pun yang menunjukkan itu.
+    throw new InvalidOperationException(
+        "Midtrans:ServerKey belum diisi. Di mesin pengembang jalankan: " +
+        "dotnet user-secrets set \"Midtrans:ServerKey\" \"<server key Sandbox/Production>\" " +
+        "dan dotnet user-secrets set \"Midtrans:ClientKey\" \"<client key>\". Tanpa ini tidak " +
+        "ada satu pun cara klien membayar order.");
+}
+
 // --- OTP ---
 
 builder.Services.AddMemoryCache();

@@ -5,6 +5,7 @@ using UpnvjSuruh.Api.Auth;
 using UpnvjSuruh.Api.Contracts;
 using UpnvjSuruh.Api.Data;
 using UpnvjSuruh.Api.Domain;
+using UpnvjSuruh.Api.Payments;
 using UpnvjSuruh.Api.Pricing;
 
 namespace UpnvjSuruh.Api.Controllers;
@@ -17,14 +18,15 @@ namespace UpnvjSuruh.Api.Controllers;
 /// kelupaan. Uang yang masuk adalah kejadian di luar aplikasi, jadi yang boleh
 /// mengabarkannya adalah pihak yang menerima uangnya, lewat webhook.
 ///
-/// Nanti, ketika mitra memilih gateway, yang berubah adalah isi <see cref="Buat"/>: alih-alih
-/// menyusun payload simulasi, ia memanggil gateway dengan Server Key dan menyimpan jawabannya.
-/// Bentuk endpoint-nya tidak berubah, jadi aplikasi tidak perlu disentuh.
+/// <see cref="Buat"/> tidak pernah tahu gateway mana yang sedang aktif -- itu keputusan
+/// <see cref="IPembayaranGateway"/> yang dipilih <c>Program.cs</c> dari ada-tidaknya
+/// <c>Midtrans:ServerKey</c>. Bentuk endpoint ini tidak berubah waktu gateway sungguhan
+/// dipasang, persis seperti yang dijanjikan komentar lama di sini.
 /// </summary>
 [ApiController]
 [Route("api/orders/{orderId:guid}/pembayaran")]
 [Authorize(Roles = Peran.Klien)]
-public class PembayaranController(AppDbContext db) : ControllerBase
+public class PembayaranController(AppDbContext db, IPembayaranGateway gateway) : ControllerBase
 {
     /// <summary>
     /// Membuat transaksi untuk order ini, atau mengembalikan yang masih menunggu.
@@ -69,22 +71,53 @@ public class PembayaranController(AppDbContext db) : ControllerBase
         }
 
         var sekarang = DateTime.UtcNow;
+        var paymentId = Guid.NewGuid();
+
+        // Baris ini disimpan SEBELUM gateway dipanggil, bukan sesudah. Kalau urutannya
+        // dibalik dan panggilan ke gateway berhasil (QR sungguhan sudah bisa dipindai dan
+        // dibayar orang) tapi penyimpanan ke sini gagal sesudahnya -- koneksi basis data
+        // putus, permintaan dibatalkan klien, proses server berhenti di tengah -- webhook
+        // yang datang belakangan tidak punya apa pun untuk dicocokkan lewat paymentId, dan
+        // uang yang sudah dibayar orang jadi transaksi yatim yang tidak tercatat ke order
+        // mana pun. Menyimpannya lebih dulu berarti baris ini sudah ada sebelum uang
+        // sempat berpindah sama sekali.
         var pembayaran = new Payment
         {
+            Id = paymentId,
             OrderId = order.Id,
             // Diambil dari harga ordernya, tidak pernah dari badan permintaan.
             Amount = harga,
-            GatewayReference = $"sim-{Guid.NewGuid():N}",
+            GatewayReference = $"{paymentId:N}",
             // Dibaca dari jam yang sama dengan ExpiresAt, bukan dibiarkan memakai
             // nilai bawaan entitasnya. Dua pembacaan jam membuat jarak antara dibuat
             // dan kedaluwarsa meleset dari BatasWaktuBayar, dan yang membaca selisihnya
             // nanti akan menyimpulkan batas waktunya bukan angka yang tertulis di sini.
             CreatedAt = sekarang,
-            QrPayload = PayloadSimulasi(order, harga),
+            QrPayload = string.Empty,
             ExpiresAt = sekarang.Add(TarifConfig.BatasWaktuBayar),
         };
 
         db.Payments.Add(pembayaran);
+        await db.SaveChangesAsync(batal);
+
+        try
+        {
+            var (referensiGateway, qrPayload) = await gateway.BuatTransaksiAsync(
+                order, paymentId, harga, batal);
+            pembayaran.GatewayReference = referensiGateway;
+            pembayaran.QrPayload = qrPayload;
+        }
+        catch
+        {
+            // Barisnya tetap ada (lihat alasan di atas), tapi ditandai gagal supaya
+            // percobaan berikutnya tidak macet menunggu QR yang tidak pernah lahir sampai
+            // batas waktunya lewat sendiri -- Hidup() di bawah cuma melihat transaksi yang
+            // masih Pending.
+            pembayaran.Status = PaymentStatus.Gagal;
+            await db.SaveChangesAsync(batal);
+            throw;
+        }
+
         await db.SaveChangesAsync(batal);
 
         return Ok(TransaksiPembayaranResponse.Dari(pembayaran));
@@ -151,14 +184,4 @@ public class PembayaranController(AppDbContext db) : ControllerBase
     /// <summary>Transaksi yang masih menunggu dan belum lewat batas waktunya.</summary>
     private static Payment? Hidup(Order order) => order.Payments
         .SingleOrDefault(p => p.Menunggu && p.ExpiresAt > DateTime.UtcNow);
-
-    /// <summary>
-    /// Isi QR selama gateway sungguhan belum dipasang.
-    ///
-    /// Sengaja tidak menyerupai payload QRIS resmi. String yang mirip aslinya tapi palsu akan
-    /// lolos pandangan sekilas dan menipu penguji; yang seperti ini gagal dipindai aplikasi
-    /// bank, dan memang seharusnya begitu.
-    /// </summary>
-    private static string PayloadSimulasi(Order order, decimal jumlah) =>
-        $"SIMULASI-QRIS|order={order.OrderCode}|jumlah={jumlah:0}";
 }
