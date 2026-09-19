@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../core/router/app_router.dart';
 import '../../domain/models/app_user.dart';
 import '../../providers/repository_providers.dart';
 import '../../providers/tema_providers.dart';
@@ -53,20 +55,31 @@ class PengaturanScreen extends ConsumerWidget {
           trailing: const Icon(Icons.chevron_right),
           onTap: () => _aturPassword(context, ref, user),
         ),
-      _pintuMenyusul(context, Icons.help_outline, 'Pusat Bantuan', null),
-      _pintuMenyusul(
-        context,
-        Icons.description_outlined,
-        'Syarat & Ketentuan',
-        null,
+      ListTile(
+        leading: const Icon(Icons.help_outline),
+        title: const Text('Pusat Bantuan'),
+        subtitle: const Text('FAQ dan kontak admin'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => context.push(Rute.pusatBantuan),
       ),
-      _pintuMenyusul(
-        context,
-        Icons.privacy_tip_outlined,
-        'Kebijakan Privasi',
-        null,
+      ListTile(
+        leading: const Icon(Icons.description_outlined),
+        title: const Text('Syarat & Ketentuan'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => context.push(Rute.syaratKetentuan),
       ),
-      _pintuMenyusul(context, Icons.info_outline, 'Tentang Aplikasi', null),
+      ListTile(
+        leading: const Icon(Icons.privacy_tip_outlined),
+        title: const Text('Kebijakan Privasi'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => context.push(Rute.kebijakanPrivasi),
+      ),
+      ListTile(
+        leading: const Icon(Icons.info_outline),
+        title: const Text('Tentang Aplikasi'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => context.push(Rute.tentangAplikasi),
+      ),
     ];
 
     return Scaffold(

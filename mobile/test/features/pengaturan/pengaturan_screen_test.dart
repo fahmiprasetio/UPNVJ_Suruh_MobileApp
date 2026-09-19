@@ -97,4 +97,44 @@ void main() {
     expect(find.text('Gelap'), findsOneWidget);
     expect(find.text('Terang'), findsNothing);
   });
+
+  testWidgets('mengetuk Pusat Bantuan membuka layar pusat bantuan', (tester) async {
+    await bukaPengaturan(tester);
+
+    await tester.tap(find.widgetWithText(ListTile, 'Pusat Bantuan'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Butuh Bantuan Mendesak?'), findsOneWidget);
+    expect(find.text('Pertanyaan yang Sering Diajukan'), findsOneWidget);
+  });
+
+  testWidgets('mengetuk Syarat & Ketentuan membuka layar syarat ketentuan', (tester) async {
+    await bukaPengaturan(tester);
+
+    await tester.tap(find.widgetWithText(ListTile, 'Syarat & Ketentuan'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Syarat & Ketentuan Layanan'), findsOneWidget);
+    expect(find.text('1. Ketentuan Umum'), findsOneWidget);
+  });
+
+  testWidgets('mengetuk Kebijakan Privasi membuka layar kebijakan privasi', (tester) async {
+    await bukaPengaturan(tester);
+
+    await tester.tap(find.widgetWithText(ListTile, 'Kebijakan Privasi'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Penggunaan Nomor Telepon'), findsOneWidget);
+    expect(find.text('Pembersihan Metadata Foto (EXIF)'), findsOneWidget);
+  });
+
+  testWidgets('mengetuk Tentang Aplikasi membuka layar tentang aplikasi', (tester) async {
+    await bukaPengaturan(tester);
+
+    await tester.tap(find.widgetWithText(ListTile, 'Tentang Aplikasi'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Versi 1.0.0 (Build Capstone)'), findsOneWidget);
+    expect(find.text('Profil Mitra Inisiatif'), findsOneWidget);
+  });
 }

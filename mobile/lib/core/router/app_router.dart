@@ -14,7 +14,11 @@ import '../../features/klien/order_jalur_a/form_jastip_makanan_screen.dart';
 import '../../features/klien/order_jalur_b/form_permintaan_screen.dart';
 import '../../features/klien/pembayaran/pembayaran_screen.dart';
 import '../../features/klien/riwayat/riwayat_order_screen.dart';
+import '../../features/pengaturan/kebijakan_privasi_screen.dart';
 import '../../features/pengaturan/pengaturan_screen.dart';
+import '../../features/pengaturan/pusat_bantuan_screen.dart';
+import '../../features/pengaturan/syarat_ketentuan_screen.dart';
+import '../../features/pengaturan/tentang_aplikasi_screen.dart';
 import '../../features/profil/profil_screen.dart';
 import '../../features/runner/ajukan_tawaran/ajukan_tawaran_screen.dart';
 import '../../domain/enums.dart';
@@ -33,6 +37,10 @@ class Rute {
   static const String riwayat = '/order';
   static const String profil = '/profil';
   static const String pengaturan = '/pengaturan';
+  static const String pusatBantuan = '/pengaturan/bantuan';
+  static const String syaratKetentuan = '/pengaturan/syarat-ketentuan';
+  static const String kebijakanPrivasi = '/pengaturan/kebijakan-privasi';
+  static const String tentangAplikasi = '/pengaturan/tentang';
   static const String detailOrderPola = '/order/:orderId';
   static const String bayarPola = '/order/:orderId/bayar';
   static const String chatOrderPola = '/order/:orderId/chat';
@@ -125,6 +133,22 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Rute.pengaturan,
         builder: (context, state) => const PengaturanScreen(),
+      ),
+      GoRoute(
+        path: Rute.pusatBantuan,
+        builder: (context, state) => const PusatBantuanScreen(),
+      ),
+      GoRoute(
+        path: Rute.syaratKetentuan,
+        builder: (context, state) => const SyaratKetentuanScreen(),
+      ),
+      GoRoute(
+        path: Rute.kebijakanPrivasi,
+        builder: (context, state) => const KebijakanPrivasiScreen(),
+      ),
+      GoRoute(
+        path: Rute.tentangAplikasi,
+        builder: (context, state) => const TentangAplikasiScreen(),
       ),
       GoRoute(
         path: Rute.detailOrderPola,
