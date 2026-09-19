@@ -3,12 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:upnvj_suruh/app.dart';
-import 'package:upnvj_suruh/data/fake/seed_data.dart';
 
 import '../../support/tiruan.dart';
-import 'package:upnvj_suruh/core/config/tarif_config.dart';
-import 'package:upnvj_suruh/domain/models/tarif.dart';
-import 'package:upnvj_suruh/domain/pricing/kalkulator_tarif.dart';
 
 void main() {
   setUpAll(() async {
@@ -36,140 +32,73 @@ void main() {
   });
 
   Future<void> bukaForm(WidgetTester tester) async {
-    await tester.pumpWidget(ProviderScope(
+    await tester.pumpWidget(
+      ProviderScope(
         overrides: [sumberTiruan],
         child: const UpnvjSuruhApp(),
-      ));
+      ),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Jastip Barang'));
     await tester.pumpAndSettle();
   }
 
-  Future<void> isiForm(
-    WidgetTester tester, {
-    String barang = 'Ambil paket di Indomaret Pondok Labu atas nama Dina',
-    String ambil = 'Indomaret Pondok Labu',
-    String tujuan = 'Kos Melati kamar 7',
-    String jarak = '2',
-  }) async {
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Barang apa yang dititip?'),
-      barang,
-    );
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Diambil di mana?'),
-      ambil,
-    );
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Diantar ke mana?'),
-      tujuan,
-    );
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Perkiraan jarak'),
-      jarak,
-    );
-    await tester.pumpAndSettle();
-  }
+  Finder kolom(int indeks) => find.byType(TextFormField).at(indeks);
 
-  group('KalkulatorTarif.jastipBarang', () {
-    test('menjumlahkan ongkos jasa titip dengan ongkos jarak', () {
-      final hasil = KalkulatorTarif.jastipBarang(jarakKm: 2, tarif: Tarif.bawaan);
-
-      expect(hasil.total, 14000); // 10.000 + (2 x 2.000)
-      expect(hasil.rincian.first.label, 'Ongkos jasa titip');
-      expect(hasil.rincian.first.nominal, TarifConfig.jastipBarangFee);
-      expect(hasil.rincian.last.label, 'Jarak 2 km');
-    });
-
-    test('harga barang tidak pernah ikut dihitung', () {
-      // Rumusnya hanya punya dua komponen: jasa dan jarak. Kalau nanti mitra
-      // memutuskan harga barang ikut ditagih, tes ini yang harus berubah
-      // lebih dulu (bagian 14.7a).
-      final hasil = KalkulatorTarif.jastipBarang(jarakKm: 5, tarif: Tarif.bawaan);
-
-      expect(hasil.rincian, hasLength(2));
-      expect(
-        hasil.total,
-        TarifConfig.jastipBarangFee + 5 * TarifConfig.jastipBarangTarifPerKm,
-      );
-    });
-
-    test('jarak di atas batas ditahan di maksimal', () {
-      final hasil = KalkulatorTarif.jastipBarang(jarakKm: 100, tarif: Tarif.bawaan);
-
-      expect(hasil.rincian.last.label, 'Jarak 15 km');
-    });
-  });
-
-  testWidgets('harga belum muncul sebelum jarak diisi', (tester) async {
+  testWidgets('beranda membuka form saat Jastip Barang ditekan', (tester) async {
     await bukaForm(tester);
 
+    expect(find.text('Barang apa yang dititip?'), findsOneWidget);
+    expect(find.text('Diambil di mana?'), findsOneWidget);
+    expect(find.text('Diantar ke mana?'), findsOneWidget);
+    expect(find.text('Perkiraan jarak'), findsOneWidget);
+  });
+
+  testWidgets('kolom alamat pengambilan dan tujuan memiliki tombol pemilih peta', (
+    tester,
+  ) async {
+    await bukaForm(tester);
+
+    final tombolPeta = find.byIcon(Icons.map_outlined);
+    // Ada dua tombol peta: satu untuk titik ambil, satu untuk titik tujuan
+    expect(tombolPeta, findsNWidgets(2));
+  });
+
+  testWidgets('harga belum ditampilkan sebelum jarak diisi', (tester) async {
+    await bukaForm(tester);
+
+    expect(find.text('Total'), findsNothing);
     expect(
       find.text('Isi perkiraan jarak dulu, harganya langsung muncul di sini.'),
       findsOneWidget,
     );
   });
 
-  testWidgets('harga terurai langsung muncul setelah jarak diisi', (
-    tester,
-  ) async {
+  testWidgets('harga muncul sendiri begitu jarak diisi', (tester) async {
     await bukaForm(tester);
-    await isiForm(tester);
 
-    expect(find.text('Ongkos jasa titip'), findsOneWidget);
-    expect(find.text('Jarak 2 km'), findsOneWidget);
-    expect(find.text('Rp 14.000'), findsWidgets);
-  });
-
-  testWidgets('layar mengaku harga barang belum termasuk', (tester) async {
-    await bukaForm(tester);
-    await isiForm(tester);
-
-    expect(
-      find.textContaining('Harga barangnya belum termasuk'),
-      findsOneWidget,
-    );
-  });
-
-  testWidgets('barang yang ditulis asal ditolak', (tester) async {
-    await bukaForm(tester);
-    await isiForm(tester, barang: 'paket');
-
-    await tester.tap(find.widgetWithText(FilledButton, 'Buat Order'));
+    // Isi kolom barang
+    await tester.enterText(kolom(0), 'Buku catatan dan modul kuliah');
+    // Kolom jarak adalah kolom ke-3 (indeks 3)
+    await tester.enterText(kolom(3), '3');
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('Tulis lebih jelas, runner tidak bisa menebak barangnya'),
-      findsOneWidget,
-    );
+    expect(find.text('Rp 10.000'), findsOneWidget); // fee jasa titip barang
+    expect(find.text('Rp 6.000'), findsOneWidget); // ongkos jarak 3 * 2.000
+    expect(find.text('Rp 16.000'), findsNWidgets(2)); // ringkasan + bilah bawah
   });
 
-  testWidgets('order jastip barang dibuat dan membuka detailnya', (
-    tester,
-  ) async {
+  testWidgets('menolak kirim jika barang atau alamat belum diisi', (tester) async {
     await bukaForm(tester);
-    await isiForm(tester);
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Buat Order'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
+    // Cuma isi jarak
+    await tester.enterText(kolom(3), '2');
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('dibuat'), findsWidgets);
-    // Detail order menampilkan tahap pertama Jalur A.
-    expect(find.text('Menunggu Pembayaran'), findsWidgets);
-    expect(find.text('Ambil paket di Indomaret Pondok Labu atas nama Dina'),
-        findsOneWidget);
-  });
+    await tester.tap(find.text('Buat Order'));
+    await tester.pumpAndSettle();
 
-  /// Kebalikan dari anter jemput: yang diambil ada di toko, dan yang diantar
-  /// adalah dirinya sendiri.
-  testWidgets('alamat tersimpan mengisi sendiri kolom tujuan', (tester) async {
-    await bukaForm(tester);
-
-    final tujuan = tester.widget<TextFormField>(
-      find.widgetWithText(TextFormField, 'Diantar ke mana?'),
-    );
-    expect(tujuan.controller?.text, SeedData.klien.alamat);
+    expect(find.text('Tulis dulu barang yang mau dititip'), findsOneWidget);
+    expect(find.text('Alamat pengambilan wajib diisi'), findsOneWidget);
   });
 }

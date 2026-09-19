@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../../core/api/galat_api.dart';
 import '../../../core/config/batas_masukan.dart';
 import '../../../core/format/formatters.dart';
 import '../../../core/format/jarak.dart';
+import '../../../core/peta/jarak_rute.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/enums.dart';
@@ -15,6 +17,7 @@ import '../../../domain/models/tarif.dart';
 import '../../../domain/pricing/kalkulator_tarif.dart';
 import '../../../providers/repository_providers.dart';
 import '../../widgets/pesan_kosong.dart';
+import '../peta/pemilih_lokasi_screen.dart';
 import 'widgets/ringkasan_harga.dart';
 
 /// Form Jalur A untuk Jastip Barang.
@@ -45,6 +48,9 @@ class _FormJastipBarangScreenState
   final _tujuanController = TextEditingController();
   final _jarakController = TextEditingController();
 
+  LatLng? _posisiAmbil;
+  LatLng? _posisiTujuan;
+  bool _sedangHitungRute = false;
   bool _sedangMengirim = false;
 
   /// Alamat tersimpan mengisi sendiri kolom "Diantar ke mana?".
@@ -164,11 +170,20 @@ class _FormJastipBarangScreenState
               textCapitalization: TextCapitalization.sentences,
               maxLines: 2,
               minLines: 1,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 counterText: '',
                 labelText: 'Diambil di mana?',
                 hintText: 'Indomaret Pondok Labu',
-                prefixIcon: Icon(Icons.store_outlined),
+                prefixIcon: const Icon(Icons.store_outlined),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.map_outlined),
+                  tooltip: 'Pilih di peta',
+                  onPressed: () => _pilihDiPeta(
+                    controller: _ambilController,
+                    judul: 'Titik pengambilan barang',
+                    untukAmbil: true,
+                  ),
+                ),
               ),
               validator: (nilai) => _wajibAlamat(nilai, 'pengambilan'),
             ),
@@ -179,32 +194,42 @@ class _FormJastipBarangScreenState
               textCapitalization: TextCapitalization.sentences,
               maxLines: 2,
               minLines: 1,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 counterText: '',
                 labelText: 'Diantar ke mana?',
                 hintText: 'Kos Melati kamar 7',
-                prefixIcon: Icon(Icons.place_outlined),
+                prefixIcon: const Icon(Icons.place_outlined),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.map_outlined),
+                  tooltip: 'Pilih di peta',
+                  onPressed: () => _pilihDiPeta(
+                    controller: _tujuanController,
+                    judul: 'Titik tujuan pengantaran',
+                    untukAmbil: false,
+                  ),
+                ),
               ),
               validator: (nilai) => _wajibAlamat(nilai, 'tujuan'),
             ),
             const SizedBox(height: AppTheme.spasiSedang),
             TextFormField(
               controller: _jarakController,
+              enabled: !_sedangHitungRute,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
               ],
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 counterText: '',
                 labelText: 'Perkiraan jarak',
                 suffixText: 'km',
-                prefixIcon: Icon(Icons.straighten_outlined),
+                prefixIcon: const Icon(Icons.straighten_outlined),
+                helperText: _sedangHitungRute
+                    ? 'Menghitung jarak rute jalan...'
+                    : null,
               ),
-              // Cuma kolom ini, bukan seluruh form: tanpa ini, jarak di atas
-              // batas dijepit diam-diam di pratinjau harga tanpa penjelasan
-              // apa pun sampai "Buat Order" ditekan.
               autovalidateMode: AutovalidateMode.onUserInteraction,
               validator: (nilai) => validasiJarak(nilai, tarif),
             ),
@@ -285,6 +310,60 @@ class _FormJastipBarangScreenState
     if (bersih.isEmpty) return 'Alamat $jenis wajib diisi';
     if (bersih.length < 5) return 'Tulis alamat $jenis lebih jelas';
     return null;
+  }
+
+  /// Membuka pemilih peta untuk satu kolom alamat, dan mengisi kolom jarak
+  /// otomatis begitu titik ambil maupun tujuan sudah sama-sama punya koordinat.
+  Future<void> _pilihDiPeta({
+    required TextEditingController controller,
+    required String judul,
+    required bool untukAmbil,
+  }) async {
+    final posisiSekarang = untukAmbil ? _posisiAmbil : _posisiTujuan;
+    final hasil = await Navigator.of(context).push<HasilPilihLokasi>(
+      MaterialPageRoute(
+        builder: (context) => PemilihLokasiScreen(
+          judul: judul,
+          posisiAwal: posisiSekarang,
+        ),
+      ),
+    );
+    if (hasil == null || !mounted) return;
+
+    controller.text = hasil.alamat;
+    setState(() {
+      if (untukAmbil) {
+        _posisiAmbil = hasil.posisi;
+      } else {
+        _posisiTujuan = hasil.posisi;
+      }
+    });
+
+    final ambil = _posisiAmbil;
+    final tujuan = _posisiTujuan;
+    if (ambil == null || tujuan == null) return;
+
+    setState(() => _sedangHitungRute = true);
+    final km = await JarakRuteOsrm.kilometer(ambil, tujuan);
+    if (!mounted) return;
+    setState(() => _sedangHitungRute = false);
+
+    if (km == null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Jarak rute gagal dihitung. Isi kolom jarak secara manual.',
+            ),
+          ),
+        );
+      return;
+    }
+
+    setState(() {
+      _jarakController.text = tulisJarak(double.parse(km.toStringAsFixed(1)));
+    });
   }
 
 }
