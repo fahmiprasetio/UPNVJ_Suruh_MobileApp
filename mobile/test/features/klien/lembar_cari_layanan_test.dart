@@ -90,7 +90,7 @@ void main() {
     ) async {
       await bangunAplikasi(tester);
 
-      await tester.tap(find.text('Cari layanan (makan, ojek, kos...)'));
+      await tester.tap(find.text('Cari layanan'));
       await tester.pumpAndSettle();
 
       expect(find.byType(LembarCariLayanan), findsOneWidget);
@@ -103,7 +103,7 @@ void main() {
     ) async {
       await bangunAplikasi(tester);
 
-      await tester.tap(find.text('Cari layanan (makan, ojek, kos...)'));
+      await tester.tap(find.text('Cari layanan'));
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextField), 'kamar mandi');
@@ -128,7 +128,7 @@ void main() {
     ) async {
       await bangunAplikasi(tester);
 
-      await tester.tap(find.text('Cari layanan (makan, ojek, kos...)'));
+      await tester.tap(find.text('Cari layanan'));
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextField), 'layanan_asing_tidak_ada');

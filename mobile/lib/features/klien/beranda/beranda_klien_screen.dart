@@ -9,6 +9,7 @@ import '../buka_form_order.dart';
 import '../../peran/tombol_ganti_mode.dart';
 import '../../widgets/tombol_notifikasi.dart';
 import '../../widgets/tombol_profil.dart';
+import 'widgets/banner_promo_carousel.dart';
 import 'widgets/kartu_layanan.dart';
 import 'widgets/lembar_cari_layanan.dart';
 
@@ -71,25 +72,29 @@ class BerandaKlienScreen extends ConsumerWidget {
           // aman dari tumpukan ini karena kepalanya sendiri sudah diberi
           // jarak napas ekstra di bawah teksnya (lihat `_KepalaBeranda`).
           Stack(
-            clipBehavior: Clip.none,
             children: [
-              _KepalaBeranda(
-                nama: user?.nama,
-                warna: warnaKepala,
-                warnaTeks: teksKepala,
+              Padding(
+                padding: const EdgeInsets.only(
+                  bottom: _BannerPromo.tinggiDiLuarKepala,
+                ),
+                child: _KepalaBeranda(
+                  nama: user?.nama,
+                  warna: warnaKepala,
+                  warnaTeks: teksKepala,
+                ),
               ),
-              Positioned(
+              const Positioned(
                 left: AppTheme.spasiSedang,
                 right: AppTheme.spasiSedang,
-                bottom: -_BannerPromo.tinggiDiLuarKepala,
-                child: const _BannerPromo(),
+                bottom: 0,
+                child: _BannerPromo(),
               ),
             ],
           ),
           Padding(
-            padding: EdgeInsets.fromLTRB(
+            padding: const EdgeInsets.fromLTRB(
               AppTheme.spasiSedang,
-              _BannerPromo.tinggiDiLuarKepala + AppTheme.spasiBesar,
+              AppTheme.spasiBesar,
               AppTheme.spasiSedang,
               AppTheme.spasiBesar,
             ),
@@ -285,7 +290,7 @@ class _KolomCari extends StatelessWidget {
               ),
               SizedBox(width: AppTheme.spasiKecil),
               Text(
-                'Cari layanan (makan, ojek, kos...)',
+                'Cari layanan',
                 style: TextStyle(
                   color: AppTheme.onKertasVariantTerang,
                   fontSize: 14,
@@ -299,46 +304,17 @@ class _KolomCari extends StatelessWidget {
   }
 }
 
-/// Bentuk banner promo, kosong untuk sekarang.
-///
-/// Isinya (gambar, teks, promo) menyusul dan sengaja belum ditulis di sini
-/// -- ini cuma bentuk dan warnanya, secukupnya supaya tempatnya sudah kelihatan
-/// di beranda sebelum isinya jadi.
+/// Banner promo dan tips mahasiswa di beranda klien.
 class _BannerPromo extends StatelessWidget {
   const _BannerPromo();
 
-  static const double tinggi = 140;
-
   /// Berapa banyak tingginya yang tetap tinggal di kertas putih, di luar
-  /// kepala hijau. Lebih kecil dari separuh dengan sengaja: kepala hijau
-  /// turun lebih jauh dari sekadar tengah banner, sesuai rancangan.
-  static const double tinggiDiLuarKepala = 40;
+  /// kepala hijau.
+  static const double tinggiDiLuarKepala = BannerPromoCarousel.tinggiDiLuarKepala;
 
   @override
   Widget build(BuildContext context) {
-    final skema = Theme.of(context).colorScheme;
-
-    return Container(
-      width: double.infinity,
-      height: tinggi,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: skema.primaryContainer,
-        borderRadius: BorderRadius.circular(AppTheme.radiusKartu),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 10,
-            offset: const Offset(2, 4),
-          ),
-        ],
-      ),
-      child: Icon(
-        Icons.campaign_outlined,
-        size: 32,
-        color: skema.onPrimaryContainer.withValues(alpha: 0.5),
-      ),
-    );
+    return const BannerPromoCarousel();
   }
 }
 
