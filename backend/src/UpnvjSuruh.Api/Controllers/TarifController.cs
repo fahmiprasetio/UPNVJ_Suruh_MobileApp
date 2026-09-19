@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using UpnvjSuruh.Api.Auth;
 using UpnvjSuruh.Api.Contracts;
@@ -39,6 +40,7 @@ public class TarifController(AppDbContext db) : ControllerBase
     /// <see cref="Order.Price"/> sendiri, dihitung sekali saat order itu dibuat; yang
     /// dipengaruhi cuma order baru yang dibuat sejak baris ini disimpan.
     /// </remarks>
+    [EnableRateLimiting(BatasLaju.KebijakanTulis)]
     [HttpPut]
     [Authorize(Roles = Peran.Admin)]
     public async Task<ActionResult<TarifResponse>> Perbarui(

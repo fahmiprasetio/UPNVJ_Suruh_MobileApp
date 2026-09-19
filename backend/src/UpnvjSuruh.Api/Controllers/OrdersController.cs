@@ -307,6 +307,7 @@ public class OrdersController(
     /// Kalah cepat bukan galat, jadi tetap 200 dengan Dapat bernilai false. Yang melanggar
     /// aturan, yaitu pemesan menerima ordernya sendiri, dijawab 400.
     /// </remarks>
+    [EnableRateLimiting(BatasLaju.KebijakanTulis)]
     [HttpPost("{id:guid}/terima")]
     [Authorize(Roles = Peran.Runner)]
     public async Task<ActionResult<TerimaOrderResponse>> Terima(Guid id, CancellationToken batal)
@@ -558,6 +559,7 @@ public class OrdersController(
     /// keputusan sementara: siapa yang berhak menekan selesai kalau pekerjaannya dibagi tiga
     /// orang masih menunggu jawaban mitra (rencana capstone bagian 14.7d).
     /// </remarks>
+    [EnableRateLimiting(BatasLaju.KebijakanTulis)]
     [HttpPost("{id:guid}/selesai")]
     [Authorize(Roles = Peran.Runner)]
     public async Task<ActionResult<OrderResponse>> Selesaikan(
@@ -744,6 +746,7 @@ public class OrdersController(
         return Ok(await OrderResponse.DariAsync(db, order, pemanggil, User.Punya(Peran.Admin), batal));
     }
 
+    [EnableRateLimiting(BatasLaju.KebijakanTulis)]
     [HttpPost("{id:guid}/batal")]
     public async Task<ActionResult<OrderResponse>> Batalkan(Guid id, CancellationToken batal)
     {

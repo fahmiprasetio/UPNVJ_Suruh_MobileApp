@@ -176,6 +176,7 @@ public class AdminOrderController(
     /// mitra mengaktifkan mode produksi, di sinilah panggilan refund gateway sungguhan akan
     /// ditambahkan, tanpa mengubah bentuk endpoint ini.
     /// </remarks>
+    [EnableRateLimiting(BatasLaju.KebijakanTulis)]
     [HttpPost("{id:guid}/batalkan")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

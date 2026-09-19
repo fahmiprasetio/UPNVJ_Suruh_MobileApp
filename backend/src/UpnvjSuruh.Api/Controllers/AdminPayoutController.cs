@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using UpnvjSuruh.Api.Auth;
 using UpnvjSuruh.Api.Contracts;
@@ -46,6 +47,7 @@ public class AdminPayoutController(AppDbContext db, ILogger<AdminPayoutControlle
     /// untuk order yang selesai sesudahnya. Itu ditulis terang-terangan di layar admin juga,
     /// bukan cuma di sini.
     /// </remarks>
+    [EnableRateLimiting(BatasLaju.KebijakanTulis)]
     [HttpPut("setting")]
     public async Task<ActionResult<PayoutSettingResponse>> PerbaruiSetting(
         PerbaruiPayoutSettingRequest permintaan,
@@ -197,6 +199,7 @@ public class AdminPayoutController(AppDbContext db, ILogger<AdminPayoutControlle
     /// controller ini cuma untuk admin, jadi keterangan yang jelas di sini tidak membocorkan apa
     /// pun kepada siapa pun yang belum boleh melihatnya.
     /// </remarks>
+    [EnableRateLimiting(BatasLaju.KebijakanTulis)]
     [HttpPost("rekap/{runnerId:guid}/lunas")]
     public async Task<ActionResult<TandaiLunasResponse>> TandaiLunas(
         Guid runnerId,

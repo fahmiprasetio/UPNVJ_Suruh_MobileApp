@@ -112,6 +112,7 @@ public class JalurBController(
     /// balik. Keduanya penawaran yang sah dan sama-sama bisa dipilih klien; tidak ada jalur
     /// "setuju" yang terpisah dari mengirim penawaran.
     /// </remarks>
+    [EnableRateLimiting(BatasLaju.KebijakanTulis)]
     [HttpPost("{id:guid}/penawaran")]
     [Authorize(Roles = Peran.Runner)]
     public async Task<ActionResult<OrderResponse>> BuatPenawaran(
@@ -207,6 +208,7 @@ public class JalurBController(
     /// tidak menggantung tanpa kabar, dan tidak ada dua penawaran yang bisa disetujui untuk
     /// order yang sama.
     /// </remarks>
+    [EnableRateLimiting(BatasLaju.KebijakanTulis)]
     [HttpPost("{id:guid}/penawaran/{offerId:guid}/setujui")]
     [Authorize(Roles = Peran.Klien)]
     public async Task<ActionResult<OrderResponse>> Setujui(
@@ -242,6 +244,7 @@ public class JalurBController(
     /// permintaannya sama sekali memakai endpoint pembatalan order, bukan ini: ini cuma
     /// urusan satu penawaran dari satu runner.
     /// </remarks>
+    [EnableRateLimiting(BatasLaju.KebijakanTulis)]
     [HttpPost("{id:guid}/penawaran/{offerId:guid}/tolak")]
     [Authorize(Roles = Peran.Klien)]
     public async Task<ActionResult<OrderResponse>> Tolak(
@@ -358,6 +361,7 @@ public class JalurBController(
     /// lamanya berstatus DinegoUlang (bukan lagi Pending), tanpa menyentuh runner lain
     /// yang mungkin sedang menawar order yang sama.
     /// </remarks>
+    [EnableRateLimiting(BatasLaju.KebijakanTulis)]
     [HttpPost("{id:guid}/penawaran/{offerId:guid}/nego")]
     [Authorize(Roles = Peran.Klien)]
     public async Task<ActionResult<OrderResponse>> Nego(

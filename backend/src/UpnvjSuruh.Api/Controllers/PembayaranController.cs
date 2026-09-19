@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using UpnvjSuruh.Api.Auth;
 using UpnvjSuruh.Api.Contracts;
@@ -36,6 +37,7 @@ public class PembayaranController(AppDbContext db, IPembayaranGateway gateway) :
     /// klien bisa membayar dua kali untuk pekerjaan yang sama, dan yang kedua harus
     /// dikembalikan.
     /// </remarks>
+    [EnableRateLimiting(BatasLaju.KebijakanTulis)]
     [HttpPost]
     public async Task<ActionResult<TransaksiPembayaranResponse>> Buat(
         Guid orderId,
@@ -155,6 +157,7 @@ public class PembayaranController(AppDbContext db, IPembayaranGateway gateway) :
     /// dan klien bisa membuat transaksi baru. Yang mengakhiri order adalah endpoint batal
     /// ordernya sendiri.
     /// </remarks>
+    [EnableRateLimiting(BatasLaju.KebijakanTulis)]
     [HttpPost("batal")]
     public async Task<IActionResult> Batalkan(Guid orderId, CancellationToken batal)
     {

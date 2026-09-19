@@ -384,6 +384,7 @@ public class AdminPenggunaController(
         return Ok(UserResponse.Dari(user));
     }
 
+    [EnableRateLimiting(BatasLaju.KebijakanTulis)]
     [HttpPut("{id:guid}/peran")]
     public async Task<ActionResult<UserResponse>> TetapkanPeran(
         Guid id,
