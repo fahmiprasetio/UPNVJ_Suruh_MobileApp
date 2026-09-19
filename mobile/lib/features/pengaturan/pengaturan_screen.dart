@@ -24,11 +24,12 @@ class PengaturanScreen extends ConsumerWidget {
     final user = ref.watch(userAktifProvider).value;
 
     final butir = <Widget>[
-      _pintuMenyusul(
-        context,
-        Icons.notifications_outlined,
-        'Notifikasi',
-        'Pemberitahuan pesanan dan chat',
+      ListTile(
+        leading: const Icon(Icons.notifications_outlined),
+        title: const Text('Notifikasi'),
+        subtitle: const Text('Pemberitahuan pesanan dan chat'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => context.push(Rute.notifikasi),
       ),
       ListTile(
         leading: const Icon(Icons.dark_mode_outlined),

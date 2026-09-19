@@ -71,12 +71,22 @@ void main() {
   ) async {
     await bukaPengaturan(tester);
 
-    await tester.tap(find.widgetWithText(ListTile, 'Notifikasi'));
+    await tester.tap(find.widgetWithText(ListTile, 'Bahasa'));
     await tester.pump();
 
-    expect(find.text('Notifikasi belum dibuat, menyusul.'), findsOneWidget);
+    expect(find.text('Bahasa belum dibuat, menyusul.'), findsOneWidget);
     // Tetap di layar Pengaturan, bukan pindah ke layar lain.
     expect(find.text('Pengaturan'), findsOneWidget);
+  });
+
+  testWidgets('mengetuk Notifikasi membuka layar notifikasi', (tester) async {
+    await bukaPengaturan(tester);
+
+    await tester.tap(find.widgetWithText(ListTile, 'Notifikasi'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Semua'), findsOneWidget);
+    expect(find.text('Info & Tips'), findsOneWidget);
   });
 
   testWidgets('memilih Gelap di Tampilan mengganti tema dan subjudulnya', (

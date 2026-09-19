@@ -14,6 +14,7 @@ import '../../features/klien/order_jalur_a/form_jastip_makanan_screen.dart';
 import '../../features/klien/order_jalur_b/form_permintaan_screen.dart';
 import '../../features/klien/pembayaran/pembayaran_screen.dart';
 import '../../features/klien/riwayat/riwayat_order_screen.dart';
+import '../../features/notifikasi/notifikasi_screen.dart';
 import '../../features/pengaturan/kebijakan_privasi_screen.dart';
 import '../../features/pengaturan/pengaturan_screen.dart';
 import '../../features/pengaturan/pusat_bantuan_screen.dart';
@@ -36,6 +37,7 @@ class Rute {
   static const String beranda = '/';
   static const String riwayat = '/order';
   static const String profil = '/profil';
+  static const String notifikasi = '/notifikasi';
   static const String pengaturan = '/pengaturan';
   static const String pusatBantuan = '/pengaturan/bantuan';
   static const String syaratKetentuan = '/pengaturan/syarat-ketentuan';
@@ -129,6 +131,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Rute.profil,
         builder: (context, state) => const ProfilScreen(),
+      ),
+      GoRoute(
+        path: Rute.notifikasi,
+        builder: (context, state) => const NotifikasiScreen(),
       ),
       GoRoute(
         path: Rute.pengaturan,
