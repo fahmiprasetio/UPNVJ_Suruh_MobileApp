@@ -10,6 +10,7 @@ import '../../peran/tombol_ganti_mode.dart';
 import '../../widgets/tombol_notifikasi.dart';
 import '../../widgets/tombol_profil.dart';
 import 'widgets/kartu_layanan.dart';
+import 'widgets/lembar_cari_layanan.dart';
 
 /// Beranda klien, layar pertama, dua pintu.
 ///
@@ -254,12 +255,7 @@ class _KepalaBeranda extends StatelessWidget {
   }
 }
 
-/// Kolom cari, bentuknya saja untuk sekarang.
-///
-/// Belum ada apa pun untuk dicari: tidak ada indeks layanan, tidak ada riwayat
-/// yang bisa disaring dari sini. Ketukannya menjawab "menyusul", sama seperti
-/// pintu lain yang layarnya belum dibuat, supaya bentuknya tidak menjanjikan
-/// sesuatu yang belum ada.
+/// Kolom cari cepat untuk menyaring katalog layanan.
 class _KolomCari extends StatelessWidget {
   const _KolomCari({required this.warnaTeks});
 
@@ -272,7 +268,7 @@ class _KolomCari extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppTheme.radiusKontrol),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppTheme.radiusKontrol),
-        onTap: () => belumTersedia(context, 'Pencarian'),
+        onTap: () => tampilkanPencarianLayanan(context),
         child: const Padding(
           // Vertikalnya diturunkan dari 12: bilah ini cuma butuh cukup tinggi
           // untuk ikon dan satu baris teks, bukan setinggi kolom isian form.
@@ -289,7 +285,7 @@ class _KolomCari extends StatelessWidget {
               ),
               SizedBox(width: AppTheme.spasiKecil),
               Text(
-                'Cari layanan',
+                'Cari layanan (makan, ojek, kos...)',
                 style: TextStyle(
                   color: AppTheme.onKertasVariantTerang,
                   fontSize: 14,
