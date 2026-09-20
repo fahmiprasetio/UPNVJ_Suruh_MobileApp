@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/api/galat_api.dart';
 import '../../../../core/config/batas_masukan.dart';
 
 import '../../../../core/theme/app_theme.dart';
@@ -156,7 +157,9 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
     } catch (galat) {
       if (!mounted) return;
       setState(() => _sedangAmbilFoto = false);
-      _kabari('Foto gagal diunggah: $galat');
+      _kabari(
+        galat is GalatApi ? galat.pesan : 'Foto gagal diunggah. Coba lagi, ya.',
+      );
       return;
     }
 
@@ -188,7 +191,9 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
     } catch (galat) {
       if (!mounted) return;
       setState(() => _sedangMenutup = false);
-      _kabari('Order gagal ditutup: $galat');
+      _kabari(
+        galat is GalatApi ? galat.pesan : 'Order gagal ditutup. Coba lagi, ya.',
+      );
       return;
     }
 

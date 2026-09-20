@@ -4,13 +4,22 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:upnvj_suruh/app.dart';
 import 'package:upnvj_suruh/data/fake/fake_auth_repository.dart';
+import 'package:upnvj_suruh/data/fake/fake_foto_bukti_repository.dart';
 import 'package:upnvj_suruh/data/fake/fake_order_repository.dart';
 import 'package:upnvj_suruh/data/fake/seed_data.dart';
 import 'package:upnvj_suruh/domain/enums.dart';
 import 'package:upnvj_suruh/domain/models/order.dart';
 import 'package:upnvj_suruh/domain/models/runner_ringkas.dart';
+import 'package:upnvj_suruh/domain/repositories/foto_bukti_repository.dart';
 import 'package:upnvj_suruh/providers/repository_providers.dart';
 import '../../support/tiruan.dart';
+
+class _FotoGagal implements FotoBuktiRepository {
+  @override
+  Future<String?> ambilDanUnggah({required String orderId}) async {
+    throw StateError('isi rahasia dari penyimpanan');
+  }
+}
 
 void main() {
   setUpAll(() async {
@@ -39,6 +48,7 @@ void main() {
   Future<FakeOrderRepository> bukaOrderSaya(
     WidgetTester tester, {
     List<Order>? orderAwal,
+    FotoBuktiRepository? fotoBuktiRepository,
   }) async {
     final orderRepo = FakeOrderRepository(
       pemanggil: () => SeedData.runner.id,
@@ -51,6 +61,9 @@ void main() {
         overrides: [
           sumberTiruan,
           orderRepositoryProvider.overrideWith((ref) => orderRepo),
+          fotoBuktiRepositoryProvider.overrideWithValue(
+            fotoBuktiRepository ?? FakeFotoBuktiRepository(),
+          ),
           authRepositoryProvider.overrideWith((ref) {
             final repo = FakeAuthRepository(userAwal: SeedData.runner);
             ref.onDispose(repo.dispose);
@@ -158,6 +171,21 @@ void main() {
 
     expect(find.text('Foto bukti terkirim'), findsOneWidget);
     expect(tombolSelesai().onPressed, isNotNull);
+  });
+
+  testWidgets('galat unggah foto disamarkan dan bisa dicoba lagi', (
+    tester,
+  ) async {
+    await bukaOrderSaya(tester, fotoBuktiRepository: _FotoGagal());
+
+    await tester.tap(find.text('Selesaikan Order'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ambil Foto Bukti'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Foto gagal diunggah. Coba lagi, ya.'), findsOneWidget);
+    expect(find.text('isi rahasia dari penyimpanan'), findsNothing);
+    expect(find.text('Ambil Foto Bukti'), findsOneWidget);
   });
 
   testWidgets('layar mengaku bahwa fotonya belum sungguhan', (tester) async {
