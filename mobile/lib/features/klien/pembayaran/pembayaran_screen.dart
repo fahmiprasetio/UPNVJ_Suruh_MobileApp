@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../../core/api/galat_api.dart';
 import '../../../core/format/formatters.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
@@ -36,7 +37,13 @@ class PembayaranScreen extends ConsumerWidget {
         error: (galat, _) => _Pesan(
           ikon: Icons.error_outline,
           judul: 'Pembayaran tidak bisa dimulai',
-          keterangan: '$galat',
+          keterangan: galat is GalatApi
+              ? galat.pesan
+              : 'Sambungan ke server terputus. Coba lagi, ya.',
+          aksi: FilledButton(
+            onPressed: () => ref.invalidate(transaksiOrderProvider(orderId)),
+            child: const Text('Coba lagi'),
+          ),
         ),
         data: (transaksi) => switch (transaksi.status) {
           _ when transaksi.berhasil => _Berhasil(

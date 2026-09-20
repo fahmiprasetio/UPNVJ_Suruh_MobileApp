@@ -4,8 +4,43 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:upnvj_suruh/app.dart';
+import 'package:upnvj_suruh/domain/enums.dart';
+import 'package:upnvj_suruh/domain/models/transaksi_pembayaran.dart';
+import 'package:upnvj_suruh/domain/repositories/payment_gateway.dart';
+import 'package:upnvj_suruh/features/klien/pembayaran/pembayaran_screen.dart';
+import 'package:upnvj_suruh/providers/payment_providers.dart';
 
 import '../../support/tiruan.dart';
+
+class _GatewayGagalSekali implements PaymentGateway {
+  var _jumlahPercobaan = 0;
+
+  static final _transaksi = TransaksiPembayaran(
+    id: 'trx-uji',
+    orderId: 'o-uji',
+    jumlah: 11000,
+    status: PaymentStatus.pending,
+    qrisPayload: 'SIMULASI-QRIS|trx=trx-uji',
+    dibuatPada: DateTime(2026, 1, 1, 12),
+    kedaluwarsaPada: DateTime(2026, 1, 1, 12, 30),
+  );
+
+  @override
+  Future<TransaksiPembayaran> buatTransaksi({required String orderId}) async {
+    if (_jumlahPercobaan++ == 0) {
+      throw StateError('detail rahasia dari server');
+    }
+    return _transaksi;
+  }
+
+  @override
+  Stream<TransaksiPembayaran> watchTransaksi(String orderId) async* {
+    yield _transaksi;
+  }
+
+  @override
+  Future<void> batalkanTransaksi(String orderId) async {}
+}
 
 void main() {
   setUpAll(() async {
@@ -13,8 +48,7 @@ void main() {
   });
 
   setUp(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -23,8 +57,7 @@ void main() {
   });
 
   tearDown(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -35,10 +68,9 @@ void main() {
   /// Menempuh alur sungguhan sampai layar bayar: buat order anter jemput,
   /// mendarat di detailnya, lalu tekan Bayar Sekarang.
   Future<void> bukaPembayaran(WidgetTester tester) async {
-    await tester.pumpWidget(ProviderScope(
-        overrides: [sumberTiruan],
-        child: const UpnvjSuruhApp(),
-      ));
+    await tester.pumpWidget(
+      ProviderScope(overrides: [sumberTiruan], child: const UpnvjSuruhApp()),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Anter Jemput'));
@@ -56,6 +88,34 @@ void main() {
     await tester.tap(find.text('Bayar Sekarang'));
     await tester.pumpAndSettle();
   }
+
+  testWidgets('galat pembayaran disamarkan dan bisa dicoba lagi', (
+    tester,
+  ) async {
+    final gateway = _GatewayGagalSekali();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [paymentGatewayProvider.overrideWithValue(gateway)],
+        child: const MaterialApp(home: PembayaranScreen(orderId: 'o-uji')),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Pembayaran tidak bisa dimulai'), findsOneWidget);
+    expect(
+      find.text('Sambungan ke server terputus. Coba lagi, ya.'),
+      findsOneWidget,
+    );
+    expect(find.text('detail rahasia dari server'), findsNothing);
+    expect(find.text('Coba lagi'), findsOneWidget);
+
+    await tester.tap(find.text('Coba lagi'));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Bayar dengan QRIS'), findsOneWidget);
+    expect(find.byType(QrImageView), findsOneWidget);
+  });
 
   testWidgets('menampilkan kode QR dan jumlah yang harus dibayar', (
     tester,
