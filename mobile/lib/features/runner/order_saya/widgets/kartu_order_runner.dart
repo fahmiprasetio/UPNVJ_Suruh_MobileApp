@@ -41,6 +41,7 @@ class KartuOrderRunner extends StatelessWidget {
     required this.order,
     this.onSelesaikan,
     this.onLepas,
+    this.lepasSedangDiproses = false,
     this.onChat,
   });
 
@@ -53,6 +54,11 @@ class KartuOrderRunner extends StatelessWidget {
   /// Runner mundur dari order ini. Hanya ada selama ordernya masih berjalan;
   /// yang sudah selesai tidak bisa dilepas lagi.
   final VoidCallback? onLepas;
+
+  /// Benar selama permintaan pelepasan order masih menunggu jawaban server.
+  /// Tombol tetap terlihat agar runner tahu tindakannya sedang diproses, tetapi
+  /// ketukan kedua tidak boleh mengirim mutasi yang sama lagi.
+  final bool lepasSedangDiproses;
 
   /// Pintu ke ruang chat order. Tetap tersedia untuk order yang sudah selesai
   /// karena percakapannya masih boleh dibaca, cuma tidak bisa dibalas.
@@ -146,17 +152,25 @@ class KartuOrderRunner extends StatelessWidget {
                             ? 'Chat Klien'
                             : 'Chat Klien (${order.jumlahPesanBelumDibaca})',
                       ),
-                      style: TextButton.styleFrom(minimumSize: const Size(0, 44)),
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size(0, 44),
+                      ),
                     ),
                   const Spacer(),
                   if (onLepas != null)
                     TextButton(
-                      onPressed: onLepas,
+                      onPressed: lepasSedangDiproses ? null : onLepas,
                       style: TextButton.styleFrom(
                         minimumSize: const Size(0, 44),
                         foregroundColor: skema.onSurfaceVariant,
                       ),
-                      child: const Text('Lepas order'),
+                      child: lepasSedangDiproses
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Lepas order'),
                     ),
                 ],
               ),

@@ -26,7 +26,7 @@ import '../../widgets/tombol_muat_lagi.dart';
 /// Sebelum layar ini ada, order yang sudah diterima runner tidak punya
 /// kelanjutan sama sekali: statusnya "Dikerjakan" selamanya karena tidak ada
 /// tempat untuk menutupnya.
-class OrderSayaRunnerScreen extends ConsumerWidget {
+class OrderSayaRunnerScreen extends ConsumerStatefulWidget {
   const OrderSayaRunnerScreen({super.key, this.onMintaOrderMasuk});
 
   /// Dipanggil saat runner yang belum memegang order memilih pergi mencarinya.
@@ -38,7 +38,15 @@ class OrderSayaRunnerScreen extends ConsumerWidget {
   final VoidCallback? onMintaOrderMasuk;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<OrderSayaRunnerScreen> createState() =>
+      _OrderSayaRunnerScreenState();
+}
+
+class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
+  final Set<String> _sedangDilepas = {};
+
+  @override
+  Widget build(BuildContext context) {
     final orders = ref.watch(orderRunnerProvider);
 
     return Scaffold(
@@ -70,8 +78,8 @@ class OrderSayaRunnerScreen extends ConsumerWidget {
             // komitmen yang sudah dibuat dan sedang menunggu jawaban — yaitu urusan
             // runner ini sendiri, sama seperti isi layar ini yang lain. Menambah tab
             // keempat akan memindahkan letak tiga tab yang sudah dihafal jempol.
-            final tawaran = ref.watch(tawaranSayaProvider).value?.isi
-                ?? const <Order>[];
+            final tawaran =
+                ref.watch(tawaranSayaProvider).value?.isi ?? const <Order>[];
 
             // Dibaca sebelum keadaan kosong diputuskan, bukan sesudah. Runner yang
             // sudah menawar tapi belum memegang order apa pun tetap punya isi di
@@ -89,7 +97,7 @@ class OrderSayaRunnerScreen extends ConsumerWidget {
                 // runner memang belum mengambil apa pun, dan yang ia butuhkan
                 // adalah tempat mengambilnya.
                 labelAksi: 'Lihat Order Masuk',
-                onAksi: onMintaOrderMasuk,
+                onAksi: widget.onMintaOrderMasuk,
               );
             }
 
@@ -99,7 +107,8 @@ class OrderSayaRunnerScreen extends ConsumerWidget {
             return ListView(
               padding: const EdgeInsets.all(AppTheme.spasiSedang),
               children: [
-                if (tawaran.isNotEmpty) ..._bagianTawaran(context, ref, tawaran),
+                if (tawaran.isNotEmpty)
+                  ..._bagianTawaran(context, ref, tawaran),
                 if (dikerjakan.isNotEmpty)
                   ..._bagian(
                     context,
@@ -107,6 +116,8 @@ class OrderSayaRunnerScreen extends ConsumerWidget {
                     dikerjakan,
                     onSelesaikan: (order) => _bukaLembarSelesai(context, order),
                     onLepas: (order) => _lepas(context, ref, order),
+                    lepasSedangDiproses: (order) =>
+                        _sedangDilepas.contains(order.id),
                   ),
                 if (selesai.isNotEmpty)
                   ..._bagian(context, 'Sudah selesai', selesai),
@@ -170,16 +181,16 @@ class OrderSayaRunnerScreen extends ConsumerWidget {
   /// Daftar dari server sudah menjamin ada satu, tapi menggambar kartu tanpa
   /// tawarannya berarti menampilkan harga kosong; melewatinya lebih jujur daripada
   /// menebak.
-  static OrderOffer? _tawaranHidup(Order order, String? runnerId) =>
-      order.offers
-          .where(
-            (f) =>
-                f.runnerId == runnerId &&
-                (f.status == OfferStatus.pending ||
-                    f.status == OfferStatus.dinegoUlang ||
-                    f.status == OfferStatus.disetujui),
-          )
-          .firstOrNull;
+  static OrderOffer? _tawaranHidup(Order order, String? runnerId) => order
+      .offers
+      .where(
+        (f) =>
+            f.runnerId == runnerId &&
+            (f.status == OfferStatus.pending ||
+                f.status == OfferStatus.dinegoUlang ||
+                f.status == OfferStatus.disetujui),
+      )
+      .firstOrNull;
 
   Future<void> _tarikTawaran(
     BuildContext context,
@@ -234,6 +245,7 @@ class OrderSayaRunnerScreen extends ConsumerWidget {
     List<Order> orders, {
     void Function(Order order)? onSelesaikan,
     void Function(Order order)? onLepas,
+    bool Function(Order order)? lepasSedangDiproses,
   }) {
     return [
       Padding(
@@ -254,6 +266,7 @@ class OrderSayaRunnerScreen extends ConsumerWidget {
                 ? null
                 : () => onSelesaikan(order),
             onLepas: onLepas == null ? null : () => onLepas(order),
+            lepasSedangDiproses: lepasSedangDiproses?.call(order) ?? false,
             onChat: () => context.push(Rute.chatOrderRunner(order.id)),
           ),
         ),
@@ -273,24 +286,30 @@ class OrderSayaRunnerScreen extends ConsumerWidget {
       builder: (context) => const _DialogLepasOrder(),
     );
     if (alasan == null || !context.mounted) return;
+    if (_sedangDilepas.contains(order.id)) return;
 
+    setState(() => _sedangDilepas.add(order.id));
     try {
       await ref
           .read(orderRepositoryProvider)
           .lepasOrder(orderId: order.id, alasan: alasan);
     } catch (galat) {
       if (!context.mounted) return;
+      setState(() => _sedangDilepas.remove(order.id));
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
           SnackBar(
-            content: Text(galat is GalatApi ? galat.pesan : 'Gagal melepas: $galat'),
+            content: Text(
+              galat is GalatApi ? galat.pesan : 'Gagal melepas: $galat',
+            ),
           ),
         );
       return;
     }
 
     if (!context.mounted) return;
+    setState(() => _sedangDilepas.remove(order.id));
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -455,7 +474,9 @@ class _DialogTarikTawaranState extends State<_DialogTarikTawaran> {
         TextButton(
           onPressed: () {
             final alasan = _controller.text.trim();
-            Navigator.of(context).pop(_HasilTarik(alasan.isEmpty ? null : alasan));
+            Navigator.of(
+              context,
+            ).pop(_HasilTarik(alasan.isEmpty ? null : alasan));
           },
           child: const Text('Tarik tawaran'),
         ),

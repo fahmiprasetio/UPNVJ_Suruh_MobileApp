@@ -213,12 +213,12 @@ void main() {
           dibuatPada: DateTime.now(),
           harga: 11000,
           runners: [
-        RunnerRingkas(
-          id: SeedData.runner.id,
-          nama: SeedData.runner.nama,
-          noHp: SeedData.runner.noHp,
-        ),
-      ],
+            RunnerRingkas(
+              id: SeedData.runner.id,
+              nama: SeedData.runner.nama,
+              noHp: SeedData.runner.noHp,
+            ),
+          ],
           selesaiPada: DateTime.now(),
           fotoBuktiUrl: 'fake://bukti/o-selesai.jpg',
         ),
@@ -234,7 +234,9 @@ void main() {
   /// membatalkan seluruhnya berikut pengembalian dana padahal yang dibutuhkan klien
   /// cuma runner lain.
   group('melepas order', () {
-    testWidgets('ditawarkan untuk order yang sedang dikerjakan', (tester) async {
+    testWidgets('ditawarkan untuk order yang sedang dikerjakan', (
+      tester,
+    ) async {
       await bukaOrderSaya(tester);
 
       expect(find.text('Lepas order'), findsOneWidget);
@@ -242,7 +244,9 @@ void main() {
 
     /// Mengembalikan order yang sudah diserahkan ke "mencari runner" berarti
     /// pekerjaan yang sudah dibayar dan sudah selesai disiarkan ulang.
-    testWidgets('tidak ditawarkan untuk order yang sudah selesai', (tester) async {
+    testWidgets('tidak ditawarkan untuk order yang sudah selesai', (
+      tester,
+    ) async {
       await bukaOrderSaya(
         tester,
         orderAwal: [
@@ -256,12 +260,12 @@ void main() {
             dibuatPada: DateTime.now(),
             harga: 11000,
             runners: [
-        RunnerRingkas(
-          id: SeedData.runner.id,
-          nama: SeedData.runner.nama,
-          noHp: SeedData.runner.noHp,
-        ),
-      ],
+              RunnerRingkas(
+                id: SeedData.runner.id,
+                nama: SeedData.runner.nama,
+                noHp: SeedData.runner.noHp,
+              ),
+            ],
             selesaiPada: DateTime.now(),
             fotoBuktiUrl: 'fake://bukti/o-selesai.jpg',
           ),
@@ -271,7 +275,9 @@ void main() {
       expect(find.text('Lepas order'), findsNothing);
     });
 
-    testWidgets('menuntut alasan sebelum tombolnya bisa ditekan', (tester) async {
+    testWidgets('menuntut alasan sebelum tombolnya bisa ditekan', (
+      tester,
+    ) async {
       await bukaOrderSaya(tester);
 
       await tester.tap(find.text('Lepas order'));
@@ -285,6 +291,30 @@ void main() {
       await tester.pump();
 
       expect(tester.widget<TextButton>(tombolLepas).onPressed, isNotNull);
+    });
+
+    testWidgets('tombol lepas terkunci selama request berjalan', (
+      tester,
+    ) async {
+      await bukaOrderSaya(tester);
+
+      await tester.tap(find.text('Lepas order'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Motor saya mogok.');
+      await tester.pump();
+      await tester.tap(find.widgetWithText(TextButton, 'Lepas'));
+      await tester.pump();
+
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is TextButton && widget.onPressed == null,
+        ),
+        findsOneWidget,
+      );
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
     });
 
     testWidgets('order yang dilepas hilang dari daftar pekerjaan runner', (
