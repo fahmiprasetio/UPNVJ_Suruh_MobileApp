@@ -103,7 +103,9 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('tawaran yang sudah dikirim muncul di Order Saya', (tester) async {
+  testWidgets('tawaran yang sudah dikirim muncul di Order Saya', (
+    tester,
+  ) async {
     await bukaOrderSaya(tester, orderAwal: [permintaanDitawar()]);
 
     expect(find.text('Tawaranku (1)'), findsOneWidget);
@@ -120,7 +122,9 @@ void main() {
   });
 
   /// Satu-satunya petunjuk bahwa ada pesan menunggu di chatnya.
-  testWidgets('tawaran yang diminta dihitung ulang mengatakannya', (tester) async {
+  testWidgets('tawaran yang diminta dihitung ulang mengatakannya', (
+    tester,
+  ) async {
     await bukaOrderSaya(
       tester,
       orderAwal: [permintaanDitawar(status: OfferStatus.dinegoUlang)],
@@ -131,7 +135,9 @@ void main() {
 
   /// Harga ordernya sudah ditetapkan dari tawaran ini dan klien mungkin sedang
   /// membayarnya, jadi tombolnya tidak ada sama sekali — bukan ada lalu dijawab galat.
-  testWidgets('tawaran yang sudah disetujui tidak menawarkan tarik', (tester) async {
+  testWidgets('tawaran yang sudah disetujui tidak menawarkan tarik', (
+    tester,
+  ) async {
     await bukaOrderSaya(
       tester,
       orderAwal: [permintaanDitawar(status: OfferStatus.disetujui)],
@@ -156,6 +162,26 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Tawaranku (1)'), findsNothing);
+  });
+
+  testWidgets('tombol tarik terkunci selama request berjalan', (tester) async {
+    await bukaOrderSaya(tester, orderAwal: [permintaanDitawar()]);
+
+    await tester.tap(find.text('Tarik tawaran'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, 'Tarik tawaran').last);
+    await tester.pump();
+
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is TextButton && widget.onPressed == null,
+      ),
+      findsOneWidget,
+    );
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
   });
 
   // Keadaan tersimpannya — statusnya jadi Dicabut, dan alasannya masuk chat — diuji di

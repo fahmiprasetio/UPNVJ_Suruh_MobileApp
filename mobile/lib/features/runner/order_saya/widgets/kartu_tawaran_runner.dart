@@ -20,6 +20,7 @@ class KartuTawaranRunner extends StatelessWidget {
     required this.order,
     required this.penawaran,
     this.onTarik,
+    this.tarikSedangDiproses = false,
     this.onChat,
   });
 
@@ -30,6 +31,10 @@ class KartuTawaranRunner extends StatelessWidget {
   /// harga ordernya sudah ditetapkan dari tawaran ini dan klien mungkin sedang
   /// membayarnya.
   final VoidCallback? onTarik;
+
+  /// Benar selama permintaan pencabutan tawaran masih menunggu jawaban server.
+  final bool tarikSedangDiproses;
+
   final VoidCallback? onChat;
 
   @override
@@ -48,12 +53,16 @@ class KartuTawaranRunner extends StatelessWidget {
                 Expanded(
                   child: Text(
                     serviceInfoOf(order.serviceType).nama,
-                    style: teks.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                    style: teks.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 Text(
                   order.kodeOrder,
-                  style: teks.bodySmall?.copyWith(color: skema.onSurfaceVariant),
+                  style: teks.bodySmall?.copyWith(
+                    color: skema.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -86,7 +95,9 @@ class KartuTawaranRunner extends StatelessWidget {
                 Expanded(
                   child: Text(
                     _keterangan,
-                    style: teks.bodySmall?.copyWith(color: skema.onSurfaceVariant),
+                    style: teks.bodySmall?.copyWith(
+                      color: skema.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ],
@@ -104,7 +115,9 @@ class KartuTawaranRunner extends StatelessWidget {
                             ? 'Chat Klien'
                             : 'Chat Klien (${order.jumlahPesanBelumDibaca})',
                       ),
-                      style: TextButton.styleFrom(minimumSize: const Size(0, 44)),
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size(0, 44),
+                      ),
                     ),
                   const Spacer(),
                   // Di ujung seberang dan tanpa ikon, alasannya sama dengan "Lepas
@@ -112,12 +125,18 @@ class KartuTawaranRunner extends StatelessWidget {
                   // pantas ditawarkan sejajar dengan membuka percakapan.
                   if (onTarik != null)
                     TextButton(
-                      onPressed: onTarik,
+                      onPressed: tarikSedangDiproses ? null : onTarik,
                       style: TextButton.styleFrom(
                         minimumSize: const Size(0, 44),
                         foregroundColor: skema.onSurfaceVariant,
                       ),
-                      child: const Text('Tarik tawaran'),
+                      child: tarikSedangDiproses
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Tarik tawaran'),
                     ),
                 ],
               ),

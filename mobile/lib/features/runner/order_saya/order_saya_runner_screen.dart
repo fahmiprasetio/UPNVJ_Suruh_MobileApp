@@ -44,6 +44,7 @@ class OrderSayaRunnerScreen extends ConsumerStatefulWidget {
 
 class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
   final Set<String> _sedangDilepas = {};
+  final Set<String> _sedangDitarik = {};
 
   @override
   Widget build(BuildContext context) {
@@ -168,6 +169,7 @@ class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
               onTarik: penawaran.status == OfferStatus.disetujui
                   ? null
                   : () => _tarikTawaran(context, ref, order, penawaran),
+              tarikSedangDiproses: _sedangDitarik.contains(penawaran.id),
               onChat: () => context.push(Rute.chatOrderRunner(order.id)),
             ),
           ),
@@ -203,7 +205,9 @@ class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
       builder: (context) => const _DialogTarikTawaran(),
     );
     if (hasil == null || !context.mounted) return;
+    if (_sedangDitarik.contains(penawaran.id)) return;
 
+    setState(() => _sedangDitarik.add(penawaran.id));
     try {
       await ref
           .read(orderRepositoryProvider)
@@ -214,6 +218,7 @@ class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
           );
     } catch (galat) {
       if (!context.mounted) return;
+      setState(() => _sedangDitarik.remove(penawaran.id));
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
@@ -227,6 +232,7 @@ class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
     }
 
     if (!context.mounted) return;
+    setState(() => _sedangDitarik.remove(penawaran.id));
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
