@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/api/galat_api.dart';
 import '../../core/config/batas_masukan.dart';
 
 import '../../core/format/formatters.dart';
@@ -140,7 +141,15 @@ class _ChatOrderScreenState extends ConsumerState<ChatOrderScreen> {
       body: SafeArea(
         child: order.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (galat, _) => Center(child: Text('Chat gagal dimuat: $galat')),
+          error: (galat, _) => PesanKosong(
+            ikon: Icons.wifi_off_outlined,
+            judul: 'Chat gagal dimuat',
+            keterangan: galat is GalatApi
+                ? galat.pesan
+                : 'Sambungan ke server terputus.',
+            labelAksi: 'Coba lagi',
+            onAksi: () => ref.invalidate(orderProvider(widget.orderId)),
+          ),
           data: (order) {
             if (order == null) {
               return const Center(child: Text('Order tidak ditemukan.'));
@@ -181,7 +190,11 @@ class _ChatOrderScreenState extends ConsumerState<ChatOrderScreen> {
     try {
       await ref
           .read(orderRepositoryProvider)
-          .kirimPesan(orderId: order.id, isi: isi, runnerId: _jalurObrolan(order));
+          .kirimPesan(
+            orderId: order.id,
+            isi: isi,
+            runnerId: _jalurObrolan(order),
+          );
     } catch (galat) {
       if (!mounted) return;
       setState(() => _sedangMengirim = false);

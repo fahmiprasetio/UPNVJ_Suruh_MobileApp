@@ -14,8 +14,17 @@ import 'package:upnvj_suruh/domain/models/order_offer.dart';
 import 'package:upnvj_suruh/domain/models/runner_ringkas.dart';
 import 'package:upnvj_suruh/providers/repository_providers.dart';
 import 'package:upnvj_suruh/core/config/batas_halaman.dart';
+import 'package:upnvj_suruh/features/chat/chat_order_screen.dart';
 import 'package:upnvj_suruh/providers/order_providers.dart';
 import 'package:upnvj_suruh/providers/ukuran_pesan.dart';
+
+class _RepoOrderGagal extends FakeOrderRepository {
+  @override
+  Stream<Order?> watchOrder(
+    String orderId, {
+    int ukuranPesan = BatasHalaman.bawaan,
+  }) => Stream.error(StateError('detail rahasia dari server'));
+}
 
 void main() {
   setUpAll(() async {
@@ -153,6 +162,32 @@ void main() {
     await tester.tap(find.byTooltip('Chat dengan runner ini'));
     await tester.pumpAndSettle();
   }
+
+  testWidgets('galat chat disamarkan dan dapat dicoba lagi', (tester) async {
+    final repo = _RepoOrderGagal();
+    addTearDown(repo.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sumberTiruan,
+          orderRepositoryProvider.overrideWithValue(repo),
+        ],
+        child: const MaterialApp(home: ChatOrderScreen(orderId: 'o-gagal')),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Chat gagal dimuat'), findsOneWidget);
+    expect(find.text('Sambungan ke server terputus.'), findsOneWidget);
+    expect(find.text('detail rahasia dari server'), findsNothing);
+    expect(find.text('Coba lagi'), findsOneWidget);
+
+    await tester.tap(find.text('Coba lagi'));
+    await tester.pump();
+    expect(find.text('Chat gagal dimuat'), findsOneWidget);
+    expect(find.text('detail rahasia dari server'), findsNothing);
+  });
 
   testWidgets('percakapan tawaran Jalur B terbaca lengkap', (tester) async {
     await bukaChatTawaran(tester, orderJalurBDenganTawaran());
