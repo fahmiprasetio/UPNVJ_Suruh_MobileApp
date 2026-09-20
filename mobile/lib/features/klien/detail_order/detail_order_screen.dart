@@ -19,6 +19,7 @@ import '../widgets/lencana_status.dart';
 import 'widgets/kartu_bukti_pekerjaan.dart';
 import 'widgets/kartu_penawaran.dart';
 import 'widgets/linimasa_status.dart';
+import '../../widgets/pesan_kosong.dart';
 
 /// Detail satu order: status, tahapan, dan rinciannya.
 class DetailOrderScreen extends ConsumerWidget {
@@ -65,7 +66,15 @@ class DetailOrderScreen extends ConsumerWidget {
       ),
       body: order.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (galat, _) => Center(child: Text('Order gagal dimuat: $galat')),
+        error: (galat, _) => PesanKosong(
+          ikon: Icons.wifi_off_outlined,
+          judul: 'Order gagal dimuat',
+          keterangan: galat is GalatApi
+              ? galat.pesan
+              : 'Sambungan ke server terputus.',
+          labelAksi: 'Coba lagi',
+          onAksi: () => ref.invalidate(orderProvider(orderId)),
+        ),
         data: (order) => order == null
             ? const Center(child: Text('Order tidak ditemukan.'))
             : _Isi(order: order),

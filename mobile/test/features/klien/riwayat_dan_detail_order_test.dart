@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:upnvj_suruh/app.dart';
+import 'package:upnvj_suruh/core/api/galat_api.dart';
+import 'package:upnvj_suruh/core/config/batas_halaman.dart';
 import 'package:upnvj_suruh/data/fake/fake_order_repository.dart';
 import 'package:upnvj_suruh/data/fake/seed_data.dart';
 import 'package:upnvj_suruh/domain/enums.dart';
@@ -43,11 +45,16 @@ void main() {
   /// Dipakai untuk keadaan yang tidak ada di data contoh dan tidak bisa dibuat lewat
   /// tindakan pengguna, seperti bendera macet: yang menentukannya server, dan repository
   /// tiruan memang tidak menghitungnya sendiri.
-  Future<void> bukaRiwayatDengan(WidgetTester tester, List<Order> orders) async {
-    final repo = FakeOrderRepository(
-      pemanggil: () => SeedData.klien.id,
-      orderAwal: orders,
-    );
+  Future<void> bukaRiwayatDengan(
+    WidgetTester tester,
+    List<Order> orders, {
+    FakeOrderRepository? repository,
+  }) async {
+    final repo = repository ??
+        FakeOrderRepository(
+          pemanggil: () => SeedData.klien.id,
+          orderAwal: orders,
+        );
     addTearDown(repo.dispose);
 
     await tester.pumpWidget(
@@ -235,6 +242,25 @@ void main() {
     expect(uriTelepon('081234567891'), Uri.parse('tel:081234567891'));
   });
 
+  testWidgets('detail order menyediakan coba lagi saat pemuatan gagal', (
+    tester,
+  ) async {
+    final repo = _RepoGagalSekali();
+
+    await bukaRiwayatDengan(tester, SeedData.orderAwal(), repository: repo);
+    await tester.tap(find.textContaining('SRH-0411'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Order gagal dimuat'), findsOneWidget);
+    expect(find.text('Coba lagi'), findsOneWidget);
+
+    repo.gagal = false;
+    await tester.tap(find.text('Coba lagi'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Menunggu Pembayaran'), findsOneWidget);
+  });
+
   testWidgets('order yang belum dibayar bisa dibatalkan sendiri', (
     tester,
   ) async {
@@ -420,4 +446,19 @@ void main() {
 
     expect(find.text('Minta pembatalan'), findsOneWidget);
   });
+}
+
+class _RepoGagalSekali extends FakeOrderRepository {
+  bool gagal = true;
+
+  @override
+  Stream<Order?> watchOrder(
+    String orderId, {
+    int ukuranPesan = BatasHalaman.bawaan,
+  }) {
+    if (gagal) {
+      return Stream<Order?>.error(const GalatJaringan());
+    }
+    return super.watchOrder(orderId, ukuranPesan: ukuranPesan);
+  }
 }
