@@ -341,7 +341,7 @@ class _PemilihLokasiScreenState extends State<PemilihLokasiScreen> {
       _mapController.move(titik, 16);
       await _pilihTitik(titik);
     } catch (galat) {
-      _beriTahu('Gagal mengambil lokasi: $galat');
+      _beriTahu('Gagal mengambil lokasi. Pastikan GPS aktif dan coba lagi.');
     } finally {
       if (mounted) setState(() => _sedangCariLokasi = false);
     }

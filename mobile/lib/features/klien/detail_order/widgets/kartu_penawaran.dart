@@ -246,7 +246,7 @@ class _KartuPenawaranState extends ConsumerState<KartuPenawaran> {
         ..showSnackBar(
           SnackBar(
             content: Text(
-              galat is GalatApi ? galat.pesan : 'Gagal: $galat',
+              galat is GalatApi ? galat.pesan : 'Gagal memproses. Terjadi kendala sambungan atau server.',
             ),
           ),
         );

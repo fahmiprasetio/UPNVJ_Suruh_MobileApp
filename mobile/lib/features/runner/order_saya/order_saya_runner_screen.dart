@@ -224,7 +224,7 @@ class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
         ..showSnackBar(
           SnackBar(
             content: Text(
-              galat is GalatApi ? galat.pesan : 'Tawaran gagal ditarik: $galat',
+              galat is GalatApi ? galat.pesan : 'Tawaran gagal ditarik. Terjadi kendala sambungan atau server.',
             ),
           ),
         );
@@ -307,7 +307,7 @@ class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
         ..showSnackBar(
           SnackBar(
             content: Text(
-              galat is GalatApi ? galat.pesan : 'Gagal melepas: $galat',
+              galat is GalatApi ? galat.pesan : 'Gagal melepas order. Terjadi kendala sambungan atau server.',
             ),
           ),
         );

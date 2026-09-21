@@ -200,7 +200,7 @@ class _ChatOrderScreenState extends ConsumerState<ChatOrderScreen> {
       setState(() => _sedangMengirim = false);
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text('Pesan gagal dikirim: $galat')));
+        ..showSnackBar(SnackBar(content: Text(galat is GalatApi ? galat.pesan : 'Pesan gagal dikirim. Terjadi kendala sambungan atau server.')));
       return;
     }
 

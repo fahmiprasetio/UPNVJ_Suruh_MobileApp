@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/api/galat_api.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -311,7 +312,7 @@ class _TombolKeluarState extends ConsumerState<_TombolKeluar> {
       setState(() => _sedangKeluar = false);
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text('Gagal keluar: $galat')));
+        ..showSnackBar(SnackBar(content: Text(galat is GalatApi ? galat.pesan : 'Gagal keluar. Terjadi kendala sambungan atau server.')));
       return;
     }
 
@@ -471,7 +472,7 @@ class _KartuSuntingState extends ConsumerState<_KartuSunting> {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text('Gagal menyimpan: $galat')));
+        ..showSnackBar(SnackBar(content: Text(galat is GalatApi ? galat.pesan : 'Gagal menyimpan. Terjadi kendala sambungan atau server.')));
     } finally {
       // Isian tidak diisi ulang dari jawaban server di sini. Kartu ini dibangun
       // ulang dengan user yang baru, dan `_adaPerubahan` yang membandingkannya
