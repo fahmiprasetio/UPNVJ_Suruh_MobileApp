@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/api/galat_api.dart';
+import '../../../core/api/idempotency_key.dart';
 import '../../../core/config/batas_masukan.dart';
 import '../../../core/format/formatters.dart';
 import '../../../core/format/jarak.dart';
@@ -43,6 +44,7 @@ class FormJastipBarangScreen extends ConsumerStatefulWidget {
 class _FormJastipBarangScreenState
     extends ConsumerState<FormJastipBarangScreen> {
   final _formKey = GlobalKey<FormState>();
+  late final String _idempotencyKey = buatIdempotencyKey();
   final _barangController = TextEditingController();
   final _ambilController = TextEditingController();
   final _tujuanController = TextEditingController();
@@ -274,6 +276,7 @@ class _FormJastipBarangScreenState
             deskripsi: _barangController.text.trim(),
             alamatJemput: _ambilController.text.trim(),
             alamatTujuan: _tujuanController.text.trim(),
+            idempotencyKey: _idempotencyKey,
           );
     } catch (galat) {
       if (!mounted) return;
@@ -330,10 +333,8 @@ class _FormJastipBarangScreenState
     final posisiSekarang = untukAmbil ? _posisiAmbil : _posisiTujuan;
     final hasil = await Navigator.of(context).push<HasilPilihLokasi>(
       MaterialPageRoute(
-        builder: (context) => PemilihLokasiScreen(
-          judul: judul,
-          posisiAwal: posisiSekarang,
-        ),
+        builder: (context) =>
+            PemilihLokasiScreen(judul: judul, posisiAwal: posisiSekarang),
       ),
     );
     if (hasil == null || !mounted) return;
@@ -373,7 +374,6 @@ class _FormJastipBarangScreenState
       _jarakController.text = tulisJarak(double.parse(km.toStringAsFixed(1)));
     });
   }
-
 }
 
 /// Pengakuan bahwa yang dibayar di aplikasi baru ongkos jasanya.

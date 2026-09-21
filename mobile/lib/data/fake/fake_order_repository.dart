@@ -125,9 +125,7 @@ class FakeOrderRepository implements OrderRepository {
     int ukuran = BatasHalaman.maksimal,
   }) => _stream.map((orders) {
     return _jendela(
-      _terbaruDiAtas(
-        orders.where((o) => _tersiarUntuk(o, runnerId)).toList(),
-      ),
+      _terbaruDiAtas(orders.where((o) => _tersiarUntuk(o, runnerId)).toList()),
       ukuran,
     );
   });
@@ -219,13 +217,15 @@ class FakeOrderRepository implements OrderRepository {
       Halaman(isi: semua.take(ukuran).toList(), total: semua.length);
 
   @override
-  Stream<Order?> watchOrder(String orderId, {int ukuranPesan = BatasHalaman.bawaan}) =>
-      _stream.map(
-        (orders) => _jendelaPesan(
-          orders.where((o) => o.id == orderId).firstOrNull,
-          ukuranPesan,
-        ),
-      );
+  Stream<Order?> watchOrder(
+    String orderId, {
+    int ukuranPesan = BatasHalaman.bawaan,
+  }) => _stream.map(
+    (orders) => _jendelaPesan(
+      orders.where((o) => o.id == orderId).firstOrNull,
+      ukuranPesan,
+    ),
+  );
 
   /// Memotong percakapan sepanjang jendelanya, terbaru yang dipertahankan.
   ///
@@ -242,7 +242,10 @@ class FakeOrderRepository implements OrderRepository {
   }
 
   @override
-  Future<Order?> getOrder(String orderId, {int ukuranPesan = BatasHalaman.bawaan}) async {
+  Future<Order?> getOrder(
+    String orderId, {
+    int ukuranPesan = BatasHalaman.bawaan,
+  }) async {
     await Future<void>.delayed(_jedaJaringan);
     return _jendelaPesan(
       _orders.where((o) => o.id == orderId).firstOrNull,
@@ -257,6 +260,7 @@ class FakeOrderRepository implements OrderRepository {
     String? deskripsi,
     String? alamatJemput,
     String? alamatTujuan,
+    String? idempotencyKey,
   }) async {
     await Future<void>.delayed(_jedaJaringan);
 
@@ -313,6 +317,7 @@ class FakeOrderRepository implements OrderRepository {
     required int hargaUsulan,
     String? alamatTujuan,
     int jumlahRunnerDibutuhkan = 1,
+    String? idempotencyKey,
   }) async {
     await Future<void>.delayed(_jedaJaringan);
 
@@ -868,7 +873,10 @@ class FakeOrderRepository implements OrderRepository {
   }
 
   @override
-  Future<void> tandaiPesanDibaca({required String orderId, String? runnerId}) async {
+  Future<void> tandaiPesanDibaca({
+    required String orderId,
+    String? runnerId,
+  }) async {
     // Tanpa efek: data contoh tidak pernah mengisi jumlahPesanBelumDibaca sama
     // sekali, jadi tidak ada apa pun yang perlu ditandai di sini.
   }
@@ -944,8 +952,7 @@ class FakeOrderRepository implements OrderRepository {
   ) {
     final sudahDiterima = order.runnerIds.contains(pengirimId);
     final sedangMenawar =
-        !sudahDiterima &&
-        order.offers.any((o) => o.runnerId == pengirimId);
+        !sudahDiterima && order.offers.any((o) => o.runnerId == pengirimId);
 
     if (sedangMenawar) return pengirimId;
     if (peran == MessageSender.klien) return diminta;

@@ -132,11 +132,16 @@ class ApiOrderRepository implements OrderRepository {
       _amati(() => _daftar('/api/orders/tawaran-saya', ukuran));
 
   @override
-  Stream<Order?> watchOrder(String orderId, {int ukuranPesan = BatasHalaman.bawaan}) =>
-      _amati(() => getOrder(orderId, ukuranPesan: ukuranPesan));
+  Stream<Order?> watchOrder(
+    String orderId, {
+    int ukuranPesan = BatasHalaman.bawaan,
+  }) => _amati(() => getOrder(orderId, ukuranPesan: ukuranPesan));
 
   @override
-  Future<Order?> getOrder(String orderId, {int ukuranPesan = BatasHalaman.bawaan}) async {
+  Future<Order?> getOrder(
+    String orderId, {
+    int ukuranPesan = BatasHalaman.bawaan,
+  }) async {
     // Ordernya dan percakapannya diambil bersamaan, bukan berurutan. Layar yang
     // menampilkan salah satunya hampir selalu menampilkan keduanya, dan menunggu
     // dua perjalanan bolak-balik berturut-turut terasa dua kali lebih lambat.
@@ -182,6 +187,7 @@ class ApiOrderRepository implements OrderRepository {
     String? deskripsi,
     String? alamatJemput,
     String? alamatTujuan,
+    String? idempotencyKey,
   }) async {
     final jawaban = await _klien.post(
       '/api/orders/jalur-a',
@@ -192,6 +198,9 @@ class ApiOrderRepository implements OrderRepository {
         'alamatJemput': ?alamatJemput,
         'alamatTujuan': ?alamatTujuan,
       },
+      headerTambahan: idempotencyKey == null
+          ? null
+          : {'Idempotency-Key': idempotencyKey},
     );
 
     _tandaiBerubah();
@@ -208,6 +217,7 @@ class ApiOrderRepository implements OrderRepository {
     required int hargaUsulan,
     String? alamatTujuan,
     int jumlahRunnerDibutuhkan = 1,
+    String? idempotencyKey,
   }) async {
     final jawaban = await _klien.post(
       '/api/orders/jalur-b',
@@ -219,6 +229,9 @@ class ApiOrderRepository implements OrderRepository {
         'jumlahRunnerDibutuhkan': jumlahRunnerDibutuhkan,
         'hargaUsulan': hargaUsulan,
       },
+      headerTambahan: idempotencyKey == null
+          ? null
+          : {'Idempotency-Key': idempotencyKey},
     );
 
     _tandaiBerubah();
@@ -345,7 +358,10 @@ class ApiOrderRepository implements OrderRepository {
   }
 
   @override
-  Future<void> tandaiPesanDibaca({required String orderId, String? runnerId}) async {
+  Future<void> tandaiPesanDibaca({
+    required String orderId,
+    String? runnerId,
+  }) async {
     final jalur = '/api/orders/$orderId/pesan/dibaca';
     await _klien.post(runnerId == null ? jalur : '$jalur?runnerId=$runnerId');
     _tandaiBerubah();

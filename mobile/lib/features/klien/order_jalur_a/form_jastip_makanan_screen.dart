@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/api/galat_api.dart';
+import '../../../core/api/idempotency_key.dart';
 import '../../../core/config/batas_masukan.dart';
 import '../../../core/format/formatters.dart';
 import '../../../core/router/app_router.dart';
@@ -44,6 +45,7 @@ class FormJastipMakananScreen extends ConsumerStatefulWidget {
 class _FormJastipMakananScreenState
     extends ConsumerState<FormJastipMakananScreen> {
   final _formKey = GlobalKey<FormState>();
+  late final String _idempotencyKey = buatIdempotencyKey();
   final _makananController = TextEditingController();
   final _belipController = TextEditingController();
   final _tujuanController = TextEditingController();
@@ -200,6 +202,7 @@ class _FormJastipMakananScreenState
             deskripsi: _makananController.text.trim(),
             alamatJemput: _belipController.text.trim(),
             alamatTujuan: _tujuanController.text.trim(),
+            idempotencyKey: _idempotencyKey,
           );
     } catch (galat) {
       if (!mounted) return;

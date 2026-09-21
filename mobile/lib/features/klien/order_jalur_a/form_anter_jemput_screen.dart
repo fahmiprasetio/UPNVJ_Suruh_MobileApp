@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/api/galat_api.dart';
+import '../../../core/api/idempotency_key.dart';
 import '../../../core/config/batas_masukan.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/format/formatters.dart';
@@ -39,6 +40,7 @@ class FormAnterJemputScreen extends ConsumerStatefulWidget {
 
 class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
   final _formKey = GlobalKey<FormState>();
+  late final String _idempotencyKey = buatIdempotencyKey();
   final _jemputController = TextEditingController();
   final _tujuanController = TextEditingController();
   final _jarakController = TextEditingController();
@@ -292,6 +294,7 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
                 : _catatanController.text.trim(),
             alamatJemput: _jemputController.text.trim(),
             alamatTujuan: _tujuanController.text.trim(),
+            idempotencyKey: _idempotencyKey,
           );
     } catch (galat) {
       if (!mounted) return;
@@ -334,10 +337,8 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
     final posisiSekarang = untukJemput ? _posisiJemput : _posisiTujuan;
     final hasil = await Navigator.of(context).push<HasilPilihLokasi>(
       MaterialPageRoute(
-        builder: (context) => PemilihLokasiScreen(
-          judul: judul,
-          posisiAwal: posisiSekarang,
-        ),
+        builder: (context) =>
+            PemilihLokasiScreen(judul: judul, posisiAwal: posisiSekarang),
       ),
     );
     if (hasil == null || !mounted) return;
@@ -387,7 +388,6 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
     if (bersih.length < 5) return 'Tulis alamat $jenis lebih jelas';
     return null;
   }
-
 }
 
 class _HargaBelumBisaDihitung extends StatelessWidget {

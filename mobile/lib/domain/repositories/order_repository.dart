@@ -71,7 +71,10 @@ abstract interface class OrderRepository {
   /// pemanggil yang cuma butuh ordernya, misalnya untuk membaca harganya, tidak
   /// perlu memikirkan percakapan sama sekali, dan yang lupa menyebutnya tetap
   /// tidak menarik seluruh isi chat.
-  Future<Order?> getOrder(String orderId, {int ukuranPesan = BatasHalaman.bawaan});
+  Future<Order?> getOrder(
+    String orderId, {
+    int ukuranPesan = BatasHalaman.bawaan,
+  });
 
   /// Jalur B: harga sudah ada, order lahir sebagai permintaan dengan
   /// [hargaUsulan] sebagai titik awal tawar-menawar, lalu disiarkan ke seluruh
@@ -83,6 +86,7 @@ abstract interface class OrderRepository {
     required int hargaUsulan,
     String? alamatTujuan,
     int jumlahRunnerDibutuhkan = 1,
+    String? idempotencyKey,
   });
 
   /// Seorang runner mengajukan penawaran untuk satu permintaan Jalur B.
@@ -113,6 +117,7 @@ abstract interface class OrderRepository {
     String? deskripsi,
     String? alamatJemput,
     String? alamatTujuan,
+    String? idempotencyKey,
   });
 
   /// Klien menyetujui satu penawaran tertentu.
@@ -204,7 +209,10 @@ abstract interface class OrderRepository {
   /// [alasan] wajib, dan tersimpan sebagai pesan dari klien di chat ordernya, sama
   /// seperti runner melepas order. Admin yang cuma menerima "seseorang minta batal"
   /// tanpa sebab harus mengejarnya lewat chat sebelum bisa memutuskan apa pun.
-  Future<Order> mintaBatalOrder({required String orderId, required String alasan});
+  Future<Order> mintaBatalOrder({
+    required String orderId,
+    required String alasan,
+  });
 
   /// Membatalkan order.
   ///

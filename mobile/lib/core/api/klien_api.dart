@@ -35,10 +35,10 @@ class KlienApi {
     String? baseUrl,
     PengambilToken? token,
     Duration? batasWaktu,
-  })  : _klien = klien ?? http.Client(),
-        _baseUrl = baseUrl ?? KonfigurasiApi.baseUrl,
-        _token = token ?? (() => null),
-        _batasWaktu = batasWaktu ?? KonfigurasiApi.batasWaktu;
+  }) : _klien = klien ?? http.Client(),
+       _baseUrl = baseUrl ?? KonfigurasiApi.baseUrl,
+       _token = token ?? (() => null),
+       _batasWaktu = batasWaktu ?? KonfigurasiApi.batasWaktu;
 
   final http.Client _klien;
   final String _baseUrl;
@@ -54,11 +54,19 @@ class KlienApi {
   /// keduanya jadi saling membutuhkan, dan Riverpod menolaknya sebagai lingkaran.
   PenolakanSesi? saatSesiDitolak;
 
-  Future<Map<String, dynamic>> get(String jalur, {Map<String, String>? kueri}) async =>
+  Future<Map<String, dynamic>> get(
+    String jalur, {
+    Map<String, String>? kueri,
+  }) async =>
       _kirim(() => _klien.get(_alamat(jalur, kueri), headers: _header()));
 
-  Future<List<dynamic>> getDaftar(String jalur, {Map<String, String>? kueri}) async {
-    final jawaban = await _jalankan(() => _klien.get(_alamat(jalur, kueri), headers: _header()));
+  Future<List<dynamic>> getDaftar(
+    String jalur, {
+    Map<String, String>? kueri,
+  }) async {
+    final jawaban = await _jalankan(
+      () => _klien.get(_alamat(jalur, kueri), headers: _header()),
+    );
     final isi = _uraikan(jawaban);
     if (isi is! List) {
       throw const GalatServer('Jawaban server tidak berbentuk daftar.');
@@ -66,15 +74,21 @@ class KlienApi {
     return isi;
   }
 
-  Future<Map<String, dynamic>> post(String jalur, {Object? badan}) async => _kirim(
-        () => _klien.post(
-          _alamat(jalur, null),
-          headers: _header(denganBadan: badan != null),
-          body: badan == null ? null : jsonEncode(badan),
-        ),
-      );
+  Future<Map<String, dynamic>> post(
+    String jalur, {
+    Object? badan,
+    Map<String, String>? headerTambahan,
+  }) async => _kirim(
+    () => _klien.post(
+      _alamat(jalur, null),
+      headers: _header(denganBadan: badan != null)
+        ..addAll(headerTambahan ?? const {}),
+      body: badan == null ? null : jsonEncode(badan),
+    ),
+  );
 
-  Future<Map<String, dynamic>> put(String jalur, {Object? badan}) async => _kirim(
+  Future<Map<String, dynamic>> put(String jalur, {Object? badan}) async =>
+      _kirim(
         () => _klien.put(
           _alamat(jalur, null),
           headers: _header(denganBadan: badan != null),
@@ -139,7 +153,9 @@ class KlienApi {
     return header..addAll(headerOtorisasi);
   }
 
-  Future<Map<String, dynamic>> _kirim(Future<http.Response> Function() permintaan) async {
+  Future<Map<String, dynamic>> _kirim(
+    Future<http.Response> Function() permintaan,
+  ) async {
     final jawaban = await _jalankan(permintaan);
     final isi = _uraikan(jawaban);
 
@@ -152,12 +168,16 @@ class KlienApi {
     return isi;
   }
 
-  Future<http.Response> _jalankan(Future<http.Response> Function() permintaan) async {
+  Future<http.Response> _jalankan(
+    Future<http.Response> Function() permintaan,
+  ) async {
     final http.Response jawaban;
     try {
       jawaban = await permintaan().timeout(_batasWaktu);
     } on TimeoutException {
-      throw const GalatJaringan('Server tidak menjawab tepat waktu. Coba lagi, ya.');
+      throw const GalatJaringan(
+        'Server tidak menjawab tepat waktu. Coba lagi, ya.',
+      );
     } on SocketException {
       throw const GalatJaringan();
     } on http.ClientException {
@@ -204,7 +224,8 @@ class KlienApi {
       // yang tahu batas mana yang tercapai dan berapa lama sisanya. Tanpa penanganan
       // khusus, 429 jatuh ke GalatServer dan layar menyuruh pengguna mencoba lagi
       // sebentar lagi, yaitu persis hal yang membuatnya ditolak tadi.
-      429 => pesan == null ? const GalatTerlaluSering() : GalatTerlaluSering(pesan),
+      429 =>
+        pesan == null ? const GalatTerlaluSering() : GalatTerlaluSering(pesan),
       _ => const GalatServer(),
     };
   }
@@ -222,7 +243,8 @@ class KlienApi {
       final errors = isi['errors'];
       if (errors is Map && errors.isNotEmpty) {
         final pertama = errors.values.first;
-        if (pertama is List && pertama.isNotEmpty) return pertama.first.toString();
+        if (pertama is List && pertama.isNotEmpty)
+          return pertama.first.toString();
       }
 
       final detail = isi['detail'] ?? isi['title'];

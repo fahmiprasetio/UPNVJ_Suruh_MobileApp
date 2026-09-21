@@ -96,8 +96,10 @@ void main() {
       // baru dibuat. Bentuk chat ikut berhalaman sejak percakapan dibatasi jendela.
       return p.method == 'GET' ? halamanJson([pesanJson]) : pesanJson;
     }
-    if (p.url.path.endsWith('/jalur-a')) return {'order': orderJson, 'rincian': []};
-    if (p.url.path.endsWith('/terima')) return {'dapat': true, 'keterangan': 'ok'};
+    if (p.url.path.endsWith('/jalur-a'))
+      return {'order': orderJson, 'rincian': []};
+    if (p.url.path.endsWith('/terima'))
+      return {'dapat': true, 'keterangan': 'ok'};
     if (p.url.path.endsWith('/saya') ||
         p.url.path.endsWith('/tersiar') ||
         p.url.path.endsWith('/runner-saya')) {
@@ -112,7 +114,9 @@ void main() {
   group('pemetaan', () {
     test('order dari server terbaca utuh', () async {
       final uji = buat(jawabanUmum);
-      final order = (await uji.repo.getOrder('b4cc5c46-4755-46dc-a752-0fc3b8d5bde0'))!;
+      final order = (await uji.repo.getOrder(
+        'b4cc5c46-4755-46dc-a752-0fc3b8d5bde0',
+      ))!;
       expect(order.kodeOrder, 'SRH-0412');
       expect(order.serviceType, ServiceType.anterJemput);
       expect(order.status, OrderStatus.menungguPembayaran);
@@ -142,49 +146,59 @@ void main() {
       expect(order.messages.single.isi, 'Sudah otw');
     });
 
-    test('daftar order tidak membawa percakapan, tapi jumlahnya tetap benar', () async {
-      final uji = buat((p) => halamanJson([
-        {...orderJson, 'jumlahPesan': 3},
-      ]));
-      final halaman = await uji.repo.watchOrderKlien(ukuran: 20).first;
-      expect(halaman.isi.single.messages, isEmpty);
-      expect(halaman.isi.single.jumlahPesan, 3);
-    });
+    test(
+      'daftar order tidak membawa percakapan, tapi jumlahnya tetap benar',
+      () async {
+        final uji = buat(
+          (p) => halamanJson([
+            {...orderJson, 'jumlahPesan': 3},
+          ]),
+        );
+        final halaman = await uji.repo.watchOrderKlien(ukuran: 20).first;
+        expect(halaman.isi.single.messages, isEmpty);
+        expect(halaman.isi.single.jumlahPesan, 3);
+      },
+    );
 
     test('jumlah pesan belum dibaca terbaca dari jawaban server', () async {
-      final uji = buat((p) => halamanJson([
-        {...orderJson, 'jumlahPesanBelumDibaca': 2},
-      ]));
+      final uji = buat(
+        (p) => halamanJson([
+          {...orderJson, 'jumlahPesanBelumDibaca': 2},
+        ]),
+      );
       final halaman = await uji.repo.watchOrderKlien(ukuran: 20).first;
       expect(halaman.isi.single.jumlahPesanBelumDibaca, 2);
     });
 
-    test('jumlah pesan belum dibaca nol kalau tidak disebutkan server', () async {
-      final uji = buat(jawabanUmum);
-      final order = (await uji.repo.getOrder('x'))!;
-      expect(order.jumlahPesanBelumDibaca, 0);
-    });
+    test(
+      'jumlah pesan belum dibaca nol kalau tidak disebutkan server',
+      () async {
+        final uji = buat(jawabanUmum);
+        final order = (await uji.repo.getOrder('x'))!;
+        expect(order.jumlahPesanBelumDibaca, 0);
+      },
+    );
 
     test('penawaran ikut terbaca', () async {
       final uji = buat((p) {
         if (p.url.path.endsWith('/pesan')) return halamanJson(const []);
         return {
-        ...orderJson,
-        'status': 'MenungguPersetujuanKlien',
-        'penawaran': [
-          {
-            'id': 'c1111111-1111-1111-1111-111111111111',
-            'orderId': orderJson['id'],
-            'runnerId': 'c2222222-2222-2222-2222-222222222222',
-            'harga': 150000,
-            'estimasiDurasiMenit': 180,
-            'jadwalMulai': '2026-08-30T02:00:00Z',
-            'status': 'Pending',
-            'catatan': 'Dikerjakan dua orang.',
-            'dibuatPada': '2026-08-28T09:00:00Z',
-            'dijawabPada': null,
-          },
-        ],
+          ...orderJson,
+          'status': 'MenungguPersetujuanKlien',
+          'penawaran': [
+            {
+              'id': 'c1111111-1111-1111-1111-111111111111',
+              'orderId': orderJson['id'],
+              'runnerId': 'c2222222-2222-2222-2222-222222222222',
+              'harga': 150000,
+              'estimasiDurasiMenit': 180,
+              'jadwalMulai': '2026-08-30T02:00:00Z',
+              'status': 'Pending',
+              'catatan': 'Dikerjakan dua orang.',
+              'dibuatPada': '2026-08-28T09:00:00Z',
+              'dijawabPada': null,
+            },
+          ],
         };
       });
       final order = (await uji.repo.getOrder('x'))!;
@@ -195,15 +209,18 @@ void main() {
       expect(order.penawaranPending, hasLength(1));
     });
 
-    test('status yang tidak dikenal melempar, bukan diam-diam jadi status lain', () async {
-      // Status salah baca membuat layar menawarkan tombol yang tidak seharusnya
-      // ada, dan itu lebih berbahaya daripada layar yang gagal muat.
-      final uji = buat((p) {
-        if (p.url.path.endsWith('/pesan')) return halamanJson(const []);
-        return {...orderJson, 'status': 'EntahApa'};
-      });
-      await expectLater(uji.repo.getOrder('x'), throwsA(isA<GalatServer>()));
-    });
+    test(
+      'status yang tidak dikenal melempar, bukan diam-diam jadi status lain',
+      () async {
+        // Status salah baca membuat layar menawarkan tombol yang tidak seharusnya
+        // ada, dan itu lebih berbahaya daripada layar yang gagal muat.
+        final uji = buat((p) {
+          if (p.url.path.endsWith('/pesan')) return halamanJson(const []);
+          return {...orderJson, 'status': 'EntahApa'};
+        });
+        await expectLater(uji.repo.getOrder('x'), throwsA(isA<GalatServer>()));
+      },
+    );
   });
 
   group('mengirim', () {
@@ -219,6 +236,19 @@ void main() {
       expect(badan['jarakKm'], 3);
       expect(badan.containsKey('harga'), isFalse);
       expect(badan['serviceType'], 'AnterJemput');
+    });
+
+    test('Jalur A meneruskan Idempotency-Key draft ke server', () async {
+      final uji = buat(jawabanUmum);
+      await uji.repo.buatOrderJalurA(
+        serviceType: ServiceType.anterJemput,
+        idempotencyKey: 'draft-jalur-a-uji',
+      );
+
+      expect(
+        uji.dikirim.single.headers['idempotency-key'],
+        'draft-jalur-a-uji',
+      );
     });
 
     test('isian kosong tidak ikut terkirim sebagai null', () async {
@@ -246,6 +276,22 @@ void main() {
       );
     });
 
+    test('Jalur B meneruskan Idempotency-Key draft ke server', () async {
+      final uji = buat(jawabanUmum);
+      await uji.repo.buatPermintaanJalurB(
+        serviceType: ServiceType.bersihKos,
+        deskripsi: 'Kos dua kamar',
+        jadwalMulai: DateTime(2026, 8, 30, 9),
+        hargaUsulan: 150000,
+        idempotencyKey: 'draft-jalur-b-uji',
+      );
+
+      expect(
+        uji.dikirim.single.headers['idempotency-key'],
+        'draft-jalur-b-uji',
+      );
+    });
+
     test('mengirim pesan tidak menyebutkan peran penulisnya', () async {
       final uji = buat(jawabanUmum);
       await uji.repo.kirimPesan(orderId: 'x', isi: 'halo');
@@ -254,19 +300,26 @@ void main() {
       expect(badan.keys, ['isi']);
     });
 
-    test('menandai dibaca memanggil jalur obrolan umum tanpa runnerId', () async {
-      final uji = buat(jawabanUmum);
-      await uji.repo.tandaiPesanDibaca(orderId: 'x');
-      final panggilan = uji.dikirim.firstWhere((p) => p.url.path.endsWith('/dibaca'));
-      expect(panggilan.method, 'POST');
-      expect(panggilan.url.path, '/api/orders/x/pesan/dibaca');
-      expect(panggilan.url.queryParameters, isEmpty);
-    });
+    test(
+      'menandai dibaca memanggil jalur obrolan umum tanpa runnerId',
+      () async {
+        final uji = buat(jawabanUmum);
+        await uji.repo.tandaiPesanDibaca(orderId: 'x');
+        final panggilan = uji.dikirim.firstWhere(
+          (p) => p.url.path.endsWith('/dibaca'),
+        );
+        expect(panggilan.method, 'POST');
+        expect(panggilan.url.path, '/api/orders/x/pesan/dibaca');
+        expect(panggilan.url.queryParameters, isEmpty);
+      },
+    );
 
     test('menandai dibaca menyebutkan runnerId untuk jalur pribadi', () async {
       final uji = buat(jawabanUmum);
       await uji.repo.tandaiPesanDibaca(orderId: 'x', runnerId: 'r1');
-      final panggilan = uji.dikirim.firstWhere((p) => p.url.path.endsWith('/dibaca'));
+      final panggilan = uji.dikirim.firstWhere(
+        (p) => p.url.path.endsWith('/dibaca'),
+      );
       expect(panggilan.url.queryParameters['runnerId'], 'r1');
     });
 
@@ -275,13 +328,19 @@ void main() {
       expect(await uji.repo.terimaOrder(orderId: 'x'), isFalse);
     });
 
-    test('galat dari server diteruskan sebagai GalatApi, bukan galat mentah', () async {
-      final uji = buat((p) => {'title': 'Tidak bisa menerima order sendiri'}, status: 400);
-      await expectLater(
-        uji.repo.terimaOrder(orderId: 'x'),
-        throwsA(isA<GalatPermintaan>()),
-      );
-    });
+    test(
+      'galat dari server diteruskan sebagai GalatApi, bukan galat mentah',
+      () async {
+        final uji = buat(
+          (p) => {'title': 'Tidak bisa menerima order sendiri'},
+          status: 400,
+        );
+        await expectLater(
+          uji.repo.terimaOrder(orderId: 'x'),
+          throwsA(isA<GalatPermintaan>()),
+        );
+      },
+    );
   });
 
   /// Menunggu sampai permintaan yang sudah berangkat selesai mendarat.
@@ -296,45 +355,51 @@ void main() {
   }
 
   group('penyegaran', () {
-    test('perubahan dari aplikasi ini langsung terlihat di aliran yang terbuka', () async {
-      // Tanpa ini, runner menekan TERIMA lalu ordernya masih tertera di daftar
-      // sampai pengambilan berkala berikutnya, dan ia menekannya lagi.
-      var jumlahAmbil = 0;
-      final uji = buat((p) {
-        if (p.method == 'GET') jumlahAmbil++;
-        return jawabanUmum(p);
-      });
-      final terlihat = <int>[];
-      final langganan = uji.repo
-          .watchOrderTersiar(ukuran: 20)
-          .listen((d) => terlihat.add(d.isi.length));
-      await Future<void>.delayed(Duration.zero);
-      final sebelum = jumlahAmbil;
-      await uji.repo.terimaOrder(orderId: 'x');
-      await Future<void>.delayed(Duration.zero);
-      expect(jumlahAmbil, greaterThan(sebelum));
-      await langganan.cancel();
-    });
+    test(
+      'perubahan dari aplikasi ini langsung terlihat di aliran yang terbuka',
+      () async {
+        // Tanpa ini, runner menekan TERIMA lalu ordernya masih tertera di daftar
+        // sampai pengambilan berkala berikutnya, dan ia menekannya lagi.
+        var jumlahAmbil = 0;
+        final uji = buat((p) {
+          if (p.method == 'GET') jumlahAmbil++;
+          return jawabanUmum(p);
+        });
+        final terlihat = <int>[];
+        final langganan = uji.repo
+            .watchOrderTersiar(ukuran: 20)
+            .listen((d) => terlihat.add(d.isi.length));
+        await Future<void>.delayed(Duration.zero);
+        final sebelum = jumlahAmbil;
+        await uji.repo.terimaOrder(orderId: 'x');
+        await Future<void>.delayed(Duration.zero);
+        expect(jumlahAmbil, greaterThan(sebelum));
+        await langganan.cancel();
+      },
+    );
 
-    test('kabar dari hub SignalR (perubahanLuar) memicu pengambilan ulang', () async {
-      // Runner lain menerima order yang sama, dan hub mengabarkannya lewat
-      // OrderTaken. Layar yang sedang terbuka harus melihatnya tanpa menunggu
-      // jeda pengambilan berkala, sama seperti perubahan yang dibuat sendiri.
-      var jumlahAmbil = 0;
-      final kabarHub = StreamController<void>();
-      final uji = buat((p) {
-        if (p.method == 'GET') jumlahAmbil++;
-        return jawabanUmum(p);
-      }, perubahanLuar: kabarHub.stream);
-      final langganan = uji.repo.watchOrderTersiar(ukuran: 20).listen((_) {});
-      await Future<void>.delayed(Duration.zero);
-      final sebelum = jumlahAmbil;
-      kabarHub.add(null);
-      await Future<void>.delayed(Duration.zero);
-      expect(jumlahAmbil, greaterThan(sebelum));
-      await langganan.cancel();
-      await kabarHub.close();
-    });
+    test(
+      'kabar dari hub SignalR (perubahanLuar) memicu pengambilan ulang',
+      () async {
+        // Runner lain menerima order yang sama, dan hub mengabarkannya lewat
+        // OrderTaken. Layar yang sedang terbuka harus melihatnya tanpa menunggu
+        // jeda pengambilan berkala, sama seperti perubahan yang dibuat sendiri.
+        var jumlahAmbil = 0;
+        final kabarHub = StreamController<void>();
+        final uji = buat((p) {
+          if (p.method == 'GET') jumlahAmbil++;
+          return jawabanUmum(p);
+        }, perubahanLuar: kabarHub.stream);
+        final langganan = uji.repo.watchOrderTersiar(ukuran: 20).listen((_) {});
+        await Future<void>.delayed(Duration.zero);
+        final sebelum = jumlahAmbil;
+        kabarHub.add(null);
+        await Future<void>.delayed(Duration.zero);
+        expect(jumlahAmbil, greaterThan(sebelum));
+        await langganan.cancel();
+        await kabarHub.close();
+      },
+    );
 
     test('pengambilan berkala berhenti begitu tidak ada yang mendengarkan', () async {
       // Pewaktu yang tertinggal hidup setelah layarnya ditutup akan terus menembak

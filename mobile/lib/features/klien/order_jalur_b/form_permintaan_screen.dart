@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api/galat_api.dart';
+import '../../../core/api/idempotency_key.dart';
 import '../../../core/config/batas_masukan.dart';
 
 import '../../../core/format/formatters.dart';
@@ -44,6 +45,7 @@ class FormPermintaanScreen extends ConsumerStatefulWidget {
 
 class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
   final _formKey = GlobalKey<FormState>();
+  late final String _idempotencyKey = buatIdempotencyKey();
   final _kebutuhanController = TextEditingController();
   final _alamatController = TextEditingController();
   final _hargaController = TextEditingController();
@@ -264,6 +266,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
             alamatTujuan: _alamatController.text.trim(),
             jumlahRunnerDibutuhkan: _jumlahRunner,
             hargaUsulan: int.parse(_hargaController.text.trim()),
+            idempotencyKey: _idempotencyKey,
           );
     } catch (galat) {
       if (!mounted) return;
