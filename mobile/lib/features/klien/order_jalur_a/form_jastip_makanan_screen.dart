@@ -206,7 +206,15 @@ class _FormJastipMakananScreenState
       setState(() => _sedangMengirim = false);
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text('Order gagal dibuat: $galat')));
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              galat is GalatApi
+                  ? galat.pesan
+                  : 'Order gagal dibuat. Terjadi kendala sambungan atau server.',
+            ),
+          ),
+        );
       return;
     }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/api/galat_api.dart';
 import '../../../core/config/batas_masukan.dart';
 
 import '../../../core/format/formatters.dart';
@@ -270,7 +271,13 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          SnackBar(content: Text('Permintaan gagal dikirim: $galat')),
+          SnackBar(
+            content: Text(
+              galat is GalatApi
+                  ? galat.pesan
+                  : 'Permintaan gagal dikirim. Terjadi kendala sambungan atau server.',
+            ),
+          ),
         );
       return;
     }
