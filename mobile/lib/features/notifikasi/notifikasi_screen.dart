@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/api/galat_api.dart';
+
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../domain/enums.dart';
@@ -60,7 +62,15 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
           Expanded(
             child: stateOrder.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (_, _) => _bangunDaftar(context, const []),
+              error: (galat, _) => PesanKosong(
+                ikon: Icons.wifi_off_outlined,
+                judul: 'Notifikasi gagal dimuat',
+                keterangan: galat is GalatApi
+                    ? galat.pesan
+                    : 'Sambungan ke server terputus.',
+                labelAksi: 'Coba lagi',
+                onAksi: () => ref.invalidate(orderKlienProvider),
+              ),
               data: (halaman) => _bangunDaftar(context, halaman.isi),
             ),
           ),
