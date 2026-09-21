@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:upnvj_suruh/app.dart';
+import 'package:upnvj_suruh/core/api/galat_api.dart';
 import 'package:upnvj_suruh/data/fake/fake_auth_repository.dart';
 import 'package:upnvj_suruh/data/fake/fake_order_repository.dart';
 import 'package:upnvj_suruh/data/fake/seed_data.dart';
@@ -42,10 +43,13 @@ void main() {
   Future<FakeOrderRepository> bukaSebagaiRunner(
     WidgetTester tester, {
     List<Order>? orderAwal,
+    FakeOrderRepository? repository,
   }) async {
-    final orderRepo = FakeOrderRepository(
-      pemanggil: () => SeedData.runner.id,
-      orderAwal: orderAwal);
+    final orderRepo = repository ??
+        FakeOrderRepository(
+          pemanggil: () => SeedData.runner.id,
+          orderAwal: orderAwal,
+        );
     addTearDown(orderRepo.dispose);
 
     await tester.pumpWidget(
@@ -246,4 +250,58 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('kegagalan ambil order menyembunyikan exception mentah', (
+    tester,
+  ) async {
+    final repo = _RepoGagalTerima(orderAwal: [orderSiaran()]);
+    await bukaSebagaiRunner(tester, repository: repo);
+
+    await tekanTerima(tester);
+
+    expect(
+      find.text(
+        'Order SRH-9001 gagal diambil. Terjadi kendala sambungan atau server.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('RAHASIA_INTERNAL'), findsNothing);
+  });
+
+  testWidgets('kegagalan ambil order dengan GalatApi menampilkan pesan API', (
+    tester,
+  ) async {
+    final repo = _RepoGagalTerimaApi(orderAwal: [orderSiaran()]);
+    await bukaSebagaiRunner(tester, repository: repo);
+
+    await tekanTerima(tester);
+
+    expect(
+      find.text('Order SRH-9001 gagal diambil: Akunmu belum diverifikasi.'),
+      findsOneWidget,
+    );
+  });
 }
+
+class _RepoGagalTerima extends FakeOrderRepository {
+  _RepoGagalTerima({required super.orderAwal})
+      : super(pemanggil: () => SeedData.runner.id);
+
+  @override
+  Future<bool> terimaOrder({required String orderId}) async {
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    throw Exception('RAHASIA_INTERNAL_DATABASE_TIMEOUT');
+  }
+}
+
+class _RepoGagalTerimaApi extends FakeOrderRepository {
+  _RepoGagalTerimaApi({required super.orderAwal})
+      : super(pemanggil: () => SeedData.runner.id);
+
+  @override
+  Future<bool> terimaOrder({required String orderId}) async {
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    throw const GalatDilarang('Akunmu belum diverifikasi.');
+  }
+}
+

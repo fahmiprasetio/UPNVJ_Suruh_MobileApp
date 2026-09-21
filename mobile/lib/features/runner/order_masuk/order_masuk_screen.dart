@@ -128,7 +128,11 @@ class _OrderMasukScreenState extends ConsumerState<OrderMasukScreen> {
     } catch (galat) {
       if (!mounted) return;
       setState(() => _sedangDiproses.remove(order.id));
-      _kabari('Order ${order.kodeOrder} gagal diambil: $galat');
+      _kabari(
+        galat is GalatApi
+            ? 'Order ${order.kodeOrder} gagal diambil: ${galat.pesan}'
+            : 'Order ${order.kodeOrder} gagal diambil. Terjadi kendala sambungan atau server.',
+      );
       return;
     }
 
