@@ -51,6 +51,20 @@ public class OrderEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
         return (klien, user.Id);
     }
 
+    private static async Task<HttpResponseMessage> PostJsonDenganKeyAsync(
+        HttpClient klien,
+        string jalur,
+        object isi,
+        string key)
+    {
+        using var permintaan = new HttpRequestMessage(HttpMethod.Post, jalur)
+        {
+            Content = JsonContent.Create(isi),
+        };
+        permintaan.Headers.Add("Idempotency-Key", key);
+        return await klien.SendAsync(permintaan);
+    }
+
     private static async Task<OrderResponse> BuatOrderAsync(HttpClient klien, double jarakKm = 3)
     {
         var jawaban = await klien.PostAsJsonAsync("/api/orders/jalur-a", new
@@ -96,6 +110,82 @@ public class OrderEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
             Jumlah = jumlah,
         });
         jawaban.EnsureSuccessStatusCode();
+    }
+
+    // --- Idempotensi pembuatan order ---
+
+    [Fact]
+    public async Task RequestParalelDenganKeySamaHanyaMelahirkanSatuOrder()
+    {
+        var (klien, klienId) = await AkunAsync(UserRole.Klien);
+        var isi = new
+        {
+            ServiceType = nameof(ServiceType.AnterJemput),
+            JarakKm = 3.0,
+            AlamatJemput = "Kos Melati",
+            AlamatTujuan = "Kampus",
+        };
+
+        var jawaban = await Task.WhenAll(
+            Enumerable.Range(0, 2).Select(_ => PostJsonDenganKeyAsync(
+                klien, "/api/orders/jalur-a", isi, "draft-paralel-uji")));
+
+        Assert.All(jawaban, j => Assert.Equal(HttpStatusCode.Created, j.StatusCode));
+        var hasil = await Task.WhenAll(jawaban.Select(j =>
+            j.Content.ReadFromJsonAsync<BuatOrderResponse>()));
+        Assert.Single(hasil.Select(h => h!.Order.Id).Distinct());
+
+        using var lingkup = pabrik.Services.CreateScope();
+        var db = lingkup.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal(1, await db.Orders.CountAsync(o => o.ClientId == klienId));
+        Assert.Equal(1, await db.IdempotensiPembuatanOrder.CountAsync(i => i.Key == "draft-paralel-uji"));
+    }
+
+    [Fact]
+    public async Task KeySamaDenganPayloadBerbedaDitolak()
+    {
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+        var key = "draft-payload-berbeda-uji";
+        var pertama = await PostJsonDenganKeyAsync(klien, "/api/orders/jalur-b", new
+        {
+            ServiceType = nameof(ServiceType.BersihKos),
+            Deskripsi = "Kos pertama",
+            JadwalMulai = DateTime.UtcNow.AddDays(1),
+            HargaUsulan = 100000m,
+        }, key);
+        pertama.EnsureSuccessStatusCode();
+
+        var kedua = await PostJsonDenganKeyAsync(klien, "/api/orders/jalur-b", new
+        {
+            ServiceType = nameof(ServiceType.BersihKos),
+            Deskripsi = "Kos kedua",
+            JadwalMulai = DateTime.UtcNow.AddDays(1),
+            HargaUsulan = 100000m,
+        }, key);
+
+        Assert.Equal(HttpStatusCode.Conflict, kedua.StatusCode);
+    }
+
+    [Fact]
+    public async Task KeyMilikAkunLainDitolak()
+    {
+        var (pemilik, _) = await AkunAsync(UserRole.Klien);
+        var (orangLain, _) = await AkunAsync(UserRole.Klien);
+        var key = "draft-akun-lain-uji";
+        var pertama = await PostJsonDenganKeyAsync(pemilik, "/api/orders/jalur-a", new
+        {
+            ServiceType = nameof(ServiceType.AnterJemput),
+            JarakKm = 3.0,
+        }, key);
+        pertama.EnsureSuccessStatusCode();
+
+        var kedua = await PostJsonDenganKeyAsync(orangLain, "/api/orders/jalur-a", new
+        {
+            ServiceType = nameof(ServiceType.AnterJemput),
+            JarakKm = 3.0,
+        }, key);
+
+        Assert.Equal(HttpStatusCode.Conflict, kedua.StatusCode);
     }
 
     // --- Harga ---

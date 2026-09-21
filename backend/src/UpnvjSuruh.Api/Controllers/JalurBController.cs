@@ -53,6 +53,36 @@ public class JalurBController(
         var klien = await db.Users.SingleOrDefaultAsync(u => u.Id == klienId, batal);
         if (klien is null) return Unauthorized();
 
+        if (!IdempotensiOrder.CobaBacaKey(Request, out var key))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Idempotency-Key tidak valid",
+                Detail = $"Header {IdempotensiOrder.NamaHeader} paling panjang {IdempotensiOrder.PanjangKeyMaksimal} karakter.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        var requestHash = key is null ? null : IdempotensiOrder.HashJalurB(permintaan);
+        if (key is not null)
+        {
+            var sebelumnya = await db.IdempotensiPembuatanOrder
+                .AsNoTracking()
+                .SingleOrDefaultAsync(i => i.Key == key, batal);
+            if (sebelumnya is not null)
+            {
+                if (sebelumnya.UserId != klienId || sebelumnya.RequestHash != requestHash ||
+                    sebelumnya.Track != OrderTrack.JalurB)
+                {
+                    return Conflict(KonflikIdempotensi());
+                }
+
+                var responsLama = IdempotensiOrder.BacaRespons<OrderResponse>(sebelumnya);
+                if (responsLama is null) return Problem(statusCode: StatusCodes.Status500InternalServerError);
+                return CreatedAtAction(nameof(OrdersController.Ambil), "Orders", new { id = sebelumnya.OrderId }, responsLama);
+            }
+        }
+
         var order = new Order
         {
             ClientId = klienId,
@@ -67,8 +97,51 @@ public class JalurBController(
             SuggestedPrice = permintaan.HargaUsulan,
         };
 
-        db.Orders.Add(order);
-        await db.SaveChangesAsync(batal);
+        OrderResponse hasil;
+        if (key is null)
+        {
+            db.Orders.Add(order);
+            await db.SaveChangesAsync(batal);
+            hasil = OrderResponse.Dari(order, klien.Name);
+        }
+        else
+        {
+            try
+            {
+                await using var transaksi = await db.Database.BeginTransactionAsync(batal);
+                db.Orders.Add(order);
+                await db.SaveChangesAsync(batal);
+                hasil = OrderResponse.Dari(order, klien.Name);
+                db.IdempotensiPembuatanOrder.Add(new IdempotensiPembuatanOrder
+                {
+                    Key = key,
+                    UserId = klienId,
+                    RequestHash = requestHash!,
+                    OrderId = order.Id,
+                    Track = OrderTrack.JalurB,
+                    ResponseJson = IdempotensiOrder.SimpanRespons(hasil),
+                });
+                await db.SaveChangesAsync(batal);
+                await transaksi.CommitAsync(batal);
+            }
+            catch (DbUpdateException galat) when (GalatDb.Bentrok(galat))
+            {
+                db.ChangeTracker.Clear();
+                var sebelumnya = await db.IdempotensiPembuatanOrder
+                    .AsNoTracking()
+                    .SingleOrDefaultAsync(i => i.Key == key, batal);
+                if (sebelumnya is null) throw;
+                if (sebelumnya.UserId != klienId || sebelumnya.RequestHash != requestHash ||
+                    sebelumnya.Track != OrderTrack.JalurB)
+                {
+                    return Conflict(KonflikIdempotensi());
+                }
+
+                var responsLama = IdempotensiOrder.BacaRespons<OrderResponse>(sebelumnya);
+                if (responsLama is null) return Problem(statusCode: StatusCodes.Status500InternalServerError);
+                return CreatedAtAction(nameof(OrdersController.Ambil), "Orders", new { id = sebelumnya.OrderId }, responsLama);
+            }
+        }
 
         // Permintaan Jalur B langsung tampil di daftar order masuk runner (lihat penyaring
         // Permintaan di OrdersController.Tersiar), jadi ia layak disiarkan sama seperti order
@@ -96,8 +169,15 @@ public class JalurBController(
             nameof(OrdersController.Ambil),
             "Orders",
             new { id = order.Id },
-            OrderResponse.Dari(order, klien.Name));
+            hasil);
     }
+
+    private static ProblemDetails KonflikIdempotensi() => new()
+    {
+        Title = "Idempotency-Key sudah dipakai",
+        Detail = "Gunakan key baru untuk draft order yang berbeda.",
+        Status = StatusCodes.Status409Conflict,
+    };
 
     /// <summary>
     /// Seorang runner mengirim penawaran harga untuk satu permintaan.
