@@ -10,6 +10,7 @@ import '../../../domain/models/order.dart';
 import '../../../domain/service_catalog.dart';
 import '../../../providers/order_providers.dart';
 import '../../../providers/repository_providers.dart';
+import '../../widgets/pesan_kosong.dart';
 
 /// Runner mengajukan penawaran untuk satu permintaan Jalur B.
 ///
@@ -61,10 +62,23 @@ class _AjukanTawaranScreenState extends ConsumerState<AjukanTawaranScreen> {
       body: SafeArea(
         child: order.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (galat, _) => Center(child: Text('Order gagal dimuat: $galat')),
+          error: (galat, _) => PesanKosong(
+            ikon: Icons.wifi_off_outlined,
+            judul: 'Order gagal dimuat',
+            keterangan: galat is GalatApi
+                ? galat.pesan
+                : 'Sambungan ke server terputus.',
+            labelAksi: 'Coba lagi',
+            onAksi: () => ref.invalidate(orderProvider(widget.orderId)),
+          ),
           data: (order) {
             if (order == null) {
-              return const Center(child: Text('Order tidak ditemukan.'));
+              return const PesanKosong(
+                ikon: Icons.inbox_outlined,
+                judul: 'Order tidak ditemukan',
+                keterangan:
+                    'Permintaan ini mungkin sudah ditutup atau dibatalkan.',
+              );
             }
             // Diisi sekali dari harga usulan klien, bukan setiap build: runner
             // boleh mengubahnya, dan build ulang tidak boleh menimpa
@@ -119,7 +133,9 @@ class _AjukanTawaranScreenState extends ConsumerState<AjukanTawaranScreen> {
         ..showSnackBar(
           SnackBar(
             content: Text(
-              galat is GalatApi ? galat.pesan : 'Tawaran gagal dikirim: $galat',
+              galat is GalatApi
+                  ? galat.pesan
+                  : 'Tawaran gagal dikirim. Terjadi kendala sambungan atau server.',
             ),
           ),
         );
