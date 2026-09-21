@@ -31,16 +31,20 @@ class GerbangPermukaan extends ConsumerWidget {
     return user.when(
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (galat, _) => _PermukaanKosong(
-        ikon: Icons.wifi_off_outlined,
-        judul: 'Akun gagal dimuat',
-        // Kalimat yang memang ditulis untuk dibaca orang kalau ada, jejak
-        // pengecualian mentah tidak pernah. Ini layar pertama sesudah masuk,
-        // dan nama kelas Dart di situ cuma memberi kesan aplikasinya rusak
-        // lebih parah daripada sebenarnya.
-        pesan: galat is GalatApi
-            ? galat.pesan
-            : 'Sambungan ke server terputus.',
+      error: (galat, _) => Scaffold(
+        appBar: AppBar(
+          title: const Text('UPNVJ Suruh'),
+          actions: const [TombolProfil()],
+        ),
+        body: PesanKosong(
+          ikon: Icons.wifi_off_outlined,
+          judul: 'Akun gagal dimuat',
+          keterangan: galat is GalatApi
+              ? galat.pesan
+              : 'Sambungan ke server terputus.',
+          labelAksi: 'Coba lagi',
+          onAksi: () => ref.invalidate(userAktifProvider),
+        ),
       ),
       data: (user) {
         // Layar kosong, bukan kalimat.
