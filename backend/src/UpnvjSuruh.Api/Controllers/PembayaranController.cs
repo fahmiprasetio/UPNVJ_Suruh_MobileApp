@@ -100,7 +100,23 @@ public class PembayaranController(AppDbContext db, IPembayaranGateway gateway) :
         };
 
         db.Payments.Add(pembayaran);
-        await db.SaveChangesAsync(batal);
+        try
+        {
+            await db.SaveChangesAsync(batal);
+        }
+        catch (DbUpdateException galat) when (GalatDb.Bentrok(galat))
+        {
+            // Dua request bayar paralel dapat sama-sama melihat belum ada transaksi
+            // pending. Unique index menentukan pemenangnya; request yang kalah harus
+            // mengembalikan QR pemenang, bukan 500 yang menyuruh klien mencoba lagi.
+            db.ChangeTracker.Clear();
+            var orderSesudahBentrok = await Muat(orderId, batal);
+            var transaksiPemenang = orderSesudahBentrok is null
+                ? null
+                : Hidup(orderSesudahBentrok);
+            if (transaksiPemenang is null) throw;
+            return Ok(TransaksiPembayaranResponse.Dari(transaksiPemenang));
+        }
 
         try
         {
