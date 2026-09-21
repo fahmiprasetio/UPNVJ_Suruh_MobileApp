@@ -96,10 +96,12 @@ void main() {
       // baru dibuat. Bentuk chat ikut berhalaman sejak percakapan dibatasi jendela.
       return p.method == 'GET' ? halamanJson([pesanJson]) : pesanJson;
     }
-    if (p.url.path.endsWith('/jalur-a'))
+    if (p.url.path.endsWith('/jalur-a')) {
       return {'order': orderJson, 'rincian': []};
-    if (p.url.path.endsWith('/terima'))
+    }
+    if (p.url.path.endsWith('/terima')) {
       return {'dapat': true, 'keterangan': 'ok'};
+    }
     if (p.url.path.endsWith('/saya') ||
         p.url.path.endsWith('/tersiar') ||
         p.url.path.endsWith('/runner-saya')) {

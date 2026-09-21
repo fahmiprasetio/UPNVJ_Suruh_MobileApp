@@ -243,8 +243,9 @@ class KlienApi {
       final errors = isi['errors'];
       if (errors is Map && errors.isNotEmpty) {
         final pertama = errors.values.first;
-        if (pertama is List && pertama.isNotEmpty)
+        if (pertama is List && pertama.isNotEmpty) {
           return pertama.first.toString();
+        }
       }
 
       final detail = isi['detail'] ?? isi['title'];
