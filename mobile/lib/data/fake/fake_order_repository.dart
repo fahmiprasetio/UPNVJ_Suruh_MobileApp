@@ -778,6 +778,7 @@ class FakeOrderRepository implements OrderRepository {
   Future<Order> lepasOrder({
     required String orderId,
     required String alasan,
+    String? idempotencyKey,
   }) async {
     await Future<void>.delayed(_jedaJaringan);
     final order = _wajibAda(orderId);

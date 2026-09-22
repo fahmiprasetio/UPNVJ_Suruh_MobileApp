@@ -328,8 +328,18 @@ class ApiOrderRepository implements OrderRepository {
   }
 
   @override
-  Future<Order> lepasOrder({required String orderId, required String alasan}) =>
-      _tindakan('/api/orders/$orderId/lepas', badan: {'alasan': alasan.trim()});
+  Future<Order> lepasOrder({
+    required String orderId,
+    required String alasan,
+    String? idempotencyKey,
+  }) =>
+      _tindakan(
+        '/api/orders/$orderId/lepas',
+        badan: {'alasan': alasan.trim()},
+        headerTambahan: idempotencyKey == null
+            ? null
+            : {'Idempotency-Key': idempotencyKey},
+      );
 
   @override
   Future<Order> mintaBatalOrder({
@@ -379,8 +389,16 @@ class ApiOrderRepository implements OrderRepository {
     _tandaiBerubah();
   }
 
-  Future<Order> _tindakan(String jalur, {Object? badan}) async {
-    final jawaban = await _klien.post(jalur, badan: badan);
+  Future<Order> _tindakan(
+    String jalur, {
+    Object? badan,
+    Map<String, String>? headerTambahan,
+  }) async {
+    final jawaban = await _klien.post(
+      jalur,
+      badan: badan,
+      headerTambahan: headerTambahan,
+    );
     _tandaiBerubah();
     return PemetaOrder.order(jawaban);
   }

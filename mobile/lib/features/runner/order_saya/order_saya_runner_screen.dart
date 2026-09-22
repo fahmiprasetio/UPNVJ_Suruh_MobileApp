@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api/galat_api.dart';
+import '../../../core/api/idempotency_key.dart';
 import '../../../core/config/batas_masukan.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
@@ -45,6 +46,7 @@ class OrderSayaRunnerScreen extends ConsumerStatefulWidget {
 class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
   final Set<String> _sedangDilepas = {};
   final Set<String> _sedangDitarik = {};
+  final Map<String, String> _keyLepas = {};
 
   @override
   Widget build(BuildContext context) {
@@ -294,11 +296,20 @@ class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
     if (alasan == null || !context.mounted) return;
     if (_sedangDilepas.contains(order.id)) return;
 
+    final requestKey = '${order.id}|${alasan.trim()}';
+    final idempotencyKey = _keyLepas.putIfAbsent(
+      requestKey,
+      buatIdempotencyKey,
+    );
     setState(() => _sedangDilepas.add(order.id));
     try {
       await ref
           .read(orderRepositoryProvider)
-          .lepasOrder(orderId: order.id, alasan: alasan);
+          .lepasOrder(
+            orderId: order.id,
+            alasan: alasan,
+            idempotencyKey: idempotencyKey,
+          );
     } catch (galat) {
       if (!context.mounted) return;
       setState(() => _sedangDilepas.remove(order.id));
@@ -315,7 +326,10 @@ class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
     }
 
     if (!context.mounted) return;
-    setState(() => _sedangDilepas.remove(order.id));
+    setState(() {
+      _sedangDilepas.remove(order.id);
+      _keyLepas.remove(requestKey);
+    });
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(

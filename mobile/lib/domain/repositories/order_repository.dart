@@ -202,7 +202,11 @@ abstract interface class OrderRepository {
   /// [alasan] wajib, dan tersimpan sebagai pesan dari runner ini di chat ordernya.
   /// Klien yang melihat ordernya mundur sendiri tanpa satu kalimat pun akan
   /// menyimpulkan sistemnya rusak.
-  Future<Order> lepasOrder({required String orderId, required String alasan});
+  Future<Order> lepasOrder({
+    required String orderId,
+    required String alasan,
+    String? idempotencyKey,
+  });
 
   /// Klien meminta order yang sudah dibayar dibatalkan admin.
   ///
