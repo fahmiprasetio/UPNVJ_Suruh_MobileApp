@@ -10,6 +10,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<IdempotensiPembuatanOrder> IdempotensiPembuatanOrder => Set<IdempotensiPembuatanOrder>();
     public DbSet<IdempotensiPembuatanPenawaran> IdempotensiPembuatanPenawaran => Set<IdempotensiPembuatanPenawaran>();
+    public DbSet<IdempotensiAksiPenawaran> IdempotensiAksiPenawaran => Set<IdempotensiAksiPenawaran>();
     public DbSet<IdempotensiTerimaOrder> IdempotensiTerimaOrder => Set<IdempotensiTerimaOrder>();
     public DbSet<IdempotensiLepasOrder> IdempotensiLepasOrder => Set<IdempotensiLepasOrder>();
     public DbSet<IdempotensiSelesaikanOrder> IdempotensiSelesaikanOrder => Set<IdempotensiSelesaikanOrder>();
@@ -180,6 +181,31 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasOne<OrderOffer>()
                 .WithMany()
                 .HasForeignKey(i => i.OfferId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<IdempotensiAksiPenawaran>(entity =>
+        {
+            entity.Property(i => i.Key).HasMaxLength(IdempotensiOrder.PanjangKeyMaksimal);
+            entity.Property(i => i.RequestHash).HasMaxLength(64);
+            entity.Property(i => i.ResponseJson).HasColumnType("text");
+            entity.HasIndex(i => new { i.UserId, i.Key }).IsUnique();
+            entity.HasIndex(i => i.OrderId);
+            entity.HasIndex(i => i.OfferId);
+
+            entity.HasOne<Order>()
+                .WithMany()
+                .HasForeignKey(i => i.OrderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<OrderOffer>()
+                .WithMany()
+                .HasForeignKey(i => i.OfferId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(i => i.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

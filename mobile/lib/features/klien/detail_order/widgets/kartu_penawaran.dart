@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/api/galat_api.dart';
+import '../../../../core/api/idempotency_key.dart';
 import '../../../../core/config/batas_masukan.dart';
 import '../../../../core/format/formatters.dart';
 import '../../../../core/router/app_router.dart';
@@ -33,6 +34,12 @@ class KartuPenawaran extends ConsumerStatefulWidget {
 
 class _KartuPenawaranState extends ConsumerState<KartuPenawaran> {
   bool _sedangMengirim = false;
+  final Map<String, String> _keyAksi = {};
+
+  String _keyUntuk(String aksi, String? variasi) => _keyAksi.putIfAbsent(
+    '$aksi|${widget.penawaran.id}|${variasi ?? ''}',
+    buatIdempotencyKey,
+  );
 
   /// Runner ini bisa mengusulkan waktu lain dari yang diminta klien, misalnya
   /// karena sedang ada urusan di jam itu. Perbedaan sekecil apa pun harus
@@ -168,6 +175,7 @@ class _KartuPenawaranState extends ConsumerState<KartuPenawaran> {
           .setujuiPenawaran(
             orderId: widget.order.id,
             penawaranId: widget.penawaran.id,
+            idempotencyKey: _keyUntuk('SETUJUI', null),
           ),
     );
     if (!berhasil || !mounted) return;
@@ -207,6 +215,7 @@ class _KartuPenawaranState extends ConsumerState<KartuPenawaran> {
           .tolakPenawaran(
             orderId: widget.order.id,
             penawaranId: widget.penawaran.id,
+            idempotencyKey: _keyUntuk('TOLAK', null),
           ),
       pesanBerhasil: 'Tawaran ditolak.',
     );
@@ -226,6 +235,7 @@ class _KartuPenawaranState extends ConsumerState<KartuPenawaran> {
             orderId: widget.order.id,
             penawaranId: widget.penawaran.id,
             alasan: alasan,
+            idempotencyKey: _keyUntuk('NEGO', alasan.trim()),
           ),
       pesanBerhasil: 'Alasanmu terkirim ke runner ini lewat chat.',
     );

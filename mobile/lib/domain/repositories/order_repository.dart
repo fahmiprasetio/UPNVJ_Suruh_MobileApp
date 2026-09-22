@@ -130,6 +130,7 @@ abstract interface class OrderRepository {
   Future<Order> setujuiPenawaran({
     required String orderId,
     required String penawaranId,
+    String? idempotencyKey,
   });
 
   /// Klien menolak satu penawaran tertentu.
@@ -140,6 +141,7 @@ abstract interface class OrderRepository {
   Future<Order> tolakPenawaran({
     required String orderId,
     required String penawaranId,
+    String? idempotencyKey,
   });
 
   /// Klien meminta satu penawaran tertentu ditinjau ulang, disertai alasannya.
@@ -151,6 +153,7 @@ abstract interface class OrderRepository {
     required String orderId,
     required String penawaranId,
     required String alasan,
+    String? idempotencyKey,
   });
 
   /// Runner menarik kembali penawarannya sendiri.
@@ -167,6 +170,7 @@ abstract interface class OrderRepository {
     required String orderId,
     required String penawaranId,
     String? alasan,
+    String? idempotencyKey,
   });
 
   /// Runner menekan TERIMA.

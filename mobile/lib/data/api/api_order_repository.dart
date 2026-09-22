@@ -265,22 +265,38 @@ class ApiOrderRepository implements OrderRepository {
   Future<Order> setujuiPenawaran({
     required String orderId,
     required String penawaranId,
-  }) => _tindakan('/api/orders/$orderId/penawaran/$penawaranId/setujui');
+    String? idempotencyKey,
+  }) => _tindakan(
+    '/api/orders/$orderId/penawaran/$penawaranId/setujui',
+    headerTambahan: idempotencyKey == null
+        ? null
+        : {'Idempotency-Key': idempotencyKey},
+  );
 
   @override
   Future<Order> tolakPenawaran({
     required String orderId,
     required String penawaranId,
-  }) => _tindakan('/api/orders/$orderId/penawaran/$penawaranId/tolak');
+    String? idempotencyKey,
+  }) => _tindakan(
+    '/api/orders/$orderId/penawaran/$penawaranId/tolak',
+    headerTambahan: idempotencyKey == null
+        ? null
+        : {'Idempotency-Key': idempotencyKey},
+  );
 
   @override
   Future<Order> ajukanNego({
     required String orderId,
     required String penawaranId,
     required String alasan,
+    String? idempotencyKey,
   }) => _tindakan(
     '/api/orders/$orderId/penawaran/$penawaranId/nego',
     badan: {'alasan': alasan},
+    headerTambahan: idempotencyKey == null
+        ? null
+        : {'Idempotency-Key': idempotencyKey},
   );
 
   // --- Runner ---
@@ -323,11 +339,15 @@ class ApiOrderRepository implements OrderRepository {
     required String orderId,
     required String penawaranId,
     String? alasan,
+    String? idempotencyKey,
   }) {
     final bersih = alasan?.trim();
     return _tindakan(
       '/api/orders/$orderId/penawaran/$penawaranId/cabut',
       badan: {'alasan': bersih == null || bersih.isEmpty ? null : bersih},
+      headerTambahan: idempotencyKey == null
+          ? null
+          : {'Idempotency-Key': idempotencyKey},
     );
   }
 

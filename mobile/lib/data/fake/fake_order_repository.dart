@@ -452,6 +452,7 @@ class FakeOrderRepository implements OrderRepository {
   Future<Order> setujuiPenawaran({
     required String orderId,
     required String penawaranId,
+    String? idempotencyKey,
   }) async {
     await Future<void>.delayed(_jedaJaringan);
     final order = _wajibMilikPemanggil(orderId);
@@ -483,6 +484,7 @@ class FakeOrderRepository implements OrderRepository {
   Future<Order> tolakPenawaran({
     required String orderId,
     required String penawaranId,
+    String? idempotencyKey,
   }) async {
     await Future<void>.delayed(_jedaJaringan);
     final order = _wajibMilikPemanggil(orderId);
@@ -503,6 +505,7 @@ class FakeOrderRepository implements OrderRepository {
     required String orderId,
     required String penawaranId,
     required String alasan,
+    String? idempotencyKey,
   }) async {
     await Future<void>.delayed(_jedaJaringan);
     final order = _wajibMilikPemanggil(orderId);
@@ -735,6 +738,7 @@ class FakeOrderRepository implements OrderRepository {
     required String orderId,
     required String penawaranId,
     String? alasan,
+    String? idempotencyKey,
   }) async {
     await Future<void>.delayed(_jedaJaringan);
     final order = _wajibAda(orderId);

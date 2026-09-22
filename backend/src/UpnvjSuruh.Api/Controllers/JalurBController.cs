@@ -1,3 +1,4 @@
+using System.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -355,29 +356,9 @@ public class JalurBController(
     [EnableRateLimiting(BatasLaju.KebijakanTulis)]
     [HttpPost("{id:guid}/penawaran/{offerId:guid}/setujui")]
     [Authorize(Roles = Peran.Klien)]
-    public async Task<ActionResult<OrderResponse>> Setujui(
-        Guid id, Guid offerId, CancellationToken batal)
-    {
-        var (order, penawaran, galat) = await MuatPenawaranUntukKlien(id, offerId, batal);
-        if (galat is not null) return galat;
-
-        order!.Price = penawaran!.Price;
-        order.EstimatedDuration = penawaran.EstimatedDuration;
-        order.ScheduledStart = penawaran.ScheduledStart;
-        var perpindahan = OrderStatusChange.Catat(order, OrderStatus.MenungguPembayaran, User.Id());
-        db.OrderStatusChanges.Add(perpindahan);
-        Jawab(penawaran, OfferStatus.Disetujui);
-
-        foreach (var lainnya in order.Offers.Where(f => f.Id != penawaran.Id && f.Status == OfferStatus.Pending))
-        {
-            Jawab(lainnya, OfferStatus.Ditutup);
-        }
-
-        await db.SaveChangesAsync(batal);
-        await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
-        await pengabar.KabarkanAsync(perpindahan, batal);
-        return Ok(await OrderResponse.DariAsync(db, order, User.Id(), User.Punya(Peran.Admin), batal));
-    }
+    public Task<ActionResult<OrderResponse>> Setujui(
+        Guid id, Guid offerId, CancellationToken batal) =>
+        JalankanJawaban("SETUJUI", id, offerId, batal);
 
     /// <summary>
     /// Klien menolak satu penawaran tertentu.
@@ -391,17 +372,9 @@ public class JalurBController(
     [EnableRateLimiting(BatasLaju.KebijakanTulis)]
     [HttpPost("{id:guid}/penawaran/{offerId:guid}/tolak")]
     [Authorize(Roles = Peran.Klien)]
-    public async Task<ActionResult<OrderResponse>> Tolak(
-        Guid id, Guid offerId, CancellationToken batal)
-    {
-        var (order, penawaran, galat) = await MuatPenawaranUntukKlien(id, offerId, batal);
-        if (galat is not null) return galat;
-
-        Jawab(penawaran!, OfferStatus.Ditolak);
-
-        await db.SaveChangesAsync(batal);
-        return Ok(await OrderResponse.DariAsync(db, order!, User.Id(), User.Punya(Peran.Admin), batal));
-    }
+    public Task<ActionResult<OrderResponse>> Tolak(
+        Guid id, Guid offerId, CancellationToken batal) =>
+        JalankanJawaban("TOLAK", id, offerId, batal);
 
     /// <summary>
     /// Runner menarik kembali penawarannya sendiri.
@@ -436,64 +409,18 @@ public class JalurBController(
     [EnableRateLimiting(BatasLaju.KebijakanTulis)]
     [HttpPost("{id:guid}/penawaran/{offerId:guid}/cabut")]
     [Authorize(Roles = Peran.Runner)]
-    public async Task<ActionResult<OrderResponse>> Cabut(
+    public Task<ActionResult<OrderResponse>> Cabut(
         Guid id,
         Guid offerId,
         CabutPenawaranRequest permintaan,
-        CancellationToken batal)
-    {
-        var order = await Muat(id, batal);
-        if (order is null) return NotFound();
-
-        var runnerId = User.Id();
-
-        var penawaran = order.Offers.SingleOrDefault(
-            f => f.Id == offerId && f.CreatedByRunnerId == runnerId);
-
-        // 404, bukan 403: penawaran orang lain bukan sesuatu yang boleh ia ketahui ada.
-        if (penawaran is null) return NotFound();
-
-        if (penawaran.Status is not (OfferStatus.Pending or OfferStatus.DinegoUlang))
-        {
-            return Salah(
-                "Penawaran ini sudah tidak bisa dicabut",
-                penawaran.Status == OfferStatus.Disetujui
-                    ? "Penawaranmu sudah dipilih klien dan harganya sudah jadi harga order. "
-                      + "Kalau tetap ingin mundur, tunggu pembayarannya masuk lalu lepas "
-                      + "ordernya."
-                    : $"Penawaran ini sudah {penawaran.Status}.");
-        }
-
-        // Ditulis selagi runnernya masih pihak yang berkepentingan di order ini. Sesudah
-        // penawarannya dicabut ia bukan siapa-siapa di sana lagi (AksesOrder.MasihMenawar),
-        // dan endpoint chat akan menolaknya.
-        var alasan = permintaan.Alasan?.Trim();
-        if (!string.IsNullOrEmpty(alasan))
-        {
-            db.OrderMessages.Add(new OrderMessage
-            {
-                OrderId = order.Id,
-                // Ke jalur obrolan pribadinya sendiri, bukan obrolan umum: yang perlu
-                // membacanya cuma klien, dan runner lain yang menawar order yang sama tidak
-                // ada urusannya dengan tawaran yang ditarik ini.
-                RunnerPenawarId = runnerId,
-                SenderId = runnerId,
-                SenderRole = UserRole.Runner,
-                Text = alasan,
-            });
-        }
-
-        Jawab(penawaran, OfferStatus.Dicabut);
-
-        await db.SaveChangesAsync(batal);
-
-        // Status ordernya tidak bergeser: permintaan Jalur B yang kehilangan satu penawaran
-        // tetap permintaan yang menerima penawaran. Yang berubah cuma isi daftar tawarannya,
-        // dan itu terlihat dari ordernya sendiri.
-        await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
-
-        return Ok(await OrderResponse.DariAsync(db, order, runnerId, User.Punya(Peran.Admin), batal));
-    }
+        CancellationToken batal) =>
+        JalankanCabut(
+            id,
+            offerId,
+            User.Id(),
+            permintaan,
+            IdempotensiOrder.HashAksiPenawaran("CABUT", id, offerId, permintaan.Alasan),
+            batal);
 
     /// <summary>
     /// Klien meminta satu penawaran tertentu ditinjau ulang, disertai alasannya.
@@ -508,32 +435,270 @@ public class JalurBController(
     [EnableRateLimiting(BatasLaju.KebijakanTulis)]
     [HttpPost("{id:guid}/penawaran/{offerId:guid}/nego")]
     [Authorize(Roles = Peran.Klien)]
-    public async Task<ActionResult<OrderResponse>> Nego(
+    public Task<ActionResult<OrderResponse>> Nego(
         Guid id,
         Guid offerId,
         NegoPenawaranRequest permintaan,
+        CancellationToken batal) =>
+        JalankanNego(
+            id,
+            offerId,
+            User.Id(),
+            permintaan,
+            IdempotensiOrder.HashAksiPenawaran("NEGO", id, offerId, permintaan.Alasan),
+            batal);
+
+    private async Task<ActionResult<OrderResponse>> JalankanJawaban(
+        string aksi,
+        Guid id,
+        Guid offerId,
         CancellationToken batal)
     {
-        var (order, penawaran, galat) = await MuatPenawaranUntukKlien(id, offerId, batal);
-        if (galat is not null) return galat;
-
-        Jawab(penawaran!, OfferStatus.DinegoUlang);
-
-        db.OrderMessages.Add(new OrderMessage
+        if (!IdempotensiOrder.CobaBacaKey(Request, out var key))
         {
-            OrderId = order!.Id,
-            // Ditandai ke jalur obrolan pribadi runner ini, bukan chat umum, supaya runner
-            // lain yang sedang menawar order yang sama tidak ikut membaca alasan nego ini.
-            RunnerPenawarId = penawaran!.CreatedByRunnerId,
-            // Pengirimnya diambil dari token. Peran penulis pesan tidak pernah datang dari
-            // badan permintaan, karena kalau begitu siapa pun bisa menulis atas nama admin.
-            SenderId = User.Id(),
-            SenderRole = UserRole.Klien,
-            Text = permintaan.Alasan.Trim(),
-        });
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Idempotency-Key tidak valid",
+                Detail = $"Header {IdempotensiOrder.NamaHeader} paling panjang {IdempotensiOrder.PanjangKeyMaksimal} karakter.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
 
+        var userId = User.Id();
+        var requestHash = IdempotensiOrder.HashAksiPenawaran(aksi, id, offerId);
+        if (key is not null)
+        {
+            var sebelumnya = await db.IdempotensiAksiPenawaran.AsNoTracking()
+                .SingleOrDefaultAsync(i => i.UserId == userId && i.Key == key, batal);
+            var replay = ReplayAksi(id, offerId, requestHash, sebelumnya);
+            if (replay is not null) return replay;
+        }
+
+        try
+        {
+            await using var transaksi = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, batal);
+            var (order, penawaran, galat) = await MuatPenawaranUntukKlien(id, offerId, batal);
+            if (galat is not null) return galat;
+
+            if (aksi == "SETUJUI")
+            {
+                order!.Price = penawaran!.Price;
+                order.EstimatedDuration = penawaran.EstimatedDuration;
+                order.ScheduledStart = penawaran.ScheduledStart;
+                var perpindahan = OrderStatusChange.Catat(order, OrderStatus.MenungguPembayaran, userId);
+                db.OrderStatusChanges.Add(perpindahan);
+                Jawab(penawaran, OfferStatus.Disetujui);
+                foreach (var lainnya in order.Offers.Where(f => f.Id != penawaran.Id && f.Status == OfferStatus.Pending))
+                {
+                    Jawab(lainnya, OfferStatus.Ditutup);
+                }
+
+                await db.SaveChangesAsync(batal);
+                var hasil = await OrderResponse.DariAsync(db, order, userId, User.Punya(Peran.Admin), batal);
+                await SimpanAksi(key, userId, id, offerId, requestHash, hasil, batal);
+                await transaksi.CommitAsync(batal);
+                await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
+                await pengabar.KabarkanAsync(perpindahan, batal);
+                return Ok(hasil);
+            }
+
+            Jawab(penawaran!, OfferStatus.Ditolak);
+            await db.SaveChangesAsync(batal);
+            var ditolak = await OrderResponse.DariAsync(db, order!, userId, User.Punya(Peran.Admin), batal);
+            await SimpanAksi(key, userId, id, offerId, requestHash, ditolak, batal);
+            await transaksi.CommitAsync(batal);
+            return Ok(ditolak);
+        }
+        catch (Exception galat) when (GalatDb.KalahCepat(galat))
+        {
+            if (key is not null)
+            {
+                var sebelumnya = await db.IdempotensiAksiPenawaran.AsNoTracking()
+                    .SingleOrDefaultAsync(i => i.UserId == userId && i.Key == key, batal);
+                var replay = ReplayAksi(id, offerId, requestHash, sebelumnya);
+                if (replay is not null) return replay;
+            }
+
+            throw;
+        }
+    }
+
+    private async Task<ActionResult<OrderResponse>> JalankanNego(
+        Guid id,
+        Guid offerId,
+        Guid userId,
+        NegoPenawaranRequest permintaan,
+        string requestHash,
+        CancellationToken batal)
+    {
+        if (!IdempotensiOrder.CobaBacaKey(Request, out var key))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Idempotency-Key tidak valid",
+                Detail = $"Header {IdempotensiOrder.NamaHeader} paling panjang {IdempotensiOrder.PanjangKeyMaksimal} karakter.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        if (key is not null)
+        {
+            var sebelumnya = await db.IdempotensiAksiPenawaran.AsNoTracking()
+                .SingleOrDefaultAsync(i => i.UserId == userId && i.Key == key, batal);
+            var replay = ReplayAksi(id, offerId, requestHash, sebelumnya);
+            if (replay is not null) return replay;
+        }
+
+        try
+        {
+            await using var transaksi = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, batal);
+            var (order, penawaran, galat) = await MuatPenawaranUntukKlien(id, offerId, batal);
+            if (galat is not null) return galat;
+
+            Jawab(penawaran!, OfferStatus.DinegoUlang);
+            db.OrderMessages.Add(new OrderMessage
+            {
+                OrderId = order!.Id,
+                RunnerPenawarId = penawaran.CreatedByRunnerId,
+                SenderId = userId,
+                SenderRole = UserRole.Klien,
+                Text = permintaan.Alasan.Trim(),
+            });
+            await db.SaveChangesAsync(batal);
+            var hasil = await OrderResponse.DariAsync(db, order, userId, User.Punya(Peran.Admin), batal);
+            await SimpanAksi(key, userId, id, offerId, requestHash, hasil, batal);
+            await transaksi.CommitAsync(batal);
+            return Ok(hasil);
+        }
+        catch (Exception galat) when (GalatDb.KalahCepat(galat))
+        {
+            if (key is not null)
+            {
+                var sebelumnya = await db.IdempotensiAksiPenawaran.AsNoTracking()
+                    .SingleOrDefaultAsync(i => i.UserId == userId && i.Key == key, batal);
+                var replay = ReplayAksi(id, offerId, requestHash, sebelumnya);
+                if (replay is not null) return replay;
+            }
+
+            throw;
+        }
+    }
+
+    private async Task<ActionResult<OrderResponse>> JalankanCabut(
+        Guid id,
+        Guid offerId,
+        Guid runnerId,
+        CabutPenawaranRequest permintaan,
+        string requestHash,
+        CancellationToken batal)
+    {
+        if (!IdempotensiOrder.CobaBacaKey(Request, out var key))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Idempotency-Key tidak valid",
+                Detail = $"Header {IdempotensiOrder.NamaHeader} paling panjang {IdempotensiOrder.PanjangKeyMaksimal} karakter.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        if (key is not null)
+        {
+            var sebelumnya = await db.IdempotensiAksiPenawaran.AsNoTracking()
+                .SingleOrDefaultAsync(i => i.UserId == runnerId && i.Key == key, batal);
+            var replay = ReplayAksi(id, offerId, requestHash, sebelumnya);
+            if (replay is not null) return replay;
+        }
+
+        try
+        {
+            await using var transaksi = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, batal);
+            var order = await Muat(id, batal);
+            if (order is null) return NotFound();
+            var penawaran = order.Offers.SingleOrDefault(f => f.Id == offerId && f.CreatedByRunnerId == runnerId);
+            if (penawaran is null) return NotFound();
+            if (penawaran.Status is not (OfferStatus.Pending or OfferStatus.DinegoUlang))
+            {
+                return Salah("Penawaran ini sudah tidak bisa dicabut", penawaran.Status == OfferStatus.Disetujui
+                    ? "Penawaranmu sudah dipilih klien dan harganya sudah jadi harga order. Kalau tetap ingin mundur, tunggu pembayarannya masuk lalu lepas ordernya."
+                    : $"Penawaran ini sudah {penawaran.Status}.");
+            }
+
+            var alasan = permintaan.Alasan?.Trim();
+            if (!string.IsNullOrEmpty(alasan))
+            {
+                db.OrderMessages.Add(new OrderMessage
+                {
+                    OrderId = order.Id,
+                    RunnerPenawarId = runnerId,
+                    SenderId = runnerId,
+                    SenderRole = UserRole.Runner,
+                    Text = alasan,
+                });
+            }
+            Jawab(penawaran, OfferStatus.Dicabut);
+            await db.SaveChangesAsync(batal);
+            var hasil = await OrderResponse.DariAsync(db, order, runnerId, User.Punya(Peran.Admin), batal);
+            await SimpanAksi(key, runnerId, id, offerId, requestHash, hasil, batal);
+            await transaksi.CommitAsync(batal);
+            await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
+            return Ok(hasil);
+        }
+        catch (Exception galat) when (GalatDb.KalahCepat(galat))
+        {
+            if (key is not null)
+            {
+                var sebelumnya = await db.IdempotensiAksiPenawaran.AsNoTracking()
+                    .SingleOrDefaultAsync(i => i.UserId == runnerId && i.Key == key, batal);
+                var replay = ReplayAksi(id, offerId, requestHash, sebelumnya);
+                if (replay is not null) return replay;
+            }
+
+            throw;
+        }
+    }
+
+    private async Task SimpanAksi(
+        string? key,
+        Guid userId,
+        Guid orderId,
+        Guid offerId,
+        string requestHash,
+        OrderResponse respons,
+        CancellationToken batal)
+    {
+        if (key is null) return;
+        db.IdempotensiAksiPenawaran.Add(new IdempotensiAksiPenawaran
+        {
+            Key = key,
+            UserId = userId,
+            OrderId = orderId,
+            OfferId = offerId,
+            RequestHash = requestHash,
+            ResponseJson = IdempotensiOrder.SimpanRespons(respons),
+        });
         await db.SaveChangesAsync(batal);
-        return Ok(await OrderResponse.DariAsync(db, order, User.Id(), User.Punya(Peran.Admin), batal));
+    }
+
+    private ActionResult<OrderResponse>? ReplayAksi(
+        Guid orderId,
+        Guid offerId,
+        string requestHash,
+        IdempotensiAksiPenawaran? sebelumnya)
+    {
+        if (sebelumnya is null) return null;
+        if (sebelumnya.OrderId != orderId || sebelumnya.OfferId != offerId || sebelumnya.RequestHash != requestHash)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Idempotency-Key sudah dipakai",
+                Detail = "Gunakan key baru untuk aksi penawaran yang berbeda.",
+                Status = StatusCodes.Status409Conflict,
+            });
+        }
+
+        var respons = IdempotensiOrder.BacaRespons<OrderResponse>(sebelumnya);
+        return respons is null ? Problem(statusCode: StatusCodes.Status500InternalServerError) : Ok(respons);
     }
 
     private Task<Order?> Muat(Guid id, CancellationToken batal) => db.Orders

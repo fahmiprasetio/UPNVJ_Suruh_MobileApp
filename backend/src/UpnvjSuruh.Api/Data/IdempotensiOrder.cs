@@ -58,6 +58,16 @@ public static class IdempotensiOrder
 
     public static string HashTerima(Guid orderId) => Hash("TERIMA", orderId.ToString("D"));
 
+    public static string HashAksiPenawaran(
+        string aksi,
+        Guid orderId,
+        Guid offerId,
+        string? alasan = null) => Hash(
+            aksi,
+            orderId.ToString("D"),
+            offerId.ToString("D"),
+            alasan?.Trim());
+
     public static string HashLepas(Guid orderId, LepasOrderRequest request) => Hash(
         "LEPAS",
         orderId.ToString("D"),
@@ -78,6 +88,9 @@ public static class IdempotensiOrder
         BacaRespons<T>(jejak.ResponseJson);
 
     public static T? BacaRespons<T>(IdempotensiTerimaOrder jejak) =>
+        BacaRespons<T>(jejak.ResponseJson);
+
+    public static T? BacaRespons<T>(IdempotensiAksiPenawaran jejak) =>
         BacaRespons<T>(jejak.ResponseJson);
 
     public static T? BacaRespons<T>(IdempotensiLepasOrder jejak) =>

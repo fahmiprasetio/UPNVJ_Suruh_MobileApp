@@ -47,6 +47,7 @@ class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
   final Set<String> _sedangDilepas = {};
   final Set<String> _sedangDitarik = {};
   final Map<String, String> _keyLepas = {};
+  final Map<String, String> _keyCabut = {};
 
   @override
   Widget build(BuildContext context) {
@@ -209,6 +210,11 @@ class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
     if (hasil == null || !context.mounted) return;
     if (_sedangDitarik.contains(penawaran.id)) return;
 
+    final requestKey = '${order.id}|${penawaran.id}|${hasil.alasan ?? ''}';
+    final idempotencyKey = _keyCabut.putIfAbsent(
+      requestKey,
+      buatIdempotencyKey,
+    );
     setState(() => _sedangDitarik.add(penawaran.id));
     try {
       await ref
@@ -217,6 +223,7 @@ class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
             orderId: order.id,
             penawaranId: penawaran.id,
             alasan: hasil.alasan,
+            idempotencyKey: idempotencyKey,
           );
     } catch (galat) {
       if (!context.mounted) return;
@@ -234,7 +241,10 @@ class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
     }
 
     if (!context.mounted) return;
-    setState(() => _sedangDitarik.remove(penawaran.id));
+    setState(() {
+      _sedangDitarik.remove(penawaran.id);
+      _keyCabut.remove(requestKey);
+    });
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
