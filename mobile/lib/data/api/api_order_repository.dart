@@ -247,6 +247,7 @@ class ApiOrderRepository implements OrderRepository {
     required Duration estimasiDurasi,
     required DateTime jadwalMulai,
     String? catatan,
+    String? idempotencyKey,
   }) => _tindakan(
     '/api/orders/$orderId/penawaran',
     badan: {
@@ -255,6 +256,9 @@ class ApiOrderRepository implements OrderRepository {
       'jadwalMulai': jadwalMulai.toUtc().toIso8601String(),
       'catatan': ?catatan,
     },
+    headerTambahan: idempotencyKey == null
+        ? null
+        : {'Idempotency-Key': idempotencyKey},
   );
 
   @override

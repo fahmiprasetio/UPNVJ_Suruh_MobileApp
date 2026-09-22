@@ -381,6 +381,7 @@ class _RepoGagalKirimTawar extends FakeOrderRepository {
     required Duration estimasiDurasi,
     required DateTime jadwalMulai,
     String? catatan,
+    String? idempotencyKey,
   }) async {
     throw Exception('RAHASIA_INTERNAL_DATABASE_TIMEOUT');
   }

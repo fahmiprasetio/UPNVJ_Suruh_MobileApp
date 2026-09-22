@@ -366,6 +366,7 @@ class FakeOrderRepository implements OrderRepository {
     required Duration estimasiDurasi,
     required DateTime jadwalMulai,
     String? catatan,
+    String? idempotencyKey,
   }) => buatPenawaranSebagai(
     orderId: orderId,
     runnerId: _pemanggil(),

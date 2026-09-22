@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api/galat_api.dart';
+import '../../../core/api/idempotency_key.dart';
 import '../../../core/format/formatters.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/models/order.dart';
@@ -31,6 +32,7 @@ class AjukanTawaranScreen extends ConsumerStatefulWidget {
 
 class _AjukanTawaranScreenState extends ConsumerState<AjukanTawaranScreen> {
   final _formKey = GlobalKey<FormState>();
+  late final String _idempotencyKey = buatIdempotencyKey();
   final _hargaController = TextEditingController();
   final _catatanController = TextEditingController();
 
@@ -124,6 +126,7 @@ class _AjukanTawaranScreenState extends ConsumerState<AjukanTawaranScreen> {
             catatan: _catatanController.text.trim().isEmpty
                 ? null
                 : _catatanController.text.trim(),
+            idempotencyKey: _idempotencyKey,
           );
     } catch (galat) {
       if (!mounted) return;

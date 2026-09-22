@@ -48,10 +48,24 @@ public static class IdempotensiOrder
         request.AlamatTujuan?.Trim(),
         request.JumlahRunnerDibutuhkan.ToString(CultureInfo.InvariantCulture));
 
+    public static string HashPenawaran(Guid orderId, BuatPenawaranRequest request) => Hash(
+        "PENAWARAN",
+        orderId.ToString("D"),
+        request.Harga.ToString(CultureInfo.InvariantCulture),
+        request.EstimasiDurasiMenit.ToString(CultureInfo.InvariantCulture),
+        request.JadwalMulai.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture),
+        request.Catatan?.Trim());
+
     public static string SimpanRespons<T>(T respons) => JsonSerializer.Serialize(respons, OpsiJson);
 
     public static T? BacaRespons<T>(IdempotensiPembuatanOrder jejak) =>
-        JsonSerializer.Deserialize<T>(jejak.ResponseJson, OpsiJson);
+        BacaRespons<T>(jejak.ResponseJson);
+
+    public static T? BacaRespons<T>(IdempotensiPembuatanPenawaran jejak) =>
+        BacaRespons<T>(jejak.ResponseJson);
+
+    private static T? BacaRespons<T>(string responseJson) =>
+        JsonSerializer.Deserialize<T>(responseJson, OpsiJson);
 
     private static string Hash(params string?[] bagian)
     {

@@ -101,6 +101,7 @@ abstract interface class OrderRepository {
     required Duration estimasiDurasi,
     required DateTime jadwalMulai,
     String? catatan,
+    String? idempotencyKey,
   });
 
   /// Jalur A: harga dihitung server dari jenis layanan dan jarak.

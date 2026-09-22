@@ -200,6 +200,36 @@ public class JalurBController(
         BuatPenawaranRequest permintaan,
         CancellationToken batal)
     {
+        if (!IdempotensiOrder.CobaBacaKey(Request, out var key))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Idempotency-Key tidak valid",
+                Detail = $"Header {IdempotensiOrder.NamaHeader} paling panjang {IdempotensiOrder.PanjangKeyMaksimal} karakter.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        var runnerId = User.Id();
+        var requestHash = key is null ? null : IdempotensiOrder.HashPenawaran(id, permintaan);
+        if (key is not null)
+        {
+            var sebelumnya = await db.IdempotensiPembuatanPenawaran
+                .AsNoTracking()
+                .SingleOrDefaultAsync(i => i.RunnerId == runnerId && i.Key == key, batal);
+            if (sebelumnya is not null)
+            {
+                if (sebelumnya.OrderId != id || sebelumnya.RequestHash != requestHash)
+                {
+                    return Conflict(KonflikIdempotensi());
+                }
+
+                var responsLama = IdempotensiOrder.BacaRespons<OrderResponse>(sebelumnya);
+                if (responsLama is null) return Problem(statusCode: StatusCodes.Status500InternalServerError);
+                return Ok(responsLama);
+            }
+        }
+
         var order = await Muat(id, batal);
         if (order is null) return NotFound();
 
@@ -207,8 +237,6 @@ public class JalurBController(
         {
             return Salah("Bukan Jalur B", "Harga order ini sudah pasti sejak dibuat.");
         }
-
-        var runnerId = User.Id();
 
         // Klien yang akun yang sama juga menyandang peran Runner tidak boleh menawar
         // ordernya sendiri. Tanpa ini, satu akun bisa "memenangkan" pesanannya sendiri
@@ -261,21 +289,57 @@ public class JalurBController(
         // selama klien belum memilih siapa pun, dan harga ordernya baru terisi begitu
         // klien menyetujui satu penawaran, bukan begitu penawaran pertama masuk.
 
-        try
+        OrderResponse hasil;
+        if (key is null)
         {
             await db.SaveChangesAsync(batal);
+            hasil = await OrderResponse.DariAsync(db, order, runnerId, User.Punya(Peran.Admin), batal);
         }
-        catch (DbUpdateException galat) when (GalatDb.Bentrok(galat))
+        else
         {
-            // Runner yang sama mengirim dua penawaran sekaligus untuk order yang sama.
-            // Index unik parsial pada pasangan (OrderId, CreatedByRunnerId) yang menahannya,
-            // bukan pemeriksaan status di atas, karena keduanya membaca sebelum ada yang
-            // menulis. Runner LAIN yang menawar order ini pada saat bersamaan tidak kena
-            // konflik ini sama sekali, itu memang tawar-menawar, bukan tabrakan.
-            return Konflik("Anda sudah punya penawaran yang menunggu jawaban untuk order ini.");
+            try
+            {
+                await using var transaksi = await db.Database.BeginTransactionAsync(batal);
+                await db.SaveChangesAsync(batal);
+                hasil = await OrderResponse.DariAsync(db, order, runnerId, User.Punya(Peran.Admin), batal);
+                db.IdempotensiPembuatanPenawaran.Add(new IdempotensiPembuatanPenawaran
+                {
+                    Key = key,
+                    RunnerId = runnerId,
+                    OrderId = id,
+                    RequestHash = requestHash!,
+                    OfferId = penawaran.Id,
+                    ResponseJson = IdempotensiOrder.SimpanRespons(hasil),
+                });
+                await db.SaveChangesAsync(batal);
+                await transaksi.CommitAsync(batal);
+            }
+            catch (DbUpdateException galat) when (GalatDb.Bentrok(galat))
+            {
+                // Request ulang dengan key sama bisa tiba bersamaan. Jika key telah tercatat,
+                // kembalikan respons pemenang; jika belum, bentroknya adalah penawaran pending
+                // lain milik runner ini. Runner lain tetap tidak pernah masuk ke cabang ini.
+                db.ChangeTracker.Clear();
+                var sebelumnya = await db.IdempotensiPembuatanPenawaran
+                    .AsNoTracking()
+                    .SingleOrDefaultAsync(i => i.RunnerId == runnerId && i.Key == key, batal);
+                if (sebelumnya is not null)
+                {
+                    if (sebelumnya.OrderId != id || sebelumnya.RequestHash != requestHash)
+                    {
+                        return Conflict(KonflikIdempotensi());
+                    }
+
+                    var responsLama = IdempotensiOrder.BacaRespons<OrderResponse>(sebelumnya);
+                    if (responsLama is null) return Problem(statusCode: StatusCodes.Status500InternalServerError);
+                    return Ok(responsLama);
+                }
+
+                return Konflik("Anda sudah punya penawaran yang menunggu jawaban untuk order ini.");
+            }
         }
 
-        return Ok(await OrderResponse.DariAsync(db, order, User.Id(), User.Punya(Peran.Admin), batal));
+        return Ok(hasil);
     }
 
     /// <summary>
