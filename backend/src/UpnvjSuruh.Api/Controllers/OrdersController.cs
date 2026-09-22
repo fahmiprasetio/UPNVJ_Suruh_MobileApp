@@ -387,7 +387,26 @@ public class OrdersController(
     [Authorize(Roles = Peran.Runner)]
     public async Task<ActionResult<TerimaOrderResponse>> Terima(Guid id, CancellationToken batal)
     {
+        if (!IdempotensiOrder.CobaBacaKey(Request, out var key))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Idempotency-Key tidak valid",
+                Detail = $"Header {IdempotensiOrder.NamaHeader} paling panjang {IdempotensiOrder.PanjangKeyMaksimal} karakter.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
         var runnerId = User.Id();
+        var requestHash = key is null ? null : IdempotensiOrder.HashTerima(id);
+        if (key is not null)
+        {
+            var sebelumnya = await db.IdempotensiTerimaOrder
+                .AsNoTracking()
+                .SingleOrDefaultAsync(i => i.RunnerId == runnerId && i.Key == key, batal);
+            var replay = ReplayTerima(id, requestHash!, sebelumnya);
+            if (replay is not null) return replay;
+        }
 
         // Seluruh transaksinya dibungkus, bukan cuma penyimpanannya.
         //
@@ -398,17 +417,50 @@ public class OrdersController(
         // aplikasinya rusak.
         try
         {
-            return await Jalankan(id, runnerId, batal);
+            return await Jalankan(id, runnerId, key, requestHash, batal);
         }
         catch (Exception galat) when (GalatDb.KalahCepat(galat))
         {
+            if (key is not null)
+            {
+                var sebelumnya = await db.IdempotensiTerimaOrder
+                    .AsNoTracking()
+                    .SingleOrDefaultAsync(i => i.RunnerId == runnerId && i.Key == key, batal);
+                var replay = ReplayTerima(id, requestHash!, sebelumnya);
+                if (replay is not null) return replay;
+            }
+
             return Ok(new TerimaOrderResponse(false, "Order ini keburu diambil runner lain."));
         }
+    }
+
+    private ActionResult<TerimaOrderResponse>? ReplayTerima(
+        Guid id,
+        string requestHash,
+        IdempotensiTerimaOrder? sebelumnya)
+    {
+        if (sebelumnya is null) return null;
+        if (sebelumnya.OrderId != id || sebelumnya.RequestHash != requestHash)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Idempotency-Key sudah dipakai",
+                Detail = "Gunakan key baru untuk aksi order yang berbeda.",
+                Status = StatusCodes.Status409Conflict,
+            });
+        }
+
+        var respons = IdempotensiOrder.BacaRespons<TerimaOrderResponse>(sebelumnya);
+        return respons is null
+            ? Problem(statusCode: StatusCodes.Status500InternalServerError)
+            : Ok(respons);
     }
 
     private async Task<ActionResult<TerimaOrderResponse>> Jalankan(
         Guid id,
         Guid runnerId,
+        string? key,
+        string? requestHash,
         CancellationToken batal)
     {
         await using var transaksi = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, batal);
@@ -480,6 +532,20 @@ public class OrdersController(
         }
 
         await db.SaveChangesAsync(batal);
+        var hasil = new TerimaOrderResponse(true, "Order jadi milikmu.");
+        if (key is not null)
+        {
+            db.IdempotensiTerimaOrder.Add(new IdempotensiTerimaOrder
+            {
+                Key = key,
+                RunnerId = runnerId,
+                OrderId = id,
+                RequestHash = requestHash!,
+                ResponseJson = IdempotensiOrder.SimpanRespons(hasil),
+            });
+            await db.SaveChangesAsync(batal);
+        }
+
         await transaksi.CommitAsync(batal);
 
         // Runner lain yang masih menatap kartu siaran ini di layarnya harus tahu kuotanya
@@ -498,7 +564,7 @@ public class OrdersController(
 
         if (perpindahan is not null) await pengabar.KabarkanAsync(perpindahan, batal);
 
-        return Ok(new TerimaOrderResponse(true, "Order jadi milikmu."));
+        return Ok(hasil);
     }
 
     /// <summary>

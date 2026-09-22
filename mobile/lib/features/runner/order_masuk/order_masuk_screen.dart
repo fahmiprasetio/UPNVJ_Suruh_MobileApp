@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/galat_api.dart';
+import '../../../core/api/idempotency_key.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/models/order.dart';
 import '../../../providers/repository_providers.dart';
@@ -32,6 +33,7 @@ class _OrderMasukScreenState extends ConsumerState<OrderMasukScreen> {
   /// satu bendera untuk seluruh layar, supaya menerima satu order tidak
   /// mengunci tombol order lain.
   final Set<String> _sedangDiproses = {};
+  final Map<String, String> _keyTerima = {};
 
   @override
   Widget build(BuildContext context) {
@@ -119,12 +121,13 @@ class _OrderMasukScreenState extends ConsumerState<OrderMasukScreen> {
     if (user == null) return;
 
     setState(() => _sedangDiproses.add(order.id));
+    final key = _keyTerima.putIfAbsent(order.id, buatIdempotencyKey);
 
     final bool dapat;
     try {
       dapat = await ref
           .read(orderRepositoryProvider)
-          .terimaOrder(orderId: order.id);
+          .terimaOrder(orderId: order.id, idempotencyKey: key);
     } catch (galat) {
       if (!mounted) return;
       setState(() => _sedangDiproses.remove(order.id));
@@ -137,7 +140,10 @@ class _OrderMasukScreenState extends ConsumerState<OrderMasukScreen> {
     }
 
     if (!mounted) return;
-    setState(() => _sedangDiproses.remove(order.id));
+    setState(() {
+      _sedangDiproses.remove(order.id);
+      _keyTerima.remove(order.id);
+    });
 
     // Kalah cepat bukan kegagalan sistem, jadi tidak ditampilkan sebagai
     // galat. Ordernya juga hilang sendiri dari daftar karena siarannya sudah

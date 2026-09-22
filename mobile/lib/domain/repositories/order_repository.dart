@@ -176,7 +176,10 @@ abstract interface class OrderRepository {
   ///
   /// Melanggar aturan tetap melempar, dan satu-satunya aturan di sini: pemesan tidak
   /// boleh menjadi runner ordernya sendiri.
-  Future<bool> terimaOrder({required String orderId});
+  Future<bool> terimaOrder({
+    required String orderId,
+    String? idempotencyKey,
+  });
 
   /// Runner menandai pekerjaannya selesai.
   ///

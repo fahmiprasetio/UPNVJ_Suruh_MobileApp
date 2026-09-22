@@ -56,12 +56,17 @@ public static class IdempotensiOrder
         request.JadwalMulai.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture),
         request.Catatan?.Trim());
 
+    public static string HashTerima(Guid orderId) => Hash("TERIMA", orderId.ToString("D"));
+
     public static string SimpanRespons<T>(T respons) => JsonSerializer.Serialize(respons, OpsiJson);
 
     public static T? BacaRespons<T>(IdempotensiPembuatanOrder jejak) =>
         BacaRespons<T>(jejak.ResponseJson);
 
     public static T? BacaRespons<T>(IdempotensiPembuatanPenawaran jejak) =>
+        BacaRespons<T>(jejak.ResponseJson);
+
+    public static T? BacaRespons<T>(IdempotensiTerimaOrder jejak) =>
         BacaRespons<T>(jejak.ResponseJson);
 
     private static T? BacaRespons<T>(string responseJson) =>

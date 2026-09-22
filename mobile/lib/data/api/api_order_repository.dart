@@ -286,8 +286,16 @@ class ApiOrderRepository implements OrderRepository {
   // --- Runner ---
 
   @override
-  Future<bool> terimaOrder({required String orderId}) async {
-    final jawaban = await _klien.post('/api/orders/$orderId/terima');
+  Future<bool> terimaOrder({
+    required String orderId,
+    String? idempotencyKey,
+  }) async {
+    final jawaban = await _klien.post(
+      '/api/orders/$orderId/terima',
+      headerTambahan: idempotencyKey == null
+          ? null
+          : {'Idempotency-Key': idempotencyKey},
+    );
     _tandaiBerubah();
     // Kalah cepat bukan galat, jadi server menjawab 200 dengan penanda di badan.
     return jawaban['dapat'] == true;
