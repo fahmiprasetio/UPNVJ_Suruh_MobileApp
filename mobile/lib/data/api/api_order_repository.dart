@@ -306,12 +306,16 @@ class ApiOrderRepository implements OrderRepository {
     required String orderId,
     required String fotoBuktiUrl,
     String? catatanSerahTerima,
+    String? idempotencyKey,
   }) => _tindakan(
     '/api/orders/$orderId/selesai',
     badan: {
       'fotoBuktiUrl': fotoBuktiUrl,
       'catatanSerahTerima': ?catatanSerahTerima,
     },
+    headerTambahan: idempotencyKey == null
+        ? null
+        : {'Idempotency-Key': idempotencyKey},
   );
 
   @override

@@ -63,6 +63,12 @@ public static class IdempotensiOrder
         orderId.ToString("D"),
         request.Alasan.Trim());
 
+    public static string HashSelesaikan(Guid orderId, SelesaikanOrderRequest request) => Hash(
+        "SELESAI",
+        orderId.ToString("D"),
+        request.FotoBuktiUrl.Trim(),
+        request.CatatanSerahTerima?.Trim());
+
     public static string SimpanRespons<T>(T respons) => JsonSerializer.Serialize(respons, OpsiJson);
 
     public static T? BacaRespons<T>(IdempotensiPembuatanOrder jejak) =>
@@ -75,6 +81,9 @@ public static class IdempotensiOrder
         BacaRespons<T>(jejak.ResponseJson);
 
     public static T? BacaRespons<T>(IdempotensiLepasOrder jejak) =>
+        BacaRespons<T>(jejak.ResponseJson);
+
+    public static T? BacaRespons<T>(IdempotensiSelesaikanOrder jejak) =>
         BacaRespons<T>(jejak.ResponseJson);
 
     private static T? BacaRespons<T>(string responseJson) =>

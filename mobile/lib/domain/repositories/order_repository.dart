@@ -189,6 +189,7 @@ abstract interface class OrderRepository {
     required String orderId,
     required String fotoBuktiUrl,
     String? catatanSerahTerima,
+    String? idempotencyKey,
   });
 
   /// Runner melepas order yang sudah dipegangnya, dan order itu kembali dicari

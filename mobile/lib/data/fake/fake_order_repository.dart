@@ -673,6 +673,7 @@ class FakeOrderRepository implements OrderRepository {
     required String orderId,
     required String fotoBuktiUrl,
     String? catatanSerahTerima,
+    String? idempotencyKey,
   }) => selesaikanOrderSebagai(
     orderId: orderId,
     runnerId: _pemanggil(),

@@ -782,9 +782,32 @@ public class OrdersController(
         SelesaikanOrderRequest permintaan,
         CancellationToken batal)
     {
-        var runnerId = User.Id();
+        if (!IdempotensiOrder.CobaBacaKey(Request, out var key))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Idempotency-Key tidak valid",
+                Detail = $"Header {IdempotensiOrder.NamaHeader} paling panjang {IdempotensiOrder.PanjangKeyMaksimal} karakter.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
 
-        var order = await db.Orders
+        var runnerId = User.Id();
+        var requestHash = key is null ? null : IdempotensiOrder.HashSelesaikan(id, permintaan);
+        if (key is not null)
+        {
+            var sebelumnya = await db.IdempotensiSelesaikanOrder
+                .AsNoTracking()
+                .SingleOrDefaultAsync(i => i.RunnerId == runnerId && i.Key == key, batal);
+            var replay = ReplaySelesaikan(id, requestHash!, sebelumnya);
+            if (replay is not null) return replay;
+        }
+
+        try
+        {
+            await using var transaksi = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, batal);
+
+            var order = await db.Orders
             .Include(o => o.RunnerAssignments)
             .ThenInclude(a => a.Runner)
             .Include(o => o.Offers)
@@ -853,9 +876,60 @@ public class OrdersController(
         PembekuPayout.Bekukan(order, payoutSetting);
 
         await db.SaveChangesAsync(batal);
+        var hasil = await OrderResponse.DariAsync(db, order, runnerId, User.Punya(Peran.Admin), batal);
+        if (key is not null)
+        {
+            db.IdempotensiSelesaikanOrder.Add(new IdempotensiSelesaikanOrder
+            {
+                Key = key,
+                RunnerId = runnerId,
+                OrderId = id,
+                RequestHash = requestHash!,
+                ResponseJson = IdempotensiOrder.SimpanRespons(hasil),
+            });
+            await db.SaveChangesAsync(batal);
+        }
+
+        await transaksi.CommitAsync(batal);
         await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
         await pengabar.KabarkanAsync(perpindahan, batal);
-        return Ok(await OrderResponse.DariAsync(db, order, User.Id(), User.Punya(Peran.Admin), batal));
+        return Ok(hasil);
+        }
+        catch (Exception galat) when (GalatDb.KalahCepat(galat))
+        {
+            if (key is not null)
+            {
+                var sebelumnya = await db.IdempotensiSelesaikanOrder
+                    .AsNoTracking()
+                    .SingleOrDefaultAsync(i => i.RunnerId == runnerId && i.Key == key, batal);
+                var replay = ReplaySelesaikan(id, requestHash!, sebelumnya);
+                if (replay is not null) return replay;
+            }
+
+            throw;
+        }
+    }
+
+    private ActionResult<OrderResponse>? ReplaySelesaikan(
+        Guid id,
+        string requestHash,
+        IdempotensiSelesaikanOrder? sebelumnya)
+    {
+        if (sebelumnya is null) return null;
+        if (sebelumnya.OrderId != id || sebelumnya.RequestHash != requestHash)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Idempotency-Key sudah dipakai",
+                Detail = "Gunakan key baru untuk aksi order yang berbeda.",
+                Status = StatusCodes.Status409Conflict,
+            });
+        }
+
+        var respons = IdempotensiOrder.BacaRespons<OrderResponse>(sebelumnya);
+        return respons is null
+            ? Problem(statusCode: StatusCodes.Status500InternalServerError)
+            : Ok(respons);
     }
 
     /// <summary>

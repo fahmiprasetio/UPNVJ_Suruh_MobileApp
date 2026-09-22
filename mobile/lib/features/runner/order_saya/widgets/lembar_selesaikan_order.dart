@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/api/galat_api.dart';
+import '../../../../core/api/idempotency_key.dart';
 import '../../../../core/config/batas_masukan.dart';
 
 import '../../../../core/theme/app_theme.dart';
@@ -48,6 +49,7 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
   String? _fotoBuktiUrl;
   bool _sedangAmbilFoto = false;
   bool _sedangMenutup = false;
+  final Map<String, String> _keySelesai = {};
 
   @override
   void dispose() {
@@ -180,6 +182,11 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
     setState(() => _sedangMenutup = true);
 
     final catatan = _catatanController.text.trim();
+    final requestKey = '$fotoBuktiUrl|$catatan';
+    final idempotencyKey = _keySelesai.putIfAbsent(
+      requestKey,
+      buatIdempotencyKey,
+    );
     try {
       await ref
           .read(orderRepositoryProvider)
@@ -187,6 +194,7 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
             orderId: widget.order.id,
             fotoBuktiUrl: fotoBuktiUrl,
             catatanSerahTerima: catatan.isEmpty ? null : catatan,
+            idempotencyKey: idempotencyKey,
           );
     } catch (galat) {
       if (!mounted) return;
