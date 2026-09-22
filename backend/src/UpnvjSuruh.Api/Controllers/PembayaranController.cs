@@ -69,6 +69,19 @@ public class PembayaranController(AppDbContext db, IPembayaranGateway gateway) :
         var adaYangMenunggu = Hidup(order);
         if (adaYangMenunggu is not null)
         {
+            // Baris pembayaran disimpan sebelum gateway dipanggil. Request paralel atau
+            // retry setelah timeout bisa tiba pada jendela singkat ketika barisnya sudah
+            // ada tetapi QR belum diterima; jangan mengirim QR kosong ke klien.
+            if (string.IsNullOrWhiteSpace(adaYangMenunggu.QrPayload))
+            {
+                return Conflict(new ProblemDetails
+                {
+                    Title = "Pembayaran sedang diproses",
+                    Detail = "Coba lagi sebentar untuk mengambil kode QR yang sudah dibuat.",
+                    Status = StatusCodes.Status409Conflict,
+                });
+            }
+
             return Ok(TransaksiPembayaranResponse.Dari(adaYangMenunggu));
         }
 
@@ -115,6 +128,16 @@ public class PembayaranController(AppDbContext db, IPembayaranGateway gateway) :
                 ? null
                 : Hidup(orderSesudahBentrok);
             if (transaksiPemenang is null) throw;
+            if (string.IsNullOrWhiteSpace(transaksiPemenang.QrPayload))
+            {
+                return Conflict(new ProblemDetails
+                {
+                    Title = "Pembayaran sedang diproses",
+                    Detail = "Coba lagi sebentar untuk mengambil kode QR yang sudah dibuat.",
+                    Status = StatusCodes.Status409Conflict,
+                });
+            }
+
             return Ok(TransaksiPembayaranResponse.Dari(transaksiPemenang));
         }
 
@@ -181,7 +204,19 @@ public class PembayaranController(AppDbContext db, IPembayaranGateway gateway) :
         if (order is null) return NotFound();
 
         var pembayaran = Hidup(order);
-        if (pembayaran is null) return NotFound();
+        if (pembayaran is null)
+        {
+            // Retry setelah pembatalan berhasil tidak boleh berubah menjadi 404. Status
+            // terminal yang memang berarti tagihan batal adalah hasil yang sama, tanpa
+            // menulis ulang atau membuat jejak pembayaran baru.
+            var terakhir = order.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
+            if (terakhir?.Status is PaymentStatus.Gagal or PaymentStatus.Kedaluwarsa)
+            {
+                return NoContent();
+            }
+
+            return NotFound();
+        }
 
         pembayaran.Status = PaymentStatus.Gagal;
         await db.SaveChangesAsync(batal);
