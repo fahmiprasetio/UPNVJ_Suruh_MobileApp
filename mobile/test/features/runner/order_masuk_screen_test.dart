@@ -288,7 +288,10 @@ class _RepoGagalTerima extends FakeOrderRepository {
       : super(pemanggil: () => SeedData.runner.id);
 
   @override
-  Future<bool> terimaOrder({required String orderId}) async {
+  Future<bool> terimaOrder({
+    required String orderId,
+    String? idempotencyKey,
+  }) async {
     await Future<void>.delayed(const Duration(milliseconds: 100));
     throw Exception('RAHASIA_INTERNAL_DATABASE_TIMEOUT');
   }
@@ -299,7 +302,10 @@ class _RepoGagalTerimaApi extends FakeOrderRepository {
       : super(pemanggil: () => SeedData.runner.id);
 
   @override
-  Future<bool> terimaOrder({required String orderId}) async {
+  Future<bool> terimaOrder({
+    required String orderId,
+    String? idempotencyKey,
+  }) async {
     await Future<void>.delayed(const Duration(milliseconds: 100));
     throw const GalatDilarang('Akunmu belum diverifikasi.');
   }

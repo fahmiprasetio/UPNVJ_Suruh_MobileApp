@@ -293,8 +293,16 @@ public class JalurBController(
         OrderResponse hasil;
         if (key is null)
         {
-            await db.SaveChangesAsync(batal);
-            hasil = await OrderResponse.DariAsync(db, order, runnerId, User.Punya(Peran.Admin), batal);
+            try
+            {
+                await db.SaveChangesAsync(batal);
+                hasil = await OrderResponse.DariAsync(db, order, runnerId, User.Punya(Peran.Admin), batal);
+            }
+            catch (DbUpdateException galat) when (GalatDb.Bentrok(galat))
+            {
+                db.ChangeTracker.Clear();
+                return Konflik("Anda sudah punya penawaran yang menunggu jawaban untuk order ini.");
+            }
         }
         else
         {
@@ -555,17 +563,19 @@ public class JalurBController(
             var (order, penawaran, galat) = await MuatPenawaranUntukKlien(id, offerId, batal);
             if (galat is not null) return galat;
 
-            Jawab(penawaran!, OfferStatus.DinegoUlang);
+            var orderAktif = order!;
+            var penawaranAktif = penawaran!;
+            Jawab(penawaranAktif, OfferStatus.DinegoUlang);
             db.OrderMessages.Add(new OrderMessage
             {
-                OrderId = order!.Id,
-                RunnerPenawarId = penawaran.CreatedByRunnerId,
+                OrderId = orderAktif.Id,
+                RunnerPenawarId = penawaranAktif.CreatedByRunnerId,
                 SenderId = userId,
                 SenderRole = UserRole.Klien,
                 Text = permintaan.Alasan.Trim(),
             });
             await db.SaveChangesAsync(batal);
-            var hasil = await OrderResponse.DariAsync(db, order, userId, User.Punya(Peran.Admin), batal);
+            var hasil = await OrderResponse.DariAsync(db, orderAktif, userId, User.Punya(Peran.Admin), batal);
             await SimpanAksi(key, userId, id, offerId, requestHash, hasil, batal);
             await transaksi.CommitAsync(batal);
             return Ok(hasil);
