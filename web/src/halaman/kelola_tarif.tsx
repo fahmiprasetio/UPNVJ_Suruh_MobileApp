@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 
 import { useSesi } from '../auth/sesi';
 import { ambilTarif, perbaruiTarif } from '../inti/api_admin';
 import { formatTanggalJam } from '../inti/format';
+import { buatIdempotencyKey } from '../inti/idempotensi';
 import { gunakanMuat } from '../inti/gunakan_muat';
 import type { Tarif } from '../inti/tipe';
 import { KotakGalat, Memuat, pesanGalat } from '../komponen/keadaan';
@@ -47,6 +48,7 @@ function FormTarif({ tarif, onDisimpan }: { tarif: Tarif; onDisimpan: () => void
   const [sibuk, setSibuk] = useState(false);
   const [galat, setGalat] = useState<unknown>(null);
   const [tersimpan, setTersimpan] = useState(false);
+  const key = useRef(buatIdempotencyKey());
 
   // Form ikut mengikuti tarif yang baru dimuat ulang (dipicu `key` di pemanggil saat
   // `diubahPada` berganti sesudah disimpan), bukan menyisakan angka lama di layar.
@@ -67,7 +69,8 @@ function FormTarif({ tarif, onDisimpan }: { tarif: Tarif; onDisimpan: () => void
     setTersimpan(false);
     try {
       const { diubahPada: _diubahPada, ...badan } = nilai;
-      await perbaruiTarif(api, badan);
+      await perbaruiTarif(api, badan, key.current);
+      key.current = buatIdempotencyKey();
       setTersimpan(true);
       onDisimpan();
     } catch (salah) {

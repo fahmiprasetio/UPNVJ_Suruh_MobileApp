@@ -282,6 +282,27 @@ public class AdminPenggunaController(
         TangguhkanAkunRequest permintaan,
         CancellationToken batal)
     {
+        if (!IdempotensiAdmin.CobaBacaKey(Request, out var key))
+        {
+            return IdempotensiAdmin.KeyTidakValid();
+        }
+
+        var adminId = User.Id();
+        var requestHash = key is null ? null : IdempotensiOrder.HashAdmin(
+            "TANGGUHKAN", id.ToString("D"), permintaan.Alasan.Trim());
+        if (key is not null)
+        {
+            var sebelumnya = await db.IdempotensiAksiAdmin.AsNoTracking()
+                .SingleOrDefaultAsync(i => i.Key == key, batal);
+            if (sebelumnya is not null)
+            {
+                if (sebelumnya.AdminId != adminId || sebelumnya.Operation != "TANGGUHKAN" ||
+                    sebelumnya.RequestHash != requestHash) return IdempotensiAdmin.Konflik();
+                var responsLama = IdempotensiOrder.BacaRespons<UserResponse>(sebelumnya);
+                return responsLama is null ? Problem(statusCode: 500) : Ok(responsLama);
+            }
+        }
+
         var user = await db.Users.SingleOrDefaultAsync(u => u.Id == id, batal);
         if (user is null) return NotFound();
 
@@ -289,7 +310,7 @@ public class AdminPenggunaController(
         // paling mungkin melakukannya orang yang salah menekan sambil menyunting akunnya
         // sendiri, dan akibatnya ia langsung kehilangan akses ke satu-satunya layar yang
         // bisa mengembalikannya.
-        if (id == User.Id())
+        if (id == adminId)
         {
             return Salah(
                 "Tidak bisa menangguhkan akun sendiri",
@@ -314,22 +335,58 @@ public class AdminPenggunaController(
 
         user.SuspendedAt = DateTime.UtcNow;
         user.SuspendedReason = permintaan.Alasan.Trim();
-        user.SuspendedByAdminId = User.Id();
+        user.SuspendedByAdminId = adminId;
 
         db.UserSuspensionChanges.Add(new UserSuspensionChange
         {
             UserId = user.Id,
-            ChangedByAdminId = User.Id(),
+            ChangedByAdminId = adminId,
             Suspended = true,
             Reason = user.SuspendedReason,
         });
 
-        await db.SaveChangesAsync(batal);
+        var respons = UserResponse.Dari(user);
+        if (key is not null)
+        {
+            db.IdempotensiAksiAdmin.Add(new IdempotensiAksiAdmin
+            {
+                Key = key,
+                AdminId = adminId,
+                Operation = "TANGGUHKAN",
+                RequestHash = requestHash!,
+                ResponseJson = IdempotensiOrder.SimpanRespons(respons),
+            });
+        }
+
+        try
+        {
+            await db.SaveChangesAsync(batal);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Akun berubah bersamaan",
+                Detail = "Muat ulang akun tersebut sebelum mencoba lagi.",
+                Status = StatusCodes.Status409Conflict,
+            });
+        }
+        catch (DbUpdateException galat) when (key is not null && GalatDb.Bentrok(galat))
+        {
+            db.ChangeTracker.Clear();
+            var sebelumnya = await db.IdempotensiAksiAdmin.AsNoTracking()
+                .SingleOrDefaultAsync(i => i.Key == key, batal);
+            if (sebelumnya is null) throw;
+            if (sebelumnya.AdminId != adminId || sebelumnya.Operation != "TANGGUHKAN" ||
+                sebelumnya.RequestHash != requestHash) return IdempotensiAdmin.Konflik();
+            var responsLama = IdempotensiOrder.BacaRespons<UserResponse>(sebelumnya);
+            return responsLama is null ? Problem(statusCode: 500) : Ok(responsLama);
+        }
 
         log.LogWarning(
-            "Akun {UserId} ditangguhkan oleh admin {AdminId}.", user.Id, User.Id());
+            "Akun {UserId} ditangguhkan oleh admin {AdminId}.", user.Id, adminId);
 
-        return Ok(UserResponse.Dari(user));
+        return Ok(respons);
     }
 
     /// <summary>Memulihkan akun yang ditangguhkan.</summary>
@@ -353,6 +410,27 @@ public class AdminPenggunaController(
         TangguhkanAkunRequest permintaan,
         CancellationToken batal)
     {
+        if (!IdempotensiAdmin.CobaBacaKey(Request, out var key))
+        {
+            return IdempotensiAdmin.KeyTidakValid();
+        }
+
+        var adminId = User.Id();
+        var requestHash = key is null ? null : IdempotensiOrder.HashAdmin(
+            "PULIHKAN", id.ToString("D"), permintaan.Alasan.Trim());
+        if (key is not null)
+        {
+            var sebelumnya = await db.IdempotensiAksiAdmin.AsNoTracking()
+                .SingleOrDefaultAsync(i => i.Key == key, batal);
+            if (sebelumnya is not null)
+            {
+                if (sebelumnya.AdminId != adminId || sebelumnya.Operation != "PULIHKAN" ||
+                    sebelumnya.RequestHash != requestHash) return IdempotensiAdmin.Konflik();
+                var responsLama = IdempotensiOrder.BacaRespons<UserResponse>(sebelumnya);
+                return responsLama is null ? Problem(statusCode: 500) : Ok(responsLama);
+            }
+        }
+
         var user = await db.Users.SingleOrDefaultAsync(u => u.Id == id, batal);
         if (user is null) return NotFound();
 
@@ -370,18 +448,54 @@ public class AdminPenggunaController(
         db.UserSuspensionChanges.Add(new UserSuspensionChange
         {
             UserId = user.Id,
-            ChangedByAdminId = User.Id(),
+            ChangedByAdminId = adminId,
             Suspended = false,
             Reason = permintaan.Alasan.Trim(),
         });
 
-        await db.SaveChangesAsync(batal);
+        var respons = UserResponse.Dari(user);
+        if (key is not null)
+        {
+            db.IdempotensiAksiAdmin.Add(new IdempotensiAksiAdmin
+            {
+                Key = key,
+                AdminId = adminId,
+                Operation = "PULIHKAN",
+                RequestHash = requestHash!,
+                ResponseJson = IdempotensiOrder.SimpanRespons(respons),
+            });
+        }
+
+        try
+        {
+            await db.SaveChangesAsync(batal);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Akun berubah bersamaan",
+                Detail = "Muat ulang akun tersebut sebelum mencoba lagi.",
+                Status = StatusCodes.Status409Conflict,
+            });
+        }
+        catch (DbUpdateException galat) when (key is not null && GalatDb.Bentrok(galat))
+        {
+            db.ChangeTracker.Clear();
+            var sebelumnya = await db.IdempotensiAksiAdmin.AsNoTracking()
+                .SingleOrDefaultAsync(i => i.Key == key, batal);
+            if (sebelumnya is null) throw;
+            if (sebelumnya.AdminId != adminId || sebelumnya.Operation != "PULIHKAN" ||
+                sebelumnya.RequestHash != requestHash) return IdempotensiAdmin.Konflik();
+            var responsLama = IdempotensiOrder.BacaRespons<UserResponse>(sebelumnya);
+            return responsLama is null ? Problem(statusCode: 500) : Ok(responsLama);
+        }
 
         log.LogWarning(
             "Akun {UserId} dipulihkan oleh admin {AdminId}: {Alasan}",
-            user.Id, User.Id(), permintaan.Alasan.Trim());
+            user.Id, adminId, permintaan.Alasan.Trim());
 
-        return Ok(UserResponse.Dari(user));
+        return Ok(respons);
     }
 
     [EnableRateLimiting(BatasLaju.KebijakanTulis)]
@@ -391,6 +505,29 @@ public class AdminPenggunaController(
         TetapkanPeranRequest permintaan,
         CancellationToken batal)
     {
+        if (!IdempotensiAdmin.CobaBacaKey(Request, out var key))
+        {
+            return IdempotensiAdmin.KeyTidakValid();
+        }
+
+        var adminId = User.Id();
+        var sesudahHash = permintaan.Roles.Distinct().OrderBy(r => r)
+            .Select(r => r.ToString());
+        var requestHash = key is null ? null : IdempotensiOrder.HashAdmin(
+            "PERAN", id.ToString("D"), string.Join(",", sesudahHash), permintaan.Alasan.Trim());
+        if (key is not null)
+        {
+            var sebelumnya = await db.IdempotensiAksiAdmin.AsNoTracking()
+                .SingleOrDefaultAsync(i => i.Key == key, batal);
+            if (sebelumnya is not null)
+            {
+                if (sebelumnya.AdminId != adminId || sebelumnya.Operation != "PERAN" ||
+                    sebelumnya.RequestHash != requestHash) return IdempotensiAdmin.Konflik();
+                var responsLama = IdempotensiOrder.BacaRespons<UserResponse>(sebelumnya);
+                return responsLama is null ? Problem(statusCode: 500) : Ok(responsLama);
+            }
+        }
+
         var user = await db.Users.SingleOrDefaultAsync(u => u.Id == id, batal);
         if (user is null) return NotFound();
 
@@ -404,8 +541,6 @@ public class AdminPenggunaController(
                 "Akun tanpa peran tidak bisa membuka apa pun. Kalau maksudnya menutup akses, "
                 + "yang dicabut cukup peran runner atau adminnya.");
         }
-
-        var adminId = User.Id();
 
         // Admin tidak boleh mencabut peran adminnya sendiri.
         //
@@ -454,8 +589,45 @@ public class AdminPenggunaController(
             Reason = permintaan.Alasan.Trim(),
         });
 
-        await db.SaveChangesAsync(batal);
-        return Ok(UserResponse.Dari(user));
+        var respons = UserResponse.Dari(user);
+        if (key is not null)
+        {
+            db.IdempotensiAksiAdmin.Add(new IdempotensiAksiAdmin
+            {
+                Key = key,
+                AdminId = adminId,
+                Operation = "PERAN",
+                RequestHash = requestHash!,
+                ResponseJson = IdempotensiOrder.SimpanRespons(respons),
+            });
+        }
+
+        try
+        {
+            await db.SaveChangesAsync(batal);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Akun berubah bersamaan",
+                Detail = "Muat ulang akun tersebut sebelum mencoba lagi.",
+                Status = StatusCodes.Status409Conflict,
+            });
+        }
+        catch (DbUpdateException galat) when (key is not null && GalatDb.Bentrok(galat))
+        {
+            db.ChangeTracker.Clear();
+            var sebelumnya = await db.IdempotensiAksiAdmin.AsNoTracking()
+                .SingleOrDefaultAsync(i => i.Key == key, batal);
+            if (sebelumnya is null) throw;
+            if (sebelumnya.AdminId != adminId || sebelumnya.Operation != "PERAN" ||
+                sebelumnya.RequestHash != requestHash) return IdempotensiAdmin.Konflik();
+            var responsLama = IdempotensiOrder.BacaRespons<UserResponse>(sebelumnya);
+            return responsLama is null ? Problem(statusCode: 500) : Ok(responsLama);
+        }
+
+        return Ok(respons);
     }
 
     private ActionResult Salah(string judul, string detail) => BadRequest(new ProblemDetails

@@ -99,6 +99,12 @@ public static class IdempotensiOrder
     public static T? BacaRespons<T>(IdempotensiSelesaikanOrder jejak) =>
         BacaRespons<T>(jejak.ResponseJson);
 
+    public static T? BacaRespons<T>(IdempotensiAksiAdmin jejak) =>
+        BacaRespons<T>(jejak.ResponseJson);
+
+    public static string HashAdmin(string operasi, params string?[] bagian) =>
+        Hash([operasi, .. bagian]);
+
     private static T? BacaRespons<T>(string responseJson) =>
         JsonSerializer.Deserialize<T>(responseJson, OpsiJson);
 

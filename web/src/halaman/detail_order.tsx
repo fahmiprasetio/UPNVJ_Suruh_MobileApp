@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { useSesi } from '../auth/sesi';
@@ -20,6 +20,7 @@ import {
   labelStatus,
 } from '../inti/format';
 import { gunakanMuat } from '../inti/gunakan_muat';
+import { buatIdempotencyKey } from '../inti/idempotensi';
 import { gunakanPanelKonfirmasi } from '../inti/gunakan_panel_konfirmasi';
 import type {
   Order,
@@ -332,8 +333,9 @@ function PanelPermintaanBatal({
   onDijawab: () => void;
 }) {
   const { api } = useSesi();
+  const key = useRef(buatIdempotencyKey());
   const panel = gunakanPanelKonfirmasi(async (alasan) => {
-    await tolakPembatalan(api, order.id, alasan);
+    await tolakPembatalan(api, order.id, alasan, key.current);
     onDijawab();
   });
 
@@ -388,8 +390,9 @@ function PanelPembatalan({
   onDibatalkan: () => void;
 }) {
   const { api } = useSesi();
+  const key = useRef(buatIdempotencyKey());
   const panel = gunakanPanelKonfirmasi(async (alasan) => {
-    await batalkanOrder(api, order.id, alasan);
+    await batalkanOrder(api, order.id, alasan, key.current);
     onDibatalkan();
   });
 

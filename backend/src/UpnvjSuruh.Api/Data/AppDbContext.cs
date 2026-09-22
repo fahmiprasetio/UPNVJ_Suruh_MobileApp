@@ -14,6 +14,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<IdempotensiTerimaOrder> IdempotensiTerimaOrder => Set<IdempotensiTerimaOrder>();
     public DbSet<IdempotensiLepasOrder> IdempotensiLepasOrder => Set<IdempotensiLepasOrder>();
     public DbSet<IdempotensiSelesaikanOrder> IdempotensiSelesaikanOrder => Set<IdempotensiSelesaikanOrder>();
+    public DbSet<IdempotensiAksiAdmin> IdempotensiAksiAdmin => Set<IdempotensiAksiAdmin>();
     public DbSet<OrderOffer> OrderOffers => Set<OrderOffer>();
     public DbSet<OrderMessage> OrderMessages => Set<OrderMessage>();
     public DbSet<OrderMessageRead> OrderMessageReads => Set<OrderMessageRead>();
@@ -46,6 +47,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             // Disimpan sebagai integer[] Postgres, bukan JSON, supaya "cari semua runner"
             // tetap bisa dijawab satu query berindeks nanti.
             entity.Property(u => u.Roles).HasColumnType("integer[]");
+            entity.Property<uint>("xmin").HasColumnName("xmin").IsRowVersion();
         });
 
         modelBuilder.Entity<UserRoleChange>(entity =>
@@ -139,6 +141,31 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 // ada. Akun yang hilang tidak meninggalkan pertanyaan yang bisa dijawab
                 // barisnya.
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<IdempotensiAksiAdmin>(entity =>
+        {
+            entity.Property(i => i.Key).HasMaxLength(IdempotensiOrder.PanjangKeyMaksimal);
+            entity.Property(i => i.Operation).HasMaxLength(64);
+            entity.Property(i => i.RequestHash).HasMaxLength(64);
+            entity.Property(i => i.ResponseJson).HasColumnType("text");
+            entity.HasIndex(i => i.Key).IsUnique();
+            entity.HasIndex(i => i.AdminId);
+
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(i => i.AdminId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PayoutSetting>(entity =>
+        {
+            entity.Property<uint>("xmin").HasColumnName("xmin").IsRowVersion();
+        });
+
+        modelBuilder.Entity<TarifSetting>(entity =>
+        {
+            entity.Property<uint>("xmin").HasColumnName("xmin").IsRowVersion();
         });
 
         modelBuilder.Entity<IdempotensiPembuatanOrder>(entity =>
@@ -313,6 +340,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         modelBuilder.Entity<OrderRunnerAssignment>(entity =>
         {
+            entity.Property<uint>("xmin").HasColumnName("xmin").IsRowVersion();
+
             // A runner can only accept the same order once, the DB, not just the UI, enforces this.
             entity.HasIndex(a => new { a.OrderId, a.RunnerId }).IsUnique();
 

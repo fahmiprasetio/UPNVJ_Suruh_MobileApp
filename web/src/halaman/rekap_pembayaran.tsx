@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 
 import { useSesi } from '../auth/sesi';
 import {
@@ -8,6 +8,7 @@ import {
   tandaiLunas,
 } from '../inti/api_admin';
 import { formatRupiah, formatTanggalJam, labelLayanan } from '../inti/format';
+import { buatIdempotencyKey } from '../inti/idempotensi';
 import { gunakanMuat } from '../inti/gunakan_muat';
 import type { ModeKomisi, PayoutSetting, RekapRunner, RincianPayout } from '../inti/tipe';
 import { Kosong, KotakGalat, Memuat, pesanGalat } from '../komponen/keadaan';
@@ -98,6 +99,7 @@ function FormRumus({
   const [sibuk, setSibuk] = useState(false);
   const [galat, setGalat] = useState<unknown>(null);
   const [tersimpan, setTersimpan] = useState(false);
+  const key = useRef(buatIdempotencyKey());
 
   useEffect(() => {
     setMode(setting.mode);
@@ -111,7 +113,9 @@ function FormRumus({
     setGalat(null);
     setTersimpan(false);
     try {
-      await perbaruiPayoutSetting(api, { mode, komisiPersen: persen, komisiTetap: tetap });
+      await perbaruiPayoutSetting(
+        api, { mode, komisiPersen: persen, komisiTetap: tetap }, key.current);
+      key.current = buatIdempotencyKey();
       setTersimpan(true);
       onDisimpan();
     } catch (salah) {
@@ -357,6 +361,7 @@ function IsiRincian({
   );
   const [sibuk, setSibuk] = useState(false);
   const [galat, setGalat] = useState<unknown>(null);
+  const key = useRef(buatIdempotencyKey());
 
   const total = bisaDilunasi
     .filter((b) => tercentang.includes(b.penugasanId))
@@ -373,7 +378,8 @@ function IsiRincian({
     setSibuk(true);
     setGalat(null);
     try {
-      await tandaiLunas(api, rincian.runnerId, tercentang);
+      await tandaiLunas(api, rincian.runnerId, tercentang, key.current);
+      key.current = buatIdempotencyKey();
       onDilunasi();
     } catch (salah) {
       setGalat(salah);

@@ -30,6 +30,8 @@ export interface OpsiPermintaan {
   kueri?: Record<string, string | number | boolean | undefined | null>;
   /** Untuk membatalkan permintaan yang layarnya sudah ditinggalkan. */
   sinyal?: AbortSignal;
+  /** Kunci command agar retry setelah timeout tidak mengulang efek samping. */
+  idempotencyKey?: string;
 }
 
 /**
@@ -70,6 +72,7 @@ export class KlienApi {
     const token = this.bacaToken();
     if (token) kepala.Authorization = `Bearer ${token}`;
     if (opsi.badan !== undefined) kepala['Content-Type'] = 'application/json';
+    if (opsi.idempotencyKey) kepala['Idempotency-Key'] = opsi.idempotencyKey;
 
     let jawaban: Response;
     try {

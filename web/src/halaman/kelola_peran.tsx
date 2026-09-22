@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 
 import { useSesi, usePengguna } from '../auth/sesi';
 import {
@@ -14,6 +14,7 @@ import {
 } from '../inti/api_admin';
 import { formatRupiah, formatTanggalJam, formatWaktuRelatif } from '../inti/format';
 import { gunakanMuat } from '../inti/gunakan_muat';
+import { buatIdempotencyKey } from '../inti/idempotensi';
 import { gunakanPanelKonfirmasi } from '../inti/gunakan_panel_konfirmasi';
 import type { KlienApi } from '../inti/klien_api';
 import type { Halaman, Pengguna, Peran } from '../inti/tipe';
@@ -183,6 +184,7 @@ function PanelPengguna({
   const [galat, setGalat] = useState<unknown>(null);
   const [penandaRiwayat, setPenandaRiwayat] = useState(0);
   const [penandaPenangguhan, setPenandaPenangguhan] = useState(0);
+  const keyPeran = useRef(buatIdempotencyKey());
 
   // Peran yang ditampilkan mengikuti pengguna yang sedang dipilih, bukan menyisakan
   // pilihan dari akun sebelumnya. Efeknya cuma berjalan saat identitas pengguna berganti
@@ -213,7 +215,9 @@ function PanelPengguna({
     setSibuk(true);
     setGalat(null);
     try {
-      const diperbarui = await tetapkanPeran(api, pengguna.id, rolesDipilih, alasan.trim());
+      const diperbarui = await tetapkanPeran(
+        api, pengguna.id, rolesDipilih, alasan.trim(), keyPeran.current);
+      keyPeran.current = buatIdempotencyKey();
       onBerubah(diperbarui);
       setAlasan('');
       // Riwayat dimuat ulang lewat penanda, bukan langsung menyisipkan barisnya di sini:
@@ -540,10 +544,12 @@ function PanelPenangguhan({
 }) {
   const { api } = useSesi();
   const ditangguhkan = pengguna.ditangguhkanPada !== null;
+  const key = useRef(buatIdempotencyKey());
   const panel = gunakanPanelKonfirmasi(async (alasan) => {
     const diperbarui = ditangguhkan
-      ? await pulihkanAkun(api, pengguna.id, alasan)
-      : await tangguhkanAkun(api, pengguna.id, alasan);
+      ? await pulihkanAkun(api, pengguna.id, alasan, key.current)
+      : await tangguhkanAkun(api, pengguna.id, alasan, key.current);
+    key.current = buatIdempotencyKey();
     onBerubah(diperbarui);
   });
 

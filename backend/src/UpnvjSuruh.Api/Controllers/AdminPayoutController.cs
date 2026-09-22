@@ -53,13 +53,36 @@ public class AdminPayoutController(AppDbContext db, ILogger<AdminPayoutControlle
         PerbaruiPayoutSettingRequest permintaan,
         CancellationToken batal)
     {
+        if (!IdempotensiAdmin.CobaBacaKey(Request, out var key))
+        {
+            return IdempotensiAdmin.KeyTidakValid();
+        }
+
+        var adminId = User.Id();
+        var requestHash = key is null ? null : IdempotensiOrder.HashAdmin(
+            "PAYOUT_SETTING", permintaan.Mode.ToString(),
+            permintaan.KomisiPersen.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            permintaan.KomisiTetap.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        if (key is not null)
+        {
+            var sebelumnya = await db.IdempotensiAksiAdmin.AsNoTracking()
+                .SingleOrDefaultAsync(i => i.Key == key, batal);
+            if (sebelumnya is not null)
+            {
+                if (sebelumnya.AdminId != adminId || sebelumnya.Operation != "PAYOUT_SETTING" ||
+                    sebelumnya.RequestHash != requestHash) return IdempotensiAdmin.Konflik();
+                var responsLama = IdempotensiOrder.BacaRespons<PayoutSettingResponse>(sebelumnya);
+                return responsLama is null ? Problem(statusCode: 500) : Ok(responsLama);
+            }
+        }
+
         var setting = await db.PayoutSettings.SingleAsync(p => p.Id == PayoutSetting.SatuSatunyaId, batal);
 
         setting.Mode = permintaan.Mode;
         setting.KomisiPersen = permintaan.KomisiPersen;
         setting.KomisiTetap = permintaan.KomisiTetap;
         setting.DiaturPada = DateTime.UtcNow;
-        setting.DiaturOlehAdminId = User.Id();
+        setting.DiaturOlehAdminId = adminId;
 
         // Cuma order yang benar-benar punya bayaran menggantung yang dimuat, bukan seluruh order
         // selesai: sesudah penyimpanan pertama, daftar ini praktis selalu kosong, dan kueri yang
@@ -73,7 +96,43 @@ public class AdminPayoutController(AppDbContext db, ILogger<AdminPayoutControlle
 
         var disusulkan = menunggu.Sum(o => PembekuPayout.Bekukan(o, setting));
 
-        await db.SaveChangesAsync(batal);
+        var respons = PayoutSettingResponse.Dari(setting);
+        if (key is not null)
+        {
+            db.IdempotensiAksiAdmin.Add(new IdempotensiAksiAdmin
+            {
+                Key = key,
+                AdminId = adminId,
+                Operation = "PAYOUT_SETTING",
+                RequestHash = requestHash!,
+                ResponseJson = IdempotensiOrder.SimpanRespons(respons),
+            });
+        }
+
+        try
+        {
+            await db.SaveChangesAsync(batal);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Rumus berubah bersamaan",
+                Detail = "Muat ulang rekap pembayaran sebelum menyimpan lagi.",
+                Status = StatusCodes.Status409Conflict,
+            });
+        }
+        catch (DbUpdateException galat) when (key is not null && GalatDb.Bentrok(galat))
+        {
+            db.ChangeTracker.Clear();
+            var sebelumnya = await db.IdempotensiAksiAdmin.AsNoTracking()
+                .SingleOrDefaultAsync(i => i.Key == key, batal);
+            if (sebelumnya is null) throw;
+            if (sebelumnya.AdminId != adminId || sebelumnya.Operation != "PAYOUT_SETTING" ||
+                sebelumnya.RequestHash != requestHash) return IdempotensiAdmin.Konflik();
+            var responsLama = IdempotensiOrder.BacaRespons<PayoutSettingResponse>(sebelumnya);
+            return responsLama is null ? Problem(statusCode: 500) : Ok(responsLama);
+        }
 
         if (disusulkan > 0)
         {
@@ -81,7 +140,7 @@ public class AdminPayoutController(AppDbContext db, ILogger<AdminPayoutControlle
                 "Rumus bagi hasil disimpan, {Jumlah} bayaran yang menunggu ikut dihitung.", disusulkan);
         }
 
-        return Ok(PayoutSettingResponse.Dari(setting));
+        return Ok(respons);
     }
 
     /// <summary>Siapa harus dibayar berapa.</summary>
@@ -206,7 +265,28 @@ public class AdminPayoutController(AppDbContext db, ILogger<AdminPayoutControlle
         TandaiLunasRequest permintaan,
         CancellationToken batal)
     {
+        if (!IdempotensiAdmin.CobaBacaKey(Request, out var key))
+        {
+            return IdempotensiAdmin.KeyTidakValid();
+        }
+
+        var adminId = User.Id();
         var ids = permintaan.PenugasanIds.Distinct().ToList();
+        var requestHash = key is null ? null : IdempotensiOrder.HashAdmin(
+            "TANDAI_LUNAS", runnerId.ToString("D"),
+            string.Join(",", ids.OrderBy(id => id).Select(id => id.ToString("D"))));
+        if (key is not null)
+        {
+            var sebelumnya = await db.IdempotensiAksiAdmin.AsNoTracking()
+                .SingleOrDefaultAsync(i => i.Key == key, batal);
+            if (sebelumnya is not null)
+            {
+                if (sebelumnya.AdminId != adminId || sebelumnya.Operation != "TANDAI_LUNAS" ||
+                    sebelumnya.RequestHash != requestHash) return IdempotensiAdmin.Konflik();
+                var responsLama = IdempotensiOrder.BacaRespons<TandaiLunasResponse>(sebelumnya);
+                return responsLama is null ? Problem(statusCode: 500) : Ok(responsLama);
+            }
+        }
 
         var penugasan = await db.OrderRunnerAssignments
             .Where(a => ids.Contains(a.Id))
@@ -252,11 +332,47 @@ public class AdminPayoutController(AppDbContext db, ILogger<AdminPayoutControlle
             a.PayoutSettledByAdminId = User.Id();
         }
 
-        await db.SaveChangesAsync(batal);
-
-        return Ok(new TandaiLunasResponse(
+        var respons = new TandaiLunasResponse(
             milikRunner.Count,
             milikRunner.Sum(a => a.PayoutAmount ?? 0m),
-            sekarang));
+            sekarang);
+        if (key is not null)
+        {
+            db.IdempotensiAksiAdmin.Add(new IdempotensiAksiAdmin
+            {
+                Key = key,
+                AdminId = adminId,
+                Operation = "TANDAI_LUNAS",
+                RequestHash = requestHash!,
+                ResponseJson = IdempotensiOrder.SimpanRespons(respons),
+            });
+        }
+
+        try
+        {
+            await db.SaveChangesAsync(batal);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Bayaran berubah bersamaan",
+                Detail = "Muat ulang rincian runner sebelum menandai lunas lagi.",
+                Status = StatusCodes.Status409Conflict,
+            });
+        }
+        catch (DbUpdateException galat) when (key is not null && GalatDb.Bentrok(galat))
+        {
+            db.ChangeTracker.Clear();
+            var sebelumnya = await db.IdempotensiAksiAdmin.AsNoTracking()
+                .SingleOrDefaultAsync(i => i.Key == key, batal);
+            if (sebelumnya is null) throw;
+            if (sebelumnya.AdminId != adminId || sebelumnya.Operation != "TANDAI_LUNAS" ||
+                sebelumnya.RequestHash != requestHash) return IdempotensiAdmin.Konflik();
+            var responsLama = IdempotensiOrder.BacaRespons<TandaiLunasResponse>(sebelumnya);
+            return responsLama is null ? Problem(statusCode: 500) : Ok(responsLama);
+        }
+
+        return Ok(respons);
     }
 }

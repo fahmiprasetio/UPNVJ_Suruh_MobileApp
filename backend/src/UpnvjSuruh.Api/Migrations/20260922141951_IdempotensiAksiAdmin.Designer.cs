@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using UpnvjSuruh.Api.Data;
@@ -11,9 +12,11 @@ using UpnvjSuruh.Api.Data;
 namespace UpnvjSuruh.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260922141951_IdempotensiAksiAdmin")]
+    partial class IdempotensiAksiAdmin
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -583,12 +586,6 @@ namespace UpnvjSuruh.Api.Migrations
                     b.Property<Guid>("RunnerId")
                         .HasColumnType("uuid");
 
-                    b.Property<uint>("xmin")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.HasKey("Id");
 
                     b.HasIndex("RunnerId");
@@ -706,12 +703,6 @@ namespace UpnvjSuruh.Api.Migrations
                     b.Property<int>("Mode")
                         .HasColumnType("integer");
 
-                    b.Property<uint>("xmin")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.HasKey("Id");
 
                     b.ToTable("PayoutSettings");
@@ -786,12 +777,6 @@ namespace UpnvjSuruh.Api.Migrations
                     b.Property<Guid?>("UpdatedByAdminId")
                         .HasColumnType("uuid");
 
-                    b.Property<uint>("xmin")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.HasKey("Id");
 
                     b.ToTable("TarifSettings");
@@ -850,12 +835,6 @@ namespace UpnvjSuruh.Api.Migrations
                     b.Property<string>("SuspendedReason")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
-
-                    b.Property<uint>("xmin")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 

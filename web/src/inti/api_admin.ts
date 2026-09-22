@@ -121,10 +121,16 @@ export function riwayatStatusOrder(
  * Pengembaliannya cuma catatan pembukuan: backend berjalan di sandbox pembayaran, jadi
  * tidak ada panggilan gateway sungguhan di baliknya.
  */
-export function batalkanOrder(api: KlienApi, orderId: string, alasan: string): Promise<Order> {
+export function batalkanOrder(
+  api: KlienApi,
+  orderId: string,
+  alasan: string,
+  idempotencyKey?: string,
+): Promise<Order> {
   return api.minta<Order>(`/api/admin/orders/${orderId}/batalkan`, {
     metode: 'POST',
     badan: { alasan },
+    idempotencyKey,
   });
 }
 
@@ -136,10 +142,16 @@ export function batalkanOrder(api: KlienApi, orderId: string, alasan: string): P
  * berkurang, dan klien tidak pernah tahu permintaannya sudah dibaca. Alasannya sampai
  * kepadanya lewat chat ordernya, tempat ia menuliskan permintaannya.
  */
-export function tolakPembatalan(api: KlienApi, orderId: string, alasan: string): Promise<Order> {
+export function tolakPembatalan(
+  api: KlienApi,
+  orderId: string,
+  alasan: string,
+  idempotencyKey?: string,
+): Promise<Order> {
   return api.minta<Order>(`/api/admin/orders/${orderId}/tolak-pembatalan`, {
     metode: 'POST',
     badan: { alasan },
+    idempotencyKey,
   });
 }
 
@@ -288,10 +300,12 @@ export function tetapkanPeran(
   userId: string,
   roles: Peran[],
   alasan: string,
+  idempotencyKey?: string,
 ): Promise<Pengguna> {
   return api.minta<Pengguna>(`/api/admin/pengguna/${userId}/peran`, {
     metode: 'PUT',
     badan: { roles, alasan },
+    idempotencyKey,
   });
 }
 
@@ -307,10 +321,12 @@ export function tangguhkanAkun(
   api: KlienApi,
   userId: string,
   alasan: string,
+  idempotencyKey?: string,
 ): Promise<Pengguna> {
   return api.minta<Pengguna>(`/api/admin/pengguna/${userId}/tangguhkan`, {
     metode: 'POST',
     badan: { alasan },
+    idempotencyKey,
   });
 }
 
@@ -319,10 +335,12 @@ export function pulihkanAkun(
   api: KlienApi,
   userId: string,
   alasan: string,
+  idempotencyKey?: string,
 ): Promise<Pengguna> {
   return api.minta<Pengguna>(`/api/admin/pengguna/${userId}/pulihkan`, {
     metode: 'POST',
     badan: { alasan },
+    idempotencyKey,
   });
 }
 
@@ -347,10 +365,12 @@ export function ambilTarif(api: KlienApi, sinyal?: AbortSignal): Promise<Tarif> 
 export function perbaruiTarif(
   api: KlienApi,
   tarif: Omit<Tarif, 'diubahPada'>,
+  idempotencyKey?: string,
 ): Promise<Tarif> {
   return api.minta<Tarif>('/api/tarif', {
     metode: 'PUT',
     badan: tarif,
+    idempotencyKey,
   });
 }
 
@@ -375,10 +395,12 @@ export function perbaruiTarif(
 export function perbaruiPayoutSetting(
   api: KlienApi,
   rumus: { mode: ModeKomisi; komisiPersen: number; komisiTetap: number },
+  idempotencyKey?: string,
 ): Promise<PayoutSetting> {
   return api.minta<PayoutSetting>('/api/admin/payout/setting', {
     metode: 'PUT',
     badan: rumus,
+    idempotencyKey,
   });
 }
 
@@ -422,9 +444,11 @@ export function tandaiLunas(
   api: KlienApi,
   runnerId: string,
   penugasanIds: string[],
+  idempotencyKey?: string,
 ): Promise<HasilTandaiLunas> {
   return api.minta<HasilTandaiLunas>(`/api/admin/payout/rekap/${runnerId}/lunas`, {
     metode: 'POST',
     badan: { penugasanIds },
+    idempotencyKey,
   });
 }

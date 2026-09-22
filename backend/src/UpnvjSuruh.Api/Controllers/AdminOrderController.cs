@@ -186,6 +186,27 @@ public class AdminOrderController(
         BatalkanOrderRequest permintaan,
         CancellationToken batal)
     {
+        if (!IdempotensiAdmin.CobaBacaKey(Request, out var key))
+        {
+            return IdempotensiAdmin.KeyTidakValid();
+        }
+
+        var adminId = User.Id();
+        var requestHash = key is null ? null : IdempotensiOrder.HashAdmin(
+            "BATAL_ADMIN", id.ToString("D"), permintaan.Alasan.Trim());
+        if (key is not null)
+        {
+            var sebelumnya = await db.IdempotensiAksiAdmin.AsNoTracking()
+                .SingleOrDefaultAsync(i => i.Key == key, batal);
+            if (sebelumnya is not null)
+            {
+                if (sebelumnya.AdminId != adminId || sebelumnya.Operation != "BATAL_ADMIN" ||
+                    sebelumnya.RequestHash != requestHash) return IdempotensiAdmin.Konflik();
+                var responsLama = IdempotensiOrder.BacaRespons<OrderResponse>(sebelumnya);
+                return responsLama is null ? Problem(statusCode: 500) : Ok(responsLama);
+            }
+        }
+
         var order = await db.Orders
             .Include(o => o.Payments)
             .Include(o => o.RunnerAssignments)
@@ -234,7 +255,7 @@ public class AdminOrderController(
         {
             pembayaranLunas.Status = PaymentStatus.Dikembalikan;
             pembayaranLunas.RefundedAt = DateTime.UtcNow;
-            pembayaranLunas.RefundedByAdminId = User.Id();
+            pembayaranLunas.RefundedByAdminId = adminId;
             pembayaranLunas.RefundReason = permintaan.Alasan.Trim();
         }
 
@@ -247,7 +268,7 @@ public class AdminOrderController(
             pembayaran.Status = PaymentStatus.Gagal;
         }
 
-        var perpindahan = OrderStatusChange.Catat(order, OrderStatus.Batal, User.Id());
+        var perpindahan = OrderStatusChange.Catat(order, OrderStatus.Batal, adminId);
         db.OrderStatusChanges.Add(perpindahan);
 
         // Permintaan yang sedang menunggu (kalau pembatalan ini memang menjawabnya) ikut
@@ -256,11 +277,53 @@ public class AdminOrderController(
         // berkurang adalah angka yang berhenti dibaca orang.
         order.CancellationRequestedAt = null;
 
-        await db.SaveChangesAsync(batal);
+        await using var transaksi = await db.Database.BeginTransactionAsync(batal);
+        OrderResponse? respons = null;
+        try
+        {
+            await db.SaveChangesAsync(batal);
+            respons = await OrderResponse.DariAsync(db, order, adminId, User.Punya(Peran.Admin), batal);
+            if (key is not null)
+            {
+                db.IdempotensiAksiAdmin.Add(new IdempotensiAksiAdmin
+                {
+                    Key = key,
+                    AdminId = adminId,
+                    Operation = "BATAL_ADMIN",
+                    RequestHash = requestHash!,
+                    ResponseJson = IdempotensiOrder.SimpanRespons(respons),
+                });
+                await db.SaveChangesAsync(batal);
+            }
+
+            await transaksi.CommitAsync(batal);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Order berubah bersamaan",
+                Detail = "Muat ulang order sebelum mencoba lagi.",
+                Status = StatusCodes.Status409Conflict,
+            });
+        }
+        catch (DbUpdateException galat) when (key is not null && GalatDb.Bentrok(galat))
+        {
+            await transaksi.RollbackAsync(batal);
+            db.ChangeTracker.Clear();
+            var sebelumnya = await db.IdempotensiAksiAdmin.AsNoTracking()
+                .SingleOrDefaultAsync(i => i.Key == key, batal);
+            if (sebelumnya is null) throw;
+            if (sebelumnya.AdminId != adminId || sebelumnya.Operation != "BATAL_ADMIN" ||
+                sebelumnya.RequestHash != requestHash) return IdempotensiAdmin.Konflik();
+            var responsLama = IdempotensiOrder.BacaRespons<OrderResponse>(sebelumnya);
+            return responsLama is null ? Problem(statusCode: 500) : Ok(responsLama);
+        }
+
         await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
         await pengabar.KabarkanAsync(perpindahan, batal);
 
-        return Ok(await OrderResponse.DariAsync(db, order, User.Id(), User.Punya(Peran.Admin), batal));
+        return Ok(respons);
     }
 
     /// <summary>
@@ -286,6 +349,27 @@ public class AdminOrderController(
         TolakPembatalanRequest permintaan,
         CancellationToken batal)
     {
+        if (!IdempotensiAdmin.CobaBacaKey(Request, out var key))
+        {
+            return IdempotensiAdmin.KeyTidakValid();
+        }
+
+        var adminId = User.Id();
+        var requestHash = key is null ? null : IdempotensiOrder.HashAdmin(
+            "TOLAK_BATAL", id.ToString("D"), permintaan.Alasan.Trim());
+        if (key is not null)
+        {
+            var sebelumnya = await db.IdempotensiAksiAdmin.AsNoTracking()
+                .SingleOrDefaultAsync(i => i.Key == key, batal);
+            if (sebelumnya is not null)
+            {
+                if (sebelumnya.AdminId != adminId || sebelumnya.Operation != "TOLAK_BATAL" ||
+                    sebelumnya.RequestHash != requestHash) return IdempotensiAdmin.Konflik();
+                var responsLama = IdempotensiOrder.BacaRespons<OrderResponse>(sebelumnya);
+                return responsLama is null ? Problem(statusCode: 500) : Ok(responsLama);
+            }
+        }
+
         var order = await db.Orders
             .Include(o => o.RunnerAssignments)
             .ThenInclude(a => a.Runner)
@@ -311,14 +395,56 @@ public class AdminOrderController(
         db.OrderMessages.Add(new OrderMessage
         {
             OrderId = order.Id,
-            SenderId = User.Id(),
+            SenderId = adminId,
             SenderRole = UserRole.Admin,
             Text = permintaan.Alasan.Trim(),
         });
 
-        await db.SaveChangesAsync(batal);
+        await using var transaksi = await db.Database.BeginTransactionAsync(batal);
+        OrderResponse? respons = null;
+        try
+        {
+            await db.SaveChangesAsync(batal);
+            respons = await OrderResponse.DariAsync(db, order, adminId, User.Punya(Peran.Admin), batal);
+            if (key is not null)
+            {
+                db.IdempotensiAksiAdmin.Add(new IdempotensiAksiAdmin
+                {
+                    Key = key,
+                    AdminId = adminId,
+                    Operation = "TOLAK_BATAL",
+                    RequestHash = requestHash!,
+                    ResponseJson = IdempotensiOrder.SimpanRespons(respons),
+                });
+                await db.SaveChangesAsync(batal);
+            }
+
+            await transaksi.CommitAsync(batal);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Order berubah bersamaan",
+                Detail = "Muat ulang order sebelum mencoba lagi.",
+                Status = StatusCodes.Status409Conflict,
+            });
+        }
+        catch (DbUpdateException galat) when (key is not null && GalatDb.Bentrok(galat))
+        {
+            await transaksi.RollbackAsync(batal);
+            db.ChangeTracker.Clear();
+            var sebelumnya = await db.IdempotensiAksiAdmin.AsNoTracking()
+                .SingleOrDefaultAsync(i => i.Key == key, batal);
+            if (sebelumnya is null) throw;
+            if (sebelumnya.AdminId != adminId || sebelumnya.Operation != "TOLAK_BATAL" ||
+                sebelumnya.RequestHash != requestHash) return IdempotensiAdmin.Konflik();
+            var responsLama = IdempotensiOrder.BacaRespons<OrderResponse>(sebelumnya);
+            return responsLama is null ? Problem(statusCode: 500) : Ok(responsLama);
+        }
+
         await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
 
-        return Ok(await OrderResponse.DariAsync(db, order, User.Id(), User.Punya(Peran.Admin), batal));
+        return Ok(respons);
     }
 }
