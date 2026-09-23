@@ -133,6 +133,21 @@ A production server that runs with the logging sender looks entirely healthy whi
 sending a single notification, which is exactly the silent failure the feature exists to
 prevent.
 
+#### Reverse proxy in production
+
+When TLS terminates at a reverse proxy, configure the IP address that can directly connect
+to the API. This makes the API trust `X-Forwarded-For` and `X-Forwarded-Proto` only from that
+proxy, so HTTPS redirection and anonymous rate limits use the original request safely:
+
+```text
+Proxy__AlamatTepercaya__0=<reverse-proxy IP>
+```
+
+Do not use `0.0.0.0`, a public range, or a client address. Leave this setting unset when the
+API receives TLS directly; forwarded headers are then ignored. If deployment uses multiple
+proxy hops, terminate them into one explicitly trusted final proxy rather than widening the
+trust list without a network review.
+
 ### App
 
 The API address is supplied at build time rather than written into the source:

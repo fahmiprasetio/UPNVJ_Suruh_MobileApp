@@ -1,11 +1,13 @@
 using System.Security.Claims;
 using System.Globalization;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -22,6 +24,44 @@ using UpnvjSuruh.Api.Perawatan;
 using UpnvjSuruh.Api.Pricing;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Reverse proxy boleh meneruskan alamat klien dan skema HTTPS, tetapi header tersebut hanya
+// dapat dipercaya jika koneksi terakhir benar-benar datang dari proxy yang kita kelola.
+// Tanpa daftar eksplisit ini, klien langsung dapat memalsukan X-Forwarded-For untuk menghindari
+// batas laju atau X-Forwarded-Proto untuk memengaruhi pengalihan HTTPS.
+var alamatProxyTepercaya = builder.Configuration
+    .GetSection("Proxy:AlamatTepercaya")
+    .Get<string[]>() ?? [];
+
+if (alamatProxyTepercaya.Length > 0)
+{
+    var proxyTepercaya = new List<IPAddress>(alamatProxyTepercaya.Length);
+    foreach (var alamat in alamatProxyTepercaya)
+    {
+        if (!IPAddress.TryParse(alamat, out var alamatIp))
+        {
+            throw new InvalidOperationException(
+                "Proxy:AlamatTepercaya harus berisi alamat IP proxy yang sah.");
+        }
+
+        proxyTepercaya.Add(alamatIp);
+    }
+
+    builder.Services.Configure<ForwardedHeadersOptions>(opsi =>
+    {
+        opsi.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        // Hanya ada satu reverse proxy yang boleh langsung berbicara dengan aplikasi. Rantai
+        // proxy tambahan perlu didaftarkan dan ditelaah sendiri, bukan dipercaya diam-diam.
+        opsi.ForwardLimit = 1;
+        opsi.KnownIPNetworks.Clear();
+        opsi.KnownProxies.Clear();
+
+        foreach (var alamatIp in proxyTepercaya)
+        {
+            opsi.KnownProxies.Add(alamatIp);
+        }
+    });
+}
 
 builder.Services.AddControllers().AddJsonOptions(opsi =>
 {
@@ -514,6 +554,13 @@ if (app.Environment.IsDevelopment())
 // Dilewati di Development. Aplikasi web dan emulator menembak alamat http biasa, dan
 // pengalihan ke https membuat permintaan pertama dijawab 307 ke port yang tidak
 // mendengarkan, yang di browser terbaca sebagai galat jaringan tanpa sebab yang jelas.
+if (alamatProxyTepercaya.Length > 0)
+{
+    // Harus menjadi middleware pertama: UseHttpsRedirection dan BatasLaju di bawah memakai
+    // skema serta alamat pemanggil yang telah diteruskan proxy tepercaya.
+    app.UseForwardedHeaders();
+}
+
 if (!app.Environment.IsDevelopment())
 {
     // Urutannya HSTS dulu, baru pengalihan.
