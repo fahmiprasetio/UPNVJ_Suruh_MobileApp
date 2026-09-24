@@ -8,7 +8,7 @@ import '../../support/tiruan.dart';
 import 'package:upnvj_suruh/data/fake/fake_order_repository.dart';
 import 'package:upnvj_suruh/data/fake/seed_data.dart';
 import 'package:upnvj_suruh/domain/enums.dart';
-import 'package:upnvj_suruh/providers/repository_providers.dart';
+import 'package:upnvj_suruh/core/providers/repository_providers.dart';
 
 void main() {
   setUpAll(() async {
