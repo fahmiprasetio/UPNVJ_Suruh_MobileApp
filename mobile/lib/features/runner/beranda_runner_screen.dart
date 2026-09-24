@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/models/order.dart';
-import '../../providers/runner_providers.dart';
-import '../widgets/bilah_navigasi_bawah.dart';
+import '../../core/providers/runner_providers.dart';
+import '../../core/widgets/bilah_navigasi_bawah.dart';
 import 'order_masuk/order_masuk_screen.dart';
 import 'order_saya/order_saya_runner_screen.dart';
 import 'pendapatan/pendapatan_screen.dart';

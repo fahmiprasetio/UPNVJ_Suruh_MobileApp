@@ -13,7 +13,7 @@ import 'package:upnvj_suruh/features/klien/detail_order/detail_order_screen.dart
     show uriTelepon;
 import 'package:upnvj_suruh/features/klien/riwayat/riwayat_order_screen.dart'
     show cocokPencarianOrder;
-import 'package:upnvj_suruh/providers/repository_providers.dart';
+import 'package:upnvj_suruh/core/providers/repository_providers.dart';
 
 import '../../support/tiruan.dart';
 

@@ -7,7 +7,7 @@ import '../../core/config/batas_masukan.dart';
 import '../../core/format/validasi_kontak.dart';
 import '../../core/theme/app_theme.dart';
 import '../../domain/models/app_user.dart';
-import '../../providers/repository_providers.dart';
+import '../../core/providers/repository_providers.dart';
 
 /// Dua langkah: kirim kode OTP ke nomor sendiri, lalu password baru.
 ///

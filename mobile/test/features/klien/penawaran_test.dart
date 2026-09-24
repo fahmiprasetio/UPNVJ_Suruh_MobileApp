@@ -10,7 +10,7 @@ import 'package:upnvj_suruh/data/fake/seed_data.dart';
 import 'package:upnvj_suruh/domain/enums.dart';
 import 'package:upnvj_suruh/domain/models/order.dart';
 import 'package:upnvj_suruh/domain/models/order_offer.dart';
-import 'package:upnvj_suruh/providers/repository_providers.dart';
+import 'package:upnvj_suruh/core/providers/repository_providers.dart';
 
 /// Tes sisi klien untuk tawaran runner Jalur B: tawar-menawar ala aplikasi
 /// ojek daring, bukan satu penawaran tunggal dari admin.

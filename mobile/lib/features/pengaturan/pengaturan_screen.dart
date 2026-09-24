@@ -4,8 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/router/app_router.dart';
 import '../../domain/models/app_user.dart';
-import '../../providers/repository_providers.dart';
-import '../../providers/tema_providers.dart';
+import '../../core/providers/repository_providers.dart';
+import '../../core/providers/tema_providers.dart';
 import '../klien/buka_form_order.dart' show belumTersedia;
 import '../profil/atur_password_dialog.dart';
 

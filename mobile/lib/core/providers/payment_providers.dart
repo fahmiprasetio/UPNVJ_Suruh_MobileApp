@@ -1,11 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../core/config/sumber_data.dart';
-import '../data/api/api_payment_gateway.dart';
-import '../data/fake/fake_order_repository.dart';
-import '../data/fake/fake_payment_gateway.dart';
-import '../domain/models/transaksi_pembayaran.dart';
-import '../domain/repositories/payment_gateway.dart';
+import '../config/sumber_data.dart';
+import '../../data/api/api_payment_gateway.dart';
+import '../../data/fake/fake_order_repository.dart';
+import '../../data/fake/fake_payment_gateway.dart';
+import '../../domain/models/transaksi_pembayaran.dart';
+import '../../domain/repositories/payment_gateway.dart';
 import 'repository_providers.dart';
 
 /// Titik tukar payment gateway.

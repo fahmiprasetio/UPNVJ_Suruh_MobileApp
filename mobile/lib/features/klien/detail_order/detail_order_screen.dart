@@ -12,14 +12,14 @@ import '../../../domain/enums.dart';
 import '../../../domain/models/order.dart';
 import '../../../domain/models/runner_ringkas.dart';
 import '../../../domain/service_catalog.dart';
-import '../../../providers/order_providers.dart';
-import '../../../providers/repository_providers.dart';
+import '../../../core/providers/order_providers.dart';
+import '../../../core/providers/repository_providers.dart';
 import '../buka_form_order.dart';
 import '../widgets/lencana_status.dart';
 import 'widgets/kartu_bukti_pekerjaan.dart';
 import 'widgets/kartu_penawaran.dart';
 import 'widgets/linimasa_status.dart';
-import '../../widgets/pesan_kosong.dart';
+import '../../../core/widgets/pesan_kosong.dart';
 
 /// Detail satu order: status, tahapan, dan rinciannya.
 class DetailOrderScreen extends ConsumerWidget {
@@ -320,7 +320,11 @@ class _JalanBatalState extends ConsumerState<_JalanBatal> {
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.hourglass_top_outlined, size: 18, color: skema.onSurfaceVariant),
+          Icon(
+            Icons.hourglass_top_outlined,
+            size: 18,
+            color: skema.onSurfaceVariant,
+          ),
           const SizedBox(width: AppTheme.spasiKecil),
           Expanded(
             child: Text(
@@ -348,9 +352,9 @@ class _JalanBatalState extends ConsumerState<_JalanBatal> {
                 child: Text(
                   'Order yang sudah dibayar tidak bisa dibatalkan sendiri, karena '
                   'ada uang yang harus kembali. Admin yang memutuskan.',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(color: skema.onSurfaceVariant),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: skema.onSurfaceVariant,
+                  ),
                 ),
               ),
             ],
@@ -425,7 +429,9 @@ class _JalanBatalState extends ConsumerState<_JalanBatal> {
       ..hideCurrentSnackBar()
       ..showSnackBar(
         const SnackBar(
-          content: Text('Permintaanmu terkirim. Admin akan menjawab lewat chat order.'),
+          content: Text(
+            'Permintaanmu terkirim. Admin akan menjawab lewat chat order.',
+          ),
         ),
       );
   }
@@ -616,10 +622,11 @@ String? _catatanStatus(Order order) {
 }
 
 String? _catatanBiasa(Order order) => switch (order.status) {
-  OrderStatus.permintaan => order.penawaranPending.isEmpty
-      ? 'Menunggu runner yang tersedia mengajukan tawaran.'
-      : 'Ada tawaran masuk dari runner di bawah. Pilih salah satu, atau '
-            'tunggu tawaran lain.',
+  OrderStatus.permintaan =>
+    order.penawaranPending.isEmpty
+        ? 'Menunggu runner yang tersedia mengajukan tawaran.'
+        : 'Ada tawaran masuk dari runner di bawah. Pilih salah satu, atau '
+              'tunggu tawaran lain.',
   OrderStatus.menungguPersetujuanKlien => 'Penawaran ini sudah kamu jawab.',
   OrderStatus.mencariRunner =>
     'Ordermu sedang disiarkan ke runner yang tersedia.',

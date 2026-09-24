@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/theme/app_theme.dart';
+import '../theme/app_theme.dart';
 import '../../domain/models/halaman.dart';
-import '../../providers/ukuran_daftar.dart';
+import '../providers/ukuran_daftar.dart';
 
 /// Jalan menuju baris yang belum terbawa.
 ///

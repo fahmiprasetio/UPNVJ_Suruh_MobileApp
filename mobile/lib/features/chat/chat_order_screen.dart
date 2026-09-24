@@ -12,10 +12,10 @@ import '../../domain/enums.dart';
 import '../../domain/models/order.dart';
 import '../../domain/models/order_message.dart';
 import '../../domain/service_catalog.dart';
-import '../../providers/order_providers.dart';
-import '../../providers/repository_providers.dart';
-import '../../providers/ukuran_pesan.dart';
-import '../widgets/pesan_kosong.dart';
+import '../../core/providers/order_providers.dart';
+import '../../core/providers/repository_providers.dart';
+import '../../core/providers/ukuran_pesan.dart';
+import '../../core/widgets/pesan_kosong.dart';
 
 /// Ruang chat yang menempel pada satu order.
 ///
@@ -200,7 +200,15 @@ class _ChatOrderScreenState extends ConsumerState<ChatOrderScreen> {
       setState(() => _sedangMengirim = false);
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(galat is GalatApi ? galat.pesan : 'Pesan gagal dikirim. Terjadi kendala sambungan atau server.')));
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              galat is GalatApi
+                  ? galat.pesan
+                  : 'Pesan gagal dikirim. Terjadi kendala sambungan atau server.',
+            ),
+          ),
+        );
       return;
     }
 

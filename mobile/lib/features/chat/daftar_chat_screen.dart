@@ -8,11 +8,11 @@ import '../../core/theme/app_theme.dart';
 import '../../core/format/formatters.dart';
 import '../../domain/models/order.dart';
 import '../../domain/service_catalog.dart';
-import '../../providers/order_providers.dart';
-import '../../providers/ukuran_daftar.dart';
-import '../widgets/pesan_kosong.dart';
-import '../widgets/rangka_daftar_order.dart';
-import '../widgets/tombol_muat_lagi.dart';
+import '../../core/providers/order_providers.dart';
+import '../../core/providers/ukuran_daftar.dart';
+import '../../core/widgets/pesan_kosong.dart';
+import '../../core/widgets/rangka_daftar_order.dart';
+import '../../core/widgets/tombol_muat_lagi.dart';
 
 /// Daftar percakapan klien, satu baris per order yang pernah dibicarakan.
 ///
@@ -60,9 +60,7 @@ class _DaftarChatScreenState extends ConsumerState<DaftarChatScreen> {
           // Cuma order yang pernah punya percakapan. Order yang belum dibalas
           // siapa pun tidak layak jadi baris chat kosong di sini -- ia sudah
           // punya tempatnya sendiri di tab Pesanan.
-          final berpercakapan = halaman.isi
-              .where((o) => o.jumlahPesan > 0)
-              .toList()
+          final berpercakapan = halaman.isi.where((o) => o.jumlahPesan > 0).toList()
             // Belum dibaca dulu, lalu yang terbaru. Daftar order tidak membawa
             // waktu pesan terakhir (lihat catatan kelas), jadi tanggal order
             // sendiri dipakai sebagai urutan yang paling dekat dengan itu.

@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../domain/models/app_user.dart';
-import '../../providers/repository_providers.dart';
+import '../../core/providers/repository_providers.dart';
 
 /// Alat penguji untuk berpindah akun, sepadan dengan panel simulator di layar
 /// pembayaran.

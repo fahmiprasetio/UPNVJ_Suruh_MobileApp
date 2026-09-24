@@ -1,5 +1,5 @@
 import 'package:upnvj_suruh/core/config/sumber_data.dart';
-import 'package:upnvj_suruh/providers/repository_providers.dart';
+import 'package:upnvj_suruh/core/providers/repository_providers.dart';
 
 /// Menyatakan bahwa satu tes berjalan di atas data karangan, bukan API.
 ///

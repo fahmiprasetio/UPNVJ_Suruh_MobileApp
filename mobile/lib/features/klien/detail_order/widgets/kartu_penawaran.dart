@@ -11,7 +11,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../domain/enums.dart';
 import '../../../../domain/models/order.dart';
 import '../../../../domain/models/order_offer.dart';
-import '../../../../providers/repository_providers.dart';
+import '../../../../core/providers/repository_providers.dart';
 
 /// Satu penawaran runner untuk order Jalur B, sebagaimana dibaca klien,
 /// lengkap dengan tombol setuju/tolak/nego/chat miliknya sendiri.

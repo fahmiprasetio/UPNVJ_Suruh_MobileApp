@@ -6,8 +6,8 @@ import 'package:upnvj_suruh/app.dart';
 import 'package:upnvj_suruh/data/fake/fake_auth_repository.dart';
 import 'package:upnvj_suruh/data/fake/fake_order_repository.dart';
 import 'package:upnvj_suruh/data/fake/seed_data.dart';
-import 'package:upnvj_suruh/features/widgets/tombol_notifikasi.dart';
-import 'package:upnvj_suruh/providers/repository_providers.dart';
+import 'package:upnvj_suruh/core/widgets/tombol_notifikasi.dart';
+import 'package:upnvj_suruh/core/providers/repository_providers.dart';
 
 import '../../support/tiruan.dart';
 

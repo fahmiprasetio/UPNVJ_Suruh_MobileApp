@@ -12,7 +12,7 @@ import 'package:upnvj_suruh/domain/enums.dart';
 import 'package:upnvj_suruh/domain/models/order.dart';
 import 'package:upnvj_suruh/domain/models/runner_ringkas.dart';
 import 'package:upnvj_suruh/features/klien/detail_order/widgets/kartu_bukti_pekerjaan.dart';
-import 'package:upnvj_suruh/providers/repository_providers.dart';
+import 'package:upnvj_suruh/core/providers/repository_providers.dart';
 
 void main() {
   setUpAll(() async {

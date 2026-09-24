@@ -4,11 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/enums.dart';
 import '../../../domain/service_catalog.dart';
-import '../../../providers/repository_providers.dart';
+import '../../../core/providers/repository_providers.dart';
 import '../buka_form_order.dart';
 import '../../peran/tombol_ganti_mode.dart';
-import '../../widgets/tombol_notifikasi.dart';
-import '../../widgets/tombol_profil.dart';
+import '../../../core/widgets/tombol_notifikasi.dart';
+import '../../../core/widgets/tombol_profil.dart';
 import 'widgets/banner_promo_carousel.dart';
 import 'widgets/kartu_layanan.dart';
 import 'widgets/lembar_cari_layanan.dart';
@@ -310,7 +310,8 @@ class _BannerPromo extends StatelessWidget {
 
   /// Berapa banyak tingginya yang tetap tinggal di kertas putih, di luar
   /// kepala hijau.
-  static const double tinggiDiLuarKepala = BannerPromoCarousel.tinggiDiLuarKepala;
+  static const double tinggiDiLuarKepala =
+      BannerPromoCarousel.tinggiDiLuarKepala;
 
   @override
   Widget build(BuildContext context) {

@@ -10,8 +10,8 @@ import '../../core/theme/app_theme.dart';
 import '../../domain/enums.dart';
 import '../../domain/models/order.dart';
 import '../../domain/service_catalog.dart';
-import '../../providers/order_providers.dart';
-import '../widgets/pesan_kosong.dart';
+import '../../core/providers/order_providers.dart';
+import '../../core/widgets/pesan_kosong.dart';
 
 /// Kategori filter untuk kotak masuk notifikasi.
 enum KategoriNotifikasi { semua, pesanan, info }
@@ -35,9 +35,7 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
     final stateOrder = ref.watch(orderKlienProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Notifikasi'),
-      ),
+      appBar: AppBar(title: const Text('Notifikasi')),
       body: Column(
         children: [
           // Filter Chips
@@ -103,7 +101,8 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
     final butirNotifikasi = <_ItemNotifikasi>[];
 
     // Tambahkan notifikasi pembaruan pesanan
-    if (_filter == KategoriNotifikasi.semua || _filter == KategoriNotifikasi.pesanan) {
+    if (_filter == KategoriNotifikasi.semua ||
+        _filter == KategoriNotifikasi.pesanan) {
       for (final order in daftarOrder) {
         final item = _buatNotifikasiPesanan(order);
         if (item != null) {
@@ -113,7 +112,8 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
     }
 
     // Tambahkan notifikasi pengumuman & tips kampus
-    if (_filter == KategoriNotifikasi.semua || _filter == KategoriNotifikasi.info) {
+    if (_filter == KategoriNotifikasi.semua ||
+        _filter == KategoriNotifikasi.info) {
       butirNotifikasi.addAll(_pengumumanBawaan());
     }
 
@@ -121,7 +121,8 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
       return const Center(
         child: PesanKosong(
           judul: 'Belum Ada Notifikasi',
-          keterangan: 'Pemberitahuan aktivitas pesanan dan informasi terbaru akan muncul di sini.',
+          keterangan:
+              'Pemberitahuan aktivitas pesanan dan informasi terbaru akan muncul di sini.',
           ikon: Icons.notifications_none_outlined,
         ),
       );
@@ -154,7 +155,8 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
       case OrderStatus.menungguPersetujuanKlien:
         return _ItemNotifikasi(
           judul: 'Penawaran Masuk (${order.kodeOrder})',
-          pesan: 'Runner telah mengajukan penawaran harga untuk $namaLayanan. Periksa dan setujui penawaran.',
+          pesan:
+              'Runner telah mengajukan penawaran harga untuk $namaLayanan. Periksa dan setujui penawaran.',
           waktu: order.dibuatPada,
           ikon: Icons.local_offer_outlined,
           warnaAksen: AppTheme.hijauLencana,
@@ -172,14 +174,17 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
       case OrderStatus.mencariRunner:
         return _ItemNotifikasi(
           judul: 'Mencari Runner (${order.kodeOrder})',
-          pesan: 'Pembayaran $namaLayanan telah diverifikasi. Pesanan sedang disiarkan ke runner.',
+          pesan:
+              'Pembayaran $namaLayanan telah diverifikasi. Pesanan sedang disiarkan ke runner.',
           waktu: order.dibayarPada ?? order.dibuatPada,
           ikon: Icons.search_rounded,
           warnaAksen: AppTheme.hijauLencana,
           onTap: (context) => context.push(Rute.detailOrder(order.id)),
         );
       case OrderStatus.dikerjakan:
-        final namaRunner = order.runners.isNotEmpty ? order.runners.first.nama : 'Runner';
+        final namaRunner = order.runners.isNotEmpty
+            ? order.runners.first.nama
+            : 'Runner';
         return _ItemNotifikasi(
           judul: 'Pesanan Dikerjakan (${order.kodeOrder})',
           pesan: '$namaRunner sedang menjalankan tugas $namaLayanan Anda.',
@@ -191,7 +196,8 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
       case OrderStatus.selesai:
         return _ItemNotifikasi(
           judul: 'Pesanan Selesai (${order.kodeOrder})',
-          pesan: 'Tugas $namaLayanan telah selesai. Foto bukti serah terima telah diunggah.',
+          pesan:
+              'Tugas $namaLayanan telah selesai. Foto bukti serah terima telah diunggah.',
           waktu: order.selesaiPada ?? order.dibuatPada,
           ikon: Icons.check_circle_outline_rounded,
           warnaAksen: AppTheme.hijauLencana,
@@ -213,7 +219,8 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
     return [
       _ItemNotifikasi(
         judul: 'Selamat Datang di UPNVJ Suruh!',
-        pesan: 'Layanan jasa serabutan resmi mahasiswa UPN Veteran Jakarta di bawah naungan Bidang Ekonomi Kreatif.',
+        pesan:
+            'Layanan jasa serabutan resmi mahasiswa UPN Veteran Jakarta di bawah naungan Bidang Ekonomi Kreatif.',
         waktu: DateTime(2026, 9, 1),
         ikon: Icons.campaign_outlined,
         warnaAksen: AppTheme.hijauLencana,
@@ -225,7 +232,8 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
       ),
       _ItemNotifikasi(
         judul: 'Pembayaran Cepat & Otomatis via QRIS',
-        pesan: 'Semua pembayaran menggunakan QRIS dinamis Midtrans tanpa perlu konfirmasi manual.',
+        pesan:
+            'Semua pembayaran menggunakan QRIS dinamis Midtrans tanpa perlu konfirmasi manual.',
         waktu: DateTime(2026, 9, 5),
         ikon: Icons.qr_code_scanner_rounded,
         warnaAksen: AppTheme.hijauLencana,
@@ -237,7 +245,8 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
       ),
       _ItemNotifikasi(
         judul: 'Tips Hemat: Jastip Makanan Bareng Teman',
-        pesan: 'Titip pesanan makanan kantin atau warung favorit bersama rekan satu kos untuk menghemat waktu dan ongkos.',
+        pesan:
+            'Titip pesanan makanan kantin atau warung favorit bersama rekan satu kos untuk menghemat waktu dan ongkos.',
         waktu: DateTime(2026, 9, 10),
         ikon: Icons.lightbulb_outline_rounded,
         warnaAksen: AppTheme.hijauLencana,
@@ -302,9 +311,7 @@ class _KartuNotifikasi extends StatelessWidget {
       color: skema.surfaceContainerHighest.withValues(alpha: 0.35),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.radiusKartu),
-        side: BorderSide(
-          color: skema.outlineVariant.withValues(alpha: 0.4),
-        ),
+        side: BorderSide(color: skema.outlineVariant.withValues(alpha: 0.4)),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppTheme.radiusKartu),
@@ -320,11 +327,7 @@ class _KartuNotifikasi extends StatelessWidget {
                   color: item.warnaAksen.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  item.ikon,
-                  size: 22,
-                  color: item.warnaAksen,
-                ),
+                child: Icon(item.ikon, size: 22, color: item.warnaAksen),
               ),
               const SizedBox(width: AppTheme.spasiSedang),
               Expanded(
@@ -344,7 +347,9 @@ class _KartuNotifikasi extends StatelessWidget {
                         Text(
                           formatTgl.format(item.waktu),
                           style: teks.bodySmall?.copyWith(
-                            color: skema.onSurfaceVariant.withValues(alpha: 0.7),
+                            color: skema.onSurfaceVariant.withValues(
+                              alpha: 0.7,
+                            ),
                             fontSize: 11,
                           ),
                         ),

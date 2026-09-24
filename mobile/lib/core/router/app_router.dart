@@ -26,7 +26,7 @@ import '../../domain/enums.dart';
 import '../../domain/models/app_user.dart';
 import '../../domain/models/order.dart';
 import '../../domain/repositories/auth_repository.dart';
-import '../../providers/repository_providers.dart';
+import '../providers/repository_providers.dart';
 
 /// Nama rute ditulis sebagai konstanta supaya tidak ada string jalur yang
 /// tersebar di dalam layar.
@@ -62,7 +62,8 @@ class Rute {
   /// jalur obrolan pribadi runner mana yang mau dilihat, karena bisa ada
   /// beberapa runner menawar bersamaan. Diabaikan begitu order sudah punya
   /// runner tetap.
-  static String chatOrder(String orderId, {String? runnerId}) => runnerId == null
+  static String chatOrder(String orderId, {String? runnerId}) =>
+      runnerId == null
       ? '/order/$orderId/chat'
       : '/order/$orderId/chat?runnerId=$runnerId';
 

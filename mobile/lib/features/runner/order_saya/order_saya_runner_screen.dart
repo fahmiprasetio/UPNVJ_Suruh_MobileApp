@@ -10,17 +10,17 @@ import '../../../core/theme/app_theme.dart';
 import '../../../domain/enums.dart';
 import '../../../domain/models/order.dart';
 import '../../../domain/models/order_offer.dart';
-import '../../../providers/repository_providers.dart';
-import '../../../providers/runner_providers.dart';
+import '../../../core/providers/repository_providers.dart';
+import '../../../core/providers/runner_providers.dart';
 import '../../peran/tombol_ganti_mode.dart';
-import '../../widgets/tombol_profil.dart';
+import '../../../core/widgets/tombol_profil.dart';
 import 'widgets/kartu_order_runner.dart';
 import 'widgets/kartu_tawaran_runner.dart';
 import 'widgets/lembar_selesaikan_order.dart';
-import '../../../providers/ukuran_daftar.dart';
-import '../../widgets/pesan_kosong.dart';
-import '../../widgets/rangka_daftar_order.dart';
-import '../../widgets/tombol_muat_lagi.dart';
+import '../../../core/providers/ukuran_daftar.dart';
+import '../../../core/widgets/pesan_kosong.dart';
+import '../../../core/widgets/rangka_daftar_order.dart';
+import '../../../core/widgets/tombol_muat_lagi.dart';
 
 /// Order yang dipegang runner, yang sedang dikerjakan dan yang sudah kelar.
 ///
@@ -233,7 +233,9 @@ class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
         ..showSnackBar(
           SnackBar(
             content: Text(
-              galat is GalatApi ? galat.pesan : 'Tawaran gagal ditarik. Terjadi kendala sambungan atau server.',
+              galat is GalatApi
+                  ? galat.pesan
+                  : 'Tawaran gagal ditarik. Terjadi kendala sambungan atau server.',
             ),
           ),
         );
@@ -328,7 +330,9 @@ class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
         ..showSnackBar(
           SnackBar(
             content: Text(
-              galat is GalatApi ? galat.pesan : 'Gagal melepas order. Terjadi kendala sambungan atau server.',
+              galat is GalatApi
+                  ? galat.pesan
+                  : 'Gagal melepas order. Terjadi kendala sambungan atau server.',
             ),
           ),
         );

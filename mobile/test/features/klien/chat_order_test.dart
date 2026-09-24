@@ -12,11 +12,11 @@ import 'package:upnvj_suruh/domain/models/order.dart';
 import 'package:upnvj_suruh/domain/models/order_message.dart';
 import 'package:upnvj_suruh/domain/models/order_offer.dart';
 import 'package:upnvj_suruh/domain/models/runner_ringkas.dart';
-import 'package:upnvj_suruh/providers/repository_providers.dart';
+import 'package:upnvj_suruh/core/providers/repository_providers.dart';
 import 'package:upnvj_suruh/core/config/batas_halaman.dart';
 import 'package:upnvj_suruh/features/chat/chat_order_screen.dart';
-import 'package:upnvj_suruh/providers/order_providers.dart';
-import 'package:upnvj_suruh/providers/ukuran_pesan.dart';
+import 'package:upnvj_suruh/core/providers/order_providers.dart';
+import 'package:upnvj_suruh/core/providers/ukuran_pesan.dart';
 
 class _RepoOrderGagal extends FakeOrderRepository {
   @override

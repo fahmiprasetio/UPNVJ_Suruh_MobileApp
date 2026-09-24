@@ -9,7 +9,7 @@ import 'package:upnvj_suruh/data/fake/seed_data.dart';
 import 'package:upnvj_suruh/domain/enums.dart';
 import 'package:upnvj_suruh/features/klien/beranda/widgets/lembar_cari_layanan.dart';
 import 'package:upnvj_suruh/features/klien/order_jalur_b/form_permintaan_screen.dart';
-import 'package:upnvj_suruh/providers/repository_providers.dart';
+import 'package:upnvj_suruh/core/providers/repository_providers.dart';
 
 import '../../support/tiruan.dart';
 

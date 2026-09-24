@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../domain/enums.dart';
-import '../../providers/peran_providers.dart';
-import '../../providers/repository_providers.dart';
+import '../../core/providers/peran_providers.dart';
+import '../../core/providers/repository_providers.dart';
 
 /// Tombol ganti mode untuk akun yang merangkap klien dan runner (bagian 14.3).
 ///

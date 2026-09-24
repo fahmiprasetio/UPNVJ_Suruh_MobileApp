@@ -8,7 +8,7 @@ import 'package:upnvj_suruh/domain/enums.dart';
 import 'package:upnvj_suruh/domain/models/transaksi_pembayaran.dart';
 import 'package:upnvj_suruh/domain/repositories/payment_gateway.dart';
 import 'package:upnvj_suruh/features/klien/pembayaran/pembayaran_screen.dart';
-import 'package:upnvj_suruh/providers/payment_providers.dart';
+import 'package:upnvj_suruh/core/providers/payment_providers.dart';
 
 import '../../support/tiruan.dart';
 

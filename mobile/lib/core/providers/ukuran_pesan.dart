@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../core/config/batas_halaman.dart';
+import '../config/batas_halaman.dart';
 
 /// Jendela pesan untuk tiap order yang chatnya pernah dibuka.
 ///

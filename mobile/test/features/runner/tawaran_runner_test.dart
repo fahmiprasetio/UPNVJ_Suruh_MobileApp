@@ -13,7 +13,7 @@ import 'package:upnvj_suruh/domain/enums.dart';
 import 'package:upnvj_suruh/domain/models/order.dart';
 import 'package:upnvj_suruh/domain/models/order_offer.dart';
 import 'package:upnvj_suruh/features/runner/ajukan_tawaran/ajukan_tawaran_screen.dart';
-import 'package:upnvj_suruh/providers/repository_providers.dart';
+import 'package:upnvj_suruh/core/providers/repository_providers.dart';
 
 import '../../support/tiruan.dart';
 

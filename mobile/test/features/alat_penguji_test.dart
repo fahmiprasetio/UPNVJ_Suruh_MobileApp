@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:upnvj_suruh/core/config/sumber_data.dart';
-import 'package:upnvj_suruh/providers/payment_providers.dart';
-import 'package:upnvj_suruh/providers/repository_providers.dart';
+import 'package:upnvj_suruh/core/providers/payment_providers.dart';
+import 'package:upnvj_suruh/core/providers/repository_providers.dart';
 
 /// Alat penguji tidak boleh ikut terbawa ke tangan pengguna.
 ///

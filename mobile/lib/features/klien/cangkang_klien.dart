@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/models/order.dart';
-import '../../providers/order_providers.dart';
+import '../../core/providers/order_providers.dart';
 import '../chat/daftar_chat_screen.dart';
-import '../widgets/bilah_navigasi_bawah.dart';
+import '../../core/widgets/bilah_navigasi_bawah.dart';
 import 'beranda/beranda_klien_screen.dart';
 import 'riwayat/riwayat_order_screen.dart';
 

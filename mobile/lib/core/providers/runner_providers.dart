@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../domain/models/halaman.dart';
-import '../domain/models/order.dart';
+import '../../domain/models/halaman.dart';
+import '../../domain/models/order.dart';
 import 'ukuran_daftar.dart';
 import 'repository_providers.dart';
 

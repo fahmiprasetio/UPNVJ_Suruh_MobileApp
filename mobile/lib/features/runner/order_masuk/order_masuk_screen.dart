@@ -5,15 +5,15 @@ import '../../../core/api/galat_api.dart';
 import '../../../core/api/idempotency_key.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/models/order.dart';
-import '../../../providers/repository_providers.dart';
-import '../../../providers/runner_providers.dart';
+import '../../../core/providers/repository_providers.dart';
+import '../../../core/providers/runner_providers.dart';
 import '../../peran/tombol_ganti_mode.dart';
-import '../../widgets/tombol_profil.dart';
+import '../../../core/widgets/tombol_profil.dart';
 import 'widgets/kartu_order_siaran.dart';
-import '../../../providers/ukuran_daftar.dart';
-import '../../widgets/pesan_kosong.dart';
-import '../../widgets/rangka_daftar_order.dart';
-import '../../widgets/tombol_muat_lagi.dart';
+import '../../../core/providers/ukuran_daftar.dart';
+import '../../../core/widgets/pesan_kosong.dart';
+import '../../../core/widgets/rangka_daftar_order.dart';
+import '../../../core/widgets/tombol_muat_lagi.dart';
 
 /// Layar utama runner: order yang sudah dibayar dan sedang mencari runner.
 ///

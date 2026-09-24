@@ -90,11 +90,41 @@ transaction with optimistic concurrency, rather than in the interface.
 
 ## Layout
 
+This repository is intentionally a small monorepo: the mobile client, admin dashboard,
+and API evolve together around the same domain and API contract.
+
 ```
-mobile/    Flutter application, for clients and runners
-web/       React admin dashboard
-backend/   ASP.NET Core Web API and EF Core
+mobile/
+  android/, ios/, linux/, macos/, web/, windows/  Flutter platform runners
+  assets/                                           app assets
+  lib/
+    core/                                            shared infrastructure/UI
+      api/ config/ format/ notifikasi/ peta/ realtime/ router/ theme/
+      providers/ widgets/
+    domain/                                          models and business contracts
+    data/                                            API and fake implementations
+    features/                                       screens grouped by user capability
+  test/                                             Flutter tests
+web/
+  src/auth/ inti/ komponen/ halaman/               React admin source
+backend/
+  src/UpnvjSuruh.Api/                              ASP.NET Core API
+  tests/                                           API/integration tests
 ```
+
+`mobile/build/`, `.dart_tool/`, `web/dist/`, and dependency caches are generated artifacts;
+they are not source structure and should not be moved or committed. Feature-specific widgets
+stay beside their feature, while reusable providers and widgets belong under `mobile/lib/core/`.
+Domain models stay under `domain/` rather than being mixed into `core/`, so infrastructure and
+business rules remain separated.
+
+`backend/` belongs in this same repository. It contains the executable API, EF Core migrations,
+authentication, authorization, business rules, and database integration—not merely Swagger.
+Swagger is generated documentation and a development discovery surface at `/swagger`; it is
+not a replacement for the backend source. Keeping all three surfaces together makes API changes,
+mobile clients, admin UI, migrations, and CI reviewable in one change. Splitting the backend into
+another repository would only be useful later if independent ownership, release cadence, or
+access controls require it.
 
 ## Getting started
 

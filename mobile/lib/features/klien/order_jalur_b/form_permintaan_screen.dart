@@ -12,7 +12,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../domain/enums.dart';
 import '../../../domain/models/order.dart';
 import '../../../domain/service_catalog.dart';
-import '../../../providers/repository_providers.dart';
+import '../../../core/providers/repository_providers.dart';
 
 /// Form Jalur B: klien menuliskan kebutuhannya, harga menyusul.
 ///

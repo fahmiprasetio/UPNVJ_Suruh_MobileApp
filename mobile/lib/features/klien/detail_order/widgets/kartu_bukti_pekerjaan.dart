@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/format/formatters.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../domain/models/order.dart';
-import '../../../../providers/repository_providers.dart';
+import '../../../../core/providers/repository_providers.dart';
 
 /// Bukti pekerjaan yang ditinggalkan runner, dilihat dari sisi klien.
 ///

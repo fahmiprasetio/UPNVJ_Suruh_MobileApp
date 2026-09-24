@@ -9,9 +9,9 @@ import '../../../core/format/formatters.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/models/order.dart';
 import '../../../domain/service_catalog.dart';
-import '../../../providers/order_providers.dart';
-import '../../../providers/repository_providers.dart';
-import '../../widgets/pesan_kosong.dart';
+import '../../../core/providers/order_providers.dart';
+import '../../../core/providers/repository_providers.dart';
+import '../../../core/widgets/pesan_kosong.dart';
 
 /// Runner mengajukan penawaran untuk satu permintaan Jalur B.
 ///

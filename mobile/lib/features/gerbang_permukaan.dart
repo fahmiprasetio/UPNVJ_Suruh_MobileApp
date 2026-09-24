@@ -3,12 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/api/galat_api.dart';
 import '../domain/enums.dart';
-import '../providers/peran_providers.dart';
-import '../providers/repository_providers.dart';
+import '../core/providers/peran_providers.dart';
+import '../core/providers/repository_providers.dart';
 import 'klien/cangkang_klien.dart';
 import 'runner/beranda_runner_screen.dart';
-import 'widgets/pesan_kosong.dart';
-import 'widgets/tombol_profil.dart';
+import '../core/widgets/pesan_kosong.dart';
+import '../core/widgets/tombol_profil.dart';
 
 /// Penentu permukaan mana yang terbuka setelah masuk.
 ///

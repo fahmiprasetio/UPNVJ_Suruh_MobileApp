@@ -9,7 +9,7 @@ import 'package:upnvj_suruh/core/config/batas_masukan.dart';
 import 'package:upnvj_suruh/data/fake/fake_auth_repository.dart';
 import 'package:upnvj_suruh/data/fake/fake_order_repository.dart';
 import 'package:upnvj_suruh/data/fake/seed_data.dart';
-import 'package:upnvj_suruh/providers/repository_providers.dart';
+import 'package:upnvj_suruh/core/providers/repository_providers.dart';
 import '../support/tiruan.dart';
 
 /// Alur masuk diuji lewat aplikasi utuh, bukan layarnya sendirian, karena yang

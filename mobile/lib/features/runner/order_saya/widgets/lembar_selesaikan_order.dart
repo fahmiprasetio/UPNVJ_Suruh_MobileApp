@@ -8,7 +8,7 @@ import '../../../../core/config/batas_masukan.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../domain/models/order.dart';
 import '../../../../domain/service_catalog.dart';
-import '../../../../providers/repository_providers.dart';
+import '../../../../core/providers/repository_providers.dart';
 
 /// Lembar penyelesaian order: foto bukti dulu, baru boleh ditandai selesai.
 ///

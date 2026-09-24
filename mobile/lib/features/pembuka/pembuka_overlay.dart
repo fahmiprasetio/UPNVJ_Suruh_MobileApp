@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../providers/pembuka_providers.dart';
+import '../../core/providers/pembuka_providers.dart';
 import 'widgets/lencana_logo.dart';
 import 'widgets/teks_melengkung.dart';
 

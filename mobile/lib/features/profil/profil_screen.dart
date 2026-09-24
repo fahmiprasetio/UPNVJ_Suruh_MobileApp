@@ -7,7 +7,7 @@ import '../../core/config/batas_masukan.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../domain/models/app_user.dart';
-import '../../providers/repository_providers.dart';
+import '../../core/providers/repository_providers.dart';
 import '../dev/pengalih_akun.dart';
 import 'ganti_nomor_hp_dialog.dart';
 

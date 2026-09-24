@@ -6,8 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:upnvj_suruh/core/api/galat_api.dart';
 import 'package:upnvj_suruh/core/config/sumber_data.dart';
-import 'package:upnvj_suruh/providers/pembuka_providers.dart';
-import 'package:upnvj_suruh/providers/repository_providers.dart';
+import 'package:upnvj_suruh/core/providers/pembuka_providers.dart';
+import 'package:upnvj_suruh/core/providers/repository_providers.dart';
 
 /// Apa yang terjadi ketika token yang sedang dipakai ditolak server.
 ///

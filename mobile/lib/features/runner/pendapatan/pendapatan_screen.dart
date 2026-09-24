@@ -6,10 +6,10 @@ import '../../../core/format/formatters.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/models/pendapatan.dart';
 import '../../../domain/service_catalog.dart';
-import '../../../providers/repository_providers.dart';
+import '../../../core/providers/repository_providers.dart';
 import '../../peran/tombol_ganti_mode.dart';
-import '../../widgets/pesan_kosong.dart';
-import '../../widgets/tombol_profil.dart';
+import '../../../core/widgets/pesan_kosong.dart';
+import '../../../core/widgets/tombol_profil.dart';
 
 /// Pendapatan runner: berapa yang belum dibayarkan organisasi.
 ///

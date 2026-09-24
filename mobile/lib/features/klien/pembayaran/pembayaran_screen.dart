@@ -11,8 +11,8 @@ import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/models/transaksi_pembayaran.dart';
 import '../../../domain/service_catalog.dart';
-import '../../../providers/order_providers.dart';
-import '../../../providers/payment_providers.dart';
+import '../../../core/providers/order_providers.dart';
+import '../../../core/providers/payment_providers.dart';
 import 'widgets/panel_simulator.dart';
 
 /// Layar pembayaran QRIS.

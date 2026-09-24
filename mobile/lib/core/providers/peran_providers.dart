@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../domain/enums.dart';
+import '../../domain/enums.dart';
 import 'repository_providers.dart';
 
 /// Peran yang sedang dipakai user, bukan seluruh peran yang ia punya.

@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../core/config/batas_halaman.dart';
+import '../config/batas_halaman.dart';
 
 /// Berapa banyak baris yang sedang diminta sebuah daftar.
 ///

@@ -6,7 +6,7 @@ import '../../core/api/tindakan_terkelola.dart';
 import '../../core/config/batas_masukan.dart';
 import '../../core/format/validasi_kontak.dart';
 import '../../core/theme/app_theme.dart';
-import '../../providers/repository_providers.dart';
+import '../../core/providers/repository_providers.dart';
 
 /// Langkah yang sedang ditampilkan.
 ///

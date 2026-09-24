@@ -13,8 +13,8 @@ import 'package:upnvj_suruh/features/klien/beranda/beranda_klien_screen.dart';
 import 'package:upnvj_suruh/features/pembuka/pembuka_overlay.dart';
 import 'package:upnvj_suruh/features/pembuka/widgets/lencana_logo.dart';
 import 'package:upnvj_suruh/features/pembuka/widgets/teks_melengkung.dart';
-import 'package:upnvj_suruh/providers/pembuka_providers.dart';
-import 'package:upnvj_suruh/providers/repository_providers.dart';
+import 'package:upnvj_suruh/core/providers/pembuka_providers.dart';
+import 'package:upnvj_suruh/core/providers/repository_providers.dart';
 
 /// Layar pembuka diuji lewat aplikasi utuh, bukan widgetnya sendirian.
 ///

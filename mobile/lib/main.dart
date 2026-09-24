@@ -7,9 +7,9 @@ import 'app.dart';
 import 'core/notifikasi/konfigurasi_firebase.dart';
 import 'core/theme/preferensi_tema.dart';
 import 'data/api/sesi_token.dart';
-import 'providers/pembuka_providers.dart';
-import 'providers/repository_providers.dart';
-import 'providers/tema_providers.dart';
+import 'core/providers/pembuka_providers.dart';
+import 'core/providers/repository_providers.dart';
+import 'core/providers/tema_providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/api/api_auth_repository.dart';
+import '../../data/api/api_auth_repository.dart';
 import 'repository_providers.dart';
 
 /// Kesiapan sesi: token sudah dimuat, dan kalau ada isinya, sudah ditanyakan ke

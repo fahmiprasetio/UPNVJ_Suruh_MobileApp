@@ -7,11 +7,11 @@ import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/models/order.dart';
 import '../../../domain/service_catalog.dart';
-import '../../../providers/order_providers.dart';
-import '../../../providers/ukuran_daftar.dart';
-import '../../widgets/pesan_kosong.dart';
-import '../../widgets/rangka_daftar_order.dart';
-import '../../widgets/tombol_muat_lagi.dart';
+import '../../../core/providers/order_providers.dart';
+import '../../../core/providers/ukuran_daftar.dart';
+import '../../../core/widgets/pesan_kosong.dart';
+import '../../../core/widgets/rangka_daftar_order.dart';
+import '../../../core/widgets/tombol_muat_lagi.dart';
 import '../buka_form_order.dart';
 import '../widgets/kartu_order_ringkas.dart';
 
@@ -209,9 +209,11 @@ class _RiwayatOrderScreenState extends ConsumerState<RiwayatOrderScreen> {
             //
             // Order yang batal ikut dapat, dan itu disengaja: order yang gagal
             // justru yang paling sering ingin diulang.
-            onPesanLagi: order.status.isAktif || !adaFormOrder(order.serviceType)
+            onPesanLagi:
+                order.status.isAktif || !adaFormOrder(order.serviceType)
                 ? null
-                : () => bukaFormOrder(context, order.serviceType, contoh: order),
+                : () =>
+                      bukaFormOrder(context, order.serviceType, contoh: order),
           ),
         ),
     ];

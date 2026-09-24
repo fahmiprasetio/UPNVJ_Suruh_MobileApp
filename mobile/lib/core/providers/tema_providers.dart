@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../core/theme/preferensi_tema.dart';
+import '../theme/preferensi_tema.dart';
 
 /// Ditimpa di [main] dengan yang sudah selesai memuat pilihan tersimpan.
 /// Tanpa penimpaan itu nilainya selalu bawaan, dan pilihan yang pernah dibuat
