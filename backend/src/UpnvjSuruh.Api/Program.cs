@@ -25,6 +25,23 @@ using UpnvjSuruh.Api.Pricing;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Host filtering tidak boleh dibiarkan wildcard di deployment. Host header yang tidak dibatasi
+// dapat mengacaukan link absolut dan membuat aplikasi menerima nama situs yang tidak pernah
+// disetujui. Development tetap fleksibel, sedangkan server non-Development harus menyebutkan
+// host publiknya secara eksplisit (pisahkan beberapa host dengan titik koma).
+if (!builder.Environment.IsDevelopment())
+{
+    var allowedHosts = builder.Configuration["AllowedHosts"];
+    var hostNames = allowedHosts?
+        .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        ?? [];
+    if (hostNames.Length == 0 || hostNames.Any(host => host == "*"))
+    {
+        throw new InvalidOperationException(
+            "AllowedHosts wajib diisi dengan host produksi yang eksplisit dan tidak boleh '*'.");
+    }
+}
+
 // Reverse proxy boleh meneruskan alamat klien dan skema HTTPS, tetapi header tersebut hanya
 // dapat dipercaya jika koneksi terakhir benar-benar datang dari proxy yang kita kelola.
 // Tanpa daftar eksplisit ini, klien langsung dapat memalsukan X-Forwarded-For untuk menghindari

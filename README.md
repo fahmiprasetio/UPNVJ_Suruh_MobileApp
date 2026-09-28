@@ -163,7 +163,16 @@ A production server that runs with the logging sender looks entirely healthy whi
 sending a single notification, which is exactly the silent failure the feature exists to
 prevent.
 
-#### Reverse proxy in production
+#### Production host and reverse proxy
+
+Production must set `AllowedHosts` to the public API host names explicitly. Use a semicolon
+between multiple hosts; do not leave the value as `*` or blank. The API refuses to start
+outside Development when this setting is missing or wildcarded, so a misconfigured deployment
+fails closed instead of accepting arbitrary `Host` headers.
+
+```text
+AllowedHosts=api.example.test;api.example.com
+```
 
 When TLS terminates at a reverse proxy, configure the IP address that can directly connect
 to the API. This makes the API trust `X-Forwarded-For` and `X-Forwarded-Proto` only from that
