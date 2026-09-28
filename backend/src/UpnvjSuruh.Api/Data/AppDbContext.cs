@@ -14,6 +14,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<IdempotensiTerimaOrder> IdempotensiTerimaOrder => Set<IdempotensiTerimaOrder>();
     public DbSet<IdempotensiLepasOrder> IdempotensiLepasOrder => Set<IdempotensiLepasOrder>();
     public DbSet<IdempotensiSelesaikanOrder> IdempotensiSelesaikanOrder => Set<IdempotensiSelesaikanOrder>();
+    public DbSet<IdempotensiPembatalanOrder> IdempotensiPembatalanOrder => Set<IdempotensiPembatalanOrder>();
     public DbSet<IdempotensiAksiAdmin> IdempotensiAksiAdmin => Set<IdempotensiAksiAdmin>();
     public DbSet<OrderOffer> OrderOffers => Set<OrderOffer>();
     public DbSet<OrderMessage> OrderMessages => Set<OrderMessage>();
@@ -290,6 +291,25 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasOne<User>()
                 .WithMany()
                 .HasForeignKey(i => i.RunnerId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<IdempotensiPembatalanOrder>(entity =>
+        {
+            entity.Property(i => i.Key).HasMaxLength(IdempotensiOrder.PanjangKeyMaksimal);
+            entity.Property(i => i.RequestHash).HasMaxLength(64);
+            entity.Property(i => i.ResponseJson).HasColumnType("text");
+            entity.HasIndex(i => new { i.UserId, i.Key }).IsUnique();
+            entity.HasIndex(i => i.OrderId);
+
+            entity.HasOne<Order>()
+                .WithMany()
+                .HasForeignKey(i => i.OrderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(i => i.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

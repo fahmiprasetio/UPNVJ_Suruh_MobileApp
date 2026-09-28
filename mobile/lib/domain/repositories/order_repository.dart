@@ -180,10 +180,7 @@ abstract interface class OrderRepository {
   ///
   /// Melanggar aturan tetap melempar, dan satu-satunya aturan di sini: pemesan tidak
   /// boleh menjadi runner ordernya sendiri.
-  Future<bool> terimaOrder({
-    required String orderId,
-    String? idempotencyKey,
-  });
+  Future<bool> terimaOrder({required String orderId, String? idempotencyKey});
 
   /// Runner menandai pekerjaannya selesai.
   ///
@@ -231,8 +228,8 @@ abstract interface class OrderRepository {
   ///
   /// Hanya pemesannya, dan hanya selama belum dibayar. Pembatalan setelah pembayaran
   /// menyangkut pengembalian uang, dan itu tidak boleh terjadi sebagai efek samping
-  /// satu tombol.
-  Future<Order> batalkanOrder(String orderId);
+  /// satu tombol. [idempotencyKey] dipertahankan selama retry pembatalan yang sama.
+  Future<Order> batalkanOrder(String orderId, {String? idempotencyKey});
 
   /// Mengirim satu pesan ke ruang chat sebuah order.
   ///

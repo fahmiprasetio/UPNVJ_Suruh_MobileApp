@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/galat_api.dart';
+import '../../../core/api/idempotency_key.dart';
 import '../../../core/config/batas_masukan.dart';
 import '../../../core/format/formatters.dart';
 import '../../../core/router/app_router.dart';
@@ -306,6 +307,7 @@ class _JalanBatal extends ConsumerStatefulWidget {
 
 class _JalanBatalState extends ConsumerState<_JalanBatal> {
   bool _sedangMembatalkan = false;
+  String? _idempotencyKey;
 
   @override
   Widget build(BuildContext context) {
@@ -467,7 +469,10 @@ class _JalanBatalState extends ConsumerState<_JalanBatal> {
 
     setState(() => _sedangMembatalkan = true);
     try {
-      await ref.read(orderRepositoryProvider).batalkanOrder(order.id);
+      final key = _idempotencyKey ??= buatIdempotencyKey();
+      await ref
+          .read(orderRepositoryProvider)
+          .batalkanOrder(order.id, idempotencyKey: key);
     } catch (galat) {
       if (!mounted) return;
       setState(() => _sedangMembatalkan = false);

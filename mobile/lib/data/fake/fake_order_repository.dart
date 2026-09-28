@@ -629,10 +629,8 @@ class FakeOrderRepository implements OrderRepository {
   }
 
   @override
-  Future<bool> terimaOrder({
-    required String orderId,
-    String? idempotencyKey,
-  }) => terimaOrderSebagai(orderId: orderId, runnerId: _pemanggil());
+  Future<bool> terimaOrder({required String orderId, String? idempotencyKey}) =>
+      terimaOrderSebagai(orderId: orderId, runnerId: _pemanggil());
 
   /// [terimaOrder] dengan runner yang disebutkan langsung.
   ///
@@ -861,7 +859,7 @@ class FakeOrderRepository implements OrderRepository {
   }
 
   @override
-  Future<Order> batalkanOrder(String orderId) async {
+  Future<Order> batalkanOrder(String orderId, {String? idempotencyKey}) async {
     await Future<void>.delayed(_jedaJaringan);
     final order = _wajibMilikPemanggil(orderId);
 

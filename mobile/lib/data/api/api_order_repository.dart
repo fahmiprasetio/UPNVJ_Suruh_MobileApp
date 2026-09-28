@@ -356,14 +356,13 @@ class ApiOrderRepository implements OrderRepository {
     required String orderId,
     required String alasan,
     String? idempotencyKey,
-  }) =>
-      _tindakan(
-        '/api/orders/$orderId/lepas',
-        badan: {'alasan': alasan.trim()},
-        headerTambahan: idempotencyKey == null
-            ? null
-            : {'Idempotency-Key': idempotencyKey},
-      );
+  }) => _tindakan(
+    '/api/orders/$orderId/lepas',
+    badan: {'alasan': alasan.trim()},
+    headerTambahan: idempotencyKey == null
+        ? null
+        : {'Idempotency-Key': idempotencyKey},
+  );
 
   @override
   Future<Order> mintaBatalOrder({
@@ -375,8 +374,13 @@ class ApiOrderRepository implements OrderRepository {
   );
 
   @override
-  Future<Order> batalkanOrder(String orderId) =>
-      _tindakan('/api/orders/$orderId/batal');
+  Future<Order> batalkanOrder(String orderId, {String? idempotencyKey}) =>
+      _tindakan(
+        '/api/orders/$orderId/batal',
+        headerTambahan: idempotencyKey == null
+            ? null
+            : {'Idempotency-Key': idempotencyKey},
+      );
 
   // --- Chat ---
 
