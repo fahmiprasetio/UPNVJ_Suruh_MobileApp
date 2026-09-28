@@ -185,6 +185,19 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
                               'pekerjaan yang sudah tercatat tidak hilang.',
                         ),
                       ],
+                      if (ref
+                          .watch(sesiTokenProvider)
+                          .penyimpananBermasalah) ...[
+                        const SizedBox(height: AppTheme.spasiSedang),
+                        const _KotakGalat(
+                          pesan:
+                              'Penyimpanan aman perangkat sedang bermasalah. '
+                              'Sesi di aplikasi ini sudah ditutup, tetapi token '
+                              'tersimpan mungkin tidak dapat dibersihkan permanen. '
+                              'Jangan gunakan perangkat bersama sebelum keamanan '
+                              'perangkat diperbaiki.',
+                        ),
+                      ],
                       const SizedBox(height: AppTheme.spasiSedang),
                       ..._isiLangkah,
                       if (galatTindakan != null) ...[
@@ -207,7 +220,8 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
     _Langkah.daftar => 'Daftar dulu, sebentar saja.',
     _Langkah.kode =>
       'Masukkan 6 angka yang dikirim ke ${_noHpController.text.trim()}.',
-    _Langkah.password => 'Masuk pakai nomor HP dan password, tanpa menunggu kode.',
+    _Langkah.password =>
+      'Masuk pakai nomor HP dan password, tanpa menunggu kode.',
   };
 
   List<Widget> get _isiLangkah => switch (_langkah) {
@@ -501,7 +515,8 @@ class _KotakGalat extends StatelessWidget {
   /// bukan sesuatu yang orangnya lakukan salah, dan kotak merah di layar masuk
   /// terbaca sebagai aplikasi yang rusak sendiri — persis kesimpulan yang membuat
   /// orang berhenti mencoba, bukannya masuk lagi.
-  const _KotakGalat.pemberitahuan({required this.pesan}) : _salahPengguna = false;
+  const _KotakGalat.pemberitahuan({required this.pesan})
+    : _salahPengguna = false;
 
   final String pesan;
   final bool _salahPengguna;
@@ -509,8 +524,12 @@ class _KotakGalat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final skema = Theme.of(context).colorScheme;
-    final latar = _salahPengguna ? skema.errorContainer : skema.secondaryContainer;
-    final tinta = _salahPengguna ? skema.onErrorContainer : skema.onSecondaryContainer;
+    final latar = _salahPengguna
+        ? skema.errorContainer
+        : skema.secondaryContainer;
+    final tinta = _salahPengguna
+        ? skema.onErrorContainer
+        : skema.onSecondaryContainer;
 
     return Container(
       padding: const EdgeInsets.all(AppTheme.spasiSedang),

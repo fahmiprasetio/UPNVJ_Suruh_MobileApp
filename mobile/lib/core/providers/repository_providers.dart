@@ -56,9 +56,9 @@ final sumberDataProvider = Provider<SumberData>((ref) {
 ///
 /// Satu untuk seluruh aplikasi, karena yang menulisnya (repository auth) dan yang
 /// membacanya (klien HTTP) adalah dua benda berbeda yang harus melihat nilai yang
-/// sama. Isinya masih hidup di memori proses; [SesiToken] sudah berbentuk siap
-/// menerima penyimpanan aman, dan [main] sudah memanggil `muat()` di tempat yang
-/// benar sebelum penyimpanannya ada.
+/// sama. Salinan memori dipakai untuk menyusun header tanpa I/O berulang, sedangkan
+/// token persistennya disimpan melalui Keystore/Keychain oleh [SesiToken]. [main]
+/// memanggil `muat()` sebelum permintaan pertama dibuat.
 final sesiTokenProvider = Provider<SesiToken>((ref) => SesiToken());
 
 /// Satu-satunya klien HTTP aplikasi.
@@ -96,7 +96,9 @@ class SesiDitolak extends Notifier<bool> {
   void padamkan() => state = false;
 }
 
-final sesiDitolakProvider = NotifierProvider<SesiDitolak, bool>(SesiDitolak.new);
+final sesiDitolakProvider = NotifierProvider<SesiDitolak, bool>(
+  SesiDitolak.new,
+);
 
 /// Klien HTTP mentah yang dipakai [klienApiProvider].
 ///
@@ -239,7 +241,9 @@ final notifikasiPushProvider = Provider<NotifikasiPush?>((ref) {
   ref.onDispose(notifikasi.dispose);
 
   ref.listen(userAktifProvider, (_, sekarang) {
-    unawaited(sekarang.value != null ? notifikasi.mulai() : notifikasi.berhenti());
+    unawaited(
+      sekarang.value != null ? notifikasi.mulai() : notifikasi.berhenti(),
+    );
   }, fireImmediately: true);
 
   return notifikasi;
@@ -275,7 +279,8 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
     // Arahnya sengaja begini: repository yang memberi tahu ke atas, bukan klien HTTP
     // yang meminta repository lewat provider. Yang kedua membuat keduanya saling
     // membutuhkan, dan Riverpod menolaknya sebagai lingkaran saat dijalankan.
-    saatSesiBerakhirPaksa: () => ref.read(sesiDitolakProvider.notifier).tandai(),
+    saatSesiBerakhirPaksa: () =>
+        ref.read(sesiDitolakProvider.notifier).tandai(),
   );
   ref.onDispose(repo.dispose);
   return repo;

@@ -33,11 +33,18 @@ class SesiToken {
   final FlutterSecureStorage _penyimpanan;
 
   String? _token;
+  bool _penyimpananBermasalah = false;
 
   /// Token yang sedang berlaku, atau `null` kalau belum masuk.
   String? get nilai => _token;
 
   bool get adaSesi => _token != null;
+
+  /// Benar jika penyimpanan aman gagal dibaca atau tidak dapat dinetralkan saat logout.
+  ///
+  /// Nilai ini tidak membuka kembali sesi. Ia hanya memberi UI alasan untuk memperingatkan
+  /// pengguna bahwa perangkat tidak dapat menjamin token lama sudah hilang secara permanen.
+  bool get penyimpananBermasalah => _penyimpananBermasalah;
 
   /// Memuat token yang tersimpan saat aplikasi mulai.
   ///
@@ -47,9 +54,16 @@ class SesiToken {
   /// lagi", bukan aplikasi yang tidak mau menyala sama sekali.
   Future<void> muat() async {
     try {
-      _token = await _penyimpanan.read(key: _kunci);
+      final tersimpan = await _penyimpanan.read(key: _kunci);
+      _token = tersimpan == null || tersimpan.isEmpty ? null : tersimpan;
+      _penyimpananBermasalah = false;
     } catch (_) {
       _token = null;
+      // Jangan membiarkan kegagalan baca yang mungkin sementara memulihkan token lama
+      // pada peluncuran berikutnya. Upaya netralisasi tetap dilakukan, tetapi kegagalan
+      // baca dicatat agar pengguna mendapat peringatan aman di layar masuk.
+      await _netralkanPenyimpanan();
+      _penyimpananBermasalah = true;
     }
   }
 
@@ -57,21 +71,46 @@ class SesiToken {
     _token = token;
     try {
       await _penyimpanan.write(key: _kunci, value: token);
+      _penyimpananBermasalah = false;
     } catch (_) {
       // Sesinya tetap berlaku untuk pemakaian sekarang, cuma tidak bertahan sampai
-      // aplikasi dibuka lagi. Menggagalkan proses masuk karena ini berarti pengguna
-      // tidak bisa masuk sama sekali di perangkat yang penyimpanan amannya bermasalah.
+      // aplikasi dibuka lagi. Statusnya dicatat supaya kegagalan penyimpanan tidak
+      // diam-diam dianggap berhasil.
+      _penyimpananBermasalah = true;
     }
   }
 
   Future<void> kosongkan() async {
+    // Memori selalu dibersihkan lebih dulu agar permintaan berikutnya tidak pernah
+    // membawa token lama, sekalipun Keystore/Keychain sedang rusak.
     _token = null;
+    _penyimpananBermasalah = !await _netralkanPenyimpanan();
+  }
+
+  /// Menimpa token sebelum menghapusnya memberi dua jalur menuju keadaan aman.
+  ///
+  /// Jika `delete` gagal tetapi `write` berhasil, peluncuran berikutnya hanya membaca
+  /// string kosong yang diperlakukan sebagai tidak ada sesi. Jika `write` gagal tetapi
+  /// `delete` berhasil, token juga sudah hilang. Hanya kegagalan keduanya yang berarti
+  /// penyimpanan tidak dapat menjamin logout permanen.
+  Future<bool> _netralkanPenyimpanan() async {
+    var berhasil = false;
+
+    try {
+      await _penyimpanan.write(key: _kunci, value: '');
+      berhasil = true;
+    } catch (_) {
+      // Tetap coba delete; salah satu operasi yang berhasil sudah cukup untuk
+      // memastikan token lama tidak dapat dipulihkan.
+    }
+
     try {
       await _penyimpanan.delete(key: _kunci);
+      berhasil = true;
     } catch (_) {
-      // Sengaja ditelan, dengan alasan yang berbeda dari dua di atas: yang di memori
-      // sudah dibuang, jadi aplikasi ini tidak akan memakainya lagi. Yang tertinggal
-      // adalah salinan di penyimpanan yang akan ditimpa saat masuk berikutnya.
+      // Status aman ditentukan dari gabungan kedua upaya di atas.
     }
+
+    return berhasil;
   }
 }
