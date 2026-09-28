@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using UpnvjSuruh.Api.Auth;
 using UpnvjSuruh.Api.Data;
+using UpnvjSuruh.Api.Domain;
 using UpnvjSuruh.Api.Media;
 
 namespace UpnvjSuruh.Api.Controllers;
@@ -46,6 +47,19 @@ public class FotoBuktiController(AppDbContext db, PenyimpanFoto penyimpan) : Con
         if (order is null || order.RunnerAssignments.All(a => a.RunnerId != User.Id()))
         {
             return NotFound();
+        }
+
+        // Assignment yang masih tercatat juga menjadi sejarah setelah order selesai. Itu tidak
+        // berarti runner boleh terus menambah berkas ke order final: selain tidak pernah dipakai,
+        // unggahan itu memenuhi cakram dan membuat bukti mana yang resmi menjadi kabur.
+        if (order.Status != OrderStatus.Dikerjakan)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Order sudah tidak menerima foto",
+                Detail = "Foto bukti hanya dapat diunggah saat order sedang dikerjakan.",
+                Status = StatusCodes.Status409Conflict,
+            });
         }
 
         if (berkas.Length == 0)

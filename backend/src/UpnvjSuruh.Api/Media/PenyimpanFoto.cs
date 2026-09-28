@@ -58,10 +58,32 @@ public class PenyimpanFoto(IWebHostEnvironment lingkungan, IConfiguration konfig
         var nama = $"{Awalan(orderId)}{Guid.NewGuid():N}{ekstensi}";
         var jalur = Path.Combine(Akar, nama);
 
-        await using var tujuan = File.Create(jalur);
-        await isi.CopyToAsync(tujuan, batal);
+        try
+        {
+            await using var tujuan = File.Create(jalur);
+            await isi.CopyToAsync(tujuan, batal);
+            return Prefiks + nama;
+        }
+        catch
+        {
+            // Cancellation atau kegagalan cakram setelah File.Create meninggalkan berkas
+            // parsial yang bukan bukti sah. Hapus best-effort sekarang, bukan menunggu
+            // penyapu berkala, agar percobaan unggah yang gagal tidak menghabiskan cakram.
+            try
+            {
+                File.Delete(jalur);
+            }
+            catch (IOException)
+            {
+                // Penyapu berikutnya tetap dapat membersihkan berkas yatim ini.
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // Jangan mengganti galat asli dengan detail izin filesystem.
+            }
 
-        return Prefiks + nama;
+            throw;
+        }
     }
 
     /// <summary>
