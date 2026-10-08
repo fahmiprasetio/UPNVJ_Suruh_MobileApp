@@ -79,13 +79,16 @@ void main() {
       expect(uji.dikirim, isEmpty);
     });
 
-    test('tidak mendaftarkan apa pun kalau Firebase belum punya token', () async {
-      final uji = buat(token: null);
+    test(
+      'tidak mendaftarkan apa pun kalau Firebase belum punya token',
+      () async {
+        final uji = buat(token: null);
 
-      await uji.notifikasi.mulai();
+        await uji.notifikasi.mulai();
 
-      expect(uji.dikirim, isEmpty);
-    });
+        expect(uji.dikirim, isEmpty);
+      },
+    );
 
     test('mendaftarkan ulang saat Firebase memutar tokennya', () async {
       // Tanpa ini, perangkat berhenti menerima apa pun sejak pemutaran pertama, tanpa satu
@@ -99,6 +102,26 @@ void main() {
         'token-perangkat',
         'token-baru',
       ]);
+    });
+
+    test(
+      'pemanggilan mulai yang bertumpuk hanya mendaftarkan token sekali',
+      () async {
+        final uji = buat();
+
+        await Future.wait([uji.notifikasi.mulai(), uji.notifikasi.mulai()]);
+
+        expect(uji.dikirim, hasLength(1));
+      },
+    );
+
+    test('refresh dengan token yang sama tidak mendaftarkan ulang', () async {
+      final uji = buat(tokenBerganti: Stream.value('token-perangkat'));
+
+      await uji.notifikasi.mulai();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(uji.dikirim, hasLength(1));
     });
 
     test('server yang menolak tidak menjatuhkan proses masuk', () async {
@@ -146,13 +169,16 @@ void main() {
       expect(jsonDecode(permintaan.body), {'token': 'token-perangkat'});
     });
 
-    test('tidak memanggil apa pun kalau tidak pernah ada yang didaftarkan', () async {
-      final uji = buat();
+    test(
+      'tidak memanggil apa pun kalau tidak pernah ada yang didaftarkan',
+      () async {
+        final uji = buat();
 
-      await uji.notifikasi.berhenti();
+        await uji.notifikasi.berhenti();
 
-      expect(uji.dikirim, isEmpty);
-    });
+        expect(uji.dikirim, isEmpty);
+      },
+    );
 
     test('melepas token terbaru, bukan yang pertama didaftarkan', () async {
       final uji = buat(tokenBerganti: Stream.value('token-baru'));
@@ -166,17 +192,20 @@ void main() {
   });
 
   group('ketukan notifikasi', () {
-    test('pesan yang ditekan saat aplikasi terbuka meneruskan orderId', () async {
-      final pengendali = StreamController<RemoteMessage>();
-      addTearDown(pengendali.close);
-      final uji = buat(pesanDibuka: pengendali.stream);
+    test(
+      'pesan yang ditekan saat aplikasi terbuka meneruskan orderId',
+      () async {
+        final pengendali = StreamController<RemoteMessage>();
+        addTearDown(pengendali.close);
+        final uji = buat(pesanDibuka: pengendali.stream);
 
-      await uji.notifikasi.mulai();
-      pengendali.add(const RemoteMessage(data: {'orderId': 'order-123'}));
-      await Future<void>.delayed(Duration.zero);
+        await uji.notifikasi.mulai();
+        pengendali.add(const RemoteMessage(data: {'orderId': 'order-123'}));
+        await Future<void>.delayed(Duration.zero);
 
-      expect(uji.dibuka, ['order-123']);
-    });
+        expect(uji.dibuka, ['order-123']);
+      },
+    );
 
     test('pesan tanpa orderId tidak meneruskan apa pun', () async {
       final pengendali = StreamController<RemoteMessage>();
@@ -190,15 +219,19 @@ void main() {
       expect(uji.dibuka, isEmpty);
     });
 
-    test('pesan yang membuka aplikasi dari kondisi tertutup ikut diteruskan', () async {
-      final uji = buat(
-        pesanAwal: () async => const RemoteMessage(data: {'orderId': 'order-cold-start'}),
-      );
+    test(
+      'pesan yang membuka aplikasi dari kondisi tertutup ikut diteruskan',
+      () async {
+        final uji = buat(
+          pesanAwal: () async =>
+              const RemoteMessage(data: {'orderId': 'order-cold-start'}),
+        );
 
-      await uji.notifikasi.mulai();
+        await uji.notifikasi.mulai();
 
-      expect(uji.dibuka, ['order-cold-start']);
-    });
+        expect(uji.dibuka, ['order-cold-start']);
+      },
+    );
 
     test('pesan awal cuma diperiksa sekali per proses', () async {
       var dipanggil = 0;

@@ -44,7 +44,8 @@ class NotifikasiPush {
   }) : _klien = klien,
        _bukaOrder = bukaOrder,
        _mintaIzin = mintaIzin ?? _mintaIzinFirebase,
-       _ambilToken = ambilToken ?? (() => FirebaseMessaging.instance.getToken()),
+       _ambilToken =
+           ambilToken ?? (() => FirebaseMessaging.instance.getToken()),
        // Fungsi, bukan aliran yang sudah jadi, dan bedanya bukan gaya: membaca
        // `FirebaseMessaging.instance` di sini berarti membacanya saat benda ini DIBUAT,
        // sedangkan pembuatannya terjadi saat aplikasi mulai. Kalau Firebase gagal menyala
@@ -58,7 +59,8 @@ class NotifikasiPush {
        _pesanDibuka = pesanDibuka == null
            ? (() => FirebaseMessaging.onMessageOpenedApp)
            : (() => pesanDibuka),
-       _pesanAwal = pesanAwal ?? (() => FirebaseMessaging.instance.getInitialMessage());
+       _pesanAwal =
+           pesanAwal ?? (() => FirebaseMessaging.instance.getInitialMessage());
 
   final KlienApi _klien;
   final void Function(String orderId) _bukaOrder;
@@ -72,6 +74,8 @@ class NotifikasiPush {
   StreamSubscription<RemoteMessage>? _langgananPesan;
   String? _tokenTerdaftar;
   bool _awalDiperiksa = false;
+  Future<void>? _mulaiBerjalan;
+  Future<void> _rantaiPendaftaran = Future.value();
 
   static Future<bool> _mintaIzinFirebase() async {
     final izin = await FirebaseMessaging.instance.requestPermission();
@@ -84,7 +88,17 @@ class NotifikasiPush {
   /// Kegagalan apa pun ditelan. Perangkat yang gagal mendaftar kehilangan notifikasinya, dan
   /// itu memang kerugian, tapi melemparkan galat dari sini berarti aplikasi yang gagal
   /// dipakai sama sekali karena jaringan sedang buruk pada detik seseorang menekan masuk.
-  Future<void> mulai() async {
+  Future<void> mulai() {
+    // Provider ini dapat dibaca lebih dari sekali saat sesi sedang dibuka. Tanpa
+    // satu Future bersama, masing-masing pembacaan bisa meminta token yang sama
+    // lalu mendaftarkannya serempak. Server memang tahan retry, tetapi satu
+    // perangkat tidak perlu mengirim kerja yang sama dua kali.
+    return _mulaiBerjalan ??= _mulai().whenComplete(() {
+      _mulaiBerjalan = null;
+    });
+  }
+
+  Future<void> _mulai() async {
     try {
       if (!await _mintaIzin()) return;
 
@@ -96,7 +110,12 @@ class NotifikasiPush {
       // Firebase memutar tokennya sendiri sesekali (pemulihan cadangan, pembersihan data,
       // pembaruan aplikasi). Tanpa langganan ini, perangkat berhenti menerima apa pun sejak
       // pemutaran pertama, tanpa satu tanda pun di layar siapa pun.
-      _langganan ??= _tokenBerganti().listen(_daftarkan);
+      _langganan ??= _tokenBerganti().listen((token) {
+        // Callback Stream tidak menunggu Future hasil handler. Menangani
+        // kegagalan di sini menjaga error pendaftaran sementara tidak menjadi
+        // unhandled asynchronous error; token berikutnya tetap boleh mencoba.
+        unawaited(_daftarkan(token).catchError((_) {}));
+      });
       _langgananPesan ??= _pesanDibuka().listen(_tanganiPesan);
 
       // Cuma diperiksa sekali per proses: begitu dikonsumsi di sini, panggilan
@@ -138,8 +157,18 @@ class NotifikasiPush {
   }
 
   Future<void> _daftarkan(String token) async {
-    await _klien.post('/api/perangkat', badan: {'token': token});
-    _tokenTerdaftar = token;
+    if (_tokenTerdaftar == token) return;
+
+    // Token refresh dapat tiba saat pendaftaran awal belum selesai. Rantai ini
+    // mempertahankan urutan refresh dan memeriksa ulang nilainya ketika giliran
+    // request tiba, sehingga token sama hanya terdaftar sekali.
+    final pendaftaran = _rantaiPendaftaran.catchError((_) {}).then((_) async {
+      if (_tokenTerdaftar == token) return;
+      await _klien.post('/api/perangkat', badan: {'token': token});
+      _tokenTerdaftar = token;
+    });
+    _rantaiPendaftaran = pendaftaran;
+    await pendaftaran;
   }
 
   void _tanganiPesan(RemoteMessage pesan) {
