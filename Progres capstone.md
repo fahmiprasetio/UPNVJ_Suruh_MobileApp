@@ -574,3 +574,19 @@ menggunakan build release dengan `http://localhost` karena penjaga HTTPS memang 
 - Setelah commit/push, periksa CI GitHub. Berikutnya pilih satu audit reliabilitas yang tersisa
   (misalnya retry/backoff SignalR atau state notifikasi cold-start) tanpa membuka integrasi
   Firebase/Midtrans/WhatsApp sungguhan.
+
+## 26. Handover sesi 125
+
+- Reliabilitas reconnect `OrderHubClient` diperkuat. Negosiasi/WebSocket yang gagal sekarang
+  memakai jeda eksponensial dari 5 detik sampai maksimum 1 menit, lalu kembali ke jeda awal
+  setelah koneksi stabil 30 detik. Socket yang tidak siap dalam 10 detik ditutup best-effort
+  sebelum retry berikutnya agar tidak tertinggal sebagai koneksi setengah terbuka.
+- Koneksi, stream callback, dan timer kini terikat pada generasi sesi. Hasil negosiasi lama atau
+  callback socket lama setelah logout/login tidak dapat menutup atau menggantikan socket sesi
+  baru. Frame non-teks dan kegagalan mengirim ke sink yang baru tertutup juga ditangani tanpa
+  asynchronous error tak tertangani; penyegaran periodik tetap menjadi jaring pengaman.
+- Test regresi murni ditambahkan untuk perhitungan jeda retry eksponensial dan batas maksimumnya.
+  Test lokal tidak dijalankan sesuai instruksi pemilik. Diagnostics dua file berubah dan
+  `git diff --check` bersih.
+- Setelah commit/push, periksa CI GitHub. Berikutnya audit state notifikasi cold-start atau
+  reliabilitas lain yang tersisa, tanpa membuka integrasi Firebase/Midtrans/WhatsApp sungguhan.

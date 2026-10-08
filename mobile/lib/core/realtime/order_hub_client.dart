@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
@@ -60,6 +61,29 @@ bool apakahPesanInvocation(String pesanJson) {
 String bentukInvocation(String target, List<Object?> argumen) =>
     '${jsonEncode({'type': 1, 'target': target, 'arguments': argumen})}$_pemisahPesan';
 
+/// Menghitung jeda retry hub secara eksponensial, dengan batas atas yang tetap.
+///
+/// Koneksi yang langsung gagal berulang kali tidak boleh mengirim negosiasi baru
+/// tiap beberapa detik selamanya; itu menguras baterai dan dapat memperburuk server
+/// yang sedang bermasalah. Jeda kembali ke awal setelah koneksi cukup stabil.
+@visibleForTesting
+Duration hitungJedaSambungUlang({
+  required Duration dasar,
+  required Duration maksimum,
+  required int kegagalan,
+}) {
+  if (dasar <= Duration.zero || maksimum <= Duration.zero) {
+    return Duration.zero;
+  }
+
+  final batas = maksimum.inMicroseconds;
+  var jeda = math.min(dasar.inMicroseconds, batas);
+  for (var i = 1; i < kegagalan && jeda < batas; i++) {
+    jeda = math.min(jeda * 2, batas);
+  }
+  return Duration(microseconds: jeda);
+}
+
 /// Bagian dari [OrderHubClient] yang dibutuhkan pemakainya di luar dirinya
 /// sendiri ([ApiOrderRepository] cuma butuh [perubahan], `ApiPaymentGateway`
 /// butuh ketiganya), dipisahkan sebagai antarmuka supaya tes bisa memberi
@@ -113,17 +137,24 @@ class OrderHubClient implements SaluranHubOrder {
     required PengambilToken token,
     http.Client? klienHttp,
     Duration? jedaSambungUlang,
+    Duration? jedaSambungUlangMaksimum,
+    Duration? masaKoneksiStabil,
     Duration? jedaPing,
   }) : _baseUrl = baseUrl,
        _token = token,
        _klienHttp = klienHttp ?? http.Client(),
        _jedaSambungUlang = jedaSambungUlang ?? const Duration(seconds: 5),
+       _jedaSambungUlangMaksimum =
+           jedaSambungUlangMaksimum ?? const Duration(minutes: 1),
+       _masaKoneksiStabil = masaKoneksiStabil ?? const Duration(seconds: 30),
        _jedaPing = jedaPing ?? const Duration(seconds: 10);
 
   final String _baseUrl;
   final PengambilToken _token;
   final http.Client _klienHttp;
   final Duration _jedaSambungUlang;
+  final Duration _jedaSambungUlangMaksimum;
+  final Duration _masaKoneksiStabil;
   final Duration _jedaPing;
 
   final StreamController<void> _perubahan = StreamController<void>.broadcast();
@@ -142,7 +173,10 @@ class OrderHubClient implements SaluranHubOrder {
   StreamSubscription<void>? _langgananSoket;
   Timer? _pewaktuPing;
   Timer? _pewaktuSambungUlang;
+  Timer? _pewaktuKoneksiStabil;
   bool _seharusnyaJalan = false;
+  int _generasiKoneksi = 0;
+  int _kegagalanSambung = 0;
   String _bufer = '';
 
   /// Order yang sedang diikuti, beserta berapa banyak pengamat di aplikasi ini
@@ -166,16 +200,23 @@ class OrderHubClient implements SaluranHubOrder {
   void mulai() {
     if (_seharusnyaJalan) return;
     _seharusnyaJalan = true;
-    _sambung();
+    _generasiKoneksi++;
+    _kegagalanSambung = 0;
+    _sambung(_generasiKoneksi);
   }
 
   /// Putus koneksi dan berhenti mencoba sambung ulang, dipanggil saat pengguna keluar.
   void berhenti() {
     _seharusnyaJalan = false;
+    // Negosiasi dan pembukaan WebSocket bersifat asinkron. Naikkan generasi sebelum
+    // menutup apa pun agar hasil koneksi lama tidak dapat hidup lagi sesudah akun
+    // berganti atau pengguna langsung masuk kembali.
+    _generasiKoneksi++;
     _pewaktuSambungUlang?.cancel();
+    _pewaktuSambungUlang = null;
     _tutupSoket();
     // Bukan cuma soketnya yang ditutup: daftar order yang diikuti ikut
-    // dikosongkan. Sesi berikutnya (akun lain yang masuk di perangkat yang sama)
+    // dikosongkan. Sesi berikutnya (akun lain di perangkat yang sama)
     // tidak seharusnya mewarisi langganan order milik akun sebelumnya.
     _orderDiikuti.clear();
   }
@@ -216,47 +257,75 @@ class OrderHubClient implements SaluranHubOrder {
   /// keadaan koneksinya lebih dulu; yang tidak sempat terkirim akan menyusul
   /// lewat jalur masing-masing begitu tersambung lagi ([_sambung] mengirim ulang
   /// seluruh [_orderDiikuti], [_pewaktuPing] menyala lagi begitu soket baru ada).
-  void _kirim(String pesan) => _soket?.sink.add(pesan);
+  void _kirim(String pesan) {
+    final soket = _soket;
+    if (soket == null) return;
 
-  Future<void> _sambung() async {
-    if (!_seharusnyaJalan) return;
+    try {
+      soket.sink.add(pesan);
+    } catch (_) {
+      // Sebuah soket dapat ditutup di sela cek null dan `add`, terutama saat tab
+      // lama kembali aktif. Perlakukan sama seperti disconnect lain agar callback
+      // timer tidak menjadi asynchronous error tak tertangani.
+      _koneksiPutus(_generasiKoneksi, soket);
+    }
+  }
+
+  Future<void> _sambung(int generasi) async {
+    if (!_masihBerlaku(generasi) || _soket != null) return;
+    _pewaktuSambungUlang?.cancel();
+    _pewaktuSambungUlang = null;
 
     final token = _token();
     if (token == null || token.isEmpty) {
       // Belum masuk. Coba lagi nanti alih-alih gagal diam-diam selamanya, karena
       // pemanggil di sisi provider yang menentukan kapan token akan ada, bukan
       // klien ini.
-      _jadwalkanSambungUlang();
+      _jadwalkanSambungUlang(generasi);
       return;
     }
 
+    WebSocketChannel? soketYangDibuka;
     try {
       final connectionId = await _negosiasi(token);
       final alamatSoket = _alamatSoket(connectionId, token);
       final soket = WebSocketChannel.connect(alamatSoket);
-      await soket.ready;
+      soketYangDibuka = soket;
+      await soket.ready.timeout(const Duration(seconds: 10));
 
       // berhenti() bisa dipanggil selagi negosiasi atau pembukaan soket di atas
-      // masih menunggu (pengguna keluar tepat di jendela itu). Tanpa penjagaan
-      // ini, soket yang terlanjur tersambung dengan token lama akan tetap hidup
-      // dan terus menerima siaran walau sudah dianggap berhenti.
-      if (!_seharusnyaJalan) {
+      // masih menunggu (pengguna keluar tepat di jendela itu). Generasi juga
+      // berubah kalau pengguna langsung masuk lagi, sehingga soket bertoken lama
+      // tidak dapat menggantikan koneksi baru yang sedang disiapkan.
+      if (!_masihBerlaku(generasi)) {
         unawaited(soket.sink.close());
         return;
       }
       _soket = soket;
 
-      soket.sink.add('${jsonEncode({'protocol': 'json', 'version': 1})}$_pemisahPesan');
+      try {
+        soket.sink.add(
+          '${jsonEncode({'protocol': 'json', 'version': 1})}$_pemisahPesan',
+        );
+      } catch (_) {
+        _koneksiPutus(generasi, soket);
+        return;
+      }
 
       _langgananSoket = soket.stream.listen(
-        _terimaPesan,
-        onDone: _koneksiPutus,
-        onError: (_) => _koneksiPutus(),
+        (pesan) => _terimaPesan(generasi, soket, pesan),
+        onDone: () => _koneksiPutus(generasi, soket),
+        onError: (_) => _koneksiPutus(generasi, soket),
         cancelOnError: true,
       );
 
       _pewaktuPing = Timer.periodic(_jedaPing, (_) {
         _kirim('${jsonEncode({'type': 6})}$_pemisahPesan');
+      });
+      _pewaktuKoneksiStabil = Timer(_masaKoneksiStabil, () {
+        if (_masihBerlaku(generasi) && identical(_soket, soket)) {
+          _kegagalanSambung = 0;
+        }
       });
 
       // Keanggotaan grup SignalR menempel pada satu koneksi, bukan pada akun.
@@ -267,10 +336,14 @@ class OrderHubClient implements SaluranHubOrder {
         _kirim(bentukInvocation('GabungOrder', [orderId]));
       }
     } catch (_) {
+      // Timeout pembukaan WebSocket tidak selalu menutup salurannya sendiri.
+      // Tutup best-effort agar percobaan yang terlambat tidak menyisakan koneksi
+      // tak terpakai ketika retry berikutnya sudah berjalan.
+      unawaited(soketYangDibuka?.sink.close());
       // Negosiasi gagal (server belum menyala, token ditolak, jaringan mati).
       // Bukan galat yang layak dilempar ke pemanggil: klien ini cuma jaring
       // tambahan, dan penyegaran berkala tetap jalan tanpanya.
-      _jadwalkanSambungUlang();
+      _jadwalkanSambungUlang(generasi);
     }
   }
 
@@ -303,32 +376,56 @@ class OrderHubClient implements SaluranHubOrder {
     );
   }
 
-  void _terimaPesan(dynamic pesanMentah) {
-    final hasil = pisahkanPesanHub(_bufer + (pesanMentah as String));
+  void _terimaPesan(int generasi, WebSocketChannel soket, dynamic pesanMentah) {
+    if (!_masihBerlaku(generasi) || !identical(_soket, soket)) return;
+    // Protokol JSON SignalR memakai text frame. Bingkai biner atau bentuk tak
+    // terduga cukup diabaikan; satu kabar rusak tidak boleh menjatuhkan callback
+    // stream dan menghambat reconnect berikutnya.
+    if (pesanMentah is! String) return;
+
+    final hasil = pisahkanPesanHub(_bufer + pesanMentah);
     _bufer = hasil.sisa;
 
     for (final pesan in hasil.pesanUtuh) {
-      if (apakahPesanInvocation(pesan)) _perubahan.add(null);
+      if (apakahPesanInvocation(pesan) && !_perubahan.isClosed) {
+        _perubahan.add(null);
+      }
     }
   }
 
-  void _koneksiPutus() {
+  void _koneksiPutus(int generasi, WebSocketChannel soket) {
+    // Callback dari soket lama dapat datang terlambat sesudah sesi baru berhasil
+    // tersambung. Callback itu tidak boleh menutup soket milik sesi yang sekarang.
+    if (!_masihBerlaku(generasi) || !identical(_soket, soket)) return;
     _tutupSoket();
-    _jadwalkanSambungUlang();
+    _jadwalkanSambungUlang(generasi);
   }
+
+  bool _masihBerlaku(int generasi) =>
+      _seharusnyaJalan && generasi == _generasiKoneksi;
 
   void _tutupSoket() {
     _pewaktuPing?.cancel();
+    _pewaktuPing = null;
+    _pewaktuKoneksiStabil?.cancel();
+    _pewaktuKoneksiStabil = null;
     _langgananSoket?.cancel();
-    _soket?.sink.close();
+    _langgananSoket = null;
+    unawaited(_soket?.sink.close());
     _soket = null;
     _bufer = '';
   }
 
-  void _jadwalkanSambungUlang() {
-    if (!_seharusnyaJalan) return;
+  void _jadwalkanSambungUlang(int generasi) {
+    if (!_masihBerlaku(generasi)) return;
     _pewaktuSambungUlang?.cancel();
-    _pewaktuSambungUlang = Timer(_jedaSambungUlang, _sambung);
+    _kegagalanSambung++;
+    final jeda = hitungJedaSambungUlang(
+      dasar: _jedaSambungUlang,
+      maksimum: _jedaSambungUlangMaksimum,
+      kegagalan: _kegagalanSambung,
+    );
+    _pewaktuSambungUlang = Timer(jeda, () => _sambung(generasi));
   }
 
   void dispose() {

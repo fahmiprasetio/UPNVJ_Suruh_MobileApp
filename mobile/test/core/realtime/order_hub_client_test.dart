@@ -50,16 +50,22 @@ void main() {
 
   group('apakahPesanInvocation', () {
     test('tipe 1 adalah invocation', () {
-      expect(apakahPesanInvocation('{"type":1,"target":"OrderBroadcast"}'), isTrue);
+      expect(
+        apakahPesanInvocation('{"type":1,"target":"OrderBroadcast"}'),
+        isTrue,
+      );
     });
 
     test('tipe 6 (ping) bukan invocation', () {
       expect(apakahPesanInvocation('{"type":6}'), isFalse);
     });
 
-    test('balasan jabat tangan sukses ("{}", tanpa "type") bukan invocation', () {
-      expect(apakahPesanInvocation('{}'), isFalse);
-    });
+    test(
+      'balasan jabat tangan sukses ("{}", tanpa "type") bukan invocation',
+      () {
+        expect(apakahPesanInvocation('{}'), isFalse);
+      },
+    );
 
     test('pesan yang bukan JSON tidak melempar galat', () {
       expect(apakahPesanInvocation('bukan json'), isFalse);
@@ -75,7 +81,10 @@ void main() {
       final pesan = bentukInvocation('GabungOrder', ['abc-123']);
 
       expect(pesan, endsWith('\x1e'));
-      expect(apakahPesanInvocation(pesan.substring(0, pesan.length - 1)), isTrue);
+      expect(
+        apakahPesanInvocation(pesan.substring(0, pesan.length - 1)),
+        isTrue,
+      );
 
       final terpisah = pisahkanPesanHub(pesan);
       expect(terpisah.pesanUtuh, hasLength(1));
@@ -90,7 +99,11 @@ void main() {
       // siapa pun cuma menambah bidang yang bisa disalahpahami sebagai sesuatu
       // yang harus dijaga.
       final isi =
-          jsonDecode(bentukInvocation('TinggalkanOrder', ['x']).replaceAll('\x1e', ''))
+          jsonDecode(
+                bentukInvocation('TinggalkanOrder', [
+                  'x',
+                ]).replaceAll('\x1e', ''),
+              )
               as Map<String, dynamic>;
       expect(isi.containsKey('invocationId'), isFalse);
     });
@@ -103,6 +116,45 @@ void main() {
     });
   });
 
+  group('hitungJedaSambungUlang', () {
+    test('bertambah eksponensial sampai batas atas', () {
+      const dasar = Duration(seconds: 5);
+      const maksimum = Duration(minutes: 1);
+
+      expect(
+        hitungJedaSambungUlang(dasar: dasar, maksimum: maksimum, kegagalan: 1),
+        dasar,
+      );
+      expect(
+        hitungJedaSambungUlang(dasar: dasar, maksimum: maksimum, kegagalan: 2),
+        const Duration(seconds: 10),
+      );
+      expect(
+        hitungJedaSambungUlang(dasar: dasar, maksimum: maksimum, kegagalan: 5),
+        const Duration(minutes: 1),
+      );
+      expect(
+        hitungJedaSambungUlang(
+          dasar: dasar,
+          maksimum: maksimum,
+          kegagalan: 100,
+        ),
+        maksimum,
+      );
+    });
+
+    test('nilai nol mempertahankan retry tanpa penundaan', () {
+      expect(
+        hitungJedaSambungUlang(
+          dasar: Duration.zero,
+          maksimum: const Duration(seconds: 1),
+          kegagalan: 1,
+        ),
+        Duration.zero,
+      );
+    });
+  });
+
   /// Satu order bisa diikuti dari dua tempat sekaligus: layar bayar lewat aliran
   /// transaksinya, dan `orderProvider` lewat ordernya sendiri. Yang selesai
   /// duluan tidak boleh menghapus keanggotaan grup yang masih dibutuhkan yang
@@ -110,10 +162,8 @@ void main() {
   /// tanpa ada yang terlihat salah, dan cuma pengambilan berkala 15 detik yang
   /// menutupinya.
   group('hitungan pengamat order', () {
-    OrderHubClient buatKlien() => OrderHubClient(
-      baseUrl: 'http://contoh.invalid',
-      token: () => null,
-    );
+    OrderHubClient buatKlien() =>
+        OrderHubClient(baseUrl: 'http://contoh.invalid', token: () => null);
 
     test('dua pengamat, satu pergi: ordernya masih diikuti', () {
       final klien = buatKlien();
