@@ -99,6 +99,27 @@ class NotifikasiPush {
   }
 
   Future<void> _mulai() async {
+    // Ketukan notifikasi dan pendaftaran perangkat adalah dua urusan berbeda.
+    // Pengguna dapat membuka aplikasi dari notifikasi yang sudah diterima ketika
+    // izin baru saja ditolak, token Firebase belum tersedia, atau API pendaftaran
+    // sedang gagal. Ketukan itu tetap harus membawa pengguna ke ordernya.
+    try {
+      _langgananPesan ??= _pesanDibuka().listen(_tanganiPesan);
+
+      // Cuma diperiksa sekali per proses: begitu dikonsumsi di sini, panggilan
+      // berikutnya ke `getInitialMessage()` menjawab null juga, jadi tidak ada
+      // gunanya diulang tiap kali `mulai()` dipanggil (mis. keluar-masuk akun
+      // dalam satu proses yang sama).
+      if (!_awalDiperiksa) {
+        _awalDiperiksa = true;
+        final awal = await _pesanAwal();
+        if (awal != null) _tanganiPesan(awal);
+      }
+    } catch (_) {
+      // Notifikasi adalah pelengkap. Kegagalan Firebase tidak boleh menggagalkan
+      // sesi atau menghalangi pendaftaran yang mungkin masih dapat dilakukan.
+    }
+
     try {
       if (!await _mintaIzin()) return;
 
@@ -116,19 +137,9 @@ class NotifikasiPush {
         // unhandled asynchronous error; token berikutnya tetap boleh mencoba.
         unawaited(_daftarkan(token).catchError((_) {}));
       });
-      _langgananPesan ??= _pesanDibuka().listen(_tanganiPesan);
-
-      // Cuma diperiksa sekali per proses: begitu dikonsumsi di sini, panggilan
-      // berikutnya ke `getInitialMessage()` menjawab null juga, jadi tidak ada
-      // gunanya diulang tiap kali `mulai()` dipanggil (mis. keluar-masuk akun
-      // dalam satu proses yang sama).
-      if (!_awalDiperiksa) {
-        _awalDiperiksa = true;
-        final awal = await _pesanAwal();
-        if (awal != null) _tanganiPesan(awal);
-      }
     } catch (_) {
-      // Sengaja diam, alasannya di atas.
+      // Pendaftaran yang gagal tidak boleh menjatuhkan proses masuk. Ketukan
+      // notifikasi yang sudah dipasang di atas tetap berfungsi.
     }
   }
 
@@ -173,7 +184,17 @@ class NotifikasiPush {
 
   void _tanganiPesan(RemoteMessage pesan) {
     final orderId = pesan.data['orderId'];
-    if (orderId is String && orderId.isNotEmpty) _bukaOrder(orderId);
+    if (orderId is! String || orderId.isEmpty) return;
+
+    // Callback stream tidak memiliki penunggu. Router yang belum siap atau
+    // kegagalan navigasi tidak boleh berubah menjadi asynchronous error yang
+    // menjatuhkan aplikasi; server tetap mengotorisasi order ketika layarnya
+    // nanti mengambil data.
+    try {
+      _bukaOrder(orderId);
+    } catch (_) {
+      // Sengaja diam, lihat alasan di atas.
+    }
   }
 
   void dispose() {

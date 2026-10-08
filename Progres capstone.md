@@ -588,7 +588,23 @@ menggunakan build release dengan `http://localhost` karena penjaga HTTPS memang 
 - Test regresi murni ditambahkan untuk perhitungan jeda retry eksponensial dan batas maksimumnya.
   Test lokal tidak dijalankan sesuai instruksi pemilik. Diagnostics dua file berubah dan
   `git diff --check` bersih.
-- Commit `ecac1b3` sudah dipush ke `main`. CI GitHub run `37786449614` terpicu dan masih
-  berjalan saat catatan ini diperbarui; dua run sebelumnya untuk `68f12b7` dan `a7cc6bd` sukses.
-  Berikutnya audit state notifikasi cold-start atau reliabilitas lain yang tersisa, tanpa membuka
-  integrasi Firebase/Midtrans/WhatsApp sungguhan.
+- Commit `ecac1b3` sudah dipush ke `main`. CI GitHub run `37786449614` sukses, begitu juga run
+  `37786650096` untuk catatan handover `4e543ee`. Berikutnya audit state notifikasi cold-start
+  atau reliabilitas lain yang tersisa, tanpa membuka integrasi Firebase/Midtrans/WhatsApp
+  sungguhan.
+
+## 27. Handover sesi 126
+
+- Alur ketukan notifikasi cold-start diperbaiki. Sebelumnya `getInitialMessage()` dan listener
+  ketukan baru dibuat setelah izin Firebase, token perangkat, serta request pendaftaran berhasil.
+  Akibatnya pengguna yang membuka notifikasi lama tidak diarahkan ke order bila izin ditolak,
+  token belum tersedia, atau API pendaftaran sementara gagal.
+- Listener ketukan dan pembacaan pesan awal sekarang dipasang lebih dahulu dan tetap best-effort;
+  pendaftaran token perangkat tetap terpisah. Callback navigasi juga tidak dapat menjadi
+  asynchronous error tak tertangani. Akses data order tetap disahkan API ketika layar mengambil
+  detailnya.
+- Dua test regresi ditambahkan untuk cold-start dengan izin ditolak dan dengan pendaftaran gagal.
+  Test lokal tidak dijalankan sesuai instruksi pemilik. Diagnostics dua file berubah dan
+  `git diff --check` bersih.
+- Setelah commit/push, periksa CI GitHub. Berikutnya pilih reliabilitas/state UX lain yang belum
+  dibuktikan; jangan membuka integrasi Firebase/Midtrans/WhatsApp sungguhan tanpa kredensial.

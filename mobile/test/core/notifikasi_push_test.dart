@@ -233,6 +233,38 @@ void main() {
       },
     );
 
+    test(
+      'pesan cold-start tetap diteruskan saat izin notifikasi ditolak',
+      () async {
+        final uji = buat(
+          izin: false,
+          pesanAwal: () async =>
+              const RemoteMessage(data: {'orderId': 'order-cold-start'}),
+        );
+
+        await uji.notifikasi.mulai();
+
+        expect(uji.dibuka, ['order-cold-start']);
+        expect(uji.dikirim, isEmpty);
+      },
+    );
+
+    test(
+      'pesan cold-start tetap diteruskan saat pendaftaran perangkat gagal',
+      () async {
+        final uji = buat(
+          status: 500,
+          pesanAwal: () async =>
+              const RemoteMessage(data: {'orderId': 'order-cold-start'}),
+        );
+
+        await uji.notifikasi.mulai();
+
+        expect(uji.dibuka, ['order-cold-start']);
+        expect(uji.dikirim, hasLength(1));
+      },
+    );
+
     test('pesan awal cuma diperiksa sekali per proses', () async {
       var dipanggil = 0;
       final uji = buat(
