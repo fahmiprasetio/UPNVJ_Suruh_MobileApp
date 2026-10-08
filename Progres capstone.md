@@ -606,5 +606,6 @@ menggunakan build release dengan `http://localhost` karena penjaga HTTPS memang 
 - Dua test regresi ditambahkan untuk cold-start dengan izin ditolak dan dengan pendaftaran gagal.
   Test lokal tidak dijalankan sesuai instruksi pemilik. Diagnostics dua file berubah dan
   `git diff --check` bersih.
-- Setelah commit/push, periksa CI GitHub. Berikutnya pilih reliabilitas/state UX lain yang belum
-  dibuktikan; jangan membuka integrasi Firebase/Midtrans/WhatsApp sungguhan tanpa kredensial.
+- Commit `7d84df2` sudah dipush ke `main`; CI GitHub run `37789460914` terpicu dan masih berjalan
+  saat catatan ini diperbarui. Berikutnya pilih reliabilitas/state UX lain yang belum dibuktikan;
+  jangan membuka integrasi Firebase/Midtrans/WhatsApp sungguhan tanpa kredensial.
