@@ -374,7 +374,7 @@ public class ChatDanPenutupanTests(DatabaseApiFactory pabrik) : IClassFixture<Da
 
         var lagi = await runner.PostAsJsonAsync($"/api/orders/{order.Id}/selesai", new
         {
-            FotoBuktiUrl = await UnggahFotoAsync(runner, order.Id),
+            FotoBuktiUrl = foto,
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, lagi.StatusCode);

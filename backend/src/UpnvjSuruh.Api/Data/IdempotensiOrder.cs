@@ -79,6 +79,11 @@ public static class IdempotensiOrder
         request.FotoBuktiUrl.Trim(),
         request.CatatanSerahTerima?.Trim());
 
+    public static string HashMintaBatal(Guid orderId, MintaBatalRequest request) => Hash(
+        "MINTA_BATAL",
+        orderId.ToString("D"),
+        request.Alasan.Trim());
+
     public static string HashBatal(Guid orderId) => Hash("BATAL", orderId.ToString("D"));
 
     public static string SimpanRespons<T>(T respons) => JsonSerializer.Serialize(respons, OpsiJson);
@@ -102,6 +107,9 @@ public static class IdempotensiOrder
         BacaRespons<T>(jejak.ResponseJson);
 
     public static T? BacaRespons<T>(IdempotensiPembatalanOrder jejak) =>
+        BacaRespons<T>(jejak.ResponseJson);
+
+    public static T? BacaRespons<T>(IdempotensiPermintaanPembatalanOrder jejak) =>
         BacaRespons<T>(jejak.ResponseJson);
 
     public static T? BacaRespons<T>(IdempotensiAksiAdmin jejak) =>

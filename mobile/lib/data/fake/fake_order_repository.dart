@@ -819,6 +819,7 @@ class FakeOrderRepository implements OrderRepository {
   Future<Order> mintaBatalOrder({
     required String orderId,
     required String alasan,
+    String? idempotencyKey,
   }) async {
     await Future<void>.delayed(_jedaJaringan);
     final order = _wajibMilikPemanggil(orderId);

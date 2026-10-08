@@ -368,9 +368,13 @@ class ApiOrderRepository implements OrderRepository {
   Future<Order> mintaBatalOrder({
     required String orderId,
     required String alasan,
+    String? idempotencyKey,
   }) => _tindakan(
     '/api/orders/$orderId/minta-batal',
     badan: {'alasan': alasan.trim()},
+    headerTambahan: idempotencyKey == null
+        ? null
+        : {'Idempotency-Key': idempotencyKey},
   );
 
   @override

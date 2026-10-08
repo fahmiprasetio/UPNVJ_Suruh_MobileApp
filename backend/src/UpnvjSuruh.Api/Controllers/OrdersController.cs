@@ -967,72 +967,161 @@ public class OrdersController(
         MintaBatalRequest permintaan,
         CancellationToken batal)
     {
-        var order = await db.Orders
-            .Include(o => o.RunnerAssignments)
-            .ThenInclude(a => a.Runner)
-            .Include(o => o.Offers)
-            .ThenInclude(f => f.CreatedByRunner)
-            .Include(o => o.Client)
-            .SingleOrDefaultAsync(o => o.Id == id, batal);
-
-        if (order is null) return NotFound();
-
         var pemanggil = User.Id();
-
-        // Hanya pemesannya. Admin yang ingin membatalkan tidak perlu meminta izin pada
-        // dirinya sendiri, dan runner tidak berhak memutuskan pekerjaan siapa pun batal —
-        // yang tersedia untuknya melepas order (lihat Lepas), bukan membatalkannya.
-        if (order.ClientId != pemanggil) return NotFound();
-
-        if (!order.Status.Aktif())
+        if (!IdempotensiOrder.CobaBacaKey(Request, out var key))
         {
             return BadRequest(new ProblemDetails
             {
-                Title = "Order sudah berakhir",
-                Detail = $"Order ini sudah {order.Status}.",
+                Title = "Idempotency-Key tidak valid",
+                Detail = $"Header {IdempotensiOrder.NamaHeader} paling panjang {IdempotensiOrder.PanjangKeyMaksimal} karakter.",
                 Status = StatusCodes.Status400BadRequest,
             });
         }
 
-        // Order yang belum dibayar tidak perlu lewat admin sama sekali: klien bisa
-        // membatalkannya sendiri saat itu juga. Menerima permintaan di sini cuma akan
-        // membuat admin mengerjakan sesuatu yang sudah bisa dikerjakan penanyanya sendiri.
-        if (order.PaidAt is null)
+        var requestHash = key is null ? null : IdempotensiOrder.HashMintaBatal(id, permintaan);
+        if (key is not null)
         {
-            return BadRequest(new ProblemDetails
+            var sebelumnya = await db.IdempotensiPermintaanPembatalanOrder
+                .AsNoTracking()
+                .SingleOrDefaultAsync(i => i.UserId == pemanggil && i.Key == key, batal);
+            var replay = ReplayMintaBatal(id, pemanggil, requestHash!, sebelumnya);
+            if (replay is not null) return replay;
+        }
+
+        await using var transaksi = key is null
+            ? null
+            : await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, batal);
+
+        try
+        {
+            var order = await db.Orders
+                .Include(o => o.RunnerAssignments)
+                .ThenInclude(a => a.Runner)
+                .Include(o => o.Offers)
+                .ThenInclude(f => f.CreatedByRunner)
+                .Include(o => o.Client)
+                .SingleOrDefaultAsync(o => o.Id == id, batal);
+
+            if (order is null) return NotFound();
+
+            // Hanya pemesannya. Admin yang ingin membatalkan tidak perlu meminta izin pada
+            // dirinya sendiri, dan runner tidak berhak memutuskan pekerjaan siapa pun batal —
+            // yang tersedia untuknya melepas order (lihat Lepas), bukan membatalkannya.
+            if (order.ClientId != pemanggil) return NotFound();
+
+            if (!order.Status.Aktif())
             {
-                Title = "Order ini belum dibayar",
-                Detail = "Order yang belum dibayar bisa kamu batalkan sendiri, tidak perlu "
-                         + "menunggu admin.",
-                Status = StatusCodes.Status400BadRequest,
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Order sudah berakhir",
+                    Detail = $"Order ini sudah {order.Status}.",
+                    Status = StatusCodes.Status400BadRequest,
+                });
+            }
+
+            // Order yang belum dibayar tidak perlu lewat admin sama sekali: klien bisa
+            // membatalkannya sendiri saat itu juga. Menerima permintaan di sini cuma akan
+            // membuat admin mengerjakan sesuatu yang sudah bisa dikerjakan penanyanya sendiri.
+            if (order.PaidAt is null)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Order ini belum dibayar",
+                    Detail = "Order yang belum dibayar bisa kamu batalkan sendiri, tidak perlu "
+                             + "menunggu admin.",
+                    Status = StatusCodes.Status400BadRequest,
+                });
+            }
+
+            if (order.CancellationRequestedAt is not null)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Permintaanmu sudah tercatat",
+                    Detail = "Permintaan pembatalan untuk order ini sedang menunggu jawaban admin. "
+                             + "Kalau ada yang mau ditambahkan, tulis saja di chat ordernya.",
+                    Status = StatusCodes.Status400BadRequest,
+                });
+            }
+
+            order.CancellationRequestedAt = DateTime.UtcNow;
+            db.OrderMessages.Add(new OrderMessage
+            {
+                OrderId = order.Id,
+                SenderId = pemanggil,
+                SenderRole = UserRole.Klien,
+                Text = permintaan.Alasan.Trim(),
+            });
+
+            await db.SaveChangesAsync(batal);
+            var hasil = await OrderResponse.DariAsync(db, order, pemanggil, User.Punya(Peran.Admin), batal);
+
+            if (key is not null)
+            {
+                db.IdempotensiPermintaanPembatalanOrder.Add(new IdempotensiPermintaanPembatalanOrder
+                {
+                    Key = key,
+                    UserId = pemanggil,
+                    OrderId = id,
+                    RequestHash = requestHash!,
+                    ResponseJson = IdempotensiOrder.SimpanRespons(hasil),
+                });
+                try
+                {
+                    await db.SaveChangesAsync(batal);
+                    await transaksi!.CommitAsync(batal);
+                }
+                catch (DbUpdateException galat) when (GalatDb.Bentrok(galat))
+                {
+                    await transaksi!.RollbackAsync(batal);
+                    db.ChangeTracker.Clear();
+                    var pemenang = await db.IdempotensiPermintaanPembatalanOrder
+                        .AsNoTracking()
+                        .SingleOrDefaultAsync(i => i.UserId == pemanggil && i.Key == key, batal);
+                    var replay = ReplayMintaBatal(id, pemanggil, requestHash!, pemenang);
+                    if (replay is not null) return replay;
+                    throw;
+                }
+            }
+
+            await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
+            return Ok(hasil);
+        }
+        catch (Exception galat) when (key is not null && GalatDb.KalahCepat(galat))
+        {
+            if (transaksi is not null) await transaksi.RollbackAsync(batal);
+            db.ChangeTracker.Clear();
+            var pemenang = await db.IdempotensiPermintaanPembatalanOrder
+                .AsNoTracking()
+                .SingleOrDefaultAsync(i => i.UserId == pemanggil && i.Key == key, batal);
+            var replay = ReplayMintaBatal(id, pemanggil, requestHash!, pemenang);
+            if (replay is not null) return replay;
+            throw;
+        }
+    }
+
+    private ActionResult<OrderResponse>? ReplayMintaBatal(
+        Guid id,
+        Guid pemanggil,
+        string requestHash,
+        IdempotensiPermintaanPembatalanOrder? sebelumnya)
+    {
+        if (sebelumnya is null) return null;
+        if (sebelumnya.OrderId != id || sebelumnya.UserId != pemanggil ||
+            sebelumnya.RequestHash != requestHash)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Idempotency-Key sudah dipakai",
+                Detail = "Gunakan key baru untuk permintaan pembatalan yang berbeda.",
+                Status = StatusCodes.Status409Conflict,
             });
         }
 
-        if (order.CancellationRequestedAt is not null)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Permintaanmu sudah tercatat",
-                Detail = "Permintaan pembatalan untuk order ini sedang menunggu jawaban admin. "
-                         + "Kalau ada yang mau ditambahkan, tulis saja di chat ordernya.",
-                Status = StatusCodes.Status400BadRequest,
-            });
-        }
-
-        order.CancellationRequestedAt = DateTime.UtcNow;
-
-        db.OrderMessages.Add(new OrderMessage
-        {
-            OrderId = order.Id,
-            SenderId = pemanggil,
-            SenderRole = UserRole.Klien,
-            Text = permintaan.Alasan.Trim(),
-        });
-
-        await db.SaveChangesAsync(batal);
-        await hub.BeriTahuPerubahanOrderAsync(order.Id, batal);
-
-        return Ok(await OrderResponse.DariAsync(db, order, pemanggil, User.Punya(Peran.Admin), batal));
+        var respons = IdempotensiOrder.BacaRespons<OrderResponse>(sebelumnya);
+        return respons is null
+            ? Problem(statusCode: StatusCodes.Status500InternalServerError)
+            : Ok(respons);
     }
 
     [EnableRateLimiting(BatasLaju.KebijakanTulis)]

@@ -219,9 +219,11 @@ abstract interface class OrderRepository {
   /// [alasan] wajib, dan tersimpan sebagai pesan dari klien di chat ordernya, sama
   /// seperti runner melepas order. Admin yang cuma menerima "seseorang minta batal"
   /// tanpa sebab harus mengejarnya lewat chat sebelum bisa memutuskan apa pun.
+  /// [idempotencyKey] dipertahankan selama retry permintaan yang sama.
   Future<Order> mintaBatalOrder({
     required String orderId,
     required String alasan,
+    String? idempotencyKey,
   });
 
   /// Membatalkan order.

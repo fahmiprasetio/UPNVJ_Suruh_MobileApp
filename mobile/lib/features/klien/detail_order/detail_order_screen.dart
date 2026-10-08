@@ -407,9 +407,14 @@ class _JalanBatalState extends ConsumerState<_JalanBatal> {
 
     setState(() => _sedangMembatalkan = true);
     try {
+      final key = _idempotencyKey ??= buatIdempotencyKey();
       await ref
           .read(orderRepositoryProvider)
-          .mintaBatalOrder(orderId: order.id, alasan: alasan);
+          .mintaBatalOrder(
+            orderId: order.id,
+            alasan: alasan,
+            idempotencyKey: key,
+          );
     } catch (galat) {
       if (!mounted) return;
       setState(() => _sedangMembatalkan = false);
