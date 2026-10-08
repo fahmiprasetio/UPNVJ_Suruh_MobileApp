@@ -588,5 +588,7 @@ menggunakan build release dengan `http://localhost` karena penjaga HTTPS memang 
 - Test regresi murni ditambahkan untuk perhitungan jeda retry eksponensial dan batas maksimumnya.
   Test lokal tidak dijalankan sesuai instruksi pemilik. Diagnostics dua file berubah dan
   `git diff --check` bersih.
-- Setelah commit/push, periksa CI GitHub. Berikutnya audit state notifikasi cold-start atau
-  reliabilitas lain yang tersisa, tanpa membuka integrasi Firebase/Midtrans/WhatsApp sungguhan.
+- Commit `ecac1b3` sudah dipush ke `main`. CI GitHub run `37786449614` terpicu dan masih
+  berjalan saat catatan ini diperbarui; dua run sebelumnya untuk `68f12b7` dan `a7cc6bd` sukses.
+  Berikutnya audit state notifikasi cold-start atau reliabilitas lain yang tersisa, tanpa membuka
+  integrasi Firebase/Midtrans/WhatsApp sungguhan.
