@@ -609,3 +609,33 @@ menggunakan build release dengan `http://localhost` karena penjaga HTTPS memang 
 - Commit `7d84df2` sudah dipush ke `main`; CI GitHub run `37789460914` terpicu dan masih berjalan
   saat catatan ini diperbarui. Berikutnya pilih reliabilitas/state UX lain yang belum dibuktikan;
   jangan membuka integrasi Firebase/Midtrans/WhatsApp sungguhan tanpa kredensial.
+
+## 28. Persiapan demo UTS lokal (14 Oktober 2026)
+
+- Audit kesiapan demo menemukan database lokal baru menerapkan 23 dari 33 migration. Seluruh 10
+  migration tertinggal sudah diterapkan menggunakan akun pemilik schema setelah database
+  dicadangkan di folder backup di luar repository. Verifikasi akhir: 33 applied, 0 pending.
+- Backend pengembangan berhasil aktif dan endpoint health merespons `200 Healthy`. Flutter Web
+  juga berhasil disajikan dari `http://localhost:5174` dengan `API_BASE_URL` lokal; launcher
+  `jalanin_app.py` lokal diperbaiki agar memakai API nyata, bukan data tiruan. File launcher
+  terabaikan Git sehingga tidak termasuk perubahan aplikasi/commit.
+- Pada audit awal belum ada test suite lokal, sesuai instruksi sesi sebelumnya. Setelah pemilik
+  meminta validasi akhir untuk demo, seluruh rangkaian test dijalankan dan hasilnya dicatat pada
+  bagian berikutnya. Smoke test manual vertikal tetap diperlukan: pemesan membuat order Jalur A,
+  membayar melalui simulator lokal, runner mengambil order, mengunggah bukti, menyelesaikan,
+  lalu pemesan melihat status dan bukti.
+- Tidak ada commit atau push pada persiapan demo ini. Perubahan worktree yang sudah ada
+  (`README.md`, tiga file generated platform, dan dokumen UTS) dibiarkan apa adanya dan tidak
+  distage.
+
+### Validasi akhir untuk demo (14 Oktober 2026)
+
+- Atas instruksi pemilik, rangkaian validasi lokal setara CI dijalankan menjelang demo.
+  Backend Release berhasil dibangun tanpa error dan seluruh **604/604** test lulus; hasil
+  disimpan sementara dalam laporan TRX di folder temp di luar repository.
+- Flutter analyzer selesai tanpa issue dan seluruh **210/210** test lulus. Dashboard admin
+  lolos pemeriksaan tipe, seluruh **90/90** test lulus, serta production build Vite berhasil.
+- Build backend melaporkan warning dependency `Microsoft.AspNetCore.SignalR.Common 10.0.11`
+  yang mempunyai advisory keamanan. Ini tidak menyebabkan test/build gagal maupun memblokir
+  demo lokal, tetapi versi dependensi perlu diperbarui dalam pekerjaan pascademo.
+- Tidak ada source aplikasi yang diubah oleh validasi ini, tidak ada commit, dan tidak ada push.
