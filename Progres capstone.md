@@ -639,3 +639,43 @@ menggunakan build release dengan `http://localhost` karena penjaga HTTPS memang 
   yang mempunyai advisory keamanan. Ini tidak menyebabkan test/build gagal maupun memblokir
   demo lokal, tetapi versi dependensi perlu diperbarui dalam pekerjaan pascademo.
 - Tidak ada source aplikasi yang diubah oleh validasi ini, tidak ada commit, dan tidak ada push.
+
+## 29. Workflow branch pengembangan (mulai 16 Oktober 2026)
+
+Workflow repository diubah agar pekerjaan pengembangan, bukti kontribusi, dan rilis dapat
+ditelusuri dengan jelas. Aturan ini menggantikan catatan sesi lama yang menyuruh agent bekerja
+atau push langsung ke `main`.
+
+### Fungsi setiap branch
+
+- `main` adalah branch stabil. Isinya harus berada dalam kondisi siap demo atau release dan tidak
+  digunakan sebagai tempat pengembangan sehari-hari.
+- `develop` adalah branch integrasi. Branch ini menjadi dasar seluruh pekerjaan mendatang dan
+  tempat penggabungan hasil kerja sebelum dipromosikan ke `main`.
+- Branch tugas dibuat dari `develop` terbaru dan berumur pendek. Gunakan nama
+  `feat/<topik>` untuk fitur, `fix/<topik>` untuk perbaikan, `refactor/<topik>` untuk perubahan
+  struktur, `test/<topik>` untuk pengujian, dan `docs/<topik>` untuk dokumentasi.
+- `hotfix/<topik>` hanya digunakan untuk masalah mendesak pada versi stabil. Branch ini dibuat
+  dari `main`, digabungkan kembali ke `main`, lalu hasilnya disinkronkan ke `develop`.
+
+### Alur kerja wajib
+
+1. Perbarui `develop`, lalu buat satu branch tugas sesuai tujuan pekerjaan.
+2. Kerjakan satu lingkup yang jelas, validasi sesuai risiko, dan stage hanya file yang berkaitan.
+3. Buat commit semantic, push branch tugas, lalu buat pull request menuju `develop`.
+4. Cantumkan ringkasan, bukti validasi, migration atau perubahan konfigurasi, risiko, dan langkah
+   uji manual pada deskripsi pull request.
+5. Setelah satu paket perubahan di `develop` lulus CI dan siap demo/release, buat pull request
+   `develop` menuju `main`. Jangan push langsung ke `main`.
+
+### Kondisi saat workflow dibuat
+
+- `develop` dibuat dari baseline stabil `main` pada commit `6089da7`.
+- Commit pertama di `develop` hanya menetapkan workflow branch, memperbarui handover, dan
+  menyimpan aturan ignore artefak UTS lokal. Dokumen di folder `/uts/` tetap lokal dan tidak
+  masuk Git.
+- Penghapusan `README.md` serta tiga file generated Flutter yang sudah dirty bukan bagian dari
+  perubahan workflow ini dan tidak boleh ikut di-stage tanpa keputusan terpisah.
+- Agent berikutnya wajib membaca `AGENTS.md` dan bagian terbaru file ini, memastikan branch aktif,
+  lalu membuat branch tugas dari `develop`. Jangan meneruskan kebiasaan lama bekerja langsung di
+  `main`.
