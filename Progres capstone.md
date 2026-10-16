@@ -679,3 +679,21 @@ atau push langsung ke `main`.
 - Agent berikutnya wajib membaca `AGENTS.md` dan bagian terbaru file ini, memastikan branch aktif,
   lalu membuat branch tugas dari `develop`. Jangan meneruskan kebiasaan lama bekerja langsung di
   `main`.
+
+## 30. Pembaruan README repository (16 Oktober 2026)
+
+- README lama diperbarui dalam bahasa Indonesia pada branch `docs/update-readme`. Isinya sekarang
+  menjelaskan tujuan produk, fitur klien/runner/admin, Jalur A dan Jalur B, arsitektur monorepo,
+  cara menjalankan ketiga permukaan, vertical slice demo, pengujian, serta workflow Git terbaru.
+- Status integrasi eksternal ditulis sesuai keadaan aktual. Simulator pembayaran Development siap
+  untuk demo lokal, sedangkan Midtrans Sandbox, OTP WhatsApp, dan Firebase perangkat nyata tetap
+  memerlukan kredensial dan pengujian integrasi. README tidak mengklaim adanya perpindahan uang
+  nyata melalui Sandbox.
+- Hasil validasi 14 Oktober 2026 dicantumkan sebagai catatan bertanggal: 604 test backend, 210 test
+  mobile, 90 test dashboard, dan 33 migration lokal terpasang. Catatan tersebut tidak dianggap
+  sebagai bukti otomatis untuk commit yang dibuat sesudahnya.
+- Ditemukan bahwa CI masih hanya dipicu oleh push atau pull request menuju `main`. README mencatat
+  ketidaksesuaian ini secara terbuka; perubahan trigger untuk `develop` perlu menjadi pekerjaan
+  terpisah agar tidak memperluas scope dokumentasi ini.
+- Tidak ada source aplikasi atau file generated yang diubah. Validasi perubahan dibatasi pada
+  review isi dan `git diff --check`; test suite tidak dijalankan karena perubahan hanya dokumentasi.

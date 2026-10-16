@@ -1,312 +1,268 @@
 # UPNVJ Suruh
 
-An errand and odd-job service for students at UPN Veteran Jakarta: a mobile app for
-clients and runners, a web dashboard for admins, both on top of one REST API.
+UPNVJ Suruh adalah marketplace jasa *errand* untuk mahasiswa UPN Veteran Jakarta. Satu
+aplikasi Flutter digunakan oleh klien dan runner, sedangkan aktivitas operasional dipantau
+melalui dashboard admin berbasis React. Seluruh permukaan menggunakan satu REST API ASP.NET
+Core dan satu basis data PostgreSQL.
 
-A client places an order, the system broadcasts the job to available runners, and the
-first runner to accept it takes the work. Conversation, payment, and completion evidence
-all stay attached to the order they belong to.
+MVP memusatkan pengembangan pada satu *vertical slice* yang dapat dijalankan dari awal sampai
+akhir:
 
-Clients and runners share a single app. The surface that opens is decided by the role in
-use rather than by a separate build, and one account may hold both.
+1. klien membuat pesanan;
+2. klien melakukan pembayaran;
+3. pesanan didistribusikan atau ditawarkan kepada runner;
+4. runner mengambil dan mengerjakan pesanan;
+5. runner mengunggah bukti serta menyelesaikan pesanan;
+6. klien dan admin melihat hasil akhirnya.
 
-## Stack
+## Status proyek
 
-- **Mobile:** Flutter, Dart, Riverpod for state, GoRouter for navigation
-- **Admin dashboard:** React, TypeScript, Vite, Vitest
-- **API:** ASP.NET Core on .NET 10, Entity Framework Core, SignalR
-- **Database:** PostgreSQL
-- **Auth:** JWT bearer tokens, one time codes over phone number
-- **Payments:** QRIS through a payment gateway, confirmed by webhook
-- **Push notifications:** Firebase Cloud Messaging
-- **Maps:** OpenStreetMap tiles via `flutter_map`, geocoding via Nominatim, driving
-  distance via OSRM, all free and requiring no API key, used for the ride and drop off
-  pickup point
+Fitur utama sudah terhubung ke API dan database nyata untuk pengembangan lokal. Validasi terakhir
+menjelang demo UTS pada 14 Oktober 2026 menghasilkan:
 
-## Service tracks
+| Permukaan | Hasil validasi terakhir |
+| --- | --- |
+| Backend | Build Release berhasil, 604 dari 604 test lulus |
+| Mobile | `flutter analyze` tanpa temuan, 210 dari 210 test lulus |
+| Dashboard admin | Pemeriksaan tipe, 90 dari 90 test, dan build Vite berhasil |
+| Database lokal | 33 migration terpasang, tidak ada migration tertinggal |
 
-Six catalogued services: ride and drop off, food delivery, item delivery, moving out of a
-boarding house, boarding house cleaning, and bathroom cleaning. Anything outside the list
-goes through a free form request.
+Angka tersebut adalah catatan validasi pada tanggal di atas, bukan jaminan bahwa commit yang lebih
+baru otomatis telah diuji. Hasil GitHub Actions untuk commit atau pull request terbaru tetap menjadi
+rujukan utama.
 
-The split is not cosmetic. It is about who decides the price.
+### Status integrasi eksternal
 
-**Track A** covers services whose price follows from the form: ride and drop off, food
-delivery, item delivery. The client sees the total before ordering, and the job is
-broadcast as soon as it is paid.
+| Integrasi | Implementasi | Kondisi saat ini |
+| --- | --- | --- |
+| Pembayaran lokal | QR dan endpoint simulator khusus Development | Siap untuk demo lokal tanpa uang nyata |
+| Midtrans QRIS | Core API, verifikasi tanda tangan SHA-512, dan webhook idempoten | Kode tersedia; Sandbox memerlukan Server Key dan URL webhook publik |
+| OTP lokal | Kode ditulis ke terminal backend | Aktif bila backend berjalan dalam Development tanpa kredensial WhatsApp |
+| OTP WhatsApp | Meta Cloud API dan Twilio Sandbox | Kode tersedia; pengiriman nyata memerlukan kredensial dan konfigurasi provider |
+| Notifikasi push | Firebase Cloud Messaging | Kode tersedia; pengujian perangkat nyata memerlukan proyek Firebase |
+| Peta dan rute | OpenStreetMap, Nominatim, dan OSRM | Digunakan untuk pemilihan lokasi dan jarak berkendara |
 
-**Track B** covers work that a form cannot price on its own, along with every free form
-request, and it works like a ride-hailing bidding flow rather than a single centralized
-quote. The client describes what they need and names a price they're willing to pay, and
-the request broadcasts to every available runner. Any runner who's interested can either
-accept the client's suggested price outright or submit a counter-offer of their own — an
-order can have several offers pending at once, one per runner, and each runner negotiates
-with the client in their own private thread, invisible to every other runner bidding on the
-same request. The client can accept one offer, reject it, or ask for a recalculation with a
-stated reason (which lands in that same private thread); accepting one offer immediately
-closes every other pending offer on that order, and the winning runner is the one who does
-the job — there's no separate hand-off to someone else afterward. Admin no longer sets
-Track B prices at all; its role is purely monitoring and reconciliation now.
+Midtrans Sandbox tidak memindahkan uang nyata. Untuk demo kelas yang stabil, gunakan simulator
+pembayaran lokal. Pengujian Sandbox hanya dilakukan bila kredensial, koneksi internet, dan URL
+webhook publik sudah disiapkan.
 
-Prices never come from the client alone on either track — a client-suggested price on
-Track B is just the opening bid, not a binding number, and the price that actually sticks
-still only ever comes from a runner's offer the client accepts, computed and held server
-side exactly as before.
+## Fitur utama
 
-## Order lifecycle
+### Klien
 
-```mermaid
-stateDiagram-v2
-    [*] --> Request: Track B submitted, with a suggested price
-    [*] --> AwaitingPayment: Track A placed
+- Registrasi dan masuk menggunakan OTP, dengan password opsional.
+- Membuat pesanan dari enam layanan utama atau permintaan bebas.
+- Melihat perhitungan harga, membuat transaksi QRIS, dan memantau status pembayaran.
+- Membandingkan serta menyetujui penawaran runner untuk layanan Jalur B.
+- Mengobrol dengan runner dalam ruang chat milik pesanan.
+- Melihat runner yang ditugaskan, bukti penyelesaian, dan riwayat pesanan.
+- Membatalkan pesanan sebelum pembayaran atau meminta pembatalan setelah pembayaran.
 
-    Request --> Request: runners submit competing offers
-    Request --> AwaitingPayment: client accepts one offer (the rest auto-close)
-    Request --> Cancelled
+### Runner
 
-    AwaitingPayment --> InProgress: Track B, quota of one already met by the winning bidder
-    AwaitingPayment --> FindingRunner: Track A, or Track B still short of its runner quota
-    FindingRunner --> InProgress: runner quota filled
-    InProgress --> Done: runner closes with photo evidence
+- Melihat pesanan yang disiarkan dan mengambil slot yang tersedia.
+- Mengajukan, menarik, dan menegosiasikan penawaran pada Jalur B.
+- Melepas pesanan dengan alasan yang tercatat.
+- Mengunggah foto bukti dan menyelesaikan pesanan.
+- Melihat pendapatan berdasarkan payout yang dibekukan saat pesanan selesai.
 
-    AwaitingPayment --> Cancelled
-    Done --> [*]
-    Cancelled --> [*]
+### Admin
+
+- Memantau pesanan dan perubahan status secara langsung.
+- Menangani pembatalan, pencatatan refund, dan order yang bermasalah.
+- Mengelola peran serta penangguhan akun dengan audit trail.
+- Mengatur tarif layanan dan payout runner.
+- Melihat serta menandai rekap pembayaran runner.
+
+## Alur bisnis
+
+UPNVJ Suruh memiliki dua jalur pemesanan.
+
+- **Jalur A** digunakan ketika harga dapat dihitung dari data form. Server menghitung harga,
+  klien membayar, lalu pesanan disiarkan sampai kebutuhan runner terpenuhi.
+- **Jalur B** digunakan ketika ruang lingkup pekerjaan perlu ditawar. Runner mengirim penawaran,
+  klien memilih satu penawaran, lalu pesanan masuk ke tahap pembayaran. Penawaran runner lain
+  ditutup setelah pemenang dipilih.
+
+Status utama pesanan adalah:
+
+```text
+Permintaan -> Menunggu Pembayaran -> Mencari Runner -> Dikerjakan -> Selesai
+     |                  |                    |
+     +------------------+--------------------+----> Batal
 ```
 
-What moves an order out of `AwaitingPayment` is the gateway, not the screen and not the
-client. There is no way for the app to declare itself paid.
+Status lunas hanya dapat berasal dari notifikasi gateway yang valid atau simulator yang hanya
+terdaftar pada lingkungan Development. Aplikasi klien tidak dapat menandai transaksinya sendiri
+sebagai lunas pada deployment produksi.
 
-A paid order cannot be cancelled through the cancel endpoint, because cancelling it means
-money has to go back, and a refund should not happen as the side effect of one button.
+Mutasi penting seperti pembuatan order, pembuatan dan tindakan penawaran, menerima atau melepas
+order, menyelesaikan order, serta aksi admin dilindungi dengan idempotency key, transaksi database,
+atau constraint yang sesuai. Permintaan ulang dengan key dan payload yang sama tidak boleh
+menghasilkan transaksi bisnis ganda.
 
-Jobs that need more than one person stay broadcast until the quota is filled. On Track B,
-the runner whose offer got accepted fills one slot the moment payment clears — no race
-there, the client already chose them. Any slots still open after that (a multi-runner job
-like a move-out needs more hands than the one who bid) get broadcast exactly like Track A,
-and when two runners accept the same slot at the same moment, one wins and the other is
-told the job was taken. That race is settled in the database, under a serializable
-transaction with optimistic concurrency, rather than in the interface.
+## Arsitektur dan teknologi
 
-## Layout
+| Bagian | Teknologi |
+| --- | --- |
+| Mobile | Flutter, Dart, Riverpod, GoRouter |
+| Dashboard admin | React 18, TypeScript, Vite, Vitest |
+| Backend | ASP.NET Core pada .NET 10, Entity Framework Core, SignalR |
+| Database | PostgreSQL melalui Npgsql |
+| Autentikasi | JWT bearer, OTP nomor telepon, password opsional |
+| Pembayaran | Midtrans QRIS Core API atau gateway simulasi lokal |
+| Realtime | SignalR dengan polling sebagai jaring pengaman |
+| Notifikasi | Firebase Cloud Messaging |
+| Peta | `flutter_map`, OpenStreetMap, Nominatim, OSRM |
 
-This repository is intentionally a small monorepo: the mobile client, admin dashboard,
-and API evolve together around the same domain and API contract.
+Repository ini menggunakan struktur monorepo:
 
-```
-mobile/
-  android/, ios/, linux/, macos/, web/, windows/  Flutter platform runners
-  assets/                                           app assets
-  lib/
-    core/                                            shared infrastructure/UI
-      api/ config/ format/ notifikasi/ peta/ realtime/ router/ theme/
-      providers/ widgets/
-    domain/                                          models and business contracts
-    data/                                            API and fake implementations
-    features/                                       screens grouped by user capability
-  test/                                             Flutter tests
-web/
-  src/auth/ inti/ komponen/ halaman/               React admin source
+```text
 backend/
-  src/UpnvjSuruh.Api/                              ASP.NET Core API
-  tests/                                           API/integration tests
+  src/UpnvjSuruh.Api/          API, domain, migration, dan integrasi
+  tests/UpnvjSuruh.Api.Tests/  unit dan integration test backend
+mobile/
+  lib/                         aplikasi Flutter
+  test/                        test mobile
+web/
+  src/                         dashboard admin React
+  package.json                 perintah development, test, dan build
 ```
 
-`mobile/build/`, `.dart_tool/`, `web/dist/`, and dependency caches are generated artifacts;
-they are not source structure and should not be moved or committed. Feature-specific widgets
-stay beside their feature, while reusable providers and widgets belong under `mobile/lib/core/`.
-Domain models stay under `domain/` rather than being mixed into `core/`, so infrastructure and
-business rules remain separated.
+## Menjalankan secara lokal
 
-`backend/` belongs in this same repository. It contains the executable API, EF Core migrations,
-authentication, authorization, business rules, and database integration—not merely Swagger.
-Swagger is generated documentation and a development discovery surface at `/swagger`; it is
-not a replacement for the backend source. Keeping all three surfaces together makes API changes,
-mobile clients, admin UI, migrations, and CI reviewable in one change. Splitting the backend into
-another repository would only be useful later if independent ownership, release cadence, or
-access controls require it.
+### Prasyarat
 
-## Getting started
+- .NET SDK 10
+- PostgreSQL
+- Flutter stable dengan Dart 3.11 atau lebih baru
+- Node.js 22 dan npm
 
-Requires Flutter 3.41 or newer, the .NET 10 SDK, and PostgreSQL.
+Jangan menyimpan connection string, signing key, token provider, atau kredensial lain di file yang
+masuk Git. Backend membaca secret pengembangan melalui `dotnet user-secrets`.
 
-### API
+### 1. Backend dan database
 
-Secrets are not kept in the repository, so each machine sets them once through
-`dotnet user-secrets`: the connection string, the JWT signing key, and the payment webhook
-secret. The server refuses to start while any of them is missing, and says which, because
-a failure at startup is far easier to trace than a failure on the first sign in.
+Jalankan perintah berikut dari direktori API:
 
-```
+```powershell
 cd backend/src/UpnvjSuruh.Api
-dotnet user-secrets set "ConnectionStrings:Default" "<postgres connection string>"
-dotnet user-secrets set "Jwt:SigningKey" "<random text, at least 32 characters>"
-dotnet user-secrets set "Webhook:Secret" "<random text, at least 32 characters, different>"
+dotnet user-secrets set "ConnectionStrings:Default" "Host=localhost;Port=5432;Database=upnvj_suruh;Username=<user>;Password=<password>"
+dotnet user-secrets set "Jwt:SigningKey" "<teks acak minimal 32 karakter>"
+dotnet user-secrets set "Webhook:Secret" "<teks acak lain minimal 32 karakter>"
 dotnet ef database update
-dotnet run
+dotnet run --launch-profile http
 ```
 
-Swagger is served at `/swagger` in development only.
+API tersedia di `http://localhost:5059`, health check di `/health`, dan Swagger tersedia pada
+`/swagger` dalam lingkungan Development. Akun database aplikasi sebaiknya memakai hak terbatas;
+migration dijalankan oleh pemilik schema atau akun migrasi terpisah.
 
-Push notifications are the one thing that stays optional in development. Without a
-Firebase service account the server still runs, and every notification it would have sent
-is written to the log instead, which is enough to see who would have been told what. To
-send them for real, add the service account JSON from Firebase Console (Project settings,
-Service accounts) as one more secret:
+Tanpa konfigurasi Midtrans, backend Development otomatis memakai gateway simulasi. Tanpa
+kredensial WhatsApp, kode OTP dicetak pada terminal backend dengan penanda `[ALAT PENGUJI]`.
+Perilaku fallback tersebut tidak tersedia pada lingkungan produksi.
 
-```
-dotnet user-secrets set "Firebase:KredensialJson" "$(cat service-account.json)"
-```
+### 2. Aplikasi Flutter
 
-Outside development that secret is required, and the server refuses to start without it.
-A production server that runs with the logging sender looks entirely healthy while never
-sending a single notification, which is exactly the silent failure the feature exists to
-prevent.
+Untuk Flutter Web yang mengakses backend lokal:
 
-#### Production host and reverse proxy
-
-Production must set `AllowedHosts` to the public API host names explicitly. Use a semicolon
-between multiple hosts; do not leave the value as `*` or blank. The API refuses to start
-outside Development when this setting is missing or wildcarded, so a misconfigured deployment
-fails closed instead of accepting arbitrary `Host` headers.
-
-```text
-AllowedHosts=api.example.test;api.example.com
-```
-
-When TLS terminates at a reverse proxy, configure the IP address that can directly connect
-to the API. This makes the API trust `X-Forwarded-For` and `X-Forwarded-Proto` only from that
-proxy, so HTTPS redirection and anonymous rate limits use the original request safely:
-
-```text
-Proxy__AlamatTepercaya__0=<reverse-proxy IP>
-```
-
-Do not use `0.0.0.0`, a public range, or a client address. Leave this setting unset when the
-API receives TLS directly; forwarded headers are then ignored. If deployment uses multiple
-proxy hops, terminate them into one explicitly trusted final proxy rather than widening the
-trust list without a network review.
-
-### App
-
-The API address is supplied at build time rather than written into the source:
-
-```
+```powershell
 cd mobile
 flutter pub get
-flutter run --dart-define=API_BASE_URL=http://10.0.2.2:5059
+flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:5059
 ```
 
-`10.0.2.2` is how the Android emulator refers to localhost on the host machine, and it is
-also the default. On a physical device, use the machine's address on the same network.
+Untuk Android Emulator, alamat bawaan API adalah `http://10.0.2.2:5059`. Perangkat fisik harus
+menggunakan alamat IP komputer pada jaringan yang sama. Mode data tiruan tersedia hanya untuk
+debug:
 
-Push notifications need the Firebase project's identity too. There is no
-`google-services.json` in this repository on purpose: the Gradle plugin that reads it
-fails the build when the file is missing, which would stop anyone without a Firebase
-project from building the app at all, CI included. The same four values are passed in
-instead, and the app runs without notifications when they are absent:
-
-```
-flutter run   --dart-define=API_BASE_URL=http://10.0.2.2:5059   --dart-define=FIREBASE_PROJECT_ID=<project id>   --dart-define=FIREBASE_APP_ID=<android app id, 1:...:android:...>   --dart-define=FIREBASE_API_KEY=<android api key>   --dart-define=FIREBASE_SENDER_ID=<sender id, the project number>
-```
-
-All four come from the Android app entry in Firebase Console. They are not secrets: they
-ship inside every APK, and what guards the project is the service account key on the
-server, which never leaves it.
-
-To work on screens without a server or a database:
-
-```
+```powershell
 flutter run --dart-define=SUMBER_DATA=tiruan
 ```
 
-### Dashboard
+Build release menolak sumber data tiruan dan alamat API non-HTTPS.
 
-```
+### 3. Dashboard admin
+
+```powershell
 cd web
-npm install
+npm ci
+Copy-Item .env.contoh .env
 npm run dev
 ```
 
-The API address defaults to `http://localhost:5059` and is overridden with
-`VITE_API_BASE_URL` when the server lives somewhere else. Admins sign in with the same
-one time code flow as the app; an account simply needs the admin role.
+Nilai bawaan `VITE_API_BASE_URL` adalah `http://localhost:5059`. Admin masuk melalui alur OTP yang
+sama. Untuk membuat admin pertama, daftarkan akunnya terlebih dahulu, kemudian simpan nomor akun
+pada konfigurasi backend dan mulai ulang server:
 
-### Android release
-
-A release build needs its own keystore. The debug keystore that ships with Flutter is not
-an option, since its key is public and identical on every machine. Until `key.properties`
-exists, `flutter build apk --release` produces an unsigned APK that will not install, and
-that is deliberate. See `mobile/android/key.properties.contoh`.
-
-## Testing
-
-```
-cd mobile && flutter test
-cd backend && dotnet test
-cd web && npm run tes
+```powershell
+cd backend/src/UpnvjSuruh.Api
+dotnet user-secrets set "Admin:NomorHpAwal" "08xxxxxxxxxx"
 ```
 
-The API tests start the application in process with their own configuration, so a run
-gives the same result on any machine and does not depend on the secrets installed there.
+## Menjalankan vertical slice demo
 
-Some of them create a throwaway PostgreSQL database and drop it afterwards. That is on
-purpose: what those tests cover is exactly what an in memory provider does not have, and a
-test that passes because the provider enforces nothing is worse than no test at all.
+Untuk demo lokal dengan dua pemeran, buka aplikasi sebagai klien dan sebagai runner pada dua
+sesi atau perangkat berbeda. Dashboard admin dapat dibuka sebagai permukaan ketiga.
 
-## Status
+1. Klien membuat order Jalur A.
+2. Klien membuka pembayaran lalu memakai tombol simulator pada build debug.
+3. Runner melihat order masuk dan menekan terima.
+4. Runner mengunggah bukti serta menyelesaikan order.
+5. Klien melihat status Selesai dan bukti yang tersimpan.
+6. Admin menunjukkan detail order, riwayat status, dan data operasional terkait.
 
-Working end to end across all three surfaces, each covered by its own suite: **547 backend
-tests** (against a real Postgres instance, not an in-memory stand-in), **454 mobile tests**,
-and **90 dashboard tests**. Every push runs all three on CI.
+Jalur B dapat didemokan terpisah melalui urutan permintaan, penawaran runner, persetujuan klien,
+pembayaran, dan penyelesaian.
 
-**Client and runner app.** Registration and sign in, all six catalogued services with their
-own forms, Track B's multi-runner bidding from the runner's side (make an offer, withdraw
-it, negotiate in a private thread) and the client's side (compare competing offers, accept
-one, ask for a recalculation), payment, claiming broadcast jobs, releasing a job already
-taken, order chat with unread badges, completion with photo evidence, runner earnings,
-editing one's own profile, changing one's own phone number through a code sent to the new
-one, requesting cancellation of a paid order, repeating a past order in one tap, and picking
-a pickup and destination point on a map for ride and drop off, with the distance computed
-from a real driving route rather than a straight line. The client also sees who their
-runner is (name and phone, tappable to call) once one is assigned.
+## Pengujian
 
-**Admin dashboard.** Order monitoring with live updates, cancellation and refunds, role
-management, account suspension and restoration with their own audit trails, tariff
-settings, runner payout reconciliation, and the audit trail of every order status change.
+Perintah validasi utama:
 
-**Live updates.** The SignalR hub is consumed on every surface now — the runner's incoming
-jobs, the client's payment screen, order chat, and the admin dashboard all react without
-polling.
+```powershell
+dotnet test backend/UpnvjSuruh.sln --configuration Release
 
-**Push notifications.** A phone registers itself when someone signs in and is released
-when they sign out. Payment clearing, a new job broadcast, a runner accepting, releasing,
-or finishing, an offer being chosen, and a cancellation all reach the people they concern,
-and never the person who caused them. Messages go out at high priority, which is the only
-lever a server has against the battery savers that kill notifications on the phones
-students actually carry.
+cd mobile
+flutter analyze
+flutter test
 
-Not built yet:
+cd ../web
+npm run periksa
+npm run tes
+npm run build
+```
 
-- **The WhatsApp fallback for critical status changes.** Push notifications now exist, but
-  the plan's mitigation for its most critical risk has two halves, and this is the half
-  that still waits on a decision: battery savers can silently kill an app's notifications,
-  and WhatsApp's system-level standing is what the fallback borrows. It needs the provider
-  to be chosen first, the same one the sign-in code is waiting on.
-- **Proof that the notifications actually arrive.** Everything above is covered by tests,
-  and no test can answer the question the risk is actually about. That takes a real handset
-  with a real battery saver on it.
-- Object storage for photo evidence, which starts to matter once there is more than one
-  server. Exif metadata is already stripped from uploads, so a photo no longer carries the
-  runner's GPS location wherever it is stored.
-- The payment gateway itself, pending the partner's choice. The flow, the contracts, and
-  the webhook are already in their real shape, and none of them depend on which provider is
-  picked.
-- An APK installed and run on a real handset. Release builds are produced and signed; what
-  has not happened is someone holding the phone.
-- A working settings screen. The screen itself exists (theme switch is live; the rest,
-  notifications, language, etc., answer "coming soon" on purpose) but most of it is
-  display only.
-- Tests for the map picker and its two network calls (Nominatim, OSRM): the failure path
-  ("fill it in manually" instead of a raw error) is untested, along with the settings
-  screen and the client's profile tab.
+Integration test backend menggunakan PostgreSQL sungguhan karena constraint, transaksi, dan
+perilaku konkurensi tidak dapat dibuktikan secara memadai oleh provider in-memory.
+
+Workflow `.github/workflows/ci.yml` saat ini menjalankan job backend, mobile, dan web untuk push
+atau pull request menuju `main`. Dukungan trigger CI langsung pada `develop` masih perlu
+ditambahkan agar sepenuhnya selaras dengan workflow branch terbaru.
+
+## Workflow Git
+
+- `main` berisi versi stabil yang siap demo atau release.
+- `develop` menjadi branch integrasi pengembangan.
+- Pekerjaan baru dibuat dari `develop` melalui branch pendek seperti `feat/<topik>`,
+  `fix/<topik>`, `test/<topik>`, atau `docs/<topik>`.
+- Pull request branch tugas diarahkan ke `develop`.
+- `develop` digabungkan ke `main` melalui pull request setelah validasi selesai.
+- Perbaikan mendesak dimulai dari `main` melalui `hotfix/<topik>`, kemudian disinkronkan kembali
+  ke `develop`.
+
+Jangan memakai `git add .` ketika worktree memiliki file generated atau perubahan yang tidak
+berhubungan. Stage hanya file yang memang termasuk dalam satu pekerjaan.
+
+## Batasan saat ini
+
+- Deployment production dan URL webhook publik belum disiapkan.
+- Midtrans Sandbox, OTP WhatsApp, dan Firebase perangkat nyata memerlukan kredensial serta
+  pengujian integrasi terpisah.
+- Foto bukti masih disimpan oleh satu instance backend, belum menggunakan object storage.
+- APK release masih perlu diverifikasi pada perangkat Android nyata.
+- Sebagian opsi pada layar pengaturan masih bersifat informatif.
+- Advisory dependency SignalR yang tercatat pada validasi terakhir perlu ditindaklanjuti setelah
+  kebutuhan demo selesai.
+
+Catatan keputusan teknis, audit keamanan, bukti validasi, dan handover pengembangan yang lebih
+rinci berada di `Progres capstone.md`.
