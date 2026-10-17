@@ -184,12 +184,12 @@ abstract interface class OrderRepository {
 
   /// Runner menandai pekerjaannya selesai.
   ///
-  /// Yang berhak menutup order hanya runner yang memegangnya, dan foto bukti wajib
-  /// ada. Itu yang membedakan pekerjaan selesai dari pengakuan selesai.
+  /// Yang berhak menutup order hanya runner yang memegangnya. Foto bukti dan catatan
+  /// serah-terima wajib ada agar hasil serta lokasi/penerimanya sama-sama tercatat.
   Future<Order> selesaikanOrder({
     required String orderId,
     required String fotoBuktiUrl,
-    String? catatanSerahTerima,
+    required String catatanSerahTerima,
     String? idempotencyKey,
   });
 

@@ -66,6 +66,30 @@ public class PembayaranController(AppDbContext db, IPembayaranGateway gateway) :
             });
         }
 
+        var sekarang = DateTime.UtcNow;
+
+        // Status kedaluwarsa harus dibereskan di jalur POST juga, bukan hanya saat klien
+        // sempat memanggil GET. Setelah aplikasi ditutup semalaman, layar pembayaran
+        // langsung meminta transaksi baru. Tanpa pembaruan ini, transaksi lama sudah tidak
+        // dianggap hidup oleh Hidup(), tetapi index unik basis data masih melihatnya sebagai
+        // Pending dan menolak QR pengganti dengan 500.
+        if (order.Payments.Any(p => p.Menunggu && p.ExpiresAt <= sekarang))
+        {
+            await db.Payments
+                .Where(p => p.OrderId == order.Id &&
+                            p.Status == PaymentStatus.Pending &&
+                            p.ExpiresAt <= sekarang)
+                .ExecuteUpdateAsync(
+                    ubah => ubah.SetProperty(p => p.Status, PaymentStatus.Kedaluwarsa),
+                    batal);
+
+            // ExecuteUpdate tidak menyelaraskan entitas yang sudah dilacak. Muat ulang agar
+            // Hidup() dan respons berikutnya tidak membaca status Pending yang basi.
+            db.ChangeTracker.Clear();
+            order = await Muat(orderId, batal);
+            if (order is null) return NotFound();
+        }
+
         var adaYangMenunggu = Hidup(order);
         if (adaYangMenunggu is not null)
         {
@@ -85,7 +109,6 @@ public class PembayaranController(AppDbContext db, IPembayaranGateway gateway) :
             return Ok(TransaksiPembayaranResponse.Dari(adaYangMenunggu));
         }
 
-        var sekarang = DateTime.UtcNow;
         var paymentId = Guid.NewGuid();
 
         // Baris ini disimpan SEBELUM gateway dipanggil, bukan sesudah. Kalau urutannya

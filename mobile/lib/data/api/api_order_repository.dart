@@ -321,13 +321,13 @@ class ApiOrderRepository implements OrderRepository {
   Future<Order> selesaikanOrder({
     required String orderId,
     required String fotoBuktiUrl,
-    String? catatanSerahTerima,
+    required String catatanSerahTerima,
     String? idempotencyKey,
   }) => _tindakan(
     '/api/orders/$orderId/selesai',
     badan: {
       'fotoBuktiUrl': fotoBuktiUrl,
-      'catatanSerahTerima': ?catatanSerahTerima,
+      'catatanSerahTerima': catatanSerahTerima,
     },
     headerTambahan: idempotencyKey == null
         ? null

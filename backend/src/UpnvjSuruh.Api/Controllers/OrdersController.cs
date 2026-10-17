@@ -767,8 +767,8 @@ public class OrdersController(
     /// sini, bukan di tampilan: tombol yang disembunyikan tidak menghentikan siapa pun yang
     /// memanggil langsung.
     ///
-    /// Foto bukti wajib ada, dan itu yang membedakan pekerjaan selesai dari pengakuan
-    /// selesai.
+    /// Foto bukti dan catatan serah-terima wajib ada. Foto membuktikan hasilnya, sedangkan
+    /// catatan menjelaskan di mana atau kepada siapa hasil pekerjaan diserahkan.
     ///
     /// Pada order multi-runner, runner mana pun yang ditugaskan boleh menutupnya. Itu
     /// keputusan sementara: siapa yang berhak menekan selesai kalau pekerjaannya dibagi tiga
@@ -782,6 +782,16 @@ public class OrdersController(
         SelesaikanOrderRequest permintaan,
         CancellationToken batal)
     {
+        if (string.IsNullOrWhiteSpace(permintaan.CatatanSerahTerima))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Catatan serah-terima wajib diisi",
+                Detail = "Tulis lokasi atau penerima hasil pekerjaan sebelum menyelesaikan order.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
         if (!IdempotensiOrder.CobaBacaKey(Request, out var key))
         {
             return BadRequest(new ProblemDetails
@@ -860,7 +870,7 @@ public class OrdersController(
         db.OrderStatusChanges.Add(perpindahan);
         order.CompletedAt = sekarang;
         order.PhotoUrl = permintaan.FotoBuktiUrl.Trim();
-        order.HandoverNote = permintaan.CatatanSerahTerima?.Trim();
+        order.HandoverNote = permintaan.CatatanSerahTerima.Trim();
 
         // Bayaran runner dibekukan di sini, pada satu-satunya saat harganya, runnernya, dan
         // rumus bagi hasil yang berlaku sama-sama sudah pasti. Menghitungnya belakangan saat

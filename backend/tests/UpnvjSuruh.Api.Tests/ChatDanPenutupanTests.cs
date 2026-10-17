@@ -259,6 +259,7 @@ public class ChatDanPenutupanTests(DatabaseApiFactory pabrik) : IClassFixture<Da
         (await runner.PostAsJsonAsync($"/api/orders/{order.Id}/selesai", new
         {
             FotoBuktiUrl = await UnggahFotoAsync(runner, order.Id),
+            CatatanSerahTerima = "Diserahkan ke klien.",
         })).EnsureSuccessStatusCode();
 
         var jawaban = await klien.PostAsJsonAsync(
@@ -278,6 +279,7 @@ public class ChatDanPenutupanTests(DatabaseApiFactory pabrik) : IClassFixture<Da
         (await runner.PostAsJsonAsync($"/api/orders/{order.Id}/selesai", new
         {
             FotoBuktiUrl = await UnggahFotoAsync(runner, order.Id),
+            CatatanSerahTerima = "Diserahkan ke klien.",
         })).EnsureSuccessStatusCode();
 
         var pesan = (await klien.GetFromJsonAsync<HalamanResponse<OrderMessageResponse>>(
@@ -313,7 +315,25 @@ public class ChatDanPenutupanTests(DatabaseApiFactory pabrik) : IClassFixture<Da
 
         var jawaban = await runner.PostAsJsonAsync(
             $"/api/orders/{order.Id}/selesai",
-            new { FotoBuktiUrl = "" });
+            new
+            {
+                FotoBuktiUrl = "",
+                CatatanSerahTerima = "Diserahkan ke klien.",
+            });
+
+        Assert.Equal(HttpStatusCode.BadRequest, jawaban.StatusCode);
+    }
+
+    [Fact]
+    public async Task TanpaCatatanSerahTerimaDitolak()
+    {
+        var (_, runner, order) = await DikerjakanAsync();
+
+        var jawaban = await runner.PostAsJsonAsync($"/api/orders/{order.Id}/selesai", new
+        {
+            FotoBuktiUrl = await UnggahFotoAsync(runner, order.Id),
+            CatatanSerahTerima = "   ",
+        });
 
         Assert.Equal(HttpStatusCode.BadRequest, jawaban.StatusCode);
     }
@@ -327,6 +347,7 @@ public class ChatDanPenutupanTests(DatabaseApiFactory pabrik) : IClassFixture<Da
         var jawaban = await runnerAsing.PostAsJsonAsync($"/api/orders/{order.Id}/selesai", new
         {
             FotoBuktiUrl = "https://contoh/bukti.jpg",
+            CatatanSerahTerima = "Diserahkan ke klien.",
         });
 
         Assert.Equal(HttpStatusCode.NotFound, jawaban.StatusCode);
@@ -340,6 +361,7 @@ public class ChatDanPenutupanTests(DatabaseApiFactory pabrik) : IClassFixture<Da
         var jawaban = await klien.PostAsJsonAsync($"/api/orders/{order.Id}/selesai", new
         {
             FotoBuktiUrl = "https://contoh/bukti.jpg",
+            CatatanSerahTerima = "Diserahkan ke klien.",
         });
 
         Assert.Equal(HttpStatusCode.Forbidden, jawaban.StatusCode);
@@ -357,6 +379,7 @@ public class ChatDanPenutupanTests(DatabaseApiFactory pabrik) : IClassFixture<Da
         var jawaban = await runner.PostAsJsonAsync($"/api/orders/{order.Id}/selesai", new
         {
             FotoBuktiUrl = "https://contoh/bukti.jpg",
+            CatatanSerahTerima = "Diserahkan ke klien.",
         });
 
         Assert.Equal(HttpStatusCode.NotFound, jawaban.StatusCode);
@@ -370,11 +393,13 @@ public class ChatDanPenutupanTests(DatabaseApiFactory pabrik) : IClassFixture<Da
         (await runner.PostAsJsonAsync($"/api/orders/{order.Id}/selesai", new
         {
             FotoBuktiUrl = foto,
+            CatatanSerahTerima = "Diserahkan ke klien.",
         })).EnsureSuccessStatusCode();
 
         var lagi = await runner.PostAsJsonAsync($"/api/orders/{order.Id}/selesai", new
         {
             FotoBuktiUrl = foto,
+            CatatanSerahTerima = "Diserahkan ke klien.",
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, lagi.StatusCode);

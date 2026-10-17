@@ -211,7 +211,11 @@ public class AksesPenawarTests(DatabaseApiFactory pabrik) : IClassFixture<Databa
         unggah.EnsureSuccessStatusCode();
         var url = (await unggah.Content.ReadFromJsonAsync<FotoBuktiResponse>())!.Url;
 
-        (await menang.PostAsJsonAsync($"/api/orders/{order.Id}/selesai", new { FotoBuktiUrl = url }))
+        (await menang.PostAsJsonAsync($"/api/orders/{order.Id}/selesai", new
+        {
+            FotoBuktiUrl = url,
+            CatatanSerahTerima = "Diserahkan ke klien.",
+        }))
             .EnsureSuccessStatusCode();
 
         // Runner yang mengerjakannya tentu saja masih boleh.

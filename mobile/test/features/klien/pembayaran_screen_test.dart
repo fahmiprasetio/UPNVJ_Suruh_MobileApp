@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,6 +10,7 @@ import 'package:upnvj_suruh/domain/enums.dart';
 import 'package:upnvj_suruh/domain/models/transaksi_pembayaran.dart';
 import 'package:upnvj_suruh/domain/repositories/payment_gateway.dart';
 import 'package:upnvj_suruh/features/klien/pembayaran/pembayaran_screen.dart';
+import 'package:upnvj_suruh/features/klien/pembayaran/widgets/panel_simulator.dart';
 import 'package:upnvj_suruh/core/providers/payment_providers.dart';
 
 import '../../support/tiruan.dart';
@@ -182,5 +185,58 @@ void main() {
 
     final qrKedua = tester.widget<QrImageView>(find.byType(QrImageView)).key;
     expect(qrKedua, qrPertama);
+  });
+
+  testWidgets('simulator menahan ketukan ganda selama request berlangsung', (
+    tester,
+  ) async {
+    final selesai = Completer<void>();
+    var jumlahPanggilan = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PanelSimulator(
+            onBayar: () {
+              jumlahPanggilan++;
+              return selesai.future;
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Simulasikan pembayaran masuk'));
+    await tester.pump();
+    await tester.tap(find.text('Memproses pembayaran...'));
+    await tester.pump();
+
+    expect(jumlahPanggilan, 1);
+    selesai.complete();
+    await tester.pumpAndSettle();
+    expect(find.text('Simulasikan pembayaran masuk'), findsOneWidget);
+  });
+
+  testWidgets('galat simulator disamarkan dan tombol kembali aktif', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PanelSimulator(
+            onBayar: () async => throw StateError('detail rahasia'),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Simulasikan pembayaran masuk'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Simulasi pembayaran gagal. Coba lagi, ya.'),
+      findsOneWidget,
+    );
+    expect(find.text('detail rahasia'), findsNothing);
+    expect(find.text('Simulasikan pembayaran masuk'), findsOneWidget);
   });
 }

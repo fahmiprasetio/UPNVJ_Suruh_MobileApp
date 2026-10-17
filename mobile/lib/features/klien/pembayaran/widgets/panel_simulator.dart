@@ -1,16 +1,43 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/api/galat_api.dart';
 import '../../../../core/theme/app_theme.dart';
 
 /// Panel alat penguji, padanan halaman simulator di sandbox Midtrans.
 ///
 /// Sengaja dibuat mencolok dan bertuliskan apa adanya, supaya tidak pernah
-/// tertukar dengan bagian aplikasi yang sungguhan. Panel ini hilang sendiri
-/// begitu gateway asli dipasang, karena penyedianya mengembalikan `null`.
-class PanelSimulator extends StatelessWidget {
+/// tertukar dengan bagian aplikasi yang sungguhan. Panel ini hanya tersedia di
+/// build debug; build demo rilis dan produksi tidak pernah menampilkannya.
+class PanelSimulator extends StatefulWidget {
   const PanelSimulator({super.key, required this.onBayar});
 
-  final VoidCallback onBayar;
+  final Future<void> Function() onBayar;
+
+  @override
+  State<PanelSimulator> createState() => _PanelSimulatorState();
+}
+
+class _PanelSimulatorState extends State<PanelSimulator> {
+  bool _sedangMemproses = false;
+
+  Future<void> _bayar() async {
+    if (_sedangMemproses) return;
+    setState(() => _sedangMemproses = true);
+
+    try {
+      await widget.onBayar();
+    } catch (galat) {
+      if (!mounted) return;
+      final pesan = galat is GalatApi
+          ? galat.pesan
+          : 'Simulasi pembayaran gagal. Coba lagi, ya.';
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(pesan)));
+    } finally {
+      if (mounted) setState(() => _sedangMemproses = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,18 +69,28 @@ class PanelSimulator extends StatelessWidget {
           ),
           const SizedBox(height: AppTheme.spasiKecil),
           Text(
-            'Gateway sungguhan belum terpasang karena butuh server. Tombol ini '
-            'menggantikan bank klien: menekannya membuat gateway mengabarkan '
-            'bahwa uang sudah masuk.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: skema.onErrorContainer,
-            ),
+            'Khusus Development. Tombol ini menggantikan bank klien: '
+            'menekannya membuat server mengabarkan bahwa pembayaran simulasi '
+            'sudah masuk.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: skema.onErrorContainer),
           ),
           const SizedBox(height: AppTheme.spasiSedang),
           OutlinedButton.icon(
-            onPressed: onBayar,
-            icon: const Icon(Icons.bolt_outlined),
-            label: const Text('Simulasikan pembayaran masuk'),
+            onPressed: _sedangMemproses ? null : _bayar,
+            icon: _sedangMemproses
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.bolt_outlined),
+            label: Text(
+              _sedangMemproses
+                  ? 'Memproses pembayaran...'
+                  : 'Simulasikan pembayaran masuk',
+            ),
             style: OutlinedButton.styleFrom(
               foregroundColor: skema.error,
               side: BorderSide(color: skema.error),

@@ -673,7 +673,7 @@ class FakeOrderRepository implements OrderRepository {
   Future<Order> selesaikanOrder({
     required String orderId,
     required String fotoBuktiUrl,
-    String? catatanSerahTerima,
+    required String catatanSerahTerima,
     String? idempotencyKey,
   }) => selesaikanOrderSebagai(
     orderId: orderId,
@@ -687,7 +687,7 @@ class FakeOrderRepository implements OrderRepository {
     required String orderId,
     required String runnerId,
     required String fotoBuktiUrl,
-    String? catatanSerahTerima,
+    required String catatanSerahTerima,
   }) async {
     await Future<void>.delayed(_jedaJaringan);
     final order = _wajibAda(orderId);
@@ -709,6 +709,12 @@ class FakeOrderRepository implements OrderRepository {
       throw StateError(
         'Foto bukti wajib ada, itu yang membedakan pekerjaan selesai dari '
         'pengakuan selesai',
+      );
+    }
+    if (catatanSerahTerima.trim().isEmpty) {
+      throw StateError(
+        'Catatan serah terima wajib diisi agar lokasi atau penerima hasil '
+        'pekerjaan tercatat',
       );
     }
     final catatanBersih = _batasi(

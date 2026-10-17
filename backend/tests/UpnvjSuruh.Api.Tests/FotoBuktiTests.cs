@@ -107,7 +107,11 @@ public class FotoBuktiTests(DatabaseApiFactory pabrik) : IClassFixture<DatabaseA
     }
 
     private static Task<HttpResponseMessage> TutupAsync(HttpClient runner, Guid orderId, string url) =>
-        runner.PostAsJsonAsync($"/api/orders/{orderId}/selesai", new { FotoBuktiUrl = url });
+        runner.PostAsJsonAsync($"/api/orders/{orderId}/selesai", new
+        {
+            FotoBuktiUrl = url,
+            CatatanSerahTerima = "Diserahkan ke klien.",
+        });
 
     // --- Foto harus milik order yang sedang ditutup ---
 

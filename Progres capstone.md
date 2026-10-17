@@ -679,3 +679,40 @@ atau push langsung ke `main`.
 - Agent berikutnya wajib membaca `AGENTS.md` dan bagian terbaru file ini, memastikan branch aktif,
   lalu membuat branch tugas dari `develop`. Jangan meneruskan kebiasaan lama bekerja langsung di
   `main`.
+
+## 30. Audit kesiapan demo Jalur A (17 Oktober 2026)
+
+- Audit dilakukan dari `develop` terbaru pada branch `fix/jalur-a-demo-readiness`. Alur yang
+  ditelusuri mencakup login/role, tiga form Jalur A, harga server, idempotensi pembuatan order,
+  pembayaran dan retry, distribusi/claim runner, unggah bukti, penyelesaian/payout, hasil klien,
+  serta pantauan admin.
+- Ditemukan gap restart pada pembayaran: transaksi lama yang waktu bayarnya sudah habis hanya
+  diubah dari `Pending` ke `Kedaluwarsa` ketika endpoint GET dipanggil. Jika aplikasi dibuka
+  kembali dan langsung meminta QR baru, index unik masih menolak baris pengganti. Endpoint POST
+  kini menandai transaksi pending yang kedaluwarsa secara atomik dan memuat ulang order sebelum
+  menerbitkan transaksi baru. Tes regresi ditambahkan untuk skenario restart tanpa GET lebih dulu.
+- Dokumen produk menyatakan foto bukti dan catatan serah-terima wajib, tetapi implementasi masih
+  mengizinkan catatan kosong. Kontrak API, controller, repository API/tiruan, dan lembar selesai
+  runner kini sama-sama mewajibkan catatan berisi lokasi atau penerima hasil pekerjaan. Tes
+  backend dan mobile diperbarui, termasuk penolakan catatan whitespace.
+- Tombol simulator pembayaran Development sebelumnya membuang `Future` dari request. Kegagalan
+  dapat menjadi asynchronous error tak tertangani dan ketukan berulang dapat mengirim request
+  bertumpuk. Panel kini menunggu request, menonaktifkan tombol selama proses, menampilkan galat
+  aman, dan mengaktifkan kembali tombol setelah gagal. Tes widget regresi ditambahkan.
+- Kondisi lingkungan pada audit: PostgreSQL lokal mendengarkan di port 5432; backend, dashboard,
+  dan Flutter belum berjalan. Chrome dan Edge tersedia, tetapi tidak ada HP Android atau emulator
+  yang terhubung. `cloudflared` tersedia. Konfigurasi rahasia ada untuk database/JWT, tetapi
+  `Midtrans:ServerKey` dan `Midtrans:NotificationUrl` belum diisi; nilainya tidak pernah dicetak.
+- Karena kredensial Midtrans belum tersedia, demo penuh saat ini hanya dapat memakai simulator
+  Development dan harus disebut demikian. Midtrans Sandbox belum boleh diklaim lulus. Dua sesi
+  web terpisah dapat dipakai sebagai klien dan runner bila perangkat Android tetap tidak tersedia.
+- Tidak ada test lokal yang dijalankan sesuai aturan pemilik. `dart format` dan `git diff --check`
+  berhasil. `flutter analyze` berhenti karena tooling lokal menggantung, sedangkan build .NET
+  terhalang cache NuGet yang kehilangan paket; `dotnet restore` juga kehabisan waktu. Ini masalah
+  lingkungan lokal, bukan bukti source lulus atau gagal. CI GitHub setelah push wajib menjadi
+  validasi utama sebelum branch digabungkan.
+- Sebelum status demo menjadi GO, masih wajib: pulihkan dependency cache atau tunggu CI hijau,
+  pastikan 0 migration pending, nyalakan backend/dashboard/mobile, siapkan akun klien-runner-admin,
+  jalankan vertical slice sampai foto dan catatan terlihat pada klien, cocokkan order pada admin,
+  lalu ulangi setelah restart. Untuk klaim Midtrans Sandbox, tambahkan Server Key dan webhook HTTPS
+  publik serta buktikan notification berulang tidak menggandakan status.

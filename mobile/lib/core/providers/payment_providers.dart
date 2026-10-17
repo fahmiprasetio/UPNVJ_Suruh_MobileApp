@@ -42,12 +42,16 @@ final paymentGatewayProvider = Provider<PaymentGateway>((ref) {
 /// hanya didaftarkan saat server berjalan di Development. Keduanya sama-sama
 /// digerbangi mode build, karena tombol yang menandai order lunas tanpa uang
 /// berpindah tidak boleh ada di tangan pengguna.
-final simulatorPembayaranProvider = Provider<void Function(String)?>((ref) {
+final simulatorPembayaranProvider = Provider<Future<void> Function(String)?>((
+  ref,
+) {
   if (!ref.watch(modeDebugProvider)) return null;
 
   final gateway = ref.watch(paymentGatewayProvider);
   return switch (gateway) {
-    FakePaymentGateway() => gateway.simulasikanPembayaranMasuk,
+    FakePaymentGateway() => (orderId) async {
+      gateway.simulasikanPembayaranMasuk(orderId);
+    },
     ApiPaymentGateway() => gateway.simulasikanPembayaranMasuk,
     _ => null,
   };

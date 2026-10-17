@@ -50,7 +50,8 @@ public record OrderMessageResponse(
 /// <summary>
 /// Runner menandai pekerjaannya selesai.
 ///
-/// Foto bukti wajib. Itu yang membedakan pekerjaan selesai dari pengakuan selesai.
+/// Foto bukti dan catatan serah-terima wajib. Foto membuktikan hasil pekerjaan,
+/// sedangkan catatan menjelaskan di mana atau kepada siapa hasilnya diserahkan.
 /// </summary>
 public record SelesaikanOrderRequest
 {
@@ -58,8 +59,9 @@ public record SelesaikanOrderRequest
     [MaxLength(BatasMasukan.Url)]
     public string FotoBuktiUrl { get; init; } = string.Empty;
 
+    [Required(AllowEmptyStrings = false)]
     [MaxLength(BatasMasukan.CatatanSerahTerima)]
-    public string? CatatanSerahTerima { get; init; }
+    public string CatatanSerahTerima { get; init; } = string.Empty;
 }
 
 /// <summary>

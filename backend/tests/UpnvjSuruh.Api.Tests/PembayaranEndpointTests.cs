@@ -207,6 +207,37 @@ public class PembayaranEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<
     }
 
     [Fact]
+    public async Task TransaksiKedaluwarsaBisaLangsungDiterbitkanUlangSetelahRestart()
+    {
+        // Layar pembayaran memanggil POST lebih dulu. Ia tidak boleh bergantung pada GET
+        // lama untuk membersihkan transaksi yang kedaluwarsa ketika aplikasi sempat ditutup.
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+        var order = await BuatOrderAsync(klien);
+        var lama = await BuatTransaksiAsync(klien, order.Id);
+
+        using (var lingkup = pabrik.Services.CreateScope())
+        {
+            var db = lingkup.ServiceProvider.GetRequiredService<AppDbContext>();
+            var pembayaran = await db.Payments.SingleAsync(p => p.Id == lama.Id);
+            pembayaran.ExpiresAt = DateTime.UtcNow.AddMinutes(-1);
+            await db.SaveChangesAsync();
+        }
+
+        var baru = await BuatTransaksiAsync(klien, order.Id);
+
+        Assert.NotEqual(lama.Id, baru.Id);
+        Assert.Equal(nameof(PaymentStatus.Pending), baru.Status);
+        using var verifikasi = pabrik.Services.CreateScope();
+        var dbVerifikasi = verifikasi.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal(
+            PaymentStatus.Kedaluwarsa,
+            await dbVerifikasi.Payments
+                .Where(p => p.Id == lama.Id)
+                .Select(p => p.Status)
+                .SingleAsync());
+    }
+
+    [Fact]
     public async Task KlienTidakPunyaEndpointUntukMenyatakanDirinyaSudahMembayar()
     {
         // Tebakan jalur yang masuk akal kalau seseorang mencarinya. Tidak satu pun boleh ada.
