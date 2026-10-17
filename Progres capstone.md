@@ -730,6 +730,12 @@ atau push langsung ke `main`.
   tidak membuat transaksi. Karena kunci sempat dibagikan melalui percakapan/tangkapan layar,
   regenerasikan Server Key setelah demo atau sebelum artefak percakapan dibagikan lebih luas,
   lalu perbarui user-secrets lokal.
+- Smoke nyata berikutnya berhasil mendaftarkan akun Development, masuk lewat OTP lokal, membuat
+  Order Jalur A, dan menghitung harga server. Namun permintaan charge QRIS ditolak Midtrans dengan
+  status aplikasi `402` (`No access for this payment type`). Dokumentasi resmi Midtrans menyatakan
+  kode ini berarti metode/layanan pembayaran merchant belum diaktifkan. Jadi kredensialnya sah,
+  tetapi merchant Sandbox tersebut belum mempunyai akses QRIS/Core API; ini tidak dapat dibuka
+  lewat perubahan kode aplikasi dan perlu aktivasi dari Midtrans.
 - Tunnel HTTPS sementara `cloudflared` aktif dan endpoint health dapat dicapai dari internet dengan
   status 200. `Midtrans:NotificationUrl` menunjuk ke `/api/webhooks/midtrans` pada tunnel tersebut.
   Alamat `trycloudflare.com` berubah setelah tunnel berhenti, sehingga bukan konfigurasi permanen.
@@ -741,12 +747,34 @@ atau push langsung ke `main`.
   `vm_service 15.3.0` tidak ada walaupun package config masih merujuk keduanya. `flutter pub get`
   mengunduh ulang dependency tersebut; launcher kemudian bertahan hidup dan aset web utama
   kembali merespons 200. Tidak ada versi dependency atau lockfile yang diubah.
-- Launcher lokal terabaikan Git `jalanin_app.py` diperluas tanpa menyimpan kredensial: ia memakai
-  user-secrets, membuat tunnel baru, memperbarui NotificationUrl, lalu menyalakan backend,
-  dashboard, dan Flutter Web. Jalankan `python jalanin_app.py`; gunakan Chrome biasa untuk klien,
-  Incognito untuk runner, dan `http://localhost:5173` untuk admin.
-- Status sekarang **infrastruktur siap, demo end-to-end belum dinyatakan GO**. Masih wajib membuat
-  satu charge QRIS dari order aplikasi, membayarnya pada Sandbox, menerima webhook sampai status
-  `MencariRunner`, lalu menyelesaikan claim, foto, catatan, hasil klien, dan pemeriksaan admin.
+- Launcher lokal terabaikan Git `jalanin_app.py` diperluas tanpa menyimpan kredensial: tanpa
+  argumen ia menyalakan backend simulator, dashboard, dan Flutter Web; opsi `--midtrans` baru
+  membuat tunnel serta memperbarui NotificationUrl. Jalankan `python jalanin_app.py`; gunakan
+  Chrome biasa untuk klien, Incognito untuk runner, dan `http://localhost:5173` untuk admin.
+- Status sekarang **infrastruktur siap, Midtrans Sandbox NO-GO sampai QRIS diaktifkan**. Untuk demo
+  kelas, selesaikan pembayaran melalui panel `ALAT PENGUJI` Development dan sebutkan dengan jujur
+  bahwa gateway nyata sudah dihubungkan tetapi channel merchant masih ditolak 402. Setelah akses
+  Midtrans aktif, masih wajib membuat satu charge QRIS, membayarnya lewat simulator Sandbox,
+  menerima webhook sampai status `MencariRunner`, lalu menyelesaikan claim, foto, catatan, hasil
+  klien, dan pemeriksaan admin.
 - Database juga diverifikasi melalui diagnostics EF: perintah berhasil dan terdapat 0 migration
   pending. Tidak ada test lokal yang dijalankan.
+
+### Rehearsal vertikal Jalur A (17 Oktober 2026)
+
+- Rehearsal manual penuh lulus sesudah restart proses API Development: klien membuat order
+  Anter Jemput Jalur A, harga dihitung server, transaksi simulator dibuat dan diselesaikan,
+  status menjadi `MencariRunner`, runner mengambil order sampai `Dikerjakan`, lalu runner
+  mengunggah foto bukti dan mengisi catatan serah-terima wajib sampai status final `Selesai`.
+- Pembacaan akhir sebagai klien membuktikan status, foto bukti, dan catatan serah-terima
+  tampil. Dashboard admin juga menemukan order yang sama. Akun dan order rehearsal hanya
+  data lokal Development; tidak ada data kredensial, token, OTP, atau URL berkas yang dicatat.
+- Status demo kelas kini **GO untuk Jalur A melalui Development simulator** dengan satu laptop:
+  Flutter Web pada `http://localhost:5174` untuk klien dan runner (gunakan profil browser
+  terpisah), serta dashboard admin pada `http://localhost:5173`. Jalankan dari root dengan
+  `python jalanin_app.py`; tanpa argumen launcher sengaja memilih simulator dan tidak menghapus
+  user-secrets Midtrans.
+- Status **NO-GO tetap hanya untuk pembayaran Midtrans QRIS nyata** sampai channel merchant
+  Sandbox diaktifkan. Jangan menjalankan launcher dengan `--midtrans` sebelum aktivasi itu
+  selesai dan webhook nyata kembali direhearsal. Test suite lokal tidak dijalankan; rehearsal
+  ini adalah smoke manual, bukan pengganti CI.
