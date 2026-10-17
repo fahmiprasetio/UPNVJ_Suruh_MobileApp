@@ -802,3 +802,19 @@ atau push langsung ke `main`.
 - Satu-satunya blocker demo total yang masih eksternal adalah aktivasi channel Midtrans QRIS nyata.
   Tidak ada blocker tersisa untuk demo Jalur A memakai simulator Development; pengujian HP tetap
   sengaja ditunda untuk besok sesuai arahan pemilik.
+
+### Klarifikasi metode Midtrans (18 Oktober 2026)
+
+- Implementasi aplikasi ini memakai **Midtrans Core API dengan tipe pembayaran QRIS**. Backend
+  mengirim charge ke endpoint Core API dan mobile menggambar payload QR sendiri. Karena itu,
+  aplikasi tidak membuka halaman pembayaran Midtrans dan tidak menyediakan kolom nomor kartu,
+  CVV, maupun OTP/3DS.
+- Pengalaman Sandbox yang menampilkan halaman pembayaran lalu menerima kartu uji adalah alur
+  **Midtrans Snap**. Snap adalah produk berbeda: backend meminta Snap token lalu aplikasi
+  menampilkan halaman pembayaran yang di-host Midtrans. Ia belum diintegrasikan pada UPNVJ Suruh;
+  menggantinya sekarang berarti mengubah UX pembayaran, kontrak gateway, serta rehearsal webhook
+  sehingga bukan langkah aman menjelang demo.
+- Penolakan `402` yang dibuktikan pada akun ini spesifik pada channel **QRIS/Core API** yang belum
+  dapat diakses merchant. Sandbox sendiri tidak mensyaratkan UPNVJ Suruh menjadi perusahaan untuk
+  sekadar mendaftar dan mencoba integrasi, tetapi channel yang tersedia tetap ditentukan oleh akun
+  merchant. Demo kelas tetap memakai simulator Development sampai channel tersebut aktif.
