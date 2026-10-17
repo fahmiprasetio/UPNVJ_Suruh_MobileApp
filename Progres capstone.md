@@ -709,8 +709,10 @@ atau push langsung ke `main`.
 - Tidak ada test lokal yang dijalankan sesuai aturan pemilik. `dart format` dan `git diff --check`
   berhasil. `flutter analyze` berhenti karena tooling lokal menggantung, sedangkan build .NET
   terhalang cache NuGet yang kehilangan paket; `dotnet restore` juga kehabisan waktu. Ini masalah
-  lingkungan lokal, bukan bukti source lulus atau gagal. CI GitHub setelah push wajib menjadi
-  validasi utama sebelum branch digabungkan.
+  lingkungan lokal, bukan bukti source lulus atau gagal. Perubahan sudah di-commit sebagai
+  `b6ab6e6`, dipush ke `fix/jalur-a-demo-readiness`, dan diajukan melalui PR #2 menuju `develop`.
+  PR belum mempunyai check karena workflow CI repository saat ini hanya dipicu untuk `main`,
+  bukan PR menuju `develop`; aturan workflow tidak diubah tanpa instruksi pemilik.
 - Sebelum status demo menjadi GO, masih wajib: pulihkan dependency cache atau tunggu CI hijau,
   pastikan 0 migration pending, nyalakan backend/dashboard/mobile, siapkan akun klien-runner-admin,
   jalankan vertical slice sampai foto dan catatan terlihat pada klien, cocokkan order pada admin,
