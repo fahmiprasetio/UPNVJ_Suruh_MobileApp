@@ -849,3 +849,7 @@ atau push langsung ke `main`.
   mengubah status ke `MencariRunner`, lalu lanjutkan claim runner, foto bukti, catatan, hasil
   klien, dan dashboard admin. Jangan memindai QR Sandbox atau memakai uang/metode pembayaran
   nyata.
+- Perubahan di-commit sebagai `7d77184` (`feat(payment): add Midtrans Snap checkout`), dipush ke
+  `feat/midtrans-snap-checkout`, dan diajukan melalui PR #3 menuju `develop`. Branch ini
+  diturunkan dari `fix/jalur-a-demo-readiness` karena perubahan Snap bergantung pada perbaikan
+  demo di PR #2 yang belum digabung; reviewer perlu memperhatikan hubungan stacked tersebut.
