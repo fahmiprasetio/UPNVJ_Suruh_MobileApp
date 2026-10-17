@@ -778,3 +778,27 @@ atau push langsung ke `main`.
   Sandbox diaktifkan. Jangan menjalankan launcher dengan `--midtrans` sebelum aktivasi itu
   selesai dan webhook nyata kembali direhearsal. Test suite lokal tidak dijalankan; rehearsal
   ini adalah smoke manual, bukan pengganti CI.
+
+### Checklist operasional presentasi (17 Oktober 2026)
+
+- Pemeriksaan runtime terakhir tanpa perangkat fisik: health API, halaman Flutter Web, dashboard
+  admin, dan bootstrap Flutter semuanya merespons HTTP 200. Log API terbaru tidak memuat tanda
+  exception tak tertangani. Pemeriksaan visual klik-per-klik tidak dilakukan pada sesi ini karena
+  browser otomatis tidak tersedia; jangan menyatakan hasilnya sebagai bukti UI baru.
+- Untuk mulai dari kondisi bersih besok, buka terminal pada root repository dan jalankan
+  `python jalanin_app.py`. Tunggu sampai launcher menyatakan stack siap, lalu buka Flutter Web
+  sebagai klien di profil browser biasa dan sebagai runner di Incognito/profil berbeda; buka
+  dashboard admin di tab ketiga. Tiga sesi ini diperlukan agar token tiap peran tidak saling
+  menggantikan.
+- Gunakan panel `ALAT PENGUJI` untuk settlement pembayaran Development. Jangan memilih
+  `--midtrans`, memindai QR Sandbox dengan aplikasi bank/e-wallet nyata, atau menjanjikan QRIS
+  nyata sebelum merchant aktif. Bukti foto untuk penutupan order dapat disiapkan dari berkas
+  gambar lokal yang sah; catatan serah-terima harus diisi.
+- Urutan presentasi yang sudah dibuktikan: Klien membuat Anter Jemput, tunjukkan harga server dan
+  status menunggu pembayaran, selesaikan lewat alat penguji hingga `MencariRunner`, runner tekan
+  terima hingga `Dikerjakan`, unggah foto serta catatan, lalu tunjukkan `Selesai` pada klien dan
+  order yang sama pada dashboard admin. Hindari membuat banyak order tambahan saat presentasi agar
+  daftar admin tetap mudah dibaca.
+- Satu-satunya blocker demo total yang masih eksternal adalah aktivasi channel Midtrans QRIS nyata.
+  Tidak ada blocker tersisa untuk demo Jalur A memakai simulator Development; pengujian HP tetap
+  sengaja ditunda untuk besok sesuai arahan pemilik.
