@@ -818,3 +818,34 @@ atau push langsung ke `main`.
   dapat diakses merchant. Sandbox sendiri tidak mensyaratkan UPNVJ Suruh menjadi perusahaan untuk
   sekadar mendaftar dan mencoba integrasi, tetapi channel yang tersedia tetap ditentukan oleh akun
   merchant. Demo kelas tetap memakai simulator Development sampai channel tersebut aktif.
+
+## 31. Midtrans Snap Sandbox sebagai pembayaran utama (18 Oktober 2026)
+
+- Atas arahan pemilik, jalur aktif ketika kredensial Midtrans tersedia diubah dari QRIS Core API
+  menjadi **Midtrans Snap**. Ini adalah jalur yang membuka checkout hosted Midtrans dan cocok
+  dengan demo kartu Sandbox; aplikasi tidak pernah menerima nomor kartu, CVV, atau OTP/3DS.
+- QRIS tidak dihapus. Implementasi Core QRIS dipertahankan sebagai `Midtrans:Mode=CoreQris`,
+  sedangkan `Snap` menjadi pilihan bawaan (`Midtrans:Mode` kosong atau `Snap`). Simulator
+  Development tetap tidak berubah dan tetap dipilih launcher tanpa argumen. Jadi QRIS/simulator
+  dapat dipakai sebagai fallback tanpa membongkar perubahan Snap.
+- Kontrak pembayaran kini dapat menyimpan URL checkout selain payload QR. API mengembalikan URL
+  itu pada transaksi Snap; Flutter menampilkan tombol **Buka Midtrans** dan membuka URL HTTPS
+  Midtrans secara eksternal. Layar QR dan panel simulator hanya tampil untuk transaksi non-Snap.
+  URL divalidasi server agar hanya host Snap Midtrans Sandbox/Production yang dapat dikirim ke
+  aplikasi.
+- Migration `MidtransSnapCheckout` menambah kolom nullable `Payments.CheckoutUrl` dan telah
+  diterapkan pada database demo lokal. Akun aplikasi memang tidak memiliki hak DDL schema;
+  migration diterapkan memakai pemilik database lokal, tanpa memperluas hak akun aplikasi.
+  Backend kemudian dibangun ulang sukses dengan 0 warning dan 0 error.
+- Runtime `python jalanin_app.py --midtrans` telah menyalakan API dengan tunnel HTTPS dan
+  memperbarui NotificationUrl per transaksi. Pembuatan sesi Snap langsung ke Sandbox menggunakan
+  kredensial lokal berhasil: token diterima dan redirect URL HTTPS berasal dari host Snap Sandbox.
+  Token, URL lengkap, dan kredensial tidak dicatat di dokumen maupun Git.
+- `dart format` berhasil. Build/analyzer Flutter Web lokal tidak memberi hasil akhir karena
+  compiler/tooling Flutter setempat menggantung; ini dicatat sebagai keterbatasan tooling, bukan
+  bukti UI lulus atau gagal. Tidak ada test suite lokal yang dijalankan.
+- Bukti yang masih wajib sebelum menyebut **Midtrans end-to-end GO**: buat order Jalur A dari UI,
+  buka checkout Snap, selesaikan dengan kartu uji Sandbox pada halaman Midtrans, pastikan webhook
+  mengubah status ke `MencariRunner`, lalu lanjutkan claim runner, foto bukti, catatan, hasil
+  klien, dan dashboard admin. Jangan memindai QR Sandbox atau memakai uang/metode pembayaran
+  nyata.

@@ -163,17 +163,41 @@ if (!string.IsNullOrWhiteSpace(midtransServerKey))
     }
 
     var midtransProduction = builder.Configuration.GetValue<bool>("Midtrans:Production");
-    builder.Services.AddHttpClient<IPembayaranGateway, MidtransPembayaranGateway>(client =>
+    var midtransMode = builder.Configuration["Midtrans:Mode"]?.Trim();
+
+    // Snap adalah default karena halaman checkout Midtrans menyediakan kartu Sandbox dan
+    // channel lain tanpa aplikasi perlu mengetahui rincian metode bayar. QRIS Core tetap
+    // tersedia secara eksplisit bila akses channel merchant sudah diaktifkan oleh Midtrans.
+    if (string.IsNullOrEmpty(midtransMode) ||
+        midtransMode.Equals("Snap", StringComparison.OrdinalIgnoreCase))
     {
-        client.BaseAddress = new Uri(midtransProduction
-            ? "https://api.midtrans.com/"
-            : "https://api.sandbox.midtrans.com/");
-        // Basic Auth dengan Server Key sebagai username, kata sandi kosong -- persis format
-        // yang dituntut Core API Midtrans.
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-            "Basic",
-            Convert.ToBase64String(Encoding.ASCII.GetBytes($"{midtransServerKey}:")));
-    });
+        builder.Services.AddHttpClient<IPembayaranGateway, MidtransPembayaranGateway>(client =>
+        {
+            client.BaseAddress = new Uri(midtransProduction
+                ? "https://app.midtrans.com/"
+                : "https://app.sandbox.midtrans.com/");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+                "Basic",
+                Convert.ToBase64String(Encoding.ASCII.GetBytes($"{midtransServerKey}:")));
+        });
+    }
+    else if (midtransMode.Equals("CoreQris", StringComparison.OrdinalIgnoreCase))
+    {
+        builder.Services.AddHttpClient<IPembayaranGateway, MidtransQrisPembayaranGateway>(client =>
+        {
+            client.BaseAddress = new Uri(midtransProduction
+                ? "https://api.midtrans.com/"
+                : "https://api.sandbox.midtrans.com/");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+                "Basic",
+                Convert.ToBase64String(Encoding.ASCII.GetBytes($"{midtransServerKey}:")));
+        });
+    }
+    else
+    {
+        throw new InvalidOperationException(
+            "Midtrans:Mode harus Snap atau CoreQris. Snap adalah pilihan bawaan.");
+    }
 }
 else if (builder.Environment.IsDevelopment())
 {

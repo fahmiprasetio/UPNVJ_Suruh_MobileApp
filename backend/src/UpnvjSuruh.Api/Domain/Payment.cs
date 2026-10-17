@@ -21,6 +21,13 @@ public class Payment
     /// </summary>
     public required string QrPayload { get; set; }
 
+    /// <summary>
+    /// Halaman checkout yang di-host gateway, bila transaksi memakai redirect checkout
+    /// seperti Midtrans Snap. Disimpan bersama transaksi agar membuka ulang layar tidak
+    /// menerbitkan token atau tagihan kedua.
+    /// </summary>
+    public string? CheckoutUrl { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>Batas waktu membayar. Lewat itu transaksinya hangus sendiri.</summary>

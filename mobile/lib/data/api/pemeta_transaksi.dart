@@ -22,6 +22,7 @@ class PemetaTransaksi {
         'status pembayaran',
       ),
       qrisPayload: PemetaDasar.teks(isi, 'qrisPayload'),
+      checkoutUrl: PemetaDasar.teksOpsional(isi, 'checkoutUrl'),
       dibuatPada: PemetaDasar.waktu(isi, 'dibuatPada')!,
       kedaluwarsaPada: PemetaDasar.waktu(isi, 'kedaluwarsaPada')!,
       dibayarPada: PemetaDasar.waktu(isi, 'dibayarPada'),

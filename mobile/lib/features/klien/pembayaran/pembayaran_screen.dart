@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/galat_api.dart';
 import '../../../core/format/formatters.dart';
@@ -15,7 +16,7 @@ import '../../../core/providers/order_providers.dart';
 import '../../../core/providers/payment_providers.dart';
 import 'widgets/panel_simulator.dart';
 
-/// Layar pembayaran QRIS.
+/// Layar pembayaran Midtrans (Snap sebagai utama, QRIS sebagai fallback).
 ///
 /// Klien tidak punya cara apa pun untuk menyatakan dirinya sudah membayar,
 /// tidak ada tombol "saya sudah transfer", tidak ada unggah bukti. Tangkapan
@@ -91,7 +92,9 @@ class _MenungguBayar extends ConsumerWidget {
           child: Column(
             children: [
               Text(
-                'Bayar dengan QRIS',
+                transaksi.memakaiSnap
+                    ? 'Bayar dengan Midtrans'
+                    : 'Bayar dengan QRIS',
                 style: teks.titleMedium?.copyWith(fontWeight: FontWeight.w600),
               ),
               // Order mana yang sedang dibayar.
@@ -123,42 +126,48 @@ class _MenungguBayar extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: AppTheme.spasiBesar),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(AppTheme.spasiBesar),
-            child: Center(
-              // Latar putihnya wajib: kode QR menuntut kontras dan zona sunyi
-              // terang untuk bisa dipindai, jadi ia tidak boleh ikut menggelap
-              // di tema gelap. Yang bisa diperbaiki cuma bentuknya, dan sudut
-              // membulat membuat bidang putih itu terbaca sebagai plat yang
-              // memang ditaruh di situ alih-alih lubang di tengah kartu.
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(AppTheme.radiusKontrol),
-                child: QrImageView(
-                  // Identitas QR mengikuti transaksinya, bukan layarnya: kalau
-                  // transaksi berganti, Flutter tahu gambarnya harus diganti.
-                  key: ValueKey('qris-${transaksi.id}'),
-                  data: transaksi.qrisPayload,
-                  version: QrVersions.auto,
-                  size: 220,
-                  backgroundColor: Colors.white,
-                  padding: const EdgeInsets.all(AppTheme.spasiSedang),
-                  semanticsLabel: 'Kode QR pembayaran',
+        if (transaksi.memakaiSnap)
+          _TombolSnap(checkoutUrl: transaksi.checkoutUrl!)
+        else
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(AppTheme.spasiBesar),
+              child: Center(
+                // Latar putihnya wajib: kode QR menuntut kontras dan zona sunyi
+                // terang untuk bisa dipindai, jadi ia tidak boleh ikut menggelap
+                // di tema gelap. Yang bisa diperbaiki cuma bentuknya, dan sudut
+                // membulat membuat bidang putih itu terbaca sebagai plat yang
+                // memang ditaruh di situ alih-alih lubang di tengah kartu.
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusKontrol),
+                  child: QrImageView(
+                    // Identitas QR mengikuti transaksinya, bukan layarnya: kalau
+                    // transaksi berganti, Flutter tahu gambarnya harus diganti.
+                    key: ValueKey('qris-${transaksi.id}'),
+                    data: transaksi.qrisPayload,
+                    version: QrVersions.auto,
+                    size: 220,
+                    backgroundColor: Colors.white,
+                    padding: const EdgeInsets.all(AppTheme.spasiSedang),
+                    semanticsLabel: 'Kode QR pembayaran',
+                  ),
                 ),
               ),
             ),
           ),
-        ),
         const SizedBox(height: AppTheme.spasiSedang),
         _HitungMundur(kedaluwarsaPada: transaksi.kedaluwarsaPada),
         const SizedBox(height: 4),
         Text(
-          'Status berubah sendiri begitu gateway mengabarkan uangnya masuk. '
-          'Tidak perlu mengirim bukti transfer.',
+          transaksi.memakaiSnap
+              ? 'Halaman checkout dibuka oleh Midtrans. Pilih metode bayar di sana; '
+                    'status berubah sendiri setelah webhook diterima.'
+              : 'Status berubah sendiri begitu gateway mengabarkan uangnya masuk. '
+                    'Tidak perlu mengirim bukti transfer.',
           textAlign: TextAlign.center,
           style: teks.bodySmall?.copyWith(color: skema.onSurfaceVariant),
         ),
-        if (simulator != null) ...[
+        if (simulator != null && !transaksi.memakaiSnap) ...[
           const SizedBox(height: AppTheme.spasiBesar),
           // Bersumbu pada order, bukan pada id transaksi: yang ditandai lunas
           // adalah tagihan yang sedang berlaku untuk order ini, dan hanya
@@ -168,6 +177,56 @@ class _MenungguBayar extends ConsumerWidget {
       ],
     );
   }
+}
+
+class _TombolSnap extends StatelessWidget {
+  const _TombolSnap({required this.checkoutUrl});
+
+  final String checkoutUrl;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(AppTheme.spasiBesar),
+      child: Column(
+        children: [
+          const Icon(Icons.open_in_new_rounded, size: 48),
+          const SizedBox(height: AppTheme.spasiSedang),
+          Text(
+            'Lanjutkan ke pembayaran Midtrans',
+            textAlign: TextAlign.center,
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: AppTheme.spasiKecil),
+          Text(
+            'Kamu akan memilih metode pembayaran pada halaman Midtrans yang aman.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: AppTheme.spasiSedang),
+          FilledButton.icon(
+            onPressed: () async {
+              final terbuka = await launchUrl(
+                Uri.parse(checkoutUrl),
+                mode: LaunchMode.externalApplication,
+              );
+              if (!terbuka && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Halaman Midtrans tidak dapat dibuka.'),
+                  ),
+                );
+              }
+            },
+            icon: const Icon(Icons.payment_rounded),
+            label: const Text('Buka Midtrans'),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 /// Sisa waktu membayar, berdetak.

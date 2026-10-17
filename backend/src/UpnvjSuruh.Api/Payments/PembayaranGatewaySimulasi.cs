@@ -13,11 +13,12 @@ namespace UpnvjSuruh.Api.Payments;
 /// </summary>
 public class PembayaranGatewaySimulasi : IPembayaranGateway
 {
-    public Task<(string ReferensiGateway, string QrPayload)> BuatTransaksiAsync(
+    public Task<HasilPembuatanPembayaran> BuatTransaksiAsync(
         Order order,
         Guid paymentId,
         decimal jumlah,
-        CancellationToken batal) => Task.FromResult((
+        CancellationToken batal) => Task.FromResult(new HasilPembuatanPembayaran(
         $"sim-{paymentId:N}",
-        $"SIMULASI-QRIS|order={order.OrderCode}|jumlah={jumlah:0}"));
+        $"SIMULASI-QRIS|order={order.OrderCode}|jumlah={jumlah:0}",
+        null));
 }

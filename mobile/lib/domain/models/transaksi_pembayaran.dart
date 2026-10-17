@@ -19,6 +19,7 @@ class TransaksiPembayaran {
     required this.jumlah,
     required this.status,
     required this.qrisPayload,
+    this.checkoutUrl,
     required this.dibuatPada,
     required this.kedaluwarsaPada,
     this.dibayarPada,
@@ -36,28 +37,31 @@ class TransaksiPembayaran {
   /// pernah menyusunnya sendiri, hanya menggambar apa yang diberikan.
   final String qrisPayload;
 
+  /// URL checkout Midtrans Snap. Jika ada, aplikasi membuka halaman pembayaran Midtrans
+  /// alih-alih menggambar QR sendiri.
+  final String? checkoutUrl;
+
   final DateTime dibuatPada;
   final DateTime kedaluwarsaPada;
   final DateTime? dibayarPada;
 
   bool get menunggu => status == PaymentStatus.pending;
   bool get berhasil => status == PaymentStatus.berhasil;
+  bool get memakaiSnap => checkoutUrl != null && checkoutUrl!.isNotEmpty;
 
   Duration sisaWaktu(DateTime sekarang) {
     final sisa = kedaluwarsaPada.difference(sekarang);
     return sisa.isNegative ? Duration.zero : sisa;
   }
 
-  TransaksiPembayaran copyWith({
-    PaymentStatus? status,
-    DateTime? dibayarPada,
-  }) {
+  TransaksiPembayaran copyWith({PaymentStatus? status, DateTime? dibayarPada}) {
     return TransaksiPembayaran(
       id: id,
       orderId: orderId,
       jumlah: jumlah,
       status: status ?? this.status,
       qrisPayload: qrisPayload,
+      checkoutUrl: checkoutUrl,
       dibuatPada: dibuatPada,
       kedaluwarsaPada: kedaluwarsaPada,
       dibayarPada: dibayarPada ?? this.dibayarPada,

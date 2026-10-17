@@ -96,7 +96,7 @@ public class PembayaranController(AppDbContext db, IPembayaranGateway gateway) :
             // Baris pembayaran disimpan sebelum gateway dipanggil. Request paralel atau
             // retry setelah timeout bisa tiba pada jendela singkat ketika barisnya sudah
             // ada tetapi QR belum diterima; jangan mengirim QR kosong ke klien.
-            if (string.IsNullOrWhiteSpace(adaYangMenunggu.QrPayload))
+            if (BelumSiapDitampilkan(adaYangMenunggu))
             {
                 return Conflict(new ProblemDetails
                 {
@@ -151,7 +151,7 @@ public class PembayaranController(AppDbContext db, IPembayaranGateway gateway) :
                 ? null
                 : Hidup(orderSesudahBentrok);
             if (transaksiPemenang is null) throw;
-            if (string.IsNullOrWhiteSpace(transaksiPemenang.QrPayload))
+            if (BelumSiapDitampilkan(transaksiPemenang))
             {
                 return Conflict(new ProblemDetails
                 {
@@ -166,10 +166,11 @@ public class PembayaranController(AppDbContext db, IPembayaranGateway gateway) :
 
         try
         {
-            var (referensiGateway, qrPayload) = await gateway.BuatTransaksiAsync(
+            var hasilGateway = await gateway.BuatTransaksiAsync(
                 order, paymentId, harga, batal);
-            pembayaran.GatewayReference = referensiGateway;
-            pembayaran.QrPayload = qrPayload;
+            pembayaran.GatewayReference = hasilGateway.ReferensiGateway;
+            pembayaran.QrPayload = hasilGateway.QrPayload;
+            pembayaran.CheckoutUrl = hasilGateway.CheckoutUrl;
         }
         catch
         {
@@ -261,4 +262,8 @@ public class PembayaranController(AppDbContext db, IPembayaranGateway gateway) :
     /// <summary>Transaksi yang masih menunggu dan belum lewat batas waktunya.</summary>
     private static Payment? Hidup(Order order) => order.Payments
         .SingleOrDefault(p => p.Menunggu && p.ExpiresAt > DateTime.UtcNow);
+
+    private static bool BelumSiapDitampilkan(Payment pembayaran) =>
+        string.IsNullOrWhiteSpace(pembayaran.QrPayload) &&
+        string.IsNullOrWhiteSpace(pembayaran.CheckoutUrl);
 }

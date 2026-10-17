@@ -19,6 +19,18 @@ class PemetaDasar {
     return nilai;
   }
 
+  /// Sama seperti [teks], tetapi kolom boleh tidak ada/null. Jika server memilih
+  /// mengirimnya, bentuknya tetap wajib string yang tidak kosong supaya URL checkout
+  /// yang rusak tidak berubah menjadi layar pembayaran yang membingungkan.
+  static String? teksOpsional(Map<String, dynamic> isi, String kunci) {
+    final nilai = isi[kunci];
+    if (nilai == null) return null;
+    if (nilai is! String || nilai.isEmpty) {
+      throw GalatServer('Jawaban server memuat $kunci yang tidak sah.');
+    }
+    return nilai;
+  }
+
   /// Rupiah penuh. Server mengirimnya sebagai angka desimal, tapi rupiah tidak
   /// punya sen, dan `double` untuk uang adalah sumber galat pembulatan.
   static int? rupiah(dynamic nilai) =>
