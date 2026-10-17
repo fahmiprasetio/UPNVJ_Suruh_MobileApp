@@ -718,3 +718,35 @@ atau push langsung ke `main`.
   jalankan vertical slice sampai foto dan catatan terlihat pada klien, cocokkan order pada admin,
   lalu ulangi setelah restart. Untuk klaim Midtrans Sandbox, tambahkan Server Key dan webhook HTTPS
   publik serta buktikan notification berulang tidak menggandakan status.
+
+### Persiapan runtime kelas dan Midtrans Sandbox
+
+- Kredensial Sandbox diberikan pemilik dan disimpan hanya di `.NET user-secrets` proyek API pada
+  mesin ini sebagai `Midtrans:MerchantId`, `Midtrans:ClientKey`, `Midtrans:ServerKey`, dan
+  `Midtrans:Production=false`. Nilainya sengaja tidak ditulis di dokumen, source, log, commit,
+  maupun deskripsi PR. Backend memang hanya memakai Server Key untuk Core API QRIS; Client Key
+  disimpan untuk kebutuhan integrasi lain di masa depan.
+- Server Key diterima oleh endpoint status resmi Midtrans Sandbox. Pemeriksaan ini read-only dan
+  tidak membuat transaksi. Karena kunci sempat dibagikan melalui percakapan/tangkapan layar,
+  regenerasikan Server Key setelah demo atau sebelum artefak percakapan dibagikan lebih luas,
+  lalu perbarui user-secrets lokal.
+- Tunnel HTTPS sementara `cloudflared` aktif dan endpoint health dapat dicapai dari internet dengan
+  status 200. `Midtrans:NotificationUrl` menunjuk ke `/api/webhooks/midtrans` pada tunnel tersebut.
+  Alamat `trycloudflare.com` berubah setelah tunnel berhenti, sehingga bukan konfigurasi permanen.
+- Build Debug API terbaru berhasil dengan 0 warning dan 0 error. Backend lokal, Flutter Web pada
+  port 5174, dan dashboard admin pada port 5173 sama-sama aktif serta merespons HTTP 200. Ini
+  membuktikan ketiga permukaan dapat dijalankan dari satu laptop untuk proyektor, tetapi belum
+  menggantikan rehearsal transaksi vertikal.
+- Kompilasi Flutter Web pertama gagal karena folder cache lokal `riverpod 3.3.2` dan
+  `vm_service 15.3.0` tidak ada walaupun package config masih merujuk keduanya. `flutter pub get`
+  mengunduh ulang dependency tersebut; launcher kemudian bertahan hidup dan aset web utama
+  kembali merespons 200. Tidak ada versi dependency atau lockfile yang diubah.
+- Launcher lokal terabaikan Git `jalanin_app.py` diperluas tanpa menyimpan kredensial: ia memakai
+  user-secrets, membuat tunnel baru, memperbarui NotificationUrl, lalu menyalakan backend,
+  dashboard, dan Flutter Web. Jalankan `python jalanin_app.py`; gunakan Chrome biasa untuk klien,
+  Incognito untuk runner, dan `http://localhost:5173` untuk admin.
+- Status sekarang **infrastruktur siap, demo end-to-end belum dinyatakan GO**. Masih wajib membuat
+  satu charge QRIS dari order aplikasi, membayarnya pada Sandbox, menerima webhook sampai status
+  `MencariRunner`, lalu menyelesaikan claim, foto, catatan, hasil klien, dan pemeriksaan admin.
+- Database juga diverifikasi melalui diagnostics EF: perintah berhasil dan terdapat 0 migration
+  pending. Tidak ada test lokal yang dijalankan.
