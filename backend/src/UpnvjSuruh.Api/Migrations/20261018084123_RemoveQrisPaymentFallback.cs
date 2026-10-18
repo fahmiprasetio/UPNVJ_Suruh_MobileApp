@@ -15,10 +15,10 @@ namespace UpnvjSuruh.Api.Migrations
             // menerbitkan transaksi Snap baru, bukan melihat tombol checkout kosong.
             migrationBuilder.Sql(
                 """
-                UPDATE \"Payments\"
-                SET \"Status\" = 2
-                WHERE \"Status\" = 0
-                  AND (\"CheckoutUrl\" IS NULL OR btrim(\"CheckoutUrl\") = '');
+                UPDATE "Payments"
+                SET "Status" = 2
+                WHERE "Status" = 0
+                  AND ("CheckoutUrl" IS NULL OR btrim("CheckoutUrl") = '');
                 """);
 
             migrationBuilder.DropColumn(
