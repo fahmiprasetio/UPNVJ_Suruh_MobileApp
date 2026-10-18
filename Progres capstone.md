@@ -888,3 +888,7 @@ atau push langsung ke `main`.
 - FAQ aplikasi juga telah diselaraskan: ia hanya menyebut checkout Midtrans Snap, bukan QRIS.
   Atas permintaan pemilik, seluruh proses demo lokal kemudian dihentikan; pemilik akan menyalakan
   sendiri sesi Development baru agar kode OTP baru tercetak pada terminal API yang ia jalankan.
+- Launcher lokal membuka Flutter Web pada `http://localhost:5174/#/masuk`. Jangan membuka
+  `http://localhost:5174/masuk`: `web-server` Flutter tidak menyediakan aset bootstrap pada
+  rute fisik tersebut sehingga browser hanya menampilkan halaman putih. Launcher menunggu server
+  siap lalu membuka URL hash yang benar secara otomatis.
