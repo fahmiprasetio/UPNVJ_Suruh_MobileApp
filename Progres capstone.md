@@ -892,3 +892,21 @@ atau push langsung ke `main`.
   `http://localhost:5174/masuk`: `web-server` Flutter tidak menyediakan aset bootstrap pada
   rute fisik tersebut sehingga browser hanya menampilkan halaman putih. Launcher menunggu server
   siap lalu membuka URL hash yang benar secara otomatis.
+
+### Catatan insiden demo Web dan pencegahan (18 Oktober 2026)
+
+- Penyebab halaman putih adalah menjalankan `flutter run -d web-server`: mode debug dapat berhenti
+  pada *Waiting for connection from debug service* di browser tertentu. Rute fisik `/masuk` juga
+  tidak boleh dipakai karena aset bootstrap berada di root. Ini bukan kegagalan API atau Midtrans.
+- Jalur demo yang dipakai selanjutnya adalah **build Flutter Web release yang sudah jadi** pada
+  `mobile/build/web`, disajikan lokal pada port `5174`. Launcher tidak lagi memanggil compiler
+  Flutter saat dibuka; akibatnya startup besok hanya menyalakan layanan yang sudah siap.
+- Build rilis terbaru telah dibuat dengan `API_BASE_URL=http://localhost:5059`. Validasi konfigurasi
+  mengizinkan pengecualian sempit untuk `localhost`, `127.0.0.1`, dan `::1` pada build demo karena
+  lalu lintas tidak meninggalkan laptop; HTTP ke host lain tetap ditolak di build rilis.
+- Jika source Flutter berubah sebelum demo, lakukan sekali saat persiapan (bukan saat presentasi):
+  `cd mobile; flutter build web --release --dart-define=API_BASE_URL=http://localhost:5059`.
+  Setelah itu jalankan `python jalanin_app.py` satu kali dari root proyek dan buka URL yang dicetak.
+- Saat terjadi tampilan lama setelah build baru, lakukan hard refresh browser sekali. Jangan membuka
+  banyak launcher atau menjalankan `flutter run`; itu memicu proses ganda dan waktu tunggu yang
+  tidak diperlukan.

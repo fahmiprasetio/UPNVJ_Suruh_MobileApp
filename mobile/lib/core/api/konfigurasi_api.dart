@@ -43,8 +43,13 @@ class KonfigurasiApi {
   /// dan penolakan yang tidak pernah diuji baru ketahuan rusaknya saat dibutuhkan.
   static String baca({required bool modeDebug, String? nilai}) {
     final alamat = nilai ?? baseUrl;
+    final host = Uri.tryParse(alamat)?.host.toLowerCase();
+    final loopback = host == 'localhost' || host == '127.0.0.1' || host == '::1';
 
-    if (!modeDebug && !alamat.startsWith('https://')) {
+    // Demo web lokal berjalan bersama API pada mesin yang sama. Loopback tidak
+    // mengirim token atau nomor HP ke jaringan, jadi aman sebagai pengecualian
+    // sempit untuk hasil build demo; HTTP menuju host lain tetap ditolak.
+    if (!modeDebug && !loopback && !alamat.startsWith('https://')) {
       throw StateError(
         'API_BASE_URL="$alamat" tidak boleh dipakai di build rilis: '
         'alamat non-https mengirim token sesi dan nomor HP tanpa sandi, dan '
