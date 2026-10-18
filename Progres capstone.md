@@ -877,3 +877,8 @@ atau push langsung ke `main`.
 - Diagnostics: build API dan proyek test .NET berhasil tanpa error; test suite tidak dijalankan
   sesuai instruksi pemilik. `flutter pub get` berhasil dan menghapus dependensi QR, tetapi
   `flutter analyze` tidak memberi hasil sebelum timeout tooling lokal dua menit.
+- Pada 18 Oktober 2026, database demo dibackup ke folder di luar repository lalu migration
+  `RemoveQrisPaymentFallback` berhasil diterapkan memakai pemilik schema lokal. Backend Snap,
+  dashboard admin, dan Flutter Web kemudian sama-sama merespons HTTP 200 pada port demo lokal.
+  Ini membuktikan stack dapat dibuka; rehearsal wajib yang tersisa adalah checkout Snap Sandbox
+  sampai webhook mengubah order menjadi `MencariRunner`.
