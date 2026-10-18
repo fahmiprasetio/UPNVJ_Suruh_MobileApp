@@ -910,3 +910,7 @@ atau push langsung ke `main`.
 - Saat terjadi tampilan lama setelah build baru, lakukan hard refresh browser sekali. Jangan membuka
   banyak launcher atau menjalankan `flutter run`; itu memicu proses ganda dan waktu tunggu yang
   tidak diperlukan.
+- Bukti persiapan: `flutter build web --release --dart-define=API_BASE_URL=http://localhost:5059`
+  selesai sukses pada 18 Oktober 2026 (`Built build\\web`; kompilasi satu kali sekitar 290 detik).
+  Build ini diselesaikan sebelum demo, sehingga tidak menjadi waktu tunggu saat `python
+  jalanin_app.py` dipakai besok. Tidak ada test suite lokal yang dijalankan.
