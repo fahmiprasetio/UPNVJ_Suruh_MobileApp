@@ -4,6 +4,7 @@ import '../config/sumber_data.dart';
 import '../../data/api/api_payment_gateway.dart';
 import '../../domain/models/transaksi_pembayaran.dart';
 import '../../domain/repositories/payment_gateway.dart';
+import 'repository_providers.dart';
 
 /// Titik tukar payment gateway.
 ///
