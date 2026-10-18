@@ -821,6 +821,9 @@ atau push langsung ke `main`.
 
 ## 31. Midtrans Snap Sandbox sebagai pembayaran utama (18 Oktober 2026)
 
+> Catatan historis: keputusan fallback QRIS/simulator di bagian ini **sudah dibatalkan** oleh
+> bagian 32. Sumber aplikasi sekarang hanya menyediakan Midtrans Snap.
+
 - Atas arahan pemilik, jalur aktif ketika kredensial Midtrans tersedia diubah dari QRIS Core API
   menjadi **Midtrans Snap**. Ini adalah jalur yang membuka checkout hosted Midtrans dan cocok
   dengan demo kartu Sandbox; aplikasi tidak pernah menerima nomor kartu, CVV, atau OTP/3DS.
@@ -882,3 +885,6 @@ atau push langsung ke `main`.
   dashboard admin, dan Flutter Web kemudian sama-sama merespons HTTP 200 pada port demo lokal.
   Ini membuktikan stack dapat dibuka; rehearsal wajib yang tersisa adalah checkout Snap Sandbox
   sampai webhook mengubah order menjadi `MencariRunner`.
+- FAQ aplikasi juga telah diselaraskan: ia hanya menyebut checkout Midtrans Snap, bukan QRIS.
+  Atas permintaan pemilik, seluruh proses demo lokal kemudian dihentikan; pemilik akan menyalakan
+  sendiri sesi Development baru agar kode OTP baru tercetak pada terminal API yang ia jalankan.

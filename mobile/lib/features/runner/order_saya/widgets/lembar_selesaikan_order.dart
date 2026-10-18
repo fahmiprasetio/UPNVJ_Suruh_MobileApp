@@ -287,7 +287,7 @@ class _KartuFotoTerkirim extends StatelessWidget {
   }
 }
 
-/// Pengakuan bahwa fotonya belum sungguhan, sepola panel simulator pembayaran.
+/// Pengakuan bahwa fotonya belum sungguhan, khusus untuk alat penguji foto.
 class _CatatanAlatPenguji extends StatelessWidget {
   const _CatatanAlatPenguji();
 

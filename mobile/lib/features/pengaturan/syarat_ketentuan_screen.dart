@@ -44,7 +44,7 @@ class SyaratKetentuanScreen extends StatelessWidget {
           _bagianPasal(
             context,
             '2. Pemesanan dan Pembayaran',
-            'Klien wajib memberikan rincian alamat, nomor kontak, serta deskripsi pekerjaan yang jelas dan benar.\n\nPembayaran seluruh layanan wajib diselesaikan di muka melalui QRIS resmi yang disediakan aplikasi. Pesanan Jalur A baru disiarkan setelah pembayaran terverifikasi. Pada Jalur B, pembayaran dilakukan setelah klien menyetujui salah satu penawaran harga dari runner.',
+            'Klien wajib memberikan rincian alamat, nomor kontak, serta deskripsi pekerjaan yang jelas dan benar.\n\nPembayaran seluruh layanan dilakukan melalui halaman Midtrans Snap. Pesanan Jalur A baru disiarkan setelah pembayaran terverifikasi. Pada Jalur B, pembayaran dilakukan setelah klien menyetujui salah satu penawaran harga dari runner.',
           ),
           _bagianPasal(
             context,

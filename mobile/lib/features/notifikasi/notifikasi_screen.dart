@@ -165,7 +165,7 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
       case OrderStatus.menungguPembayaran:
         return _ItemNotifikasi(
           judul: 'Selesaikan Pembayaran ${order.kodeOrder}',
-          pesan: 'Tagihan untuk layanan $namaLayanan siap dibayar via QRIS.',
+          pesan: 'Tagihan untuk layanan $namaLayanan siap dibayar melalui Midtrans Snap.',
           waktu: order.dibuatPada,
           ikon: Icons.payment_outlined,
           warnaAksen: AppTheme.maroonMotor,
@@ -231,16 +231,16 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
         ),
       ),
       _ItemNotifikasi(
-        judul: 'Pembayaran Cepat & Otomatis via QRIS',
+        judul: 'Pembayaran Aman melalui Midtrans Snap',
         pesan:
-            'Semua pembayaran menggunakan QRIS dinamis Midtrans tanpa perlu konfirmasi manual.',
+            'Semua pembayaran dibuka pada halaman checkout Midtrans Snap tanpa konfirmasi manual.',
         waktu: DateTime(2026, 9, 5),
         ikon: Icons.qr_code_scanner_rounded,
         warnaAksen: AppTheme.hijauLencana,
         onTap: (context) => _tampilkanDialogInfo(
           context,
-          'Kemudahan QRIS Midtrans',
-          'Anda dapat membayar pesanan menggunakan m-banking atau e-wallet apa pun. Sistem webhook Midtrans memverifikasi status pembayaran secara instan.',
+          'Kemudahan Midtrans Snap',
+          'Pilih metode pembayaran yang tersedia pada halaman Midtrans Snap. Sistem webhook Midtrans memverifikasi status pembayaran secara otomatis.',
         ),
       ),
       _ItemNotifikasi(
