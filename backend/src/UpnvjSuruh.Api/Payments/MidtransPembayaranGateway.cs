@@ -8,10 +8,8 @@ namespace UpnvjSuruh.Api.Payments;
 /// <summary>
 /// Membuat checkout Midtrans Snap lewat endpoint <c>/snap/v1/transactions</c>.
 ///
-/// Snap sengaja dipakai sebagai jalur Midtrans utama: halaman pembayaran, pilihan channel,
-/// dan kartu Sandbox ditampilkan oleh Midtrans sendiri. QRIS Core API lama tidak dihapus;
-/// implementasi QRIS dapat dipasang lagi sebagai gateway lain bila merchant sudah mendapat
-/// akses channel tersebut.
+/// Snap adalah satu-satunya jalur pembayaran: halaman pembayaran, pilihan channel, dan kartu
+/// Sandbox ditampilkan oleh Midtrans sendiri.
 ///
 /// <c>HttpClient</c>-nya (Authorization Basic dengan Server Key, BaseAddress Sandbox/Production)
 /// dipasang sekali di <c>Program.cs</c>. <see cref="MidtransOptions"/> cuma disentuh untuk satu
@@ -87,7 +85,7 @@ public class MidtransPembayaranGateway(
                 "Gateway pembayaran sedang bermasalah, coba lagi sebentar lagi.");
         }
 
-        return new HasilPembuatanPembayaran(orderIdMidtrans, string.Empty, isi.RedirectUrl!);
+        return new HasilPembuatanPembayaran(orderIdMidtrans, isi.RedirectUrl!);
     }
 
     private static bool SnapUrlSah(string? nilai) =>

@@ -131,7 +131,6 @@ public class PembayaranController(AppDbContext db, IPembayaranGateway gateway) :
             // dan kedaluwarsa meleset dari BatasWaktuBayar, dan yang membaca selisihnya
             // nanti akan menyimpulkan batas waktunya bukan angka yang tertulis di sini.
             CreatedAt = sekarang,
-            QrPayload = string.Empty,
             ExpiresAt = sekarang.Add(TarifConfig.BatasWaktuBayar),
         };
 
@@ -169,7 +168,6 @@ public class PembayaranController(AppDbContext db, IPembayaranGateway gateway) :
             var hasilGateway = await gateway.BuatTransaksiAsync(
                 order, paymentId, harga, batal);
             pembayaran.GatewayReference = hasilGateway.ReferensiGateway;
-            pembayaran.QrPayload = hasilGateway.QrPayload;
             pembayaran.CheckoutUrl = hasilGateway.CheckoutUrl;
         }
         catch
@@ -264,6 +262,5 @@ public class PembayaranController(AppDbContext db, IPembayaranGateway gateway) :
         .SingleOrDefault(p => p.Menunggu && p.ExpiresAt > DateTime.UtcNow);
 
     private static bool BelumSiapDitampilkan(Payment pembayaran) =>
-        string.IsNullOrWhiteSpace(pembayaran.QrPayload) &&
         string.IsNullOrWhiteSpace(pembayaran.CheckoutUrl);
 }

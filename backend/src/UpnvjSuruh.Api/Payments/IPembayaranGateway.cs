@@ -5,9 +5,9 @@ namespace UpnvjSuruh.Api.Payments;
 /// <summary>
 /// Membuat satu transaksi di gateway pembayaran.
 ///
-/// Implementasinya dapat berupa simulator, Snap, atau QRIS Core. Pemilihan gateway dilakukan
-/// di komposisi aplikasi; <see cref="Controllers.PembayaranController"/> tidak pernah tahu
-/// yang mana sedang aktif.
+/// Implementasinya adalah Midtrans Snap. <see cref="Controllers.PembayaranController"/>
+/// tidak pernah menerima hasil pembayaran dari klien; perubahan status tetap hanya lewat
+/// webhook Midtrans yang tervalidasi.
 /// </summary>
 public interface IPembayaranGateway
 {
@@ -18,7 +18,7 @@ public interface IPembayaranGateway
     /// itu sendiri disimpan.</param>
     /// <param name="jumlah">Selalu <c>order.Price</c>, tidak pernah dari badan permintaan.</param>
     /// <returns>Referensi transaksi di gateway yang dicocokkan saat webhook datang, serta
-    /// salah satu dari payload QR atau halaman checkout yang aman dibuka klien.</returns>
+    /// URL checkout Snap yang aman dibuka klien.</returns>
     Task<HasilPembuatanPembayaran> BuatTransaksiAsync(
         Order order,
         Guid paymentId,
@@ -29,5 +29,4 @@ public interface IPembayaranGateway
 /// <summary>Hasil aman yang disimpan server sebelum dikirim ke aplikasi.</summary>
 public sealed record HasilPembuatanPembayaran(
     string ReferensiGateway,
-    string QrPayload,
-    string? CheckoutUrl);
+    string CheckoutUrl);

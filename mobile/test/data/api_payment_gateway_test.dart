@@ -26,7 +26,7 @@ void main() {
     'orderId': orderId,
     'jumlah': 11000,
     'status': status,
-    'qrisPayload': 'SIMULASI-QRIS|order=SRH-0415|jumlah=11000',
+    'checkoutUrl': 'https://app.sandbox.midtrans.com/snap/v2/vtweb/token-uji',
     'dibuatPada': '2026-08-28T13:35:33.994568Z',
     'kedaluwarsaPada': '2026-08-28T14:05:33.994568Z',
     'dibayarPada': status == 'Berhasil' ? '2026-08-28T13:35:59.470043Z' : null,
@@ -66,7 +66,10 @@ void main() {
       expect(transaksi.jumlah, 11000);
       expect(transaksi.status, PaymentStatus.pending);
       expect(transaksi.menunggu, isTrue);
-      expect(transaksi.qrisPayload, startsWith('SIMULASI-QRIS'));
+      expect(
+        transaksi.checkoutUrl,
+        startsWith('https://app.sandbox.midtrans.com/'),
+      );
       // Batas waktunya datang dari server, dan sama dengan TarifConfig di kedua
       // sisi. Diperiksa di sini supaya perbedaan angka antara server dan aplikasi
       // ketahuan sebagai tes yang gagal, bukan sebagai hitung mundur yang meleset
@@ -96,16 +99,19 @@ void main() {
       );
     });
 
-    test('status yang tidak dikenal melempar, bukan diam-diam jadi menunggu', () {
-      // Status pembayaran yang salah baca membuat layar menawarkan QR untuk
-      // tagihan yang sudah lunas, atau sebaliknya menyatakan lunas yang belum.
-      final uji = buat((_) => transaksiJson(status: 'SedangDitinjau'));
+    test(
+      'status yang tidak dikenal melempar, bukan diam-diam jadi menunggu',
+      () {
+        // Status pembayaran yang salah baca membuat layar menawarkan QR untuk
+        // tagihan yang sudah lunas, atau sebaliknya menyatakan lunas yang belum.
+        final uji = buat((_) => transaksiJson(status: 'SedangDitinjau'));
 
-      expect(
-        () => uji.gateway.buatTransaksi(orderId: orderId),
-        throwsA(isA<GalatServer>()),
-      );
-    });
+        expect(
+          () => uji.gateway.buatTransaksi(orderId: orderId),
+          throwsA(isA<GalatServer>()),
+        );
+      },
+    );
   });
 
   group('permintaan', () {
@@ -134,14 +140,20 @@ void main() {
       );
     });
 
-    test('galat dari server diteruskan sebagai GalatApi, bukan galat mentah', () {
-      final uji = buat((_) => {'title': 'Order ini belum punya harga'}, status: 400);
+    test(
+      'galat dari server diteruskan sebagai GalatApi, bukan galat mentah',
+      () {
+        final uji = buat(
+          (_) => {'title': 'Order ini belum punya harga'},
+          status: 400,
+        );
 
-      expect(
-        () => uji.gateway.buatTransaksi(orderId: orderId),
-        throwsA(isA<GalatApi>()),
-      );
-    });
+        expect(
+          () => uji.gateway.buatTransaksi(orderId: orderId),
+          throwsA(isA<GalatApi>()),
+        );
+      },
+    );
   });
 
   group('mengintip status', () {
@@ -152,11 +164,15 @@ void main() {
         var jumlahIntip = 0;
         final uji = buat((_) {
           jumlahIntip++;
-          return transaksiJson(status: jumlahIntip >= 4 ? 'Berhasil' : 'Pending');
+          return transaksiJson(
+            status: jumlahIntip >= 4 ? 'Berhasil' : 'Pending',
+          );
         });
 
         final diterima = <TransaksiPembayaran>[];
-        final langganan = uji.gateway.watchTransaksi(orderId).listen(diterima.add);
+        final langganan = uji.gateway
+            .watchTransaksi(orderId)
+            .listen(diterima.add);
         async.elapse(const Duration(seconds: 1));
 
         expect(jumlahIntip, greaterThanOrEqualTo(4));
@@ -193,10 +209,7 @@ void main() {
     test('meminta bergabung ke order begitu mulai diamati', () {
       fakeAsync((async) {
         final hub = _HubTiruan();
-        final uji = buat(
-          (_) => transaksiJson(status: 'Berhasil'),
-          hub: hub,
-        );
+        final uji = buat((_) => transaksiJson(status: 'Berhasil'), hub: hub);
 
         uji.gateway.watchTransaksi(orderId).listen((_) {});
         async.flushMicrotasks();
@@ -208,10 +221,7 @@ void main() {
     test('berhenti mengikuti begitu statusnya final', () {
       fakeAsync((async) {
         final hub = _HubTiruan();
-        final uji = buat(
-          (_) => transaksiJson(status: 'Berhasil'),
-          hub: hub,
-        );
+        final uji = buat((_) => transaksiJson(status: 'Berhasil'), hub: hub);
 
         uji.gateway.watchTransaksi(orderId).listen((_) {});
         async.elapse(const Duration(seconds: 1));
@@ -236,10 +246,16 @@ void main() {
       fakeAsync((async) {
         final hub = _HubTiruan();
         var jumlahIntip = 0;
-        final uji = buat((_) {
-          jumlahIntip++;
-          return transaksiJson(status: jumlahIntip >= 2 ? 'Berhasil' : 'Pending');
-        }, jedaIntip: const Duration(seconds: 1), hub: hub);
+        final uji = buat(
+          (_) {
+            jumlahIntip++;
+            return transaksiJson(
+              status: jumlahIntip >= 2 ? 'Berhasil' : 'Pending',
+            );
+          },
+          jedaIntip: const Duration(seconds: 1),
+          hub: hub,
+        );
 
         final langganan = uji.gateway.watchTransaksi(orderId).listen((_) {});
         async.flushMicrotasks();
@@ -256,10 +272,16 @@ void main() {
       fakeAsync((async) {
         final hub = _HubTiruan();
         var jumlahIntip = 0;
-        final uji = buat((_) {
-          jumlahIntip++;
-          return transaksiJson(status: jumlahIntip >= 2 ? 'Berhasil' : 'Pending');
-        }, jedaIntip: const Duration(seconds: 10), hub: hub);
+        final uji = buat(
+          (_) {
+            jumlahIntip++;
+            return transaksiJson(
+              status: jumlahIntip >= 2 ? 'Berhasil' : 'Pending',
+            );
+          },
+          jedaIntip: const Duration(seconds: 10),
+          hub: hub,
+        );
 
         uji.gateway.watchTransaksi(orderId).listen((_) {});
         async.flushMicrotasks();
@@ -280,11 +302,15 @@ void main() {
         var jumlahIntip = 0;
         final uji = buat((_) {
           jumlahIntip++;
-          return transaksiJson(status: jumlahIntip >= 2 ? 'Berhasil' : 'Pending');
+          return transaksiJson(
+            status: jumlahIntip >= 2 ? 'Berhasil' : 'Pending',
+          );
         }, jedaIntip: const Duration(milliseconds: 50));
 
         final diterima = <String>[];
-        uji.gateway.watchTransaksi(orderId).listen((t) => diterima.add(t.status.name));
+        uji.gateway
+            .watchTransaksi(orderId)
+            .listen((t) => diterima.add(t.status.name));
         async.elapse(const Duration(seconds: 1));
 
         expect(diterima, ['pending', 'berhasil']);

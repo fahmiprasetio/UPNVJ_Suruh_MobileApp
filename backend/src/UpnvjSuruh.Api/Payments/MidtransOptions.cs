@@ -11,7 +11,7 @@ public class MidtransOptions
 {
     public const string Section = "Midtrans";
 
-    /// <summary>Dipakai server: Basic Auth ke Snap/Core API, dan menghitung ulang tanda tangan
+    /// <summary>Dipakai server: Basic Auth ke Snap, dan menghitung ulang tanda tangan
     /// notifikasi webhook. Tidak pernah ke aplikasi klien.</summary>
     public string ServerKey { get; set; } = string.Empty;
 
@@ -28,7 +28,7 @@ public class MidtransOptions
     /// <summary>
     /// Alamat lengkap <c>MidtransWebhookController</c> milik aplikasi INI (misalnya
     /// <c>https://api.upnvjsuruh.my.id/api/webhooks/midtrans</c>), dikirim lewat header
-    /// <c>X-Override-Notification</c> di tiap permintaan Snap maupun Core API.
+    /// <c>X-Override-Notification</c> di tiap permintaan Snap.
     ///
     /// Server Key Sandbox terikat ke satu akun merchant, bukan satu proyek -- kalau akun
     /// Sandbox yang sama dipakai proyek lain, dashboard Midtrans cuma punya satu alamat

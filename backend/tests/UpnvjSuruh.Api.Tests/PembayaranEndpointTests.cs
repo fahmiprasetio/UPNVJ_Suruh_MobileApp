@@ -118,17 +118,14 @@ public class PembayaranEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<
     }
 
     [Fact]
-    public async Task QrnyaDitandaiSimulasiDanTidakMenyerupaiQrisAsli()
+    public async Task CheckoutSnapDikembalikanUntukPembayaran()
     {
-        // String yang mirip aslinya tapi palsu akan lolos pandangan sekilas dan menipu
-        // penguji. Yang seperti ini gagal dipindai aplikasi bank, dan memang seharusnya.
         var (klien, _) = await AkunAsync(UserRole.Klien);
         var order = await BuatOrderAsync(klien);
 
         var transaksi = await BuatTransaksiAsync(klien, order.Id);
 
-        Assert.StartsWith("SIMULASI-QRIS", transaksi.QrisPayload);
-        Assert.Contains(order.KodeOrder, transaksi.QrisPayload);
+        Assert.StartsWith("https://app.sandbox.midtrans.com/", transaksi.CheckoutUrl);
     }
 
     [Fact]

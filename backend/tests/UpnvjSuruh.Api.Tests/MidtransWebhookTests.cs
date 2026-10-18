@@ -49,7 +49,6 @@ public class MidtransWebhookTests(MidtransWebhookTests.MidtransApiFactory pabrik
             OrderId = order.Id,
             Amount = harga,
             GatewayReference = "belum-tersambung",
-            QrPayload = "qr-mentah",
             ExpiresAt = DateTime.UtcNow.AddMinutes(30),
         };
         db.Payments.Add(payment);

@@ -465,7 +465,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<Payment>(entity =>
         {
             entity.Property(p => p.GatewayReference).HasMaxLength(BatasMasukan.ReferensiGateway);
-            entity.Property(p => p.QrPayload).HasMaxLength(BatasMasukan.QrPayload);
             entity.Property(p => p.CheckoutUrl).HasMaxLength(BatasMasukan.Url);
             entity.Property(p => p.RefundReason).HasMaxLength(BatasMasukan.Deskripsi);
 

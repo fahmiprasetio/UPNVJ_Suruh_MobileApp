@@ -16,8 +16,7 @@ public record TransaksiPembayaranResponse(
     Guid OrderId,
     decimal Jumlah,
     string Status,
-    string QrisPayload,
-    string? CheckoutUrl,
+    string CheckoutUrl,
     DateTime DibuatPada,
     DateTime KedaluwarsaPada,
     DateTime? DibayarPada)
@@ -27,8 +26,7 @@ public record TransaksiPembayaranResponse(
         pembayaran.OrderId,
         pembayaran.Amount,
         pembayaran.Status.ToString(),
-        pembayaran.QrPayload,
-        pembayaran.CheckoutUrl,
+        pembayaran.CheckoutUrl ?? string.Empty,
         pembayaran.CreatedAt,
         pembayaran.ExpiresAt,
         pembayaran.SettledAt);

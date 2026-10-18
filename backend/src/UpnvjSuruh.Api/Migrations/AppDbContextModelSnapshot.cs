@@ -734,11 +734,6 @@ namespace UpnvjSuruh.Api.Migrations
                     b.Property<Guid>("OrderId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("QrPayload")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
                     b.Property<string>("RefundReason")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");

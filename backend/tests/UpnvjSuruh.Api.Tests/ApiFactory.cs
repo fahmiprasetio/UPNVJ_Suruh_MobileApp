@@ -70,6 +70,11 @@ public class ApiFactory : WebApplicationFactory<Program>
                 // mengukur kode.
                 [AdminAwal.KunciKonfigurasi] = string.Empty,
                 ["Media:Folder"] = FolderMedia,
+                // Seluruh API, termasuk Development, sekarang wajib menyalakan Snap.
+                // Ini nilai uji, bukan kredensial merchant, dan gateway-nya diganti test double
+                // oleh DatabaseApiFactory sebelum ada transaksi yang dibuat.
+                ["Midtrans:ServerKey"] = "server-key-uji-bukan-rahasia",
+                ["Midtrans:NotificationUrl"] = "https://uji.contoh/api/webhooks/midtrans",
             });
         });
 

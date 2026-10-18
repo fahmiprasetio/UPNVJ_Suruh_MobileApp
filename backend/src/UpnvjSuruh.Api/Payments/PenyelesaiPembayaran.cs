@@ -85,7 +85,6 @@ public class PenyelesaiPembayaran(
                 // di pemeriksaan status di bawah dan tidak pernah ditandai lunas.
                 Amount = order.Price ?? jumlah,
                 GatewayReference = referensiGateway,
-                QrPayload = string.Empty,
                 ExpiresAt = DateTime.UtcNow,
             };
             db.Payments.Add(pembayaran);

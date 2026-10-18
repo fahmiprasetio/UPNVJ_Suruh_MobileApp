@@ -20,7 +20,6 @@ public static class BatasMasukan
     public const int ReferensiGateway = 200;
     public const int Url = 500;
     public const int KodeOrder = 20;
-    public const int QrPayload = 1000;
 
     /// <summary>
     /// Sidik password. <see cref="Microsoft.AspNetCore.Identity.PasswordHasher{TUser}"/>

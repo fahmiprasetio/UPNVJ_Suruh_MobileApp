@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/galat_api.dart';
@@ -14,9 +13,8 @@ import '../../../domain/models/transaksi_pembayaran.dart';
 import '../../../domain/service_catalog.dart';
 import '../../../core/providers/order_providers.dart';
 import '../../../core/providers/payment_providers.dart';
-import 'widgets/panel_simulator.dart';
 
-/// Layar pembayaran Midtrans (Snap sebagai utama, QRIS sebagai fallback).
+/// Layar pembayaran Midtrans Snap.
 ///
 /// Klien tidak punya cara apa pun untuk menyatakan dirinya sudah membayar,
 /// tidak ada tombol "saya sudah transfer", tidak ada unggah bukti. Tangkapan
@@ -82,7 +80,6 @@ class _MenungguBayar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final teks = Theme.of(context).textTheme;
     final skema = Theme.of(context).colorScheme;
-    final simulator = ref.watch(simulatorPembayaranProvider);
     final order = ref.watch(orderProvider(orderId)).value;
 
     return ListView(
@@ -92,9 +89,7 @@ class _MenungguBayar extends ConsumerWidget {
           child: Column(
             children: [
               Text(
-                transaksi.memakaiSnap
-                    ? 'Bayar dengan Midtrans'
-                    : 'Bayar dengan QRIS',
+                'Bayar dengan Midtrans',
                 style: teks.titleMedium?.copyWith(fontWeight: FontWeight.w600),
               ),
               // Order mana yang sedang dibayar.
@@ -126,54 +121,16 @@ class _MenungguBayar extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: AppTheme.spasiBesar),
-        if (transaksi.memakaiSnap)
-          _TombolSnap(checkoutUrl: transaksi.checkoutUrl!)
-        else
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(AppTheme.spasiBesar),
-              child: Center(
-                // Latar putihnya wajib: kode QR menuntut kontras dan zona sunyi
-                // terang untuk bisa dipindai, jadi ia tidak boleh ikut menggelap
-                // di tema gelap. Yang bisa diperbaiki cuma bentuknya, dan sudut
-                // membulat membuat bidang putih itu terbaca sebagai plat yang
-                // memang ditaruh di situ alih-alih lubang di tengah kartu.
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusKontrol),
-                  child: QrImageView(
-                    // Identitas QR mengikuti transaksinya, bukan layarnya: kalau
-                    // transaksi berganti, Flutter tahu gambarnya harus diganti.
-                    key: ValueKey('qris-${transaksi.id}'),
-                    data: transaksi.qrisPayload,
-                    version: QrVersions.auto,
-                    size: 220,
-                    backgroundColor: Colors.white,
-                    padding: const EdgeInsets.all(AppTheme.spasiSedang),
-                    semanticsLabel: 'Kode QR pembayaran',
-                  ),
-                ),
-              ),
-            ),
-          ),
+        _TombolSnap(checkoutUrl: transaksi.checkoutUrl),
         const SizedBox(height: AppTheme.spasiSedang),
         _HitungMundur(kedaluwarsaPada: transaksi.kedaluwarsaPada),
         const SizedBox(height: 4),
         Text(
-          transaksi.memakaiSnap
-              ? 'Halaman checkout dibuka oleh Midtrans. Pilih metode bayar di sana; '
-                    'status berubah sendiri setelah webhook diterima.'
-              : 'Status berubah sendiri begitu gateway mengabarkan uangnya masuk. '
-                    'Tidak perlu mengirim bukti transfer.',
+          'Halaman checkout dibuka oleh Midtrans. Pilih metode bayar di sana; '
+          'status berubah sendiri setelah webhook diterima.',
           textAlign: TextAlign.center,
           style: teks.bodySmall?.copyWith(color: skema.onSurfaceVariant),
         ),
-        if (simulator != null && !transaksi.memakaiSnap) ...[
-          const SizedBox(height: AppTheme.spasiBesar),
-          // Bersumbu pada order, bukan pada id transaksi: yang ditandai lunas
-          // adalah tagihan yang sedang berlaku untuk order ini, dan hanya
-          // servernya yang tahu tagihan mana itu.
-          PanelSimulator(onBayar: () => simulator(orderId)),
-        ],
       ],
     );
   }

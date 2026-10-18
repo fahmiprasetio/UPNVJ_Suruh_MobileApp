@@ -4,9 +4,8 @@ import '../enums.dart';
 
 /// Satu transaksi di payment gateway.
 ///
-/// Bentuknya mengikuti apa yang benar-benar dikembalikan Midtrans/Xendit saat
-/// membuat charge QRIS: id transaksi milik gateway, isi QR yang harus
-/// digambar, batas waktu, dan status yang berubah sendiri di sisi gateway.
+/// Bentuknya mengikuti transaksi Midtrans Snap: id transaksi gateway, URL checkout yang
+/// di-host Midtrans, batas waktu, dan status yang berubah sendiri di sisi gateway.
 ///
 /// Klien tidak pernah menentukan [status]. Yang boleh mengubahnya cuma
 /// gateway, di produksi lewat webhook ke server, dan itulah alasan integrasi
@@ -18,8 +17,7 @@ class TransaksiPembayaran {
     required this.orderId,
     required this.jumlah,
     required this.status,
-    required this.qrisPayload,
-    this.checkoutUrl,
+    required this.checkoutUrl,
     required this.dibuatPada,
     required this.kedaluwarsaPada,
     this.dibayarPada,
@@ -31,15 +29,8 @@ class TransaksiPembayaran {
   final int jumlah;
   final PaymentStatus status;
 
-  /// Isi mentah kode QR, digambar apa adanya oleh aplikasi.
-  ///
-  /// Di produksi ini adalah string QRIS resmi dari gateway. Aplikasi tidak
-  /// pernah menyusunnya sendiri, hanya menggambar apa yang diberikan.
-  final String qrisPayload;
-
-  /// URL checkout Midtrans Snap. Jika ada, aplikasi membuka halaman pembayaran Midtrans
-  /// alih-alih menggambar QR sendiri.
-  final String? checkoutUrl;
+  /// URL checkout Midtrans Snap yang dibuka di halaman pembayaran Midtrans.
+  final String checkoutUrl;
 
   final DateTime dibuatPada;
   final DateTime kedaluwarsaPada;
@@ -47,8 +38,6 @@ class TransaksiPembayaran {
 
   bool get menunggu => status == PaymentStatus.pending;
   bool get berhasil => status == PaymentStatus.berhasil;
-  bool get memakaiSnap => checkoutUrl != null && checkoutUrl!.isNotEmpty;
-
   Duration sisaWaktu(DateTime sekarang) {
     final sisa = kedaluwarsaPada.difference(sekarang);
     return sisa.isNegative ? Duration.zero : sisa;
@@ -60,7 +49,6 @@ class TransaksiPembayaran {
       orderId: orderId,
       jumlah: jumlah,
       status: status ?? this.status,
-      qrisPayload: qrisPayload,
       checkoutUrl: checkoutUrl,
       dibuatPada: dibuatPada,
       kedaluwarsaPada: kedaluwarsaPada,

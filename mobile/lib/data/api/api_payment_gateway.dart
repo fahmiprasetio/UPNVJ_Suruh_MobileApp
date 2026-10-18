@@ -34,10 +34,13 @@ import 'pemeta_transaksi.dart';
 /// Pengintipan berhenti begitu statusnya final, jadi ia tidak berjalan
 /// sepanjang aplikasi terbuka.
 class ApiPaymentGateway implements PaymentGateway {
-  ApiPaymentGateway({required KlienApi klien, SaluranHubOrder? hub, Duration? jedaIntip})
-    : _klien = klien,
-      _hub = hub,
-      _jedaIntip = jedaIntip ?? const Duration(seconds: 3);
+  ApiPaymentGateway({
+    required KlienApi klien,
+    SaluranHubOrder? hub,
+    Duration? jedaIntip,
+  }) : _klien = klien,
+       _hub = hub,
+       _jedaIntip = jedaIntip ?? const Duration(seconds: 3);
 
   final KlienApi _klien;
   final SaluranHubOrder? _hub;
@@ -115,16 +118,6 @@ class ApiPaymentGateway implements PaymentGateway {
   @override
   Future<void> batalkanTransaksi(String orderId) async {
     await _klien.post('/api/orders/$orderId/pembayaran/batal');
-  }
-
-  /// Menandai tagihan order ini lunas lewat tiruan gateway di server.
-  ///
-  /// Alat penguji, padanan halaman simulator di sandbox Midtrans. Endpoint yang
-  /// dipanggilnya hanya didaftarkan server saat berjalan di Development, jadi di
-  /// produksi panggilan ini tidak menemukan apa-apa. Penjagaan keduanya ada di
-  /// sisi aplikasi: penyedianya cuma memberikan fungsi ini di build debug.
-  Future<void> simulasikanPembayaranMasuk(String orderId) async {
-    await _klien.post('/api/dev/pembayaran/$orderId/lunas');
   }
 
   Future<TransaksiPembayaran> _ambil(String orderId) async {

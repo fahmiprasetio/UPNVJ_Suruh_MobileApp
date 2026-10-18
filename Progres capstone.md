@@ -853,3 +853,27 @@ atau push langsung ke `main`.
   `feat/midtrans-snap-checkout`, dan diajukan melalui PR #3 menuju `develop`. Branch ini
   diturunkan dari `fix/jalur-a-demo-readiness` karena perubahan Snap bergantung pada perbaikan
   demo di PR #2 yang belum digabung; reviewer perlu memperhatikan hubungan stacked tersebut.
+
+## 32. Keputusan pembayaran wajib: Midtrans Snap saja (18 Oktober 2026)
+
+- Pemilik produk menetapkan **Midtrans Snap Sandbox sebagai satu-satunya jalur pembayaran**.
+  Tidak ada pembayaran simulator Development, QRIS Core API, atau fallback pembayaran lain yang
+  boleh tersedia pada aplikasi maupun dipakai saat demo.
+- Mode simulator lama hanya alat internal yang menandai pembayaran tanpa gateway. Mode tersebut
+  harus dihapus dari backend, Flutter, launcher, konfigurasi, dan materi demo; jika kredensial
+  Snap, tunnel HTTPS, atau webhook tidak siap, aplikasi harus gagal aman dan memberi pesan yang
+  disanitasi, bukan beralih ke simulator.
+- Demo wajib membuat checkout Snap, menyelesaikan pembayaran memakai metode uji Sandbox pada
+  halaman hosted Midtrans, lalu menerima webhook hingga order berstatus `MencariRunner` sebelum
+  alur runner dapat diteruskan. Status pembayaran/demo belum boleh disebut GO sebelum alur ini
+  direhearsal end-to-end.
+- Implementasi source telah menghapus endpoint settlement Development, panel/tombol simulator
+  Flutter, gateway QRIS Core, mode konfigurasi fallback, serta payload QR dari kontrak API dan
+  entitas pembayaran. Backend kini gagal tertutup bila Server Key atau NotificationUrl Snap
+  belum tersedia; launcher lokal selalu membuat tunnel HTTPS untuk Snap.
+- Migration `RemoveQrisPaymentFallback` menandai transaksi pending lama tanpa checkout Snap
+  sebagai gagal lalu menghapus kolom `Payments.QrPayload`. Migration **belum diterapkan** ke
+  database demo: lakukan backup dan jalankan dengan pemilik schema sebelum rehearsal berikutnya.
+- Diagnostics: build API dan proyek test .NET berhasil tanpa error; test suite tidak dijalankan
+  sesuai instruksi pemilik. `flutter pub get` berhasil dan menghapus dependensi QR, tetapi
+  `flutter analyze` tidak memberi hasil sebelum timeout tooling lokal dua menit.
