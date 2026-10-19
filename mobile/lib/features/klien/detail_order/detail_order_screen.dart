@@ -52,9 +52,13 @@ class DetailOrderScreen extends ConsumerWidget {
     final orderAsync = ref.watch(orderProvider(orderId));
     final order = orderAsync.value;
 
+    // Peta pelacakan hanya masuk akal ketika pekerjaan benar-benar sedang
+    // dikerjakan oleh runner. Order yang baru dibayar tetapi masih mencari
+    // runner, serta order yang sudah selesai, harus tetap menampilkan detail
+    // dan tindakan sesuai status sebenarnya.
     final isLiveTracking = order != null &&
-        order.status != OrderStatus.menungguPembayaran &&
-        order.status != OrderStatus.batal;
+        order.status == OrderStatus.dikerjakan &&
+        order.runners.isNotEmpty;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -249,17 +253,27 @@ class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> 
     final digit = widget.order.kodeOrder.replaceAll(RegExp(r'[^0-9]'), '');
     _pinJemput = digit.length >= 4 ? digit.substring(digit.length - 4) : '8419';
 
-    // Pergerakan halus runner mendekati titik jemput
+    // Simulasi demo berhenti saat runner mencapai titik jemput. Jangan
+    // mengulang empat titik pertama selamanya: selain menyesatkan, timer tanpa
+    // akhir membuat layar/test tidak pernah benar-benar tenang.
     _pergerakanTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
-      if (!mounted) return;
-      if (widget.order.status == OrderStatus.selesai) {
+      if (!mounted) {
         timer.cancel();
         return;
       }
+
+      final langkahBerikutnya = _langkahSimulasi + 1;
+      if (langkahBerikutnya > 4) {
+        timer.cancel();
+        return;
+      }
+
       setState(() {
-        _langkahSimulasi = (_langkahSimulasi + 1) % 4;
+        _langkahSimulasi = langkahBerikutnya;
         _posisiRunner = _titikRute[_langkahSimulasi];
       });
+
+      if (_langkahSimulasi == 4) timer.cancel();
     });
   }
 
