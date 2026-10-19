@@ -67,6 +67,19 @@ public class OrdersController(
             });
         }
 
+        if (permintaan.ServiceType is ServiceType.AnterJemput or ServiceType.JastipBarang)
+        {
+            if (permintaan.JarakKm is not null && permintaan.JarakKm > pengaturanTarif.AnjemJarakMaksimalKm)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Jarak melebihi batas layanan",
+                    Detail = $"Layanan ini maksimal {pengaturanTarif.AnjemJarakMaksimalKm:0} km. Di atas itu belum dilayani lewat Jalur A, silakan gunakan Jalur B (Permintaan Lain).",
+                    Status = StatusCodes.Status400BadRequest,
+                });
+            }
+        }
+
         var klienId = User.Id();
         var klien = await db.Users.SingleOrDefaultAsync(u => u.Id == klienId, batal);
         if (klien is null) return Unauthorized();

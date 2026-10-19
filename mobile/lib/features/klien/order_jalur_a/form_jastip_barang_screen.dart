@@ -127,11 +127,16 @@ class _FormJastipBarangScreenState
       ),
       bottomNavigationBar: tarifAsync.maybeWhen(
         data: (tarif) {
-          final hasil = _hasilTarif(tarif);
+          final jarak = bacaJarak(_jarakController.text);
+          final melebihiBatas =
+              jarak != null && jarak > tarif.anjemJarakMaksimalKm;
+          final hasil = melebihiBatas ? null : _hasilTarif(tarif);
           return _BilahBuatOrder(
-            total: hasil?.total,
+            total: melebihiBatas ? null : hasil?.total,
             sedangMengirim: _sedangMengirim,
-            onTekan: hasil == null ? null : _buatOrder,
+            onTekan: (hasil == null || melebihiBatas) ? null : _buatOrder,
+            melebihiBatas: melebihiBatas,
+            batasMaksimalKm: tarif.anjemJarakMaksimalKm.round(),
           );
         },
         orElse: () => null,
@@ -140,7 +145,10 @@ class _FormJastipBarangScreenState
   }
 
   Widget _buildForm(BuildContext context, Tarif tarif) {
-    final hasil = _hasilTarif(tarif);
+    final jarak = bacaJarak(_jarakController.text);
+    final melebihiBatas =
+        jarak != null && jarak > tarif.anjemJarakMaksimalKm;
+    final hasil = melebihiBatas ? null : _hasilTarif(tarif);
     final skema = Theme.of(context).colorScheme;
 
     return SafeArea(
@@ -244,7 +252,31 @@ class _FormJastipBarangScreenState
               ).textTheme.bodySmall?.copyWith(color: skema.onSurfaceVariant),
             ),
             const SizedBox(height: AppTheme.spasiBesar),
-            if (hasil == null)
+            if (melebihiBatas)
+              Container(
+                padding: const EdgeInsets.all(AppTheme.spasiSedang),
+                decoration: BoxDecoration(
+                  color: skema.errorContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: skema.onErrorContainer),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Jarak melebihi batas layanan (${tarif.anjemJarakMaksimalKm.round()} km). Silakan gunakan Permintaan Lain (Jalur B).',
+                        style: TextStyle(
+                          color: skema.onErrorContainer,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else if (hasil == null)
               const _HargaBelumBisaDihitung()
             else ...[
               RingkasanHarga(hasil: hasil),
@@ -262,6 +294,21 @@ class _FormJastipBarangScreenState
 
     final jarak = bacaJarak(_jarakController.text);
     if (jarak == null) return;
+
+    final tarifAsync = ref.read(tarifProvider);
+    final tarif = tarifAsync.asData?.value;
+    if (tarif != null && jarak > tarif.anjemJarakMaksimalKm) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              'Jarak ${tulisJarak(jarak)} km melebihi batas layanan (${tarif.anjemJarakMaksimalKm.round()} km). Gunakan Permintaan Lain.',
+            ),
+          ),
+        );
+      return;
+    }
 
     setState(() => _sedangMengirim = true);
 
@@ -438,11 +485,15 @@ class _BilahBuatOrder extends StatelessWidget {
     required this.total,
     required this.sedangMengirim,
     required this.onTekan,
+    this.melebihiBatas = false,
+    this.batasMaksimalKm = 15,
   });
 
   final int? total;
   final bool sedangMengirim;
   final VoidCallback? onTekan;
+  final bool melebihiBatas;
+  final int batasMaksimalKm;
 
   @override
   Widget build(BuildContext context) {
@@ -460,16 +511,16 @@ class _BilahBuatOrder extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Total bayar',
+                    melebihiBatas ? 'Batas layanan' : 'Total bayar',
                     style: teks.bodySmall?.copyWith(
                       color: skema.onSurfaceVariant,
                     ),
                   ),
                   Text(
-                    formatRupiah(total),
+                    melebihiBatas ? 'Di Luar Batas' : formatRupiah(total),
                     style: teks.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: skema.primary,
+                      color: melebihiBatas ? skema.error : skema.primary,
                     ),
                   ),
                 ],
@@ -486,7 +537,11 @@ class _BilahBuatOrder extends StatelessWidget {
                         width: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Buat Order'),
+                    : Text(
+                        melebihiBatas
+                            ? 'Maks. $batasMaksimalKm km'
+                            : 'Buat Order',
+                      ),
               ),
             ),
           ],
