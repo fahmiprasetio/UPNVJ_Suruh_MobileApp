@@ -467,7 +467,6 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
 
   Widget _buildForm(BuildContext context, Tarif tarif) {
     final hasil = _hasilTarif(tarif);
-    final skema = Theme.of(context).colorScheme;
 
     return SafeArea(
       child: Form(
@@ -518,6 +517,13 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
                 _jemputController.text,
                 untukJemput: true,
               ),
+              textInputAction: TextInputAction.next,
+              onFieldSubmitted: (_) {
+                if (_posisiJemput == null && _saranJemput.isNotEmpty) {
+                  _pilihSaran(_saranJemput.first, untukJemput: true);
+                }
+                _focusTujuan.requestFocus();
+              },
               validator: (nilai) => _wajibAlamat(nilai, 'jemput'),
             ),
 
@@ -572,6 +578,12 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
                 _tujuanController.text,
                 untukJemput: false,
               ),
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) {
+                if (_posisiTujuan == null && _saranTujuan.isNotEmpty) {
+                  _pilihSaran(_saranTujuan.first, untukJemput: false);
+                }
+              },
               validator: (nilai) => _wajibAlamat(nilai, 'tujuan'),
             ),
 
@@ -605,14 +617,6 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
               ),
               autovalidateMode: AutovalidateMode.onUserInteraction,
               validator: (nilai) => validasiJarak(nilai, tarif),
-            ),
-            const SizedBox(height: AppTheme.spasiKecil),
-            Text(
-              'Perkiraan saja, runner dan kamu bisa sesuaikan di lapangan '
-              'kalau meleset jauh.',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: skema.onSurfaceVariant),
             ),
             const SizedBox(height: AppTheme.spasiSedang),
 
@@ -913,15 +917,28 @@ class _BilahBuatOrder extends StatelessWidget {
                   ],
                 ),
               ),
-            FilledButton(
-              onPressed: sedangMengirim ? null : onTekan,
-              child: sedangMengirim
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Buat Order'),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: FilledButton(
+                onPressed: sedangMengirim ? null : onTekan,
+                child: sedangMengirim
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        'Buat Order',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+              ),
             ),
           ],
         ),

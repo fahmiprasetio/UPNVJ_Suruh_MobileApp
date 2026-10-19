@@ -48,23 +48,63 @@ class GeocodingOsm {
         _uri('/search', {'q': bersih, 'limit': '5', 'countrycodes': 'id'}),
         headers: _headers,
       );
-      if (jawaban.statusCode != 200) return const [];
+      if (jawaban.statusCode == 200) {
+        final isi = jsonDecode(jawaban.body) as List<dynamic>;
+        if (isi.isNotEmpty) {
+          return isi
+              .map(
+                (baris) => HasilPencarianAlamat(
+                  alamat: baris['display_name'] as String,
+                  posisi: LatLng(
+                    double.parse(baris['lat'] as String),
+                    double.parse(baris['lon'] as String),
+                  ),
+                ),
+              )
+              .toList();
+        }
+      }
+    } catch (_) {
+      // Nominatim bisa terhalang CORS di Flutter Web, lanjutkan ke fallback Photon
+    }
 
-      final isi = jsonDecode(jawaban.body) as List<dynamic>;
-      return isi
-          .map(
-            (baris) => HasilPencarianAlamat(
-              alamat: baris['display_name'] as String,
-              posisi: LatLng(
-                double.parse(baris['lat'] as String),
-                double.parse(baris['lon'] as String),
-              ),
+    // Fallback: Photon Komoot (berbasis OpenStreetMap dengan dukungan CORS penuh di Web)
+    try {
+      final photonUri = Uri.https('photon.komoot.io', '/api/', {
+        'q': bersih,
+        'limit': '5',
+      });
+      final jawabanPhoton = await http.get(photonUri);
+      if (jawabanPhoton.statusCode == 200) {
+        final data = jsonDecode(jawabanPhoton.body) as Map<String, dynamic>;
+        final features = data['features'] as List<dynamic>? ?? [];
+        return features.map((f) {
+          final props = f['properties'] as Map<String, dynamic>? ?? {};
+          final geom = f['geometry'] as Map<String, dynamic>? ?? {};
+          final coords = geom['coordinates'] as List<dynamic>? ?? [0.0, 0.0];
+          final nama = props['name'] as String? ?? '';
+          final jalan = props['street'] as String?;
+          final kota = props['city'] as String? ?? props['district'] as String?;
+          final bagian = [
+            nama,
+            if (jalan != null && jalan != nama) jalan,
+            ?kota,
+          ];
+          final label = bagian.where((s) => s.isNotEmpty).join(', ');
+          return HasilPencarianAlamat(
+            alamat: label.isEmpty ? nama : label,
+            posisi: LatLng(
+              (coords[1] as num).toDouble(),
+              (coords[0] as num).toDouble(),
             ),
-          )
-          .toList();
+          );
+        }).toList();
+      }
     } catch (_) {
       return const [];
     }
+
+    return const [];
   }
 
   /// Alamat manusiawi untuk satu [titik], `null` kalau gagal diterjemahkan.
@@ -80,12 +120,42 @@ class GeocodingOsm {
         }),
         headers: _headers,
       );
-      if (jawaban.statusCode != 200) return null;
+      if (jawaban.statusCode == 200) {
+        final isi = jsonDecode(jawaban.body) as Map<String, dynamic>;
+        return isi['display_name'] as String?;
+      }
+    } catch (_) {
+      // Nominatim bisa terhalang CORS di Web
+    }
 
-      final isi = jsonDecode(jawaban.body) as Map<String, dynamic>;
-      return isi['display_name'] as String?;
+    // Fallback: Photon Komoot reverse geocoding
+    try {
+      final photonUri = Uri.https('photon.komoot.io', '/reverse', {
+        'lat': '${titik.latitude}',
+        'lon': '${titik.longitude}',
+      });
+      final jawaban = await http.get(photonUri);
+      if (jawaban.statusCode == 200) {
+        final data = jsonDecode(jawaban.body) as Map<String, dynamic>;
+        final features = data['features'] as List<dynamic>? ?? [];
+        if (features.isNotEmpty) {
+          final props = features.first['properties'] as Map<String, dynamic>? ?? {};
+          final nama = props['name'] as String? ?? '';
+          final jalan = props['street'] as String?;
+          final kota = props['city'] as String? ?? props['district'] as String?;
+          final bagian = [
+            nama,
+            if (jalan != null && jalan != nama) jalan,
+            ?kota,
+          ];
+          final label = bagian.where((s) => s.isNotEmpty).join(', ');
+          return label.isEmpty ? nama : label;
+        }
+      }
     } catch (_) {
       return null;
     }
+
+    return null;
   }
 }
