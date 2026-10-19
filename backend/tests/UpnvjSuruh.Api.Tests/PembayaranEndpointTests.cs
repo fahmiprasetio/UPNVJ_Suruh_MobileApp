@@ -261,30 +261,29 @@ public class PembayaranEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<
     }
 
     [Fact]
-    public async Task TiruanGatewayMemajukanOrderSepertiWebhookSungguhan()
+    public async Task EndpointDevPembayaranTidakTersediaUntukOrderDenganTransaksi()
     {
-        // Tiruannya cuma hidup di Development, dan tes berjalan di Development. Yang diuji di
-        // sini: ia benar-benar menempuh jalur yang sama dengan webhook, bukan jalan pintas
-        // yang perilakunya berbeda.
+        // Snap dan webhook tervalidasi adalah satu-satunya jalur pembayaran. Endpoint dev
+        // lama tidak boleh hidup kembali sekalipun order sudah mempunyai transaksi.
         var (klien, _) = await AkunAsync(UserRole.Klien);
         var order = await BuatOrderAsync(klien);
         await BuatTransaksiAsync(klien, order.Id);
 
         var jawaban = await pabrik.CreateClient()
             .PostAsync($"/api/dev/pembayaran/{order.Id}/lunas", null);
-        jawaban.EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.NotFound, jawaban.StatusCode);
 
         var sesudah = await klien.GetFromJsonAsync<OrderResponse>($"/api/orders/{order.Id}");
-        Assert.Equal(nameof(OrderStatus.MencariRunner), sesudah!.Status);
-        Assert.NotNull(sesudah.DibayarPada);
+        Assert.Equal(nameof(OrderStatus.MenungguPembayaran), sesudah!.Status);
+        Assert.Null(sesudah.DibayarPada);
 
         var transaksi = await klien.GetFromJsonAsync<TransaksiPembayaranResponse>(
             $"/api/orders/{order.Id}/pembayaran");
-        Assert.Equal(nameof(PaymentStatus.Berhasil), transaksi!.Status);
+        Assert.Equal(nameof(PaymentStatus.Pending), transaksi!.Status);
     }
 
     [Fact]
-    public async Task TiruanGatewayMenolakOrderYangBelumPunyaTransaksi()
+    public async Task EndpointDevPembayaranTidakTersediaUntukOrderTanpaTransaksi()
     {
         var (klien, _) = await AkunAsync(UserRole.Klien);
         var order = await BuatOrderAsync(klien);
@@ -292,7 +291,7 @@ public class PembayaranEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<
         var jawaban = await pabrik.CreateClient()
             .PostAsync($"/api/dev/pembayaran/{order.Id}/lunas", null);
 
-        Assert.Equal(HttpStatusCode.BadRequest, jawaban.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, jawaban.StatusCode);
     }
 
     [Fact]
