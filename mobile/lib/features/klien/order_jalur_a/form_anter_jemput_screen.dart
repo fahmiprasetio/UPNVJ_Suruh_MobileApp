@@ -9,156 +9,165 @@ import 'package:latlong2/latlong.dart';
 import '../../../core/api/galat_api.dart';
 import '../../../core/api/idempotency_key.dart';
 import '../../../core/config/batas_masukan.dart';
-import '../../../core/router/app_router.dart';
 import '../../../core/format/formatters.dart';
 import '../../../core/format/jarak.dart';
 import '../../../core/peta/geocoding_osm.dart';
 import '../../../core/peta/jarak_rute.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/providers/repository_providers.dart';
+import '../../../core/router/app_router.dart';
+import '../../../core/widgets/pesan_kosong.dart';
 import '../../../domain/enums.dart';
 import '../../../domain/models/order.dart';
 import '../../../domain/models/tarif.dart';
 import '../../../domain/pricing/kalkulator_tarif.dart';
-import '../../../core/providers/repository_providers.dart';
-import '../../../core/widgets/pesan_kosong.dart';
 import '../peta/pemilih_lokasi_screen.dart';
-import 'widgets/ringkasan_harga.dart';
 
-// ---------------------------------------------------------------------------
-// Model saran lokasi lokal (kampus, transit populer)
-// ---------------------------------------------------------------------------
-
-/// Titik lokasi kampus/transit yang dikenal tanpa perlu hit Nominatim.
-class _LokasiLokal {
-  const _LokasiLokal({
+/// Model saran titik lokasi untuk autocomplete form anter jemput.
+class LokasiKampusModel {
+  const LokasiKampusModel({
     required this.nama,
+    required this.kategori,
     required this.posisi,
-    this.sublabel,
-  });
-
-  final String nama;
-  final LatLng posisi;
-  final String? sublabel;
-}
-
-/// Daftar titik kampus UPNVJ Pondok Labu, Limo, dan transit populer.
-const List<_LokasiLokal> _daftarLokasiLokal = [
-  _LokasiLokal(
-    nama: 'Gedung Kuliah Bersama (GKB) UPNVJ',
-    posisi: LatLng(-6.2895, 106.7853),
-    sublabel: 'Gedung perkuliahan utama',
-  ),
-  _LokasiLokal(
-    nama: 'Perpustakaan Pusat UPNVJ',
-    posisi: LatLng(-6.2890, 106.7850),
-    sublabel: 'Gedung Perpustakaan & Laboratorium',
-  ),
-  _LokasiLokal(
-    nama: 'Kantin Vokasi, Gedung C UPNVJ',
-    posisi: LatLng(-6.2901, 106.7858),
-    sublabel: 'Area pujasera & nongkrong mahasiswa',
-  ),
-  _LokasiLokal(
-    nama: 'Gedung FIK Kampus Pondok Labu',
-    posisi: LatLng(-6.2898, 106.7862),
-    sublabel: 'Fakultas Ilmu Komputer',
-  ),
-  _LokasiLokal(
-    nama: 'Gedung Rektorat UPNVJ',
-    posisi: LatLng(-6.2892, 106.7848),
-    sublabel: 'Gedung Rektorat & Tata Usaha',
-  ),
-  _LokasiLokal(
-    nama: 'Plaza Wardhana UPNVJ',
-    posisi: LatLng(-6.2894, 106.7851),
-    sublabel: 'Pusat kegiatan terbuka mahasiswa',
-  ),
-  _LokasiLokal(
-    nama: 'Gedung FEB UPNVJ',
-    posisi: LatLng(-6.2896, 106.7855),
-    sublabel: 'Fakultas Ekonomi dan Bisnis',
-  ),
-  _LokasiLokal(
-    nama: 'Gedung FISIP UPNVJ',
-    posisi: LatLng(-6.2899, 106.7849),
-    sublabel: 'Fakultas Ilmu Sosial dan Ilmu Politik',
-  ),
-  _LokasiLokal(
-    nama: 'Gedung Fakultas Hukum UPNVJ',
-    posisi: LatLng(-6.2903, 106.7852),
-    sublabel: 'Gedung FH UPNVJ',
-  ),
-  _LokasiLokal(
-    nama: 'Kampus UPNVJ Limo - Gedung Wahidin',
-    posisi: LatLng(-6.3475, 106.7868),
-    sublabel: 'Fakultas Kedokteran & Teknik Limo',
-  ),
-  _LokasiLokal(
-    nama: 'Kantin Kampus Limo UPNVJ',
-    posisi: LatLng(-6.3479, 106.7872),
-    sublabel: 'Area kantin mahasiswa Limo',
-  ),
-  _LokasiLokal(
-    nama: 'Halte Busway Kampus UPNVJ Pondok Labu',
-    posisi: LatLng(-6.2885, 106.7865),
-    sublabel: 'Pintu gerbang depan Jl. RS Fatmawati',
-  ),
-  _LokasiLokal(
-    nama: 'Stasiun MRT Fatmawati Indomaret',
-    posisi: LatLng(-6.2926, 106.7938),
-    sublabel: 'Stasiun MRT terdekat',
-  ),
-  _LokasiLokal(
-    nama: 'Stasiun KRL Lenteng Agung',
-    posisi: LatLng(-6.3315, 106.8347),
-    sublabel: 'Stasiun Commuter Line transit',
-  ),
-  _LokasiLokal(
-    nama: 'Indomaret Pondok Labu Raya',
-    posisi: LatLng(-6.2905, 106.7860),
-    sublabel: 'Minimarket & titik temu favorit',
-  ),
-];
-
-// ---------------------------------------------------------------------------
-// Model saran gabungan (lokal + Nominatim)
-// ---------------------------------------------------------------------------
-
-/// Satu baris saran di dropdown autocomplete, bisa dari lokal atau Nominatim.
-class _SaranLokasi {
-  const _SaranLokasi({
-    required this.nama,
-    required this.posisi,
+    required this.ikon,
     this.sublabel,
     this.dariOsm = false,
   });
 
   final String nama;
+  final String kategori;
   final LatLng posisi;
+  final IconData ikon;
   final String? sublabel;
-
-  /// `true` kalau hasil dari Nominatim, supaya UI bisa membedakan ikon.
   final bool dariOsm;
 }
 
-// ---------------------------------------------------------------------------
-// Form Jalur A untuk Anter Jemput
-// ---------------------------------------------------------------------------
+/// Daftar titik kampus UPNVJ Pondok Labu, Kampus Limo, dan titik transit populer.
+const List<LokasiKampusModel> _daftarLokasiKampus = [
+  LokasiKampusModel(
+    nama: 'Gedung Kuliah Bersama (GKB) UPNVJ',
+    kategori: 'Kampus Pondok Labu',
+    posisi: LatLng(-6.2895, 106.7853),
+    ikon: Icons.apartment_rounded,
+    sublabel: 'Gedung perkuliahan utama',
+  ),
+  LokasiKampusModel(
+    nama: 'Perpustakaan Pusat UPNVJ',
+    kategori: 'Kampus Pondok Labu',
+    posisi: LatLng(-6.2890, 106.7850),
+    ikon: Icons.local_library_rounded,
+    sublabel: 'Gedung Perpustakaan & Laboratorium',
+  ),
+  LokasiKampusModel(
+    nama: 'Kantin Vokasi, Gedung C UPNVJ',
+    kategori: 'Kuliner Kampus',
+    posisi: LatLng(-6.2901, 106.7858),
+    ikon: Icons.restaurant_rounded,
+    sublabel: 'Area pujasera & nongkrong mahasiswa',
+  ),
+  LokasiKampusModel(
+    nama: 'Gedung FIK Kampus Pondok Labu',
+    kategori: 'Kampus Pondok Labu',
+    posisi: LatLng(-6.2898, 106.7862),
+    ikon: Icons.computer_rounded,
+    sublabel: 'Fakultas Ilmu Komputer',
+  ),
+  LokasiKampusModel(
+    nama: 'Gedung Rektorat UPNVJ',
+    kategori: 'Kampus Pondok Labu',
+    posisi: LatLng(-6.2892, 106.7848),
+    ikon: Icons.account_balance_rounded,
+    sublabel: 'Gedung Rektorat & Tata Usaha',
+  ),
+  LokasiKampusModel(
+    nama: 'Plaza Wardhana UPNVJ',
+    kategori: 'Kampus Pondok Labu',
+    posisi: LatLng(-6.2894, 106.7851),
+    ikon: Icons.park_rounded,
+    sublabel: 'Pusat kegiatan terbuka mahasiswa',
+  ),
+  LokasiKampusModel(
+    nama: 'Gedung FEB UPNVJ',
+    kategori: 'Kampus Pondok Labu',
+    posisi: LatLng(-6.2896, 106.7855),
+    ikon: Icons.business_rounded,
+    sublabel: 'Fakultas Ekonomi dan Bisnis',
+  ),
+  LokasiKampusModel(
+    nama: 'Gedung FISIP UPNVJ',
+    kategori: 'Kampus Pondok Labu',
+    posisi: LatLng(-6.2899, 106.7849),
+    ikon: Icons.groups_rounded,
+    sublabel: 'Fakultas Ilmu Sosial dan Ilmu Politik',
+  ),
+  LokasiKampusModel(
+    nama: 'Gedung Fakultas Hukum UPNVJ',
+    kategori: 'Kampus Pondok Labu',
+    posisi: LatLng(-6.2903, 106.7852),
+    ikon: Icons.gavel_rounded,
+    sublabel: 'Gedung FH UPNVJ',
+  ),
+  LokasiKampusModel(
+    nama: 'Kampus UPNVJ Limo - Gedung Wahidin',
+    kategori: 'Kampus Limo',
+    posisi: LatLng(-6.3475, 106.7868),
+    ikon: Icons.school_rounded,
+    sublabel: 'Fakultas Kedokteran & Teknik Limo',
+  ),
+  LokasiKampusModel(
+    nama: 'Kantin Kampus Limo UPNVJ',
+    kategori: 'Kuliner Kampus',
+    posisi: LatLng(-6.3479, 106.7872),
+    ikon: Icons.lunch_dining_rounded,
+    sublabel: 'Area kantin mahasiswa Limo',
+  ),
+  LokasiKampusModel(
+    nama: 'Halte Busway Kampus UPNVJ Pondok Labu',
+    kategori: 'Transportasi',
+    posisi: LatLng(-6.2885, 106.7865),
+    ikon: Icons.directions_bus_rounded,
+    sublabel: 'Pintu gerbang depan Jl. RS Fatmawati',
+  ),
+  LokasiKampusModel(
+    nama: 'Stasiun MRT Fatmawati Indomaret',
+    kategori: 'Transportasi',
+    posisi: LatLng(-6.2926, 106.7938),
+    ikon: Icons.subway_rounded,
+    sublabel: 'Stasiun MRT terdekat',
+  ),
+  LokasiKampusModel(
+    nama: 'Stasiun KRL Lenteng Agung',
+    kategori: 'Transportasi',
+    posisi: LatLng(-6.3315, 106.8347),
+    ikon: Icons.train_rounded,
+    sublabel: 'Stasiun Commuter Line transit',
+  ),
+  LokasiKampusModel(
+    nama: 'Indomaret Pondok Labu Raya',
+    kategori: 'Sekitar Kampus',
+    posisi: LatLng(-6.2905, 106.7860),
+    ikon: Icons.storefront_rounded,
+    sublabel: 'Minimarket & titik temu favorit',
+  ),
+  LokasiKampusModel(
+    nama: 'Kos Putri Melati Pondok Labu',
+    kategori: 'Area Kos',
+    posisi: LatLng(-6.2910, 106.7870),
+    ikon: Icons.home_rounded,
+    sublabel: 'Jl. Pondok Labu Raya No. 12',
+  ),
+  LokasiKampusModel(
+    nama: 'Kos Cempaka Pondok Labu',
+    kategori: 'Area Kos',
+    posisi: LatLng(-6.2920, 106.7880),
+    ikon: Icons.home_work_rounded,
+    sublabel: 'Jl. Pondok Labu Raya No. 30',
+  ),
+];
 
-/// Form Jalur A untuk Anter Jemput.
-///
-/// Ciri Jalur A: harga sudah pasti sebelum order dibuat, jadi klien melihat
-/// totalnya berubah langsung sambil mengisi, tidak ada fase menunggu
-/// penawaran (rencana capstone bagian 3).
-///
-/// Autocomplete: kolom jemput & tujuan mencari lokasi dari daftar kampus lokal
-/// terlebih dahulu, lalu fallback ke Nominatim (OpenStreetMap) untuk alamat
-/// umum. Debounce 500 ms supaya Nominatim tidak dibombardir tiap keystroke.
+/// Form Jalur A untuk Anter Jemput dengan desain modern, lega, dan autocomplete alamat bebas.
 class FormAnterJemputScreen extends ConsumerStatefulWidget {
   const FormAnterJemputScreen({super.key, this.contoh});
 
-  /// Order lama yang isinya dipakai mengisi form ini di muka ("Pesan lagi"),
-  /// dan null untuk form kosong seperti biasa.
   final Order? contoh;
 
   @override
@@ -177,22 +186,19 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
   final _focusJemput = FocusNode();
   final _focusTujuan = FocusNode();
 
+  List<LokasiKampusModel> _saranJemput = [];
+  List<LokasiKampusModel> _saranTujuan = [];
+
   bool _sedangMengirim = false;
   bool _sedangHitungRute = false;
   bool _sedangCariJemput = false;
   bool _sedangCariTujuan = false;
 
-  /// Titik dari peta atau autocomplete, untuk menghitung jarak OSRM otomatis.
-  LatLng? _posisiJemput;
-  LatLng? _posisiTujuan;
-
-  /// Saran dropdown aktif untuk masing-masing kolom.
-  List<_SaranLokasi> _saranJemput = [];
-  List<_SaranLokasi> _saranTujuan = [];
-
-  /// Timer debounce untuk pencarian Nominatim.
   Timer? _debounceJemput;
   Timer? _debounceTujuan;
+
+  LatLng? _posisiJemput;
+  LatLng? _posisiTujuan;
 
   @override
   void initState() {
@@ -247,15 +253,12 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
   }
 
   // -------------------------------------------------------------------------
-  // Pencarian lokasi: lokal terlebih dahulu, Nominatim sebagai fallback
+  // Pencarian Autocomplete Lokal Kampus + Fallback Geocoding OSM / Photon
   // -------------------------------------------------------------------------
 
-  /// Cari di daftar lokal kampus terlebih dahulu. Kalau ketemu ≥ 1 → tampilkan.
-  /// Kalau kosong → debounce 500 ms lalu panggil `GeocodingOsm.cari()`.
-  void _cariLokasi(String kueri, {required bool untukJemput}) {
+  void _saringSaran(String kueri, {required bool untukJemput}) {
     final q = kueri.trim().toLowerCase();
 
-    // Batal debounce sebelumnya
     if (untukJemput) {
       _debounceJemput?.cancel();
     } else {
@@ -263,16 +266,7 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
     }
 
     if (q.isEmpty) {
-      // Kosong → tampilkan 4 rekomendasi lokal awal
-      final rekomendasiAwal = _daftarLokasiLokal
-          .take(4)
-          .map((l) => _SaranLokasi(
-                nama: l.nama,
-                posisi: l.posisi,
-                sublabel: l.sublabel,
-              ))
-          .toList();
-
+      final rekomendasiAwal = _daftarLokasiKampus.take(4).toList();
       setState(() {
         if (untukJemput) {
           _saranJemput = rekomendasiAwal;
@@ -285,18 +279,14 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
       return;
     }
 
-    // Cek lokal dulu
-    final hasilLokal = _daftarLokasiLokal.where((l) {
-      return l.nama.toLowerCase().contains(q) ||
-          (l.sublabel?.toLowerCase().contains(q) ?? false);
-    }).take(4).map((l) => _SaranLokasi(
-          nama: l.nama,
-          posisi: l.posisi,
-          sublabel: l.sublabel,
-        )).toList();
+    // 1. Fast path: cari di daftar titik lokal kampus
+    final hasilLokal = _daftarLokasiKampus.where((loc) {
+      return loc.nama.toLowerCase().contains(q) ||
+          loc.kategori.toLowerCase().contains(q) ||
+          (loc.sublabel?.toLowerCase().contains(q) ?? false);
+    }).take(4).toList();
 
     if (hasilLokal.isNotEmpty) {
-      // Lokal cocok → langsung tampilkan tanpa hit jaringan
       setState(() {
         if (untukJemput) {
           _saranJemput = hasilLokal;
@@ -309,7 +299,7 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
       return;
     }
 
-    // Tidak ada lokal → debounce lalu panggil Nominatim
+    // 2. Alamat luar kampus (misal Lenteng Agung): debounce lalu cari ke OpenStreetMap
     setState(() {
       if (untukJemput) {
         _sedangCariJemput = true;
@@ -320,8 +310,33 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
       }
     });
 
-    final timer = Timer(const Duration(milliseconds: 500), () {
-      _cariDariNominatim(kueri.trim(), untukJemput: untukJemput);
+    final timer = Timer(const Duration(milliseconds: 400), () async {
+      final hasilOsm = await GeocodingOsm.cari(kueri.trim());
+      if (!mounted) return;
+
+      final saranOsm = hasilOsm
+          .take(4)
+          .map(
+            (item) => LokasiKampusModel(
+              nama: item.alamat,
+              kategori: 'Alamat Peta',
+              posisi: item.posisi,
+              ikon: Icons.public_rounded,
+              sublabel: 'Pencarian Peta OSM',
+              dariOsm: true,
+            ),
+          )
+          .toList();
+
+      setState(() {
+        if (untukJemput) {
+          _saranJemput = saranOsm;
+          _sedangCariJemput = false;
+        } else {
+          _saranTujuan = saranOsm;
+          _sedangCariTujuan = false;
+        }
+      });
     });
 
     if (untukJemput) {
@@ -331,35 +346,7 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
     }
   }
 
-  Future<void> _cariDariNominatim(
-    String kueri, {
-    required bool untukJemput,
-  }) async {
-    final hasil = await GeocodingOsm.cari(kueri);
-    if (!mounted) return;
-
-    final saran = hasil
-        .take(4)
-        .map((h) => _SaranLokasi(
-              nama: h.alamat,
-              posisi: h.posisi,
-              dariOsm: true,
-            ))
-        .toList();
-
-    setState(() {
-      if (untukJemput) {
-        _saranJemput = saran;
-        _sedangCariJemput = false;
-      } else {
-        _saranTujuan = saran;
-        _sedangCariTujuan = false;
-      }
-    });
-  }
-
-  /// Pengguna memilih satu saran dari dropdown.
-  void _pilihSaran(_SaranLokasi item, {required bool untukJemput}) {
+  void _pilihSaran(LokasiKampusModel item, {required bool untukJemput}) {
     setState(() {
       if (untukJemput) {
         _jemputController.text = item.nama;
@@ -376,10 +363,6 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
     _hitungOtomatisJarak();
   }
 
-  // -------------------------------------------------------------------------
-  // Hitung jarak otomatis via OSRM ketika kedua titik sudah terisi
-  // -------------------------------------------------------------------------
-
   Future<void> _hitungOtomatisJarak() async {
     final jemput = _posisiJemput;
     final tujuan = _posisiTujuan;
@@ -390,12 +373,9 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
       final km = await JarakRuteOsrm.kilometer(jemput, tujuan);
       if (!mounted) return;
       if (km != null && km > 0) {
-        _jarakController.text =
-            tulisJarak(double.parse(km.toStringAsFixed(1)));
+        _jarakController.text = tulisJarak(double.parse(km.toStringAsFixed(1)));
       } else {
-        // Fallback perkiraan garis lurus × faktor kelokan jalan
-        final meter =
-            const Distance().as(LengthUnit.Meter, jemput, tujuan);
+        final meter = const Distance().as(LengthUnit.Meter, jemput, tujuan);
         final perkiraanKm = (meter / 1000.0) * 1.25;
         final finalKm = (perkiraanKm < 0.3) ? 0.5 : perkiraanKm;
         _jarakController.text =
@@ -403,8 +383,7 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
       }
     } catch (_) {
       if (!mounted) return;
-      final meter =
-          const Distance().as(LengthUnit.Meter, jemput, tujuan);
+      final meter = const Distance().as(LengthUnit.Meter, jemput, tujuan);
       final perkiraanKm = (meter / 1000.0) * 1.25;
       final finalKm = (perkiraanKm < 0.3) ? 0.5 : perkiraanKm;
       _jarakController.text =
@@ -416,45 +395,39 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Tarif
-  // -------------------------------------------------------------------------
-
-  /// `null` selama jarak belum diisi dengan angka yang masuk akal, harga
-  /// memang belum bisa dihitung, dan menampilkan Rp 0 akan menyesatkan.
   HasilTarif? _hasilTarif(Tarif tarif) {
     final jarak = bacaJarak(_jarakController.text);
     if (jarak == null) return null;
     return KalkulatorTarif.anterJemput(jarakKm: jarak, tarif: tarif);
   }
 
-  // -------------------------------------------------------------------------
-  // Build
-  // -------------------------------------------------------------------------
-
   @override
   Widget build(BuildContext context) {
     final tarifAsync = ref.watch(tarifProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Anter Jemput')),
+      backgroundColor: const Color(0xFFF7F9FA),
       body: tarifAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (galat, _) => PesanKosong(
-          ikon: Icons.wifi_off_outlined,
-          judul: 'Tarif gagal dimuat',
-          keterangan: galat is GalatApi
-              ? galat.pesan
-              : 'Tidak bisa menghitung harga tanpa tarif. Coba lagi.',
-          labelAksi: 'Coba lagi',
-          onAksi: () => ref.invalidate(tarifProvider),
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: Color(0xFF00AA13)),
         ),
-        data: (tarif) => _buildForm(context, tarif),
+        error: (galat, _) => SafeArea(
+          child: PesanKosong(
+            ikon: Icons.wifi_off_outlined,
+            judul: 'Tarif gagal dimuat',
+            keterangan: galat is GalatApi
+                ? galat.pesan
+                : 'Tidak bisa menghitung harga tanpa tarif. Coba lagi.',
+            labelAksi: 'Coba lagi',
+            onAksi: () => ref.invalidate(tarifProvider),
+          ),
+        ),
+        data: (tarif) => _buildBody(context, tarif),
       ),
       bottomNavigationBar: tarifAsync.maybeWhen(
         data: (tarif) {
           final hasil = _hasilTarif(tarif);
-          return _BilahBuatOrder(
+          return _BilahBawahGojek(
             total: hasil?.total,
             sedangMengirim: _sedangMengirim,
             onTekan: hasil == null ? null : _buatOrder,
@@ -465,240 +438,204 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
     );
   }
 
-  Widget _buildForm(BuildContext context, Tarif tarif) {
+  Widget _buildBody(BuildContext context, Tarif tarif) {
+    final user = ref.watch(authRepositoryProvider).userAktif;
+    final namaPanggilan = (user?.nama.isNotEmpty == true)
+        ? user!.nama.trim().split(' ').first
+        : 'Mahasiswa';
+
     final hasil = _hasilTarif(tarif);
 
     return SafeArea(
+      top: false,
       child: Form(
         key: _formKey,
         onChanged: () => setState(() {}),
         child: ListView(
-          padding: const EdgeInsets.all(AppTheme.spasiSedang),
+          padding: EdgeInsets.zero,
           children: [
-            // --- Kolom Jemput dengan autocomplete ---
-            TextFormField(
-              controller: _jemputController,
-              focusNode: _focusJemput,
-              maxLength: BatasMasukan.alamat,
-              textCapitalization: TextCapitalization.sentences,
-              maxLines: 2,
-              minLines: 1,
-              decoration: InputDecoration(
-                counterText: '',
-                labelText: 'Dijemput di mana?',
-                hintText: 'Ketik alamat, gedung, stasiun...',
-                prefixIcon: const Icon(Icons.my_location_outlined),
-                suffixIcon: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_sedangCariJemput)
-                      const Padding(
-                        padding: EdgeInsets.only(right: 4),
-                        child: SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      ),
-                    IconButton(
-                      icon: const Icon(Icons.map_outlined),
-                      tooltip: 'Pilih di peta',
-                      onPressed: () => _pilihDiPeta(
-                        controller: _jemputController,
-                        judul: 'Titik jemput',
-                        untukJemput: true,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              onChanged: (val) => _cariLokasi(val, untukJemput: true),
-              onTap: () => _cariLokasi(
-                _jemputController.text,
-                untukJemput: true,
-              ),
-              textInputAction: TextInputAction.next,
-              onFieldSubmitted: (_) {
-                if (_posisiJemput == null && _saranJemput.isNotEmpty) {
-                  _pilihSaran(_saranJemput.first, untukJemput: true);
-                }
-                _focusTujuan.requestFocus();
-              },
-              validator: (nilai) => _wajibAlamat(nilai, 'jemput'),
+            // 1. Header Hijau Gojek Aloha (Ringkas & Bersih)
+            _buildGojekHeader(context, namaPanggilan),
+
+            const SizedBox(height: 14),
+
+            // 2. Kartu Rute Terhubung dengan Autocomplete Dropdown
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _buildConnectedRouteCard(),
             ),
 
-            // Dropdown saran jemput
-            if (_saranJemput.isNotEmpty)
-              _buildDropdownSaran(
-                daftar: _saranJemput,
-                untukJemput: true,
-              ),
+            const SizedBox(height: 14),
 
-            const SizedBox(height: AppTheme.spasiSedang),
-
-            // --- Kolom Tujuan dengan autocomplete ---
-            TextFormField(
-              controller: _tujuanController,
-              focusNode: _focusTujuan,
-              maxLength: BatasMasukan.alamat,
-              textCapitalization: TextCapitalization.sentences,
-              maxLines: 2,
-              minLines: 1,
-              decoration: InputDecoration(
-                counterText: '',
-                labelText: 'Diantar ke mana?',
-                hintText: 'Ketik alamat, gedung, stasiun...',
-                prefixIcon: const Icon(Icons.place_outlined),
-                suffixIcon: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_sedangCariTujuan)
-                      const Padding(
-                        padding: EdgeInsets.only(right: 4),
-                        child: SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      ),
-                    IconButton(
-                      icon: const Icon(Icons.map_outlined),
-                      tooltip: 'Pilih di peta',
-                      onPressed: () => _pilihDiPeta(
-                        controller: _tujuanController,
-                        judul: 'Titik tujuan',
-                        untukJemput: false,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              onChanged: (val) => _cariLokasi(val, untukJemput: false),
-              onTap: () => _cariLokasi(
-                _tujuanController.text,
-                untukJemput: false,
-              ),
-              textInputAction: TextInputAction.done,
-              onFieldSubmitted: (_) {
-                if (_posisiTujuan == null && _saranTujuan.isNotEmpty) {
-                  _pilihSaran(_saranTujuan.first, untukJemput: false);
-                }
-              },
-              validator: (nilai) => _wajibAlamat(nilai, 'tujuan'),
+            // 3. Kartu Perkiraan Jarak (Akurat & Otomatis)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _buildCardPerkiraanJarak(tarif),
             ),
 
-            // Dropdown saran tujuan
-            if (_saranTujuan.isNotEmpty)
-              _buildDropdownSaran(
-                daftar: _saranTujuan,
-                untukJemput: false,
-              ),
+            const SizedBox(height: 14),
 
-            const SizedBox(height: AppTheme.spasiSedang),
-
-            // --- Kolom jarak ---
-            TextFormField(
-              controller: _jarakController,
-              enabled: !_sedangHitungRute,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-              ],
-              decoration: InputDecoration(
-                counterText: '',
-                labelText: 'Perkiraan jarak',
-                suffixText: 'km',
-                prefixIcon: const Icon(Icons.straighten_outlined),
-                helperText: _sedangHitungRute
-                    ? 'Menghitung jarak rute jalan...'
-                    : null,
-              ),
-              autovalidateMode: AutovalidateMode.onUserInteraction,
-              validator: (nilai) => validasiJarak(nilai, tarif),
+            // 4. Kartu Catatan untuk Driver / Runner (Ringkas & Rapi)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _buildCardCatatanDriver(),
             ),
-            const SizedBox(height: AppTheme.spasiSedang),
 
-            // --- Catatan ---
-            TextFormField(
-              controller: _catatanController,
-              maxLength: BatasMasukan.deskripsi,
-              textCapitalization: TextCapitalization.sentences,
-              maxLines: 3,
-              minLines: 1,
-              decoration: const InputDecoration(
-                counterText: '',
-                labelText: 'Catatan untuk runner (opsional)',
-                hintText: 'Tunggu di gerbang depan, pakai jaket merah',
-                prefixIcon: Icon(Icons.sticky_note_2_outlined),
-              ),
+            const SizedBox(height: 14),
+
+            // 5. Kartu Rincian Tarif Kampus Terjangkau
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _buildCardRincianTarif(hasil),
             ),
-            const SizedBox(height: AppTheme.spasiBesar),
-            if (hasil == null)
-              const _HargaBelumBisaDihitung()
-            else
-              RingkasanHarga(hasil: hasil),
+
+            const SizedBox(height: 24),
           ],
         ),
       ),
     );
   }
 
-  // -------------------------------------------------------------------------
-  // Dropdown saran autocomplete
-  // -------------------------------------------------------------------------
+  /// Header hijau Gojek Aloha yang ringkas tanpa banner berlebih
+  Widget _buildGojekHeader(BuildContext context, String nama) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF00AA13),
+      ),
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 8,
+        left: 16,
+        right: 16,
+        bottom: 14,
+      ),
+      child: Row(
+        children: [
+          InkWell(
+            onTap: () => Navigator.of(context).maybePop(),
+            borderRadius: BorderRadius.circular(999),
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.18),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Anter Jemput Kampus',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  'Mau kemana hari ini, $nama?',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
+  /// Dropdown saran lokasi kampus saat pengguna mengetik atau memilih kolom
   Widget _buildDropdownSaran({
-    required List<_SaranLokasi> daftar,
+    required List<LokasiKampusModel> daftar,
     required bool untukJemput,
   }) {
     return Container(
-      margin: const EdgeInsets.only(top: 4, bottom: 4),
+      margin: const EdgeInsets.only(top: 8, bottom: 6),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outlineVariant,
-        ),
+        color: const Color(0xFFF7FBF7),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFD6E8D7), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
         ],
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (int i = 0; i < daftar.length; i++) ...[
-            if (i > 0)
-              Divider(
-                height: 1,
-                color: Theme.of(context).colorScheme.outlineVariant,
-              ),
-            InkWell(
-              onTap: () => _pilihSaran(daftar[i], untukJemput: untukJemput),
-              borderRadius: BorderRadius.vertical(
-                top: i == 0 ? const Radius.circular(12) : Radius.zero,
-                bottom: i == daftar.length - 1
-                    ? const Radius.circular(12)
-                    : Radius.zero,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 8, 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'PILIH LOKASI ${untukJemput ? "JEMPUT" : "TUJUAN"}',
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF00AA13),
+                    letterSpacing: 0.4,
+                  ),
                 ),
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      if (untukJemput) {
+                        _saranJemput = [];
+                      } else {
+                        _saranTujuan = [];
+                      }
+                    });
+                  },
+                  child: const Padding(
+                    padding: EdgeInsets.all(4),
+                    child: Icon(
+                      Icons.close_rounded,
+                      size: 16,
+                      color: Color(0xFF8A9A8C),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(color: Color(0xFFE2EFE3), height: 1),
+          for (final item in daftar)
+            InkWell(
+              onTap: () => _pilihSaran(item, untukJemput: untukJemput),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: Row(
                   children: [
-                    Icon(
-                      daftar[i].dariOsm
-                          ? Icons.public_rounded
-                          : Icons.location_on_rounded,
-                      size: 20,
-                      color: Theme.of(context).colorScheme.primary,
+                    Container(
+                      width: 30,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F8EA),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        item.ikon,
+                        size: 16,
+                        color: const Color(0xFF00AA13),
+                      ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -706,25 +643,23 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            daftar[i].nama,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(fontWeight: FontWeight.w600),
-                            maxLines: 2,
+                            item.nama,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1E2124),
+                            ),
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          if (daftar[i].sublabel != null)
+                          if (item.sublabel != null)
                             Text(
-                              daftar[i].sublabel!,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurfaceVariant,
-                                  ),
+                              item.sublabel!,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w400,
+                                color: Color(0xFF6B7A6E),
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -732,24 +667,617 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    Icon(
+                    const Icon(
                       Icons.north_west_rounded,
                       size: 14,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      color: Color(0xFF00AA13),
                     ),
                   ],
                 ),
               ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Kartu Rute Terhubung dengan input jemput & tujuan + live autocomplete
+  Widget _buildConnectedRouteCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: const Color(0xFFEDF2ED), width: 1.2),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Titik Jemput
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border:
+                      Border.all(color: const Color(0xFF00AA13), width: 2.5),
+                ),
+                child: Center(
+                  child: Container(
+                    width: 7,
+                    height: 7,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF00AA13),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'LOKASI JEMPUT',
+                      style: TextStyle(
+                        color: Color(0xFF6B7A6E),
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    TextFormField(
+                      controller: _jemputController,
+                      focusNode: _focusJemput,
+                      maxLength: BatasMasukan.alamat,
+                      textCapitalization: TextCapitalization.sentences,
+                      textInputAction: TextInputAction.next,
+                      onFieldSubmitted: (_) {
+                        if (_posisiJemput == null && _saranJemput.isNotEmpty) {
+                          _pilihSaran(_saranJemput.first, untukJemput: true);
+                        }
+                        _focusTujuan.requestFocus();
+                      },
+                      style: const TextStyle(
+                        color: Color(0xFF1E2124),
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      decoration: const InputDecoration(
+                        counterText: '',
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(vertical: 4),
+                        border: InputBorder.none,
+                        hintText: 'Ketik nama gedung/kantin/pilih...',
+                        hintStyle: TextStyle(
+                          color: Color(0xFF9EA8A0),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                      onChanged: (val) =>
+                          _saringSaran(val, untukJemput: true),
+                      onTap: () => _saringSaran(
+                        _jemputController.text,
+                        untukJemput: true,
+                      ),
+                      validator: (nilai) => _wajibAlamat(nilai, 'jemput'),
+                    ),
+                  ],
+                ),
+              ),
+              if (_sedangCariJemput)
+                const Padding(
+                  padding: EdgeInsets.only(right: 6),
+                  child: SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Color(0xFF00AA13),
+                    ),
+                  ),
+                ),
+              InkWell(
+                onTap: () => _pilihDiPeta(
+                  controller: _jemputController,
+                  judul: 'Titik jemput',
+                  untukJemput: true,
+                ),
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF4F7F4),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.map_outlined,
+                    color: Color(0xFF667368),
+                    size: 20,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // Tampilan Saran Dropdown Jemput
+          if (_saranJemput.isNotEmpty)
+            _buildDropdownSaran(daftar: _saranJemput, untukJemput: true),
+
+          // Garis Penghubung Vertikal
+          Padding(
+            padding: const EdgeInsets.only(left: 10),
+            child: SizedBox(
+              height: 16,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: List.generate(
+                  3,
+                  (index) => Container(
+                    width: 2,
+                    height: 2.5,
+                    color: const Color(0xFFBCC9BD),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Titik Tujuan
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border:
+                      Border.all(color: const Color(0xFFFF5722), width: 2.5),
+                ),
+                child: Center(
+                  child: Container(
+                    width: 7,
+                    height: 7,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFF5722),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'TUJUAN PENGANTARAN',
+                      style: TextStyle(
+                        color: Color(0xFFFF5722),
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    TextFormField(
+                      controller: _tujuanController,
+                      focusNode: _focusTujuan,
+                      maxLength: BatasMasukan.alamat,
+                      textCapitalization: TextCapitalization.sentences,
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) {
+                        if (_posisiTujuan == null && _saranTujuan.isNotEmpty) {
+                          _pilihSaran(_saranTujuan.first, untukJemput: false);
+                        }
+                      },
+                      style: const TextStyle(
+                        color: Color(0xFF1E2124),
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      decoration: const InputDecoration(
+                        counterText: '',
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(vertical: 4),
+                        border: InputBorder.none,
+                        hintText: 'Ketik tujuan/pilih dari daftar...',
+                        hintStyle: TextStyle(
+                          color: Color(0xFF9EA8A0),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                      onChanged: (val) =>
+                          _saringSaran(val, untukJemput: false),
+                      onTap: () => _saringSaran(
+                        _tujuanController.text,
+                        untukJemput: false,
+                      ),
+                      validator: (nilai) => _wajibAlamat(nilai, 'tujuan'),
+                    ),
+                  ],
+                ),
+              ),
+              if (_sedangCariTujuan)
+                const Padding(
+                  padding: EdgeInsets.only(right: 6),
+                  child: SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Color(0xFFFF5722),
+                    ),
+                  ),
+                ),
+              InkWell(
+                onTap: () => _pilihDiPeta(
+                  controller: _tujuanController,
+                  judul: 'Titik tujuan',
+                  untukJemput: false,
+                ),
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF4F7F4),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.location_on_outlined,
+                    color: Color(0xFF667368),
+                    size: 20,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // Tampilan Saran Dropdown Tujuan
+          if (_saranTujuan.isNotEmpty)
+            _buildDropdownSaran(daftar: _saranTujuan, untukJemput: false),
+        ],
+      ),
+    );
+  }
+
+  /// Kartu Perkiraan Jarak dengan indikator otomatis/menit (tanpa teks catatan berlebih)
+  Widget _buildCardPerkiraanJarak(Tarif tarif) {
+    final jarak = bacaJarak(_jarakController.text);
+    final String menitEstimasi = jarak != null
+        ? '(± ${(jarak * 2.5).clamp(4, 30).round()}-${(jarak * 3.5).clamp(8, 45).round()} menit)'
+        : '(± 5-10 menit)';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFEDF2ED), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: const BoxDecoration(
+              color: Color(0xFFE8F8EA),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.access_time_filled_rounded,
+              color: Color(0xFF00AA13),
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'PERKIRAAN JARAK & WAKTU',
+                  style: TextStyle(
+                    color: Color(0xFF6B7A6E),
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    SizedBox(
+                      width: 65,
+                      child: TextFormField(
+                        controller: _jarakController,
+                        enabled: !_sedangHitungRute,
+                        keyboardType:
+                            const TextInputType.numberWithOptions(decimal: true),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                        ],
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF1E2124),
+                        ),
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          contentPadding: EdgeInsets.zero,
+                          border: InputBorder.none,
+                          hintText: '0.0',
+                          suffixText: ' km',
+                          suffixStyle: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1E2124),
+                          ),
+                        ),
+                        validator: (nilai) => validasiJarak(nilai, tarif),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      menitEstimasi,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF6B7A6E),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          if (_sedangHitungRute)
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Color(0xFF00AA13),
+              ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8F8EA),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: const Color(0xFF00AA13), width: 1),
+              ),
+              child: const Text(
+                'Otomatis',
+                style: TextStyle(
+                  color: Color(0xFF00AA13),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Kartu Catatan untuk Driver / Runner (Ringkas 1 baris bersih)
+  Widget _buildCardCatatanDriver() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFEDF2ED), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF3E0),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.edit_note_rounded,
+              color: Color(0xFFFF7043),
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: TextFormField(
+              controller: _catatanController,
+              maxLength: BatasMasukan.deskripsi,
+              textCapitalization: TextCapitalization.sentences,
+              maxLines: 1,
+              style: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF2C352E),
+              ),
+              decoration: const InputDecoration(
+                counterText: '',
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+                border: InputBorder.none,
+                hintText: 'Catatan untuk driver (opsional)',
+                hintStyle: TextStyle(
+                  color: Color(0xFF9EA8A0),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Kartu Rincian Tarif Kampus Terjangkau
+  Widget _buildCardRincianTarif(HasilTarif? hasil) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFEDF2ED), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(
+                    Icons.receipt_long_rounded,
+                    color: Color(0xFF00AA13),
+                    size: 20,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'RINCIAN TARIF',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1E2124),
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F8EA),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: const Text(
+                  'Tarif Mahasiswa',
+                  style: TextStyle(
+                    color: Color(0xFF00880C),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (hasil == null)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 4),
+              child: Text(
+                'Pilih rute untuk melihat rincian tarif.',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: Color(0xFF8A968B),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            )
+          else ...[
+            for (final baris in hasil.rincian)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      baris.label,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: Color(0xFF4A554D),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      formatRupiah(baris.nominal),
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: baris.label.toLowerCase().contains('parkir') ||
+                                baris.label.toLowerCase().contains('layanan')
+                            ? const Color(0xFF00AA13)
+                            : const Color(0xFF1E2124),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const Divider(color: Color(0xFFEDF2ED), height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Text(
+                  'Total Biaya',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF1E2124),
+                  ),
+                ),
+                Text(
+                  formatRupiah(hasil.total),
+                  style: const TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF00AA13),
+                  ),
+                ),
+              ],
             ),
           ],
         ],
       ),
     );
   }
-
-  // -------------------------------------------------------------------------
-  // Buat order
-  // -------------------------------------------------------------------------
 
   Future<void> _buatOrder() async {
     if (!_formKey.currentState!.validate()) return;
@@ -802,10 +1330,6 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
     context.pushReplacement(Rute.detailOrder(order.id));
   }
 
-  // -------------------------------------------------------------------------
-  // Pilih di peta
-  // -------------------------------------------------------------------------
-
   Future<void> _pilihDiPeta({
     required TextEditingController controller,
     required String judul,
@@ -837,45 +1361,14 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
   static String? _wajibAlamat(String? nilai, String jenis) {
     final bersih = nilai?.trim() ?? '';
     if (bersih.isEmpty) return 'Alamat $jenis wajib diisi';
-    if (bersih.length < 5) return 'Tulis alamat $jenis lebih jelas';
+    if (bersih.length < 3) return 'Tulis alamat $jenis lebih jelas';
     return null;
   }
 }
 
-// ---------------------------------------------------------------------------
-// Widget pembantu
-// ---------------------------------------------------------------------------
-
-class _HargaBelumBisaDihitung extends StatelessWidget {
-  const _HargaBelumBisaDihitung();
-
-  @override
-  Widget build(BuildContext context) {
-    final skema = Theme.of(context).colorScheme;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spasiSedang),
-        child: Row(
-          children: [
-            Icon(Icons.calculate_outlined, color: skema.onSurfaceVariant),
-            const SizedBox(width: AppTheme.spasiSedang),
-            Expanded(
-              child: Text(
-                'Isi perkiraan jarak dulu, harganya langsung muncul di sini.',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: skema.onSurfaceVariant),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _BilahBuatOrder extends StatelessWidget {
-  const _BilahBuatOrder({
+/// Bilah bawah tombol aksi pemesanan ala Gojek yang bersih tanpa selector palsu
+class _BilahBawahGojek extends StatelessWidget {
+  const _BilahBawahGojek({
     required this.total,
     required this.sedangMengirim,
     required this.onTekan,
@@ -887,60 +1380,97 @@ class _BilahBuatOrder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final skema = Theme.of(context).colorScheme;
-
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spasiSedang),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (total != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: AppTheme.spasiKecil),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Bayar nanti',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: skema.onSurfaceVariant,
-                      ),
-                    ),
-                    Text(
-                      formatRupiah(total),
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: skema.primary,
-                      ),
-                    ),
-                  ],
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: FilledButton(
+              onPressed: sedangMengirim ? null : onTekan,
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF00AA13),
+                disabledBackgroundColor: const Color(0xFFB0D9B3),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
                 ),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                elevation: 0,
               ),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: FilledButton(
-                onPressed: sedangMengirim ? null : onTekan,
-                child: sedangMengirim
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text(
-                        'Buat Order',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                        ),
+              child: sedangMengirim
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.2,
+                        color: Colors.white,
                       ),
-              ),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Total Tarif',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white.withValues(alpha: 0.85),
+                              ),
+                            ),
+                            Text(
+                              total != null
+                                  ? formatRupiah(total)
+                                  : 'Pilih Rute',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Row(
+                          children: [
+                            Text(
+                              'Pesan Sekarang',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
+                            SizedBox(width: 6),
+                            Icon(
+                              Icons.arrow_forward_rounded,
+                              size: 19,
+                              color: Colors.white,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
             ),
-          ],
+          ),
         ),
       ),
     );
