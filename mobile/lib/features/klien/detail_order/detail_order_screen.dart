@@ -26,6 +26,9 @@ import 'widgets/kartu_bukti_pekerjaan.dart';
 import 'widgets/kartu_penawaran.dart';
 import 'widgets/linimasa_status.dart';
 
+/// Membentuk tautan telepon tanpa mencampurkan penyusunan URI dengan widget.
+Uri uriTelepon(String noHp) => Uri(scheme: 'tel', path: noHp);
+
 /// Detail satu order: status, linimasa pemesanan, dan rincian perjalanan
 /// dengan gaya Gojek Aloha sesuai spesifikasi referensi desain.
 class DetailOrderScreen extends ConsumerWidget {
@@ -1056,7 +1059,7 @@ class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> 
                         InkWell(
                           onTap: () {
                             if (runnerTelp != null) {
-                              launchUrl(Uri.parse('tel:$runnerTelp'));
+                              launchUrl(uriTelepon(runnerTelp));
                             }
                           },
                           borderRadius: BorderRadius.circular(100),
