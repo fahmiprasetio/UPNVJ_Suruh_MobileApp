@@ -1,9 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using UpnvjSuruh.Api.Contracts;
 using UpnvjSuruh.Api.Data;
 using UpnvjSuruh.Api.Domain;
@@ -215,23 +213,6 @@ public class MidtransWebhookTests(MidtransWebhookTests.MidtransApiFactory pabrik
     /// </summary>
     public class MidtransApiFactory : DatabaseApiFactory
     {
-        public const string ServerKey = "kunci-uji-midtrans-yang-cukup-panjang-sekali";
-
-        protected override IHost CreateHost(IHostBuilder builder)
-        {
-            builder.ConfigureHostConfiguration(config =>
-            {
-                config.AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["Midtrans:ServerKey"] = ServerKey,
-                    // Wajib diisi begitu ServerKey diisi (lihat Program.cs) -- nilainya tidak
-                    // dipanggil jaringan mana pun di tes ini, cuma perlu ada supaya server
-                    // tidak menolak menyala.
-                    ["Midtrans:NotificationUrl"] = "https://uji.contoh/api/webhooks/midtrans",
-                });
-            });
-
-            return base.CreateHost(builder);
-        }
+        public const string ServerKey = ApiFactory.MidtransServerKey;
     }
 }

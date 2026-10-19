@@ -63,15 +63,25 @@ public class AdminPembatalanTests(DatabaseApiFactory pabrik) : IClassFixture<Dat
         return (await jawaban.Content.ReadFromJsonAsync<BuatOrderResponse>())!.Order;
     }
 
-    /// <summary>Order Jalur A yang sudah lunas, lewat tiruan gateway yang cuma hidup di Development.</summary>
+    /// <summary>Order Jalur A yang sudah lunas melalui webhook gateway bertanda rahasia.</summary>
     private async Task<OrderResponse> OrderLunasAsync(HttpClient klien)
     {
         var order = await BuatOrderAsync(klien);
 
-        (await klien.PostAsync($"/api/orders/{order.Id}/pembayaran", null)).EnsureSuccessStatusCode();
+        var transaksiJawaban = await klien.PostAsync($"/api/orders/{order.Id}/pembayaran", null);
+        transaksiJawaban.EnsureSuccessStatusCode();
+        var transaksi = (await transaksiJawaban.Content
+            .ReadFromJsonAsync<TransaksiPembayaranResponse>())!;
 
-        (await pabrik.CreateClient().PostAsync($"/api/dev/pembayaran/{order.Id}/lunas", null))
-            .EnsureSuccessStatusCode();
+        var webhook = pabrik.CreateClient();
+        webhook.DefaultRequestHeaders.Add(WebhookOptions.Header, ApiFactory.WebhookSecret);
+        (await webhook.PostAsJsonAsync("/api/webhooks/pembayaran", new
+        {
+            OrderId = order.Id,
+            ReferensiGateway = transaksi.Id.ToString("N"),
+            Status = PaymentStatus.Berhasil,
+            Jumlah = transaksi.Jumlah,
+        })).EnsureSuccessStatusCode();
 
         return (await klien.GetFromJsonAsync<OrderResponse>($"/api/orders/{order.Id}"))!;
     }

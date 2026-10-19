@@ -32,7 +32,7 @@ public class MidtransPembayaranGatewayTests
         NullLogger<MidtransPembayaranGateway>.Instance);
 
     [Fact]
-    public async Task JawabanSuksesMenghasilkanQrStringDanReferensiDariPaymentId()
+    public async Task JawabanSuksesMenghasilkanCheckoutSnapDanReferensiDariPaymentId()
     {
         string? jalur = null;
         JsonElement badan = default;
@@ -51,19 +51,24 @@ public class MidtransPembayaranGatewayTests
 
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = JsonContent.Create(new { status_code = "201", qr_string = "00020101021226610014ID.CO.QRIS" }),
+                Content = JsonContent.Create(new
+                {
+                    token = "token-snap-uji",
+                    redirect_url = "https://app.sandbox.midtrans.com/snap/v2/vtweb/token-snap-uji",
+                }),
             };
         });
 
         var paymentId = Guid.NewGuid();
-        var (referensi, qr) = await gateway.BuatTransaksiAsync(
+        var (referensi, checkoutUrl) = await gateway.BuatTransaksiAsync(
             OrderUji(), paymentId, 15000m, CancellationToken.None);
 
         Assert.Equal(paymentId.ToString("N"), referensi);
-        Assert.Equal("00020101021226610014ID.CO.QRIS", qr);
+        Assert.Equal(
+            "https://app.sandbox.midtrans.com/snap/v2/vtweb/token-snap-uji",
+            checkoutUrl);
 
-        Assert.Equal("v2/charge", jalur);
-        Assert.Equal("qris", badan.GetProperty("payment_type").GetString());
+        Assert.Equal("snap/v1/transactions", jalur);
         Assert.Equal(
             paymentId.ToString("N"),
             badan.GetProperty("transaction_details").GetProperty("order_id").GetString());
@@ -92,13 +97,13 @@ public class MidtransPembayaranGatewayTests
     }
 
     [Fact]
-    public async Task JawabanSuksesTanpaQrStringTetapDianggapGagal()
+    public async Task JawabanSuksesTanpaCheckoutSnapTetapDianggapGagal()
     {
-        // Status 200 tapi tanpa qr_string sama sekali tidak berguna -- QRIS tidak bisa
-        // digambar dari apa pun kalau ini lolos begitu saja.
+        // Token tanpa redirect_url tidak dapat dibuka oleh aplikasi, sehingga respons
+        // tersebut belum merupakan checkout Snap yang dapat dipakai pengguna.
         var gateway = Gateway(_ => new HttpResponseMessage(HttpStatusCode.OK)
         {
-            Content = JsonContent.Create(new { status_code = "201" }),
+            Content = JsonContent.Create(new { token = "token-snap-uji" }),
         });
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
