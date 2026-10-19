@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -220,8 +218,6 @@ class _LiveTrackingAlohaView extends ConsumerStatefulWidget {
 
 class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> {
   late final MapController _mapController;
-  Timer? _pergerakanTimer;
-  int _langkahSimulasi = 1;
 
   late final List<LatLng> _titikRute;
   late final LatLng _posisiJemput;
@@ -249,38 +245,15 @@ class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> 
       const LatLng(-6.3312, 106.8335), // Titik Tujuan (Stasiun)
     ];
 
-    _posisiRunner = _titikRute[_langkahSimulasi];
+    _posisiRunner = _titikRute[1];
 
     final digit = widget.order.kodeOrder.replaceAll(RegExp(r'[^0-9]'), '');
     _pinJemput = digit.length >= 4 ? digit.substring(digit.length - 4) : '8419';
 
-    // Simulasi demo berhenti saat runner mencapai titik jemput. Jangan
-    // mengulang empat titik pertama selamanya: selain menyesatkan, timer tanpa
-    // akhir membuat layar/test tidak pernah benar-benar tenang.
-    _pergerakanTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-
-      final langkahBerikutnya = _langkahSimulasi + 1;
-      if (langkahBerikutnya > 4) {
-        timer.cancel();
-        return;
-      }
-
-      setState(() {
-        _langkahSimulasi = langkahBerikutnya;
-        _posisiRunner = _titikRute[_langkahSimulasi];
-      });
-
-      if (_langkahSimulasi == 4) timer.cancel();
-    });
   }
 
   @override
   void dispose() {
-    _pergerakanTimer?.cancel();
     _mapController.dispose();
     super.dispose();
   }
@@ -428,7 +401,7 @@ class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> 
   @override
   Widget build(BuildContext context) {
     final order = widget.order;
-    final menitTiba = 4 - _langkahSimulasi;
+    const menitTiba = 3;
 
     final namaJemput = order.alamatJemput != null &&
             order.alamatJemput!.contains(',')
@@ -1603,63 +1576,30 @@ class _IsiAloha extends ConsumerWidget {
   }
 }
 
-class _HitungMundurDetailOrder extends ConsumerStatefulWidget {
+class _HitungMundurDetailOrder extends ConsumerWidget {
   const _HitungMundurDetailOrder({required this.order});
 
   final Order order;
 
   @override
-  ConsumerState<_HitungMundurDetailOrder> createState() =>
-      _HitungMundurDetailOrderState();
-}
-
-class _HitungMundurDetailOrderState
-    extends ConsumerState<_HitungMundurDetailOrder> {
-  Timer? _pewaktu;
-  late Duration _sisa;
-  late DateTime _batasWaktu;
-
-  @override
-  void initState() {
-    super.initState();
-    _batasWaktu = widget.order.dibuatPada.add(const Duration(minutes: 30));
-    _sisa = _hitung();
-
-    _pewaktu = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      final sisa = _hitung();
-      setState(() => _sisa = sisa);
-      if (sisa == Duration.zero) _pewaktu?.cancel();
-    });
-  }
-
-  Duration _hitung() {
-    final sisa = _batasWaktu.difference(DateTime.now());
-    return sisa.isNegative ? Duration.zero : sisa;
-  }
-
-  @override
-  void dispose() {
-    _pewaktu?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     // Sinkronkan dengan batas waktu transaksi Midtrans dari provider jika ada
     final transaksiAsync =
-        ref.watch(transaksiOrderProvider(widget.order.id));
+        ref.watch(transaksiOrderProvider(order.id));
+    var batasWaktu = order.dibuatPada.add(const Duration(minutes: 30));
     if (transaksiAsync.hasValue &&
         transaksiAsync.value?.kedaluwarsaPada != null) {
-      _batasWaktu = transaksiAsync.value!.kedaluwarsaPada;
+      batasWaktu = transaksiAsync.value!.kedaluwarsaPada;
     }
 
-    final habis = _sisa == Duration.zero;
-    final menit = _sisa.inMinutes.toString().padLeft(2, '0');
-    final detik = _sisa.inSeconds.remainder(60).toString().padLeft(2, '0');
+    final selisih = batasWaktu.difference(DateTime.now());
+    final sisa = selisih.isNegative ? Duration.zero : selisih;
+    final habis = sisa == Duration.zero;
+    final menit = sisa.inMinutes.toString().padLeft(2, '0');
+    final detik = sisa.inSeconds.remainder(60).toString().padLeft(2, '0');
 
     const totalDetik = 1800;
-    final rasio = (_sisa.inSeconds / totalDetik).clamp(0.0, 1.0).toDouble();
+    final rasio = (sisa.inSeconds / totalDetik).clamp(0.0, 1.0).toDouble();
 
     return Container(
       width: double.infinity,
@@ -1711,7 +1651,7 @@ class _HitungMundurDetailOrderState
           ),
           const SizedBox(height: 8),
           Text(
-            'Pesanan akan otomatis dibatalkan jika tidak dibayar sebelum ${formatJam(_batasWaktu)} WIB.',
+            'Pesanan akan otomatis dibatalkan jika tidak dibayar sebelum ${formatJam(batasWaktu)} WIB.',
             style: const TextStyle(
               fontSize: 11.5,
               color: Color(0xFF6B7280),
