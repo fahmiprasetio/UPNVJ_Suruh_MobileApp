@@ -78,36 +78,91 @@ class _PemilihLokasiScreenState extends State<PemilihLokasiScreen> {
   @override
   Widget build(BuildContext context) {
     final skema = Theme.of(context).colorScheme;
+    final isTujuan = (widget.judul ?? '').toLowerCase().contains('tujuan');
+    final warnaPin = isTujuan ? const Color(0xFFE53935) : const Color(0xFF00AA13);
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.judul ?? 'Pilih lokasi di peta')),
+      backgroundColor: const Color(0xFFF7FBF7),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF00AA13),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        title: Text(
+          widget.judul ?? 'Pilih lokasi di peta',
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 17.5,
+            color: Colors.white,
+          ),
+        ),
+      ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(AppTheme.spasiSedang),
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: _pencarianController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       isDense: true,
-                      hintText: 'Cari alamat, misalnya nama kos atau jalan',
-                      prefixIcon: Icon(Icons.search),
+                      filled: true,
+                      fillColor: const Color(0xFFF2F6F3),
+                      hintText: 'Cari alamat, kampus, kos, atau jalan...',
+                      hintStyle: const TextStyle(
+                        color: Color(0xFF7A867D),
+                        fontSize: 13.5,
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.search_rounded,
+                        color: Color(0xFF00AA13),
+                        size: 22,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFE0EAE1)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: Color(0xFF00AA13),
+                          width: 1.5,
+                        ),
+                      ),
                     ),
                     onSubmitted: (_) => _cari(),
                   ),
                 ),
-                const SizedBox(width: AppTheme.spasiKecil),
+                const SizedBox(width: 8),
                 IconButton.filled(
+                  style: IconButton.styleFrom(
+                    backgroundColor: const Color(0xFF00AA13),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                   onPressed: _sedangMencari ? null : _cari,
                   icon: _sedangMencari
                       ? const SizedBox(
                           height: 18,
                           width: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
-                      : const Icon(Icons.search),
+                      : const Icon(Icons.search_rounded),
                 ),
               ],
             ),
@@ -155,33 +210,37 @@ class _PemilihLokasiScreenState extends State<PemilihLokasiScreen> {
                   children: [
                     TileLayer(
                       urlTemplate:
-                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+                      subdomains: const ['a', 'b', 'c', 'd'],
                       userAgentPackageName: 'com.upnvjsuruh.mobile',
+                      maxZoom: 19,
                     ),
                     if (_posisi != null)
                       MarkerLayer(
                         markers: [
                           Marker(
                             point: _posisi!,
-                            width: 40,
-                            height: 40,
-                            // Hijau, bukan warna galat bawaan Material: pin ini
-                            // menandai titik yang dipilih, bukan sesuatu yang
-                            // salah. Sistem dua warna aplikasi ini cuma kenal
-                            // hijau (sudah benar) dan maroon (minta ditekan).
+                            width: 44,
+                            height: 44,
+                            alignment: Alignment.topCenter,
                             child: Icon(
-                              Icons.location_on,
-                              color: skema.primary,
-                              size: 40,
+                              Icons.location_on_rounded,
+                              color: warnaPin,
+                              size: 44,
+                              shadows: const [
+                                BoxShadow(
+                                  color: Colors.black26,
+                                  blurRadius: 6,
+                                  offset: Offset(0, 3),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                   ],
                 ),
-                // Bukan hiasan: peta OSM tidak punya penanda pusat bawaan
-                // seperti Google Maps, dan tanpa ini "ketuk untuk pilih"
-                // tidak kelihatan sebagai ajakan sampai orangnya coba sendiri.
+                // Panduan ketuk peta jika belum ada posisi terpilih
                 if (_posisi == null)
                   IgnorePointer(
                     child: Container(
@@ -190,14 +249,35 @@ class _PemilihLokasiScreenState extends State<PemilihLokasiScreen> {
                         vertical: AppTheme.spasiKecil,
                       ),
                       decoration: BoxDecoration(
-                        color: skema.surface.withValues(alpha: 0.92),
+                        color: Colors.white.withValues(alpha: 0.95),
                         borderRadius: BorderRadius.circular(
                           AppTheme.radiusPil,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 6,
+                          ),
+                        ],
                       ),
-                      child: Text(
-                        'Ketuk peta untuk pilih titik',
-                        style: Theme.of(context).textTheme.bodySmall,
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.touch_app_rounded,
+                            size: 16,
+                            color: Color(0xFF00AA13),
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'Ketuk peta untuk menentukan titik',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF1E2124),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -206,42 +286,122 @@ class _PemilihLokasiScreenState extends State<PemilihLokasiScreen> {
                   bottom: AppTheme.spasiSedang,
                   child: FloatingActionButton.small(
                     heroTag: 'lokasiSaatIni',
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF00AA13),
+                    elevation: 3,
                     onPressed: _sedangCariLokasi ? null : _pakaiLokasiSaatIni,
                     tooltip: 'Pakai lokasi saat ini',
                     child: _sedangCariLokasi
                         ? const SizedBox(
                             height: 18,
                             width: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Color(0xFF00AA13),
+                            ),
                           )
-                        : const Icon(Icons.my_location),
+                        : const Icon(Icons.my_location_rounded),
                   ),
                 ),
               ],
             ),
           ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.all(AppTheme.spasiSedang),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    _sedangMenerjemahkan
-                        ? 'Membaca nama alamat...'
-                        : (_alamat ?? 'Belum ada titik yang dipilih.'),
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: AppTheme.spasiSedang),
-                  FilledButton(
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 12,
+                  offset: const Offset(0, -3),
+                ),
+              ],
+            ),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              14,
+              16,
+              MediaQuery.of(context).padding.bottom + 14,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(7),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        Icons.location_on_rounded,
+                        color: warnaPin,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'LOKASI TERPILIH ${isTujuan ? "(TUJUAN)" : "(JEMPUT)"}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF00AA13),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            _sedangMenerjemahkan
+                                ? 'Membaca alamat dari peta...'
+                                : (_alamat ??
+                                    'Ketuk pada peta untuk memilih titik lokasi.'),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF1E2124),
+                              fontWeight: FontWeight.w500,
+                              height: 1.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 48,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF00AA13),
+                      disabledBackgroundColor: const Color(0xFFD6D6D6),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
                     onPressed: _posisi == null || _sedangMenerjemahkan
                         ? null
                         : _pakaiLokasi,
-                    child: const Text('Pakai lokasi ini'),
+                    child: const Text(
+                      'Pakai Lokasi Ini',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
