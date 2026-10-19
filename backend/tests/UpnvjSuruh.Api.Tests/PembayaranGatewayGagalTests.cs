@@ -90,7 +90,7 @@ public class PembayaranGatewayGagalTests(PembayaranGatewayGagalTests.GatewayGaga
     {
         public bool LemparkanGalat { get; set; } = true;
 
-        public Task<(string ReferensiGateway, string QrPayload)> BuatTransaksiAsync(
+        public Task<HasilPembuatanPembayaran> BuatTransaksiAsync(
             Order order, Guid paymentId, decimal jumlah, CancellationToken batal)
         {
             if (LemparkanGalat)
@@ -98,7 +98,9 @@ public class PembayaranGatewayGagalTests(PembayaranGatewayGagalTests.GatewayGaga
                 throw new InvalidOperationException("Gateway tiruan sengaja gagal untuk tes ini.");
             }
 
-            return Task.FromResult(($"{paymentId:N}", "QR-SESUDAH-DIPERBAIKI"));
+            return Task.FromResult(new HasilPembuatanPembayaran(
+                $"{paymentId:N}",
+                "https://app.sandbox.midtrans.com/snap/v2/vtweb/token-uji"));
         }
     }
 
@@ -108,13 +110,12 @@ public class PembayaranGatewayGagalTests(PembayaranGatewayGagalTests.GatewayGaga
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            base.ConfigureWebHost(builder);
             builder.ConfigureTestServices(services =>
             {
                 services.RemoveAll<IPembayaranGateway>();
                 services.AddSingleton<IPembayaranGateway>(GatewayGagal);
             });
-
-            base.ConfigureWebHost(builder);
         }
     }
 }

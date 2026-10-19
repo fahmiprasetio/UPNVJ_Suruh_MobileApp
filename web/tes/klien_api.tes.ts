@@ -89,6 +89,12 @@ describe('KlienApi', () => {
       .toBeUndefined();
   });
 
+  it('mengembalikan undefined untuk 202 dengan badan kosong', async () => {
+    const ambil = vi.fn().mockResolvedValue(new Response(null, { status: 202 }));
+    await expect(klien(ambil as unknown as typeof fetch).minta('/api/auth/minta-kode')).resolves
+      .toBeUndefined();
+  });
+
   it('menerjemahkan kode status jadi jenis galat yang menentukan tindakan', async () => {
     const kasus: [number, unknown][] = [
       [400, GalatPermintaan],

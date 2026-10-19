@@ -141,6 +141,11 @@ class FakeOrderRepository implements OrderRepository {
     // Ordernya sendiri tidak pernah sampai ke matanya.
     if (o.klienId == runnerId) return false;
 
+    // Order yang tidak ditangani lebih dari 1 hari tidak disiarkan.
+    final batasKedaluwarsa = DateTime.now().toUtc().subtract(const Duration(days: 1));
+    final waktuMulai = o.dibayarPada ?? o.dibuatPada;
+    if (waktuMulai.isBefore(batasKedaluwarsa)) return false;
+
     if (o.track == OrderTrack.jalurB && o.status == OrderStatus.permintaan) {
       // Runner yang penawarannya masih menunggu tidak perlu ditawarkan lagi.
       // Yang sudah ditolak/ditutup/dinego boleh menawar ulang.
@@ -673,7 +678,7 @@ class FakeOrderRepository implements OrderRepository {
   Future<Order> selesaikanOrder({
     required String orderId,
     required String fotoBuktiUrl,
-    String? catatanSerahTerima,
+    required String catatanSerahTerima,
     String? idempotencyKey,
   }) => selesaikanOrderSebagai(
     orderId: orderId,
@@ -687,7 +692,7 @@ class FakeOrderRepository implements OrderRepository {
     required String orderId,
     required String runnerId,
     required String fotoBuktiUrl,
-    String? catatanSerahTerima,
+    required String catatanSerahTerima,
   }) async {
     await Future<void>.delayed(_jedaJaringan);
     final order = _wajibAda(orderId);
@@ -709,6 +714,12 @@ class FakeOrderRepository implements OrderRepository {
       throw StateError(
         'Foto bukti wajib ada, itu yang membedakan pekerjaan selesai dari '
         'pengakuan selesai',
+      );
+    }
+    if (catatanSerahTerima.trim().isEmpty) {
+      throw StateError(
+        'Catatan serah terima wajib diisi agar lokasi atau penerima hasil '
+        'pekerjaan tercatat',
       );
     }
     final catatanBersih = _batasi(

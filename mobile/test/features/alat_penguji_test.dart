@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:upnvj_suruh/core/config/sumber_data.dart';
-import 'package:upnvj_suruh/core/providers/payment_providers.dart';
 import 'package:upnvj_suruh/core/providers/repository_providers.dart';
 
 /// Alat penguji tidak boleh ikut terbawa ke tangan pengguna.
@@ -37,24 +36,13 @@ void main() {
         isNull,
       );
     });
-
-    test('tidak ada tombol simulasi pembayaran', () {
-      expect(
-        wadah(
-          debug: false,
-          sumber: SumberData.api,
-        ).read(simulatorPembayaranProvider),
-        isNull,
-      );
-    });
   });
 
   group('build debug di atas tiruan', () {
-    test('kedua alat penguji tersedia', () {
+    test('pengalih akun uji tersedia', () {
       final container = wadah(debug: true);
 
       expect(container.read(akunUjiProvider), isNotNull);
-      expect(container.read(simulatorPembayaranProvider), isNotNull);
     });
   });
 
@@ -63,21 +51,6 @@ void main() {
       expect(
         wadah(debug: true, sumber: SumberData.api).read(akunUjiProvider),
         isNull,
-      );
-    });
-
-    test('tombol simulasi pembayaran tetap ada, dan itu disengaja', () {
-      // Yang dipanggilnya bukan keadaan di dalam aplikasi melainkan tiruan gateway
-      // di server, dan endpoint itu hanya didaftarkan server saat berjalan di
-      // Development. Tanpa tombol ini tidak ada cara mencoba alur bayar sampai
-      // tuntas terhadap backend lokal, karena yang menggantikannya di produksi
-      // adalah bank klien.
-      expect(
-        wadah(
-          debug: true,
-          sumber: SumberData.api,
-        ).read(simulatorPembayaranProvider),
-        isNotNull,
       );
     });
   });

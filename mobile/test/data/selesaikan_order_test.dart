@@ -25,26 +25,31 @@ void main() {
       dibuatPada: DateTime.now(),
       harga: 11000,
       jumlahRunnerDibutuhkan: jumlahRunnerDibutuhkan,
-      runners: [for (final id in runnerIds) RunnerRingkas(id: id, nama: 'Runner')],
+      runners: [
+        for (final id in runnerIds) RunnerRingkas(id: id, nama: 'Runner'),
+      ],
     );
   }
 
-  test('runner yang memegang order bisa menutupnya dengan foto bukti', () async {
-    final repo = FakeOrderRepository(orderAwal: [orderDikerjakan()]);
-    addTearDown(repo.dispose);
+  test(
+    'runner yang memegang order bisa menutupnya dengan foto bukti',
+    () async {
+      final repo = FakeOrderRepository(orderAwal: [orderDikerjakan()]);
+      addTearDown(repo.dispose);
 
-    final order = await repo.selesaikanOrderSebagai(
-      orderId: 'o-uji',
-      runnerId: 'u-runner-1',
-      fotoBuktiUrl: 'fake://bukti/o-uji.jpg',
-      catatanSerahTerima: 'Dititipkan ke penjaga kos',
-    );
+      final order = await repo.selesaikanOrderSebagai(
+        orderId: 'o-uji',
+        runnerId: 'u-runner-1',
+        fotoBuktiUrl: 'fake://bukti/o-uji.jpg',
+        catatanSerahTerima: 'Dititipkan ke penjaga kos',
+      );
 
-    expect(order.status, OrderStatus.selesai);
-    expect(order.fotoBuktiUrl, 'fake://bukti/o-uji.jpg');
-    expect(order.catatanSerahTerima, 'Dititipkan ke penjaga kos');
-    expect(order.selesaiPada, isNotNull);
-  });
+      expect(order.status, OrderStatus.selesai);
+      expect(order.fotoBuktiUrl, 'fake://bukti/o-uji.jpg');
+      expect(order.catatanSerahTerima, 'Dititipkan ke penjaga kos');
+      expect(order.selesaiPada, isNotNull);
+    },
+  );
 
   test('runner yang tidak memegang order tidak bisa menutupnya', () async {
     final repo = FakeOrderRepository(orderAwal: [orderDikerjakan()]);
@@ -55,6 +60,7 @@ void main() {
         orderId: 'o-uji',
         runnerId: 'u-runner-lain',
         fotoBuktiUrl: 'fake://bukti/curang.jpg',
+        catatanSerahTerima: 'Diserahkan ke klien.',
       ),
       throwsStateError,
     );
@@ -81,6 +87,7 @@ void main() {
         orderId: 'o-uji',
         runnerId: 'u-runner-1',
         fotoBuktiUrl: 'fake://bukti/o-uji.jpg',
+        catatanSerahTerima: 'Diserahkan ke klien.',
       ),
       throwsStateError,
     );
@@ -94,6 +101,7 @@ void main() {
       orderId: 'o-uji',
       runnerId: 'u-runner-1',
       fotoBuktiUrl: 'fake://bukti/o-uji.jpg',
+      catatanSerahTerima: 'Diserahkan ke klien.',
     );
 
     await expectLater(
@@ -101,32 +109,37 @@ void main() {
         orderId: 'o-uji',
         runnerId: 'u-runner-1',
         fotoBuktiUrl: 'fake://bukti/lagi.jpg',
+        catatanSerahTerima: 'Diserahkan lagi.',
       ),
       throwsStateError,
     );
   });
 
-  test('order multi-runner boleh ditutup runner mana pun yang ditugaskan', () async {
-    // Keputusan sementara sampai mitra menjawab siapa yang berhak menekan
-    // selesai kalau pekerjaannya dibagi bertiga (bagian 14.7d).
-    final repo = FakeOrderRepository(
-      orderAwal: [
-        orderDikerjakan(
-          runnerIds: const ['u-runner-1', 'u-runner-2'],
-          jumlahRunnerDibutuhkan: 2,
-        ),
-      ],
-    );
-    addTearDown(repo.dispose);
+  test(
+    'order multi-runner boleh ditutup runner mana pun yang ditugaskan',
+    () async {
+      // Keputusan sementara sampai mitra menjawab siapa yang berhak menekan
+      // selesai kalau pekerjaannya dibagi bertiga (bagian 14.7d).
+      final repo = FakeOrderRepository(
+        orderAwal: [
+          orderDikerjakan(
+            runnerIds: const ['u-runner-1', 'u-runner-2'],
+            jumlahRunnerDibutuhkan: 2,
+          ),
+        ],
+      );
+      addTearDown(repo.dispose);
 
-    final order = await repo.selesaikanOrderSebagai(
-      orderId: 'o-uji',
-      runnerId: 'u-runner-2',
-      fotoBuktiUrl: 'fake://bukti/o-uji.jpg',
-    );
+      final order = await repo.selesaikanOrderSebagai(
+        orderId: 'o-uji',
+        runnerId: 'u-runner-2',
+        fotoBuktiUrl: 'fake://bukti/o-uji.jpg',
+        catatanSerahTerima: 'Diserahkan ke klien.',
+      );
 
-    expect(order.status, OrderStatus.selesai);
-  });
+      expect(order.status, OrderStatus.selesai);
+    },
+  );
 
   test('order yang selesai keluar dari daftar order aktif runner', () async {
     final repo = FakeOrderRepository(orderAwal: [orderDikerjakan()]);
@@ -136,6 +149,7 @@ void main() {
       orderId: 'o-uji',
       runnerId: 'u-runner-1',
       fotoBuktiUrl: 'fake://bukti/o-uji.jpg',
+      catatanSerahTerima: 'Diserahkan ke klien.',
     );
 
     // Tetap terdaftar sebagai order runner, riwayatnya tidak hilang, tapi
@@ -144,5 +158,25 @@ void main() {
     expect(punyaRunner.isi, hasLength(1));
     expect(punyaRunner.total, 1);
     expect(punyaRunner.isi.where((o) => o.status.isAktif), isEmpty);
+  });
+
+  test('catatan serah terima kosong tidak bisa menutup order', () async {
+    final repo = FakeOrderRepository(orderAwal: [orderDikerjakan()]);
+    addTearDown(repo.dispose);
+
+    await expectLater(
+      repo.selesaikanOrderSebagai(
+        orderId: 'o-uji',
+        runnerId: 'u-runner-1',
+        fotoBuktiUrl: 'fake://bukti/o-uji.jpg',
+        catatanSerahTerima: '   ',
+      ),
+      throwsStateError,
+    );
+
+    expect(
+      (await repo.watchOrder('o-uji').first)!.status,
+      OrderStatus.dikerjakan,
+    );
   });
 }

@@ -716,6 +716,10 @@ namespace UpnvjSuruh.Api.Migrations
                     b.Property<decimal>("Amount")
                         .HasColumnType("numeric");
 
+                    b.Property<string>("CheckoutUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -729,11 +733,6 @@ namespace UpnvjSuruh.Api.Migrations
 
                     b.Property<Guid>("OrderId")
                         .HasColumnType("uuid");
-
-                    b.Property<string>("QrPayload")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
 
                     b.Property<string>("RefundReason")
                         .HasMaxLength(2000)

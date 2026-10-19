@@ -169,7 +169,6 @@ public class PenjagaanKecilTests(DatabaseApiFactory pabrik) : IClassFixture<Data
             OrderId = order.Id,
             Amount = 11000m,
             GatewayReference = referensi,
-            QrPayload = "SIMULASI",
             ExpiresAt = DateTime.UtcNow.AddMinutes(30),
             // Status akhir supaya index unik pada transaksi menunggu tidak yang berbunyi
             // lebih dulu: yang diuji di sini index referensinya.

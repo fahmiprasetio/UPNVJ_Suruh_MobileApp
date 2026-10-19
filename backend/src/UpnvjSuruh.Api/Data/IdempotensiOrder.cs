@@ -77,7 +77,7 @@ public static class IdempotensiOrder
         "SELESAI",
         orderId.ToString("D"),
         request.FotoBuktiUrl.Trim(),
-        request.CatatanSerahTerima?.Trim());
+        request.CatatanSerahTerima.Trim());
 
     public static string HashMintaBatal(Guid orderId, MintaBatalRequest request) => Hash(
         "MINTA_BATAL",

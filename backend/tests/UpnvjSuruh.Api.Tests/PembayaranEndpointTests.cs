@@ -118,17 +118,14 @@ public class PembayaranEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<
     }
 
     [Fact]
-    public async Task QrnyaDitandaiSimulasiDanTidakMenyerupaiQrisAsli()
+    public async Task CheckoutSnapDikembalikanUntukPembayaran()
     {
-        // String yang mirip aslinya tapi palsu akan lolos pandangan sekilas dan menipu
-        // penguji. Yang seperti ini gagal dipindai aplikasi bank, dan memang seharusnya.
         var (klien, _) = await AkunAsync(UserRole.Klien);
         var order = await BuatOrderAsync(klien);
 
         var transaksi = await BuatTransaksiAsync(klien, order.Id);
 
-        Assert.StartsWith("SIMULASI-QRIS", transaksi.QrisPayload);
-        Assert.Contains(order.KodeOrder, transaksi.QrisPayload);
+        Assert.StartsWith("https://app.sandbox.midtrans.com/", transaksi.CheckoutUrl);
     }
 
     [Fact]
@@ -204,6 +201,37 @@ public class PembayaranEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<
         // Dan transaksi baru bisa dibuat lagi.
         var lagi = await BuatTransaksiAsync(klien, order.Id);
         Assert.Equal(nameof(PaymentStatus.Pending), lagi.Status);
+    }
+
+    [Fact]
+    public async Task TransaksiKedaluwarsaBisaLangsungDiterbitkanUlangSetelahRestart()
+    {
+        // Layar pembayaran memanggil POST lebih dulu. Ia tidak boleh bergantung pada GET
+        // lama untuk membersihkan transaksi yang kedaluwarsa ketika aplikasi sempat ditutup.
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+        var order = await BuatOrderAsync(klien);
+        var lama = await BuatTransaksiAsync(klien, order.Id);
+
+        using (var lingkup = pabrik.Services.CreateScope())
+        {
+            var db = lingkup.ServiceProvider.GetRequiredService<AppDbContext>();
+            var pembayaran = await db.Payments.SingleAsync(p => p.Id == lama.Id);
+            pembayaran.ExpiresAt = DateTime.UtcNow.AddMinutes(-1);
+            await db.SaveChangesAsync();
+        }
+
+        var baru = await BuatTransaksiAsync(klien, order.Id);
+
+        Assert.NotEqual(lama.Id, baru.Id);
+        Assert.Equal(nameof(PaymentStatus.Pending), baru.Status);
+        using var verifikasi = pabrik.Services.CreateScope();
+        var dbVerifikasi = verifikasi.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal(
+            PaymentStatus.Kedaluwarsa,
+            await dbVerifikasi.Payments
+                .Where(p => p.Id == lama.Id)
+                .Select(p => p.Status)
+                .SingleAsync());
     }
 
     [Fact]

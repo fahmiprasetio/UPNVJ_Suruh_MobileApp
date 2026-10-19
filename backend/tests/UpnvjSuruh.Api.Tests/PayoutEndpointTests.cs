@@ -102,7 +102,11 @@ public class PayoutEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Data
         (await runner.PostAsync($"/api/orders/{order.Id}/terima", null)).EnsureSuccessStatusCode();
 
         var foto = await UnggahFotoAsync(runner, order.Id);
-        (await runner.PostAsJsonAsync($"/api/orders/{order.Id}/selesai", new { FotoBuktiUrl = foto }))
+        (await runner.PostAsJsonAsync($"/api/orders/{order.Id}/selesai", new
+        {
+            FotoBuktiUrl = foto,
+            CatatanSerahTerima = "Diserahkan ke klien.",
+        }))
             .EnsureSuccessStatusCode();
 
         return order.Harga!.Value;

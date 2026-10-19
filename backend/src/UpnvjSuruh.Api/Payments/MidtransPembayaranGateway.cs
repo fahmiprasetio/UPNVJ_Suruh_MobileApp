@@ -6,13 +6,10 @@ using UpnvjSuruh.Api.Domain;
 namespace UpnvjSuruh.Api.Payments;
 
 /// <summary>
-/// Membuat transaksi QRIS sungguhan lewat Midtrans Core API (<c>/v2/charge</c>).
+/// Membuat checkout Midtrans Snap lewat endpoint <c>/snap/v1/transactions</c>.
 ///
-/// Bukan Snap: Snap membuka halaman pembayaran hostingan Midtrans, sedangkan aplikasi ini
-/// sudah menggambar kode QR-nya sendiri (lihat <c>pembayaran_screen.dart</c>). Core API
-/// menjawab <c>qr_string</c> mentah yang bisa langsung dipakai di situ, jadi tidak ada yang
-/// berubah di sisi mobile -- cuma isi <c>QrPayload</c>-nya yang tadinya karangan sendiri,
-/// sekarang QRIS asli.
+/// Snap adalah satu-satunya jalur pembayaran: halaman pembayaran, pilihan channel, dan kartu
+/// Sandbox ditampilkan oleh Midtrans sendiri.
 ///
 /// <c>HttpClient</c>-nya (Authorization Basic dengan Server Key, BaseAddress Sandbox/Production)
 /// dipasang sekali di <c>Program.cs</c>. <see cref="MidtransOptions"/> cuma disentuh untuk satu
@@ -35,7 +32,7 @@ public class MidtransPembayaranGateway(
     /// </summary>
     private const string XOverrideNotification = "X-Override-Notification";
 
-    public async Task<(string ReferensiGateway, string QrPayload)> BuatTransaksiAsync(
+    public async Task<HasilPembuatanPembayaran> BuatTransaksiAsync(
         Order order,
         Guid paymentId,
         decimal jumlah,
@@ -46,44 +43,59 @@ public class MidtransPembayaranGateway(
         // capstone), dan Midtrans menolak order_id yang dipakai ulang untuk transaksi baru.
         var orderIdMidtrans = paymentId.ToString("N");
 
-        using var permintaan = new HttpRequestMessage(HttpMethod.Post, "v2/charge")
+        using var permintaan = new HttpRequestMessage(HttpMethod.Post, "snap/v1/transactions")
         {
             Content = JsonContent.Create(new
             {
-                payment_type = "qris",
                 transaction_details = new
                 {
                     order_id = orderIdMidtrans,
-                    // QRIS tidak mengenal pecahan rupiah.
                     gross_amount = (long)jumlah,
                 },
+                // Samakan masa checkout Snap dengan aturan transaksi aplikasi. Tanpa start_time
+                // masa berlaku metode asynchronous baru mulai ketika pelanggan memilih channel.
+                expiry = new
+                {
+                    start_time = DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(7))
+                        .ToString("yyyy-MM-dd HH:mm:ss +0700"),
+                    unit = "minute",
+                    duration = 30,
+                },
+                page_expiry = new { unit = "minute", duration = 30 },
             }),
         };
         permintaan.Headers.Add(XOverrideNotification, opsi.Value.NotificationUrl);
 
         var jawaban = await http.SendAsync(permintaan, batal);
 
-        var isi = await jawaban.Content.ReadFromJsonAsync<MidtransChargeResponse>(
+        var isi = await jawaban.Content.ReadFromJsonAsync<MidtransSnapResponse>(
             cancellationToken: batal);
 
-        if (!jawaban.IsSuccessStatusCode || string.IsNullOrWhiteSpace(isi?.QrString))
+        if (!jawaban.IsSuccessStatusCode || string.IsNullOrWhiteSpace(isi?.Token) ||
+            !SnapUrlSah(isi.RedirectUrl))
         {
             // Tidak meneruskan isi jawaban Midtrans ke pemanggil: itu bisa memuat detail
             // internal yang tidak seharusnya sampai ke klien (lihat pola yang sama di
             // PengirimOtpWhatsapp.Samarkan). Dicatat ke log server, bukan dibocorkan lewat
             // pengecualian yang isinya ikut lolos ke ProblemDetails.
             log.LogError(
-                "Midtrans menolak transaksi order {OrderCode}: {StatusCode} {StatusCodeMidtrans}",
-                order.OrderCode, (int)jawaban.StatusCode, isi?.StatusCode);
+            "Midtrans Snap menolak transaksi order {OrderCode}: {StatusCode}",
+            order.OrderCode, (int)jawaban.StatusCode);
             throw new InvalidOperationException(
                 "Gateway pembayaran sedang bermasalah, coba lagi sebentar lagi.");
         }
 
-        return (orderIdMidtrans, isi.QrString);
+        return new HasilPembuatanPembayaran(orderIdMidtrans, isi.RedirectUrl!);
     }
+
+    private static bool SnapUrlSah(string? nilai) =>
+        Uri.TryCreate(nilai, UriKind.Absolute, out var uri) &&
+        uri.Scheme == Uri.UriSchemeHttps &&
+        (uri.Host.Equals("app.sandbox.midtrans.com", StringComparison.OrdinalIgnoreCase) ||
+         uri.Host.Equals("app.midtrans.com", StringComparison.OrdinalIgnoreCase));
 }
 
 /// <summary>Cuma bidang yang benar-benar dipakai; Midtrans mengirim jauh lebih banyak.</summary>
-file sealed record MidtransChargeResponse(
-    [property: JsonPropertyName("status_code")] string? StatusCode,
-    [property: JsonPropertyName("qr_string")] string? QrString);
+file sealed record MidtransSnapResponse(
+    [property: JsonPropertyName("token")] string? Token,
+    [property: JsonPropertyName("redirect_url")] string? RedirectUrl);

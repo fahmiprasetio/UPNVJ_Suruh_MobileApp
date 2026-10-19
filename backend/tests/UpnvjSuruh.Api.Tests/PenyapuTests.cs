@@ -66,7 +66,6 @@ public class PenyapuTests(DatabaseApiFactory pabrik) : IClassFixture<DatabaseApi
                 OrderId = orderId,
                 Amount = 11000m,
                 GatewayReference = "trx-" + Guid.NewGuid().ToString("N"),
-                QrPayload = "SIMULASI",
                 ExpiresAt = kedaluwarsaPada,
             };
             db.Payments.Add(pembayaran);

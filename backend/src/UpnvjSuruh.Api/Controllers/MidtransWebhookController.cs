@@ -95,8 +95,7 @@ public class MidtransWebhookController(
 
     private static PaymentStatus? StatusDari(string? transactionStatus) => transactionStatus switch
     {
-        // QRIS tidak pernah lewat "capture" (itu khusus kartu kredit dua tahap); disertakan
-        // saja untuk berjaga-jaga kalau metode lain menyusul lewat gateway yang sama nanti.
+        // Snap dapat melaporkan settlement atau capture, bergantung metode pembayarannya.
         "settlement" or "capture" => PaymentStatus.Berhasil,
         "expire" => PaymentStatus.Kedaluwarsa,
         "deny" or "cancel" or "failure" => PaymentStatus.Gagal,

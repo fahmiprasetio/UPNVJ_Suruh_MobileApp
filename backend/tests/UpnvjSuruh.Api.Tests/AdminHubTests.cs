@@ -269,7 +269,11 @@ public class AdminHubTests(DatabaseApiFactory pabrik) : IClassFixture<DatabaseAp
         var url = (await unggah.Content.ReadFromJsonAsync<FotoBuktiResponse>())!.Url;
 
         await using var sambungan = await SambungAsync(tokenAdmin);
-        (await runner.PostAsJsonAsync($"/api/orders/{order.Id}/selesai", new { FotoBuktiUrl = url }))
+        (await runner.PostAsJsonAsync($"/api/orders/{order.Id}/selesai", new
+        {
+            FotoBuktiUrl = url,
+            CatatanSerahTerima = "Diserahkan ke klien.",
+        }))
             .EnsureSuccessStatusCode();
 
         Assert.True(await sambungan.TungguAsync(order.Id));

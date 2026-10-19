@@ -136,62 +136,35 @@ if (string.IsNullOrWhiteSpace(builder.Configuration[$"{WebhookOptions.Section}:S
 
 // --- Gateway pembayaran ---
 //
-// Dibaca langsung dari IOptions<MidtransOptions>, tanpa syarat, supaya
-// MidtransWebhookController selalu bisa memverifikasi tanda tangan (dan gagal tertutup kalau
-// ServerKey kosong, lihat MidtransOptions.SignatureValid) tidak peduli gateway mana yang
-// sedang aktif di bawah ini.
+// Dibaca langsung dari IOptions<MidtransOptions> supaya webhook Snap selalu memverifikasi
+// tanda tangannya dan gagal tertutup ketika Server Key belum tersedia.
 builder.Services
     .AddOptions<MidtransOptions>()
     .Bind(builder.Configuration.GetSection(MidtransOptions.Section));
 
 var midtransServerKey = builder.Configuration["Midtrans:ServerKey"];
-if (!string.IsNullOrWhiteSpace(midtransServerKey))
+if (string.IsNullOrWhiteSpace(midtransServerKey))
 {
-    if (string.IsNullOrWhiteSpace(builder.Configuration["Midtrans:NotificationUrl"]))
-    {
-        // Server Key Sandbox terikat ke satu akun merchant, bukan satu proyek. Tanpa alamat
-        // ini, MidtransPembayaranGateway tidak tahu ke mana harus menyuruh Midtrans mengirim
-        // notifikasi transaksi proyek ini secara khusus (lihat MidtransOptions.NotificationUrl),
-        // dan diam-diam jatuh ke apa pun yang tersimpan di dashboard untuk proyek lain yang
-        // kebetulan memakai akun Sandbox yang sama.
-        throw new InvalidOperationException(
-            "Midtrans:NotificationUrl belum diisi. Di mesin pengembang jalankan: " +
-            "dotnet user-secrets set \"Midtrans:NotificationUrl\" " +
-            "\"<alamat lengkap /api/webhooks/midtrans milik proyek ini>\". Tanpa ini, notifikasi " +
-            "pembayaran proyek ini bisa mendarat di proyek lain yang berbagi akun Midtrans yang " +
-            "sama, atau sebaliknya.");
-    }
-
-    var midtransProduction = builder.Configuration.GetValue<bool>("Midtrans:Production");
-    builder.Services.AddHttpClient<IPembayaranGateway, MidtransPembayaranGateway>(client =>
-    {
-        client.BaseAddress = new Uri(midtransProduction
-            ? "https://api.midtrans.com/"
-            : "https://api.sandbox.midtrans.com/");
-        // Basic Auth dengan Server Key sebagai username, kata sandi kosong -- persis format
-        // yang dituntut Core API Midtrans.
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-            "Basic",
-            Convert.ToBase64String(Encoding.ASCII.GetBytes($"{midtransServerKey}:")));
-    });
-}
-else if (builder.Environment.IsDevelopment())
-{
-    builder.Services.AddSingleton<IPembayaranGateway, PembayaranGatewaySimulasi>();
-}
-else
-{
-    // Sengaja menolak menyala, mengikuti pola yang sama dengan IPengirimOtp dan
-    // IPengirimNotifikasi di bawah: server produksi tanpa gateway sungguhan akan melayani
-    // setiap permintaan bayar dengan QR yang tidak bisa dipindai bank mana pun, dan tidak ada
-    // satu layar pun yang menunjukkan itu.
     throw new InvalidOperationException(
-        "Midtrans:ServerKey belum diisi. Di mesin pengembang jalankan: " +
-        "dotnet user-secrets set \"Midtrans:ServerKey\" \"<server key Sandbox/Production>\", " +
-        "dotnet user-secrets set \"Midtrans:ClientKey\" \"<client key>\", dan " +
-        "dotnet user-secrets set \"Midtrans:NotificationUrl\" \"<alamat webhook proyek ini>\". " +
-        "Tanpa ini tidak ada satu pun cara klien membayar order.");
+        "Midtrans:ServerKey belum diisi. Pembayaran hanya tersedia melalui Midtrans Snap.");
 }
+
+if (string.IsNullOrWhiteSpace(builder.Configuration["Midtrans:NotificationUrl"]))
+{
+    throw new InvalidOperationException(
+        "Midtrans:NotificationUrl belum diisi. Pembayaran hanya tersedia melalui Midtrans Snap.");
+}
+
+var midtransProduction = builder.Configuration.GetValue<bool>("Midtrans:Production");
+builder.Services.AddHttpClient<IPembayaranGateway, MidtransPembayaranGateway>(client =>
+{
+    client.BaseAddress = new Uri(midtransProduction
+        ? "https://app.midtrans.com/"
+        : "https://app.sandbox.midtrans.com/");
+    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+        "Basic",
+        Convert.ToBase64String(Encoding.ASCII.GetBytes($"{midtransServerKey}:")));
+});
 
 // --- OTP ---
 
@@ -665,54 +638,6 @@ app.MapHub<OrderHub>("/hubs/orders");
 // tanpa sebab kegagalannya: yang perlu tahu kenapa membaca log, bukan siapa pun yang
 // kebetulan menemukan alamat ini.
 app.MapHealthChecks("/health").AllowAnonymous().DisableRateLimiting();
-
-if (app.Environment.IsDevelopment())
-{
-    // Tiruan gateway, sepadan dengan halaman simulator di sandbox Midtrans.
-    //
-    // Dipasang sebagai endpoint yang cuma ada di Development, bukan sebagai controller
-    // dengan penjagaan di dalamnya. Bedanya penting: controller yang dijaga tetap ada di
-    // aplikasi produksi, dan penjagaannya tinggal satu baris yang bisa hilang saat
-    // penyuntingan. Yang tidak pernah terdaftar tidak bisa dipanggil, apa pun yang terjadi
-    // pada kodenya nanti.
-    //
-    // Kalau ini sampai hidup di produksi, siapa pun yang tahu alamatnya bisa memesan lalu
-    // menandai pesanannya sendiri lunas, dan seluruh aturan bayar di depan jadi hiasan.
-    app.MapPost("/api/dev/pembayaran/{orderId:guid}/lunas", async (
-        Guid orderId,
-        PenyelesaiPembayaran penyelesai,
-        AppDbContext db,
-        CancellationToken batal) =>
-    {
-        var order = await db.Orders
-            .Include(o => o.Payments)
-            .SingleOrDefaultAsync(o => o.Id == orderId, batal);
-
-        if (order is null) return Results.NotFound();
-
-        var pembayaran = order.Payments.SingleOrDefault(p => p.Menunggu);
-        if (pembayaran is null)
-        {
-            return Results.BadRequest(new ProblemDetails
-            {
-                Title = "Order ini belum punya transaksi yang menunggu",
-                Detail = "Buat transaksinya dulu lewat POST /api/orders/{id}/pembayaran.",
-                Status = StatusCodes.Status400BadRequest,
-            });
-        }
-
-        var hasil = await penyelesai.SelesaikanAsync(
-            orderId,
-            pembayaran.GatewayReference,
-            PaymentStatus.Berhasil,
-            pembayaran.Amount,
-            batal);
-
-        return hasil == HasilPenyelesaian.TidakDitemukan ? Results.NotFound() : Results.Ok();
-    })
-    .AllowAnonymous()
-    .WithSummary("ALAT PENGUJI: menirukan gateway mengabarkan uang sudah masuk.");
-}
 
 app.Run();
 

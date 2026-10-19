@@ -39,10 +39,24 @@ Capstone_Proposal_070_076_087.pdf
 
 cara_jalanain_app_di_browser.md
 catatan_ukuran_beranda.md
+daftar_nomor_penting.md
 
 # Skrip pratinjau web lokal (lihat bagian 13 Progres capstone.md) -- alat
 # pengembang mesin ini, bukan bagian aplikasi.
 /jalanin_app.py
+
+# Artefak UTS bersifat lokal (brief, template, draf laporan, dan bukti presentasi),
+# sehingga tidak boleh ikut commit atau GitHub.
+/uts/
+/Juknis UTS Capstone Project Kelas B.pdf
+/Template UTS Capstone Project.docx
+
+__pycache__/
+*.pyc
+
+# Folder aset desain UI referensi
+UI Saat ini/
+/UI Saat ini/
 
 # Berkas catatan progres & dokumen internal - DILARANG KERAS MASUK REPOSITORY
 Progres capstone.md
@@ -53,12 +67,3 @@ AGENTS.md
 # Skrip utilitas batch / powershell lokal
 *.bat
 *.ps1
-
-# Folder aset desain UI referensi
-UI Saat ini/
-/UI Saat ini/
-
-# Artefak lokal
-/uts/
-__pycache__/
-*.pyc

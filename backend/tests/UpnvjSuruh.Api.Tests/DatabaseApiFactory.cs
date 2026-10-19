@@ -7,6 +7,8 @@ using Npgsql;
 using UpnvjSuruh.Api.Auth;
 using UpnvjSuruh.Api.Data;
 using UpnvjSuruh.Api.Notifikasi;
+using UpnvjSuruh.Api.Domain;
+using UpnvjSuruh.Api.Payments;
 
 namespace UpnvjSuruh.Api.Tests;
 
@@ -57,6 +59,9 @@ public class DatabaseApiFactory : ApiFactory, IAsyncLifetime
 
             services.RemoveAll<IPengirimNotifikasi>();
             services.AddSingleton<IPengirimNotifikasi>(Notifikasi);
+
+            services.RemoveAll<IPembayaranGateway>();
+            services.AddSingleton<IPembayaranGateway, GatewaySnapPencatat>();
         });
 
         base.ConfigureWebHost(builder);
@@ -88,6 +93,16 @@ public class DatabaseApiFactory : ApiFactory, IAsyncLifetime
         perintah.CommandText = $"DROP DATABASE IF EXISTS \"{_namaDb}\" WITH (FORCE)";
         await perintah.ExecuteNonQueryAsync();
     }
+}
+
+/// <summary>Gateway Snap test double yang mempertahankan kontrak checkout tanpa jaringan luar.</summary>
+public sealed class GatewaySnapPencatat : IPembayaranGateway
+{
+    public Task<HasilPembuatanPembayaran> BuatTransaksiAsync(
+        Order order, Guid paymentId, decimal jumlah, CancellationToken batal) =>
+        Task.FromResult(new HasilPembuatanPembayaran(
+            paymentId.ToString("N"),
+            "https://app.sandbox.midtrans.com/snap/v2/vtweb/token-uji"));
 }
 
 /// <summary>

@@ -224,7 +224,11 @@ public class LepasOrderTests(DatabaseApiFactory pabrik) : IClassFixture<Database
         unggah.EnsureSuccessStatusCode();
         var url = (await unggah.Content.ReadFromJsonAsync<FotoBuktiResponse>())!.Url;
 
-        (await runner.PostAsJsonAsync($"/api/orders/{order.Id}/selesai", new { FotoBuktiUrl = url }))
+        (await runner.PostAsJsonAsync($"/api/orders/{order.Id}/selesai", new
+        {
+            FotoBuktiUrl = url,
+            CatatanSerahTerima = "Diserahkan ke klien.",
+        }))
             .EnsureSuccessStatusCode();
 
         Assert.Equal(HttpStatusCode.BadRequest, (await LepasAsync(runner, order.Id)).StatusCode);

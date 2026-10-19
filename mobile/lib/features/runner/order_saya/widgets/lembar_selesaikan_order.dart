@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,7 +11,8 @@ import '../../../../domain/models/order.dart';
 import '../../../../domain/service_catalog.dart';
 import '../../../../core/providers/repository_providers.dart';
 
-/// Lembar penyelesaian order: foto bukti dulu, baru boleh ditandai selesai.
+/// Lembar penyelesaian order: foto bukti dan catatan serah-terima harus lengkap,
+/// baru order boleh ditandai selesai.
 ///
 /// Foto bukti dibuat wajib, bukan disarankan. Tanpa foto, "selesai" cuma
 /// pengakuan runner, dan pengakuan tidak bisa ditunjukkan ke klien yang
@@ -47,6 +49,7 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
   final _catatanController = TextEditingController();
 
   String? _fotoBuktiUrl;
+  String? _pesanGalatFoto;
   bool _sedangAmbilFoto = false;
   bool _sedangMenutup = false;
   final Map<String, String> _keySelesai = {};
@@ -115,6 +118,13 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
             )
           else
             _KartuFotoTerkirim(onGanti: sibuk ? null : _ambilFoto),
+          if (_pesanGalatFoto != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _pesanGalatFoto!,
+              style: teks.bodySmall?.copyWith(color: skema.error),
+            ),
+          ],
           if (ref.watch(fotoBuktiTiruanProvider)) ...[
             const SizedBox(height: AppTheme.spasiKecil),
             const _CatatanAlatPenguji(),
@@ -128,13 +138,20 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
             minLines: 2,
             enabled: !sibuk,
             decoration: const InputDecoration(
-              labelText: 'Catatan serah terima (boleh dikosongkan)',
+              labelText: 'Catatan serah terima',
               hintText: 'Barang dititipkan ke penjaga kos',
+              helperText: 'Wajib: tulis lokasi atau penerima hasil pekerjaan.',
             ),
+            onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: AppTheme.spasiBesar),
           FilledButton(
-            onPressed: _fotoBuktiUrl == null || sibuk ? null : _tandaiSelesai,
+            onPressed:
+                _fotoBuktiUrl == null ||
+                    _catatanController.text.trim().isEmpty ||
+                    sibuk
+                ? null
+                : _tandaiSelesai,
             child: _sedangMenutup
                 ? const SizedBox(
                     height: 20,
@@ -149,7 +166,10 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
   }
 
   Future<void> _ambilFoto() async {
-    setState(() => _sedangAmbilFoto = true);
+    setState(() {
+      _sedangAmbilFoto = true;
+      _pesanGalatFoto = null;
+    });
 
     final String? url;
     try {
@@ -158,30 +178,37 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
           .ambilDanUnggah(orderId: widget.order.id);
     } catch (galat) {
       if (!mounted) return;
-      setState(() => _sedangAmbilFoto = false);
-      _kabari(
-        galat is GalatApi ? galat.pesan : 'Foto gagal diunggah. Coba lagi, ya.',
-      );
+      final pesan =
+          galat is GalatApi ? galat.pesan : 'Foto gagal diunggah. Coba lagi, ya.';
+      setState(() {
+        _sedangAmbilFoto = false;
+        _pesanGalatFoto = pesan;
+      });
+      _kabari(pesan);
       return;
     }
 
     if (!mounted) return;
     setState(() {
       _sedangAmbilFoto = false;
-      // `null` berarti runner menutup kamera tanpa memotret, tidak ada yang
-      // perlu dikabarkan, keadaannya cuma kembali seperti semula.
-      if (url != null) _fotoBuktiUrl = url;
+      if (url != null) {
+        _fotoBuktiUrl = url;
+        _pesanGalatFoto = null;
+      } else if (kIsWeb) {
+        _pesanGalatFoto =
+            'Tidak ada foto yang dipilih. Pastikan memilih berkas gambar (JPG/PNG).';
+      }
     });
   }
 
   Future<void> _tandaiSelesai() async {
     final fotoBuktiUrl = _fotoBuktiUrl;
+    final catatan = _catatanController.text.trim();
     final user = ref.read(userAktifProvider).value;
-    if (fotoBuktiUrl == null || user == null) return;
+    if (fotoBuktiUrl == null || catatan.isEmpty || user == null) return;
 
     setState(() => _sedangMenutup = true);
 
-    final catatan = _catatanController.text.trim();
     final requestKey = '$fotoBuktiUrl|$catatan';
     final idempotencyKey = _keySelesai.putIfAbsent(
       requestKey,
@@ -193,7 +220,7 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
           .selesaikanOrder(
             orderId: widget.order.id,
             fotoBuktiUrl: fotoBuktiUrl,
-            catatanSerahTerima: catatan.isEmpty ? null : catatan,
+            catatanSerahTerima: catatan,
             idempotencyKey: idempotencyKey,
           );
     } catch (galat) {
@@ -279,7 +306,7 @@ class _KartuFotoTerkirim extends StatelessWidget {
   }
 }
 
-/// Pengakuan bahwa fotonya belum sungguhan, sepola panel simulator pembayaran.
+/// Pengakuan bahwa fotonya belum sungguhan, khusus untuk alat penguji foto.
 class _CatatanAlatPenguji extends StatelessWidget {
   const _CatatanAlatPenguji();
 

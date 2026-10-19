@@ -5,7 +5,7 @@ import '../../core/theme/app_theme.dart';
 
 /// Layar Pusat Bantuan dan FAQ resmi UPNVJ Suruh.
 ///
-/// Menyediakan panduan lengkap seputar alur Jalur A/B, pembayaran QRIS,
+/// Menyediakan panduan lengkap seputar alur Jalur A/B, pembayaran Midtrans Snap,
 /// pembatalan order, serta tombol kontak langsung ke admin mitra.
 class PusatBantuanScreen extends StatelessWidget {
   const PusatBantuanScreen({super.key});
@@ -127,7 +127,7 @@ class PusatBantuanScreen extends StatelessWidget {
           _butirFaq(
             context,
             'Bagaimana cara pembayaran di aplikasi?',
-            'Semua pembayaran menggunakan QRIS dinamis yang disediakan melalui Midtrans. Anda dapat memindai kode QR menggunakan aplikasi perbankan (BCA, Mandiri, BNI, BRI, dll.) atau dompet digital (GoPay, OVO, Dana, ShopeePay). Pembayaran terverifikasi otomatis dalam hitungan detik tanpa perlu mengirim tangkapan layar bukti transfer.',
+            'Semua pembayaran dibuka melalui halaman Midtrans Snap. Pilih metode pembayaran yang tersedia di halaman Midtrans; aplikasi tidak menyimpan nomor kartu atau data pembayaran Anda. Status pesanan diperbarui setelah Midtrans mengonfirmasi pembayaran.',
           ),
           _butirFaq(
             context,

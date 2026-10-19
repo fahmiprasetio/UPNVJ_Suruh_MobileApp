@@ -113,6 +113,8 @@ export class KlienApi {
     if (jawaban.status === 204) return undefined as T;
 
     const isi = await badanJson(jawaban);
+    if (jawaban.status === 202 && isi === null) return undefined as T;
+
     if (isi === null) {
       // Jawaban 200 yang badannya bukan JSON berarti yang menjawab bukan API ini,
       // biasanya halaman galat dari proxy atau alamat yang salah ketik. Menyerahkannya

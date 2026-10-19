@@ -66,13 +66,37 @@ public class PembayaranController(AppDbContext db, IPembayaranGateway gateway) :
             });
         }
 
+        var sekarang = DateTime.UtcNow;
+
+        // Status kedaluwarsa harus dibereskan di jalur POST juga, bukan hanya saat klien
+        // sempat memanggil GET. Setelah aplikasi ditutup semalaman, layar pembayaran
+        // langsung meminta transaksi baru. Tanpa pembaruan ini, transaksi lama sudah tidak
+        // dianggap hidup oleh Hidup(), tetapi index unik basis data masih melihatnya sebagai
+        // Pending dan menolak QR pengganti dengan 500.
+        if (order.Payments.Any(p => p.Menunggu && p.ExpiresAt <= sekarang))
+        {
+            await db.Payments
+                .Where(p => p.OrderId == order.Id &&
+                            p.Status == PaymentStatus.Pending &&
+                            p.ExpiresAt <= sekarang)
+                .ExecuteUpdateAsync(
+                    ubah => ubah.SetProperty(p => p.Status, PaymentStatus.Kedaluwarsa),
+                    batal);
+
+            // ExecuteUpdate tidak menyelaraskan entitas yang sudah dilacak. Muat ulang agar
+            // Hidup() dan respons berikutnya tidak membaca status Pending yang basi.
+            db.ChangeTracker.Clear();
+            order = await Muat(orderId, batal);
+            if (order is null) return NotFound();
+        }
+
         var adaYangMenunggu = Hidup(order);
         if (adaYangMenunggu is not null)
         {
             // Baris pembayaran disimpan sebelum gateway dipanggil. Request paralel atau
             // retry setelah timeout bisa tiba pada jendela singkat ketika barisnya sudah
             // ada tetapi QR belum diterima; jangan mengirim QR kosong ke klien.
-            if (string.IsNullOrWhiteSpace(adaYangMenunggu.QrPayload))
+            if (BelumSiapDitampilkan(adaYangMenunggu))
             {
                 return Conflict(new ProblemDetails
                 {
@@ -85,7 +109,6 @@ public class PembayaranController(AppDbContext db, IPembayaranGateway gateway) :
             return Ok(TransaksiPembayaranResponse.Dari(adaYangMenunggu));
         }
 
-        var sekarang = DateTime.UtcNow;
         var paymentId = Guid.NewGuid();
 
         // Baris ini disimpan SEBELUM gateway dipanggil, bukan sesudah. Kalau urutannya
@@ -108,7 +131,6 @@ public class PembayaranController(AppDbContext db, IPembayaranGateway gateway) :
             // dan kedaluwarsa meleset dari BatasWaktuBayar, dan yang membaca selisihnya
             // nanti akan menyimpulkan batas waktunya bukan angka yang tertulis di sini.
             CreatedAt = sekarang,
-            QrPayload = string.Empty,
             ExpiresAt = sekarang.Add(TarifConfig.BatasWaktuBayar),
         };
 
@@ -128,7 +150,7 @@ public class PembayaranController(AppDbContext db, IPembayaranGateway gateway) :
                 ? null
                 : Hidup(orderSesudahBentrok);
             if (transaksiPemenang is null) throw;
-            if (string.IsNullOrWhiteSpace(transaksiPemenang.QrPayload))
+            if (BelumSiapDitampilkan(transaksiPemenang))
             {
                 return Conflict(new ProblemDetails
                 {
@@ -143,10 +165,10 @@ public class PembayaranController(AppDbContext db, IPembayaranGateway gateway) :
 
         try
         {
-            var (referensiGateway, qrPayload) = await gateway.BuatTransaksiAsync(
+            var hasilGateway = await gateway.BuatTransaksiAsync(
                 order, paymentId, harga, batal);
-            pembayaran.GatewayReference = referensiGateway;
-            pembayaran.QrPayload = qrPayload;
+            pembayaran.GatewayReference = hasilGateway.ReferensiGateway;
+            pembayaran.CheckoutUrl = hasilGateway.CheckoutUrl;
         }
         catch
         {
@@ -238,4 +260,7 @@ public class PembayaranController(AppDbContext db, IPembayaranGateway gateway) :
     /// <summary>Transaksi yang masih menunggu dan belum lewat batas waktunya.</summary>
     private static Payment? Hidup(Order order) => order.Payments
         .SingleOrDefault(p => p.Menunggu && p.ExpiresAt > DateTime.UtcNow);
+
+    private static bool BelumSiapDitampilkan(Payment pembayaran) =>
+        string.IsNullOrWhiteSpace(pembayaran.CheckoutUrl);
 }

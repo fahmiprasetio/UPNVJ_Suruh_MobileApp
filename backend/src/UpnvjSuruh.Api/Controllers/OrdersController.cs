@@ -242,14 +242,17 @@ public class OrdersController(
         CancellationToken batal)
     {
         var runnerId = User.Id();
+        var batasWaktu = DateTime.UtcNow - OrderKedaluwarsa.Ambang;
 
         return Ok(await HalamanAsync(
             db.Orders.Where(o =>
                 o.ClientId != runnerId &&
                 ((o.Status == OrderStatus.MencariRunner
+                        && (o.PaidAt ?? o.CreatedAt) >= batasWaktu
                         && !o.RunnerAssignments.Any(a => a.RunnerId == runnerId)
                         && o.RunnerAssignments.Count < o.RequiredRunnerCount)
                     || (o.Status == OrderStatus.Permintaan
+                        && o.CreatedAt >= batasWaktu
                         && !o.Offers.Any(f =>
                             f.CreatedByRunnerId == runnerId && f.Status == OfferStatus.Pending)))),
             permintaan,
@@ -489,6 +492,11 @@ public class OrdersController(
         if (order.Status != OrderStatus.MencariRunner)
         {
             return Ok(new TerimaOrderResponse(false, "Order ini sudah tidak mencari runner."));
+        }
+
+        if (OrderKedaluwarsa.ApakahKedaluwarsa(order, DateTime.UtcNow))
+        {
+            return Ok(new TerimaOrderResponse(false, "Order ini sudah kedaluwarsa karena tidak ditangani lebih dari 1 hari."));
         }
 
         if (order.RunnerAssignments.Any(a => a.RunnerId == runnerId))
@@ -767,8 +775,8 @@ public class OrdersController(
     /// sini, bukan di tampilan: tombol yang disembunyikan tidak menghentikan siapa pun yang
     /// memanggil langsung.
     ///
-    /// Foto bukti wajib ada, dan itu yang membedakan pekerjaan selesai dari pengakuan
-    /// selesai.
+    /// Foto bukti dan catatan serah-terima wajib ada. Foto membuktikan hasilnya, sedangkan
+    /// catatan menjelaskan di mana atau kepada siapa hasil pekerjaan diserahkan.
     ///
     /// Pada order multi-runner, runner mana pun yang ditugaskan boleh menutupnya. Itu
     /// keputusan sementara: siapa yang berhak menekan selesai kalau pekerjaannya dibagi tiga
@@ -782,6 +790,16 @@ public class OrdersController(
         SelesaikanOrderRequest permintaan,
         CancellationToken batal)
     {
+        if (string.IsNullOrWhiteSpace(permintaan.CatatanSerahTerima))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Catatan serah-terima wajib diisi",
+                Detail = "Tulis lokasi atau penerima hasil pekerjaan sebelum menyelesaikan order.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
         if (!IdempotensiOrder.CobaBacaKey(Request, out var key))
         {
             return BadRequest(new ProblemDetails
@@ -860,7 +878,7 @@ public class OrdersController(
         db.OrderStatusChanges.Add(perpindahan);
         order.CompletedAt = sekarang;
         order.PhotoUrl = permintaan.FotoBuktiUrl.Trim();
-        order.HandoverNote = permintaan.CatatanSerahTerima?.Trim();
+        order.HandoverNote = permintaan.CatatanSerahTerima.Trim();
 
         // Bayaran runner dibekukan di sini, pada satu-satunya saat harganya, runnernya, dan
         // rumus bagi hasil yang berlaku sama-sama sudah pasti. Menghitungnya belakangan saat
