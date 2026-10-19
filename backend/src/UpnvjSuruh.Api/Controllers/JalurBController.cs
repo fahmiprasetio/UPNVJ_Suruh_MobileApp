@@ -258,6 +258,11 @@ public class JalurBController(
                 $"Order ini sedang berstatus {order.Status}.");
         }
 
+        if (OrderKedaluwarsa.ApakahKedaluwarsa(order, DateTime.UtcNow))
+        {
+            return Salah("Order sudah kedaluwarsa", "Permintaan ini sudah lewat dari 1 hari dan tidak lagi menerima penawaran.");
+        }
+
         var penawaran = new OrderOffer
         {
             OrderId = order.Id,

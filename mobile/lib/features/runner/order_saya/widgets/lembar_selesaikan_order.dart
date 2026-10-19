@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -48,6 +49,7 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
   final _catatanController = TextEditingController();
 
   String? _fotoBuktiUrl;
+  String? _pesanGalatFoto;
   bool _sedangAmbilFoto = false;
   bool _sedangMenutup = false;
   final Map<String, String> _keySelesai = {};
@@ -116,6 +118,13 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
             )
           else
             _KartuFotoTerkirim(onGanti: sibuk ? null : _ambilFoto),
+          if (_pesanGalatFoto != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _pesanGalatFoto!,
+              style: teks.bodySmall?.copyWith(color: skema.error),
+            ),
+          ],
           if (ref.watch(fotoBuktiTiruanProvider)) ...[
             const SizedBox(height: AppTheme.spasiKecil),
             const _CatatanAlatPenguji(),
@@ -157,7 +166,10 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
   }
 
   Future<void> _ambilFoto() async {
-    setState(() => _sedangAmbilFoto = true);
+    setState(() {
+      _sedangAmbilFoto = true;
+      _pesanGalatFoto = null;
+    });
 
     final String? url;
     try {
@@ -166,19 +178,26 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
           .ambilDanUnggah(orderId: widget.order.id);
     } catch (galat) {
       if (!mounted) return;
-      setState(() => _sedangAmbilFoto = false);
-      _kabari(
-        galat is GalatApi ? galat.pesan : 'Foto gagal diunggah. Coba lagi, ya.',
-      );
+      final pesan =
+          galat is GalatApi ? galat.pesan : 'Foto gagal diunggah. Coba lagi, ya.';
+      setState(() {
+        _sedangAmbilFoto = false;
+        _pesanGalatFoto = pesan;
+      });
+      _kabari(pesan);
       return;
     }
 
     if (!mounted) return;
     setState(() {
       _sedangAmbilFoto = false;
-      // `null` berarti runner menutup kamera tanpa memotret, tidak ada yang
-      // perlu dikabarkan, keadaannya cuma kembali seperti semula.
-      if (url != null) _fotoBuktiUrl = url;
+      if (url != null) {
+        _fotoBuktiUrl = url;
+        _pesanGalatFoto = null;
+      } else if (kIsWeb) {
+        _pesanGalatFoto =
+            'Tidak ada foto yang dipilih. Pastikan memilih berkas gambar (JPG/PNG).';
+      }
     });
   }
 

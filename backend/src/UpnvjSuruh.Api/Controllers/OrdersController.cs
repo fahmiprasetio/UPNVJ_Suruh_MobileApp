@@ -242,14 +242,17 @@ public class OrdersController(
         CancellationToken batal)
     {
         var runnerId = User.Id();
+        var batasWaktu = DateTime.UtcNow - OrderKedaluwarsa.Ambang;
 
         return Ok(await HalamanAsync(
             db.Orders.Where(o =>
                 o.ClientId != runnerId &&
                 ((o.Status == OrderStatus.MencariRunner
+                        && (o.PaidAt ?? o.CreatedAt) >= batasWaktu
                         && !o.RunnerAssignments.Any(a => a.RunnerId == runnerId)
                         && o.RunnerAssignments.Count < o.RequiredRunnerCount)
                     || (o.Status == OrderStatus.Permintaan
+                        && o.CreatedAt >= batasWaktu
                         && !o.Offers.Any(f =>
                             f.CreatedByRunnerId == runnerId && f.Status == OfferStatus.Pending)))),
             permintaan,
@@ -489,6 +492,11 @@ public class OrdersController(
         if (order.Status != OrderStatus.MencariRunner)
         {
             return Ok(new TerimaOrderResponse(false, "Order ini sudah tidak mencari runner."));
+        }
+
+        if (OrderKedaluwarsa.ApakahKedaluwarsa(order, DateTime.UtcNow))
+        {
+            return Ok(new TerimaOrderResponse(false, "Order ini sudah kedaluwarsa karena tidak ditangani lebih dari 1 hari."));
         }
 
         if (order.RunnerAssignments.Any(a => a.RunnerId == runnerId))

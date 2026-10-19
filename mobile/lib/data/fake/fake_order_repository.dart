@@ -141,6 +141,11 @@ class FakeOrderRepository implements OrderRepository {
     // Ordernya sendiri tidak pernah sampai ke matanya.
     if (o.klienId == runnerId) return false;
 
+    // Order yang tidak ditangani lebih dari 1 hari tidak disiarkan.
+    final batasKedaluwarsa = DateTime.now().toUtc().subtract(const Duration(days: 1));
+    final waktuMulai = o.dibayarPada ?? o.dibuatPada;
+    if (waktuMulai.isBefore(batasKedaluwarsa)) return false;
+
     if (o.track == OrderTrack.jalurB && o.status == OrderStatus.permintaan) {
       // Runner yang penawarannya masih menunggu tidak perlu ditawarkan lagi.
       // Yang sudah ditolak/ditutup/dinego boleh menawar ulang.

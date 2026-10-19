@@ -43,8 +43,8 @@ const List<ItemBannerPromo> daftarPromoBawaan = [
     deskripsi: 'Pakai kode VJHEMAT untuk pesanan pertamamu di UPNVJ Suruh!',
     ikon: Icons.confirmation_number_outlined,
     warnaTag: Color(0xFFFFD54F),
-    warnaLatarAwal: Color(0xFF2E5E2A),
-    warnaLatarAkhir: Color(0xFF1E401B),
+    warnaLatarAwal: Color(0xFF00AA13),
+    warnaLatarAkhir: Color(0xFF007E0F),
     detailJudul: 'Voucher Pengguna Baru: VJHEMAT',
     detailIsi:
         'Nikmati potongan ongkir Rp 5.000 untuk pesanan pertamamu di UPNVJ Suruh. Salin kode voucher ini dan konfirmasikan ke runner saat menyepakati penawaran layanan!',

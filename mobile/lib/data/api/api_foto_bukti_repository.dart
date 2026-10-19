@@ -1,9 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/api/klien_api.dart';
 import '../../domain/repositories/foto_bukti_repository.dart';
 
-/// Kamera perangkat, lalu unggah ke server.
+/// Kamera perangkat (atau pemilih berkas di web), lalu unggah ke server.
 ///
 /// Dua langkah di balik satu panggilan, karena dari sisi runner memang satu tindakan:
 /// "ambil foto bukti". Yang dikembalikan URL, bukan berkas, jadi kalau ada nilainya
@@ -11,11 +12,10 @@ import '../../domain/repositories/foto_bukti_repository.dart';
 ///
 /// ## Kenapa kameranya dibatasi, bukan galeri
 ///
-/// Sumbernya dikunci ke kamera, bukan dibiarkan memilih dari galeri. Foto bukti yang
-/// boleh diambil dari galeri berarti runner bisa memakai foto lama, foto pekerjaan
-/// lain, atau foto yang dikirim orang. Ini bukan penjagaan yang tidak bisa ditembus,
-/// karena galeri masih bisa dijangkau lewat cara lain di perangkat yang sudah
-/// disiapkan untuk itu, tapi ia membuat jalan mudahnya tertutup.
+/// Di perangkat bergerak asli (Android/iOS), sumbernya dikunci ke kamera agar runner
+/// mengambil foto di tempat kejadian. Namun di platform web (`kIsWeb`), browser desktop
+/// tidak memiliki kamera langsung yang fleksibel dan atribut capture sering diblokir
+/// oleh browser sandbox/iframe/Brave Shields. Karena itu pada web digunakan galeri/berkas.
 ///
 /// ## Ukuran dikecilkan di perangkat
 ///
@@ -37,12 +37,12 @@ class ApiFotoBuktiRepository implements FotoBuktiRepository {
   @override
   Future<String?> ambilDanUnggah({required String orderId}) async {
     final foto = await _kamera.pickImage(
-      source: ImageSource.camera,
+      source: kIsWeb ? ImageSource.gallery : ImageSource.camera,
       maxWidth: _lebarMaks,
       imageQuality: _mutu,
     );
 
-    // Runner menutup kamera tanpa memotret. Keadaan yang sah, bukan galat.
+    // Runner menutup kamera/pemilih berkas tanpa memilih. Keadaan yang sah, bukan galat.
     if (foto == null) return null;
 
     final isi = await foto.readAsBytes();

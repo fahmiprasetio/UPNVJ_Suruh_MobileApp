@@ -1,72 +1,142 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/galat_api.dart';
 import '../../../core/api/idempotency_key.dart';
 import '../../../core/config/batas_masukan.dart';
 import '../../../core/format/formatters.dart';
+import '../../../core/providers/order_providers.dart';
+import '../../../core/providers/payment_providers.dart';
+import '../../../core/providers/repository_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/pesan_kosong.dart';
 import '../../../domain/enums.dart';
 import '../../../domain/models/order.dart';
-import '../../../domain/models/runner_ringkas.dart';
 import '../../../domain/service_catalog.dart';
-import '../../../core/providers/order_providers.dart';
-import '../../../core/providers/repository_providers.dart';
 import '../buka_form_order.dart';
-import '../widgets/lencana_status.dart';
 import 'widgets/kartu_bukti_pekerjaan.dart';
 import 'widgets/kartu_penawaran.dart';
 import 'widgets/linimasa_status.dart';
-import '../../../core/widgets/pesan_kosong.dart';
 
-/// Detail satu order: status, tahapan, dan rinciannya.
+/// Detail satu order: status, linimasa pemesanan, dan rincian perjalanan
+/// dengan gaya Gojek Aloha sesuai spesifikasi referensi desain.
 class DetailOrderScreen extends ConsumerWidget {
   const DetailOrderScreen({super.key, required this.orderId});
 
   final String orderId;
 
-  /// Tindakan yang bisa ditekan pada status ini, atau `null` kalau tidak ada.
-  ///
-  /// Menjawab tawaran yang menunggu bukan lagi tindakan tunggal di bilah
-  /// bawah: bisa ada beberapa tawaran dari runner berbeda sekaligus, dan
-  /// masing-masing punya tombolnya sendiri di kartunya. Bilah bawah cuma
-  /// dipakai untuk tindakan yang benar-benar satu per order, yaitu bayar.
   Widget? _bilahTindakan(Order? order) {
     if (order == null) return null;
     if (order.status == OrderStatus.menungguPembayaran) {
-      return _BilahBayar(order: order);
+      return _BilahBayarAloha(order: order);
     }
-    // Order yang batal ikut ditawari, mengikuti alasan yang sama dengan kartu
-    // riwayat (rencana capstone bagian 70): order yang gagal justru yang
-    // paling sering ingin diulang.
     if (!order.status.isAktif && adaFormOrder(order.serviceType)) {
-      return _BilahPesanLagi(order: order);
+      return _BilahPesanLagiAloha(order: order);
     }
     return null;
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final order = ref.watch(orderProvider(orderId));
+    final orderAsync = ref.watch(orderProvider(orderId));
+    final order = orderAsync.value;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
-        title: Text(order.value?.kodeOrder ?? 'Detail Order'),
-        // Selama Jalur B masih menerima tawaran, tidak ada satu jalur obrolan
-        // umum yang berarti: percakapannya per runner yang menawar, dan itu
-        // dibuka lewat kartu tawaran masing-masing, bukan tombol ini.
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0.5,
+        shadowColor: Colors.black.withValues(alpha: 0.05),
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_rounded,
+            color: Color(0xFF1F2937),
+            size: 22,
+          ),
+          onPressed: () {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            } else {
+              context.go(Rute.beranda);
+            }
+          },
+        ),
+        titleSpacing: 0,
+        title: order == null
+            ? const Text(
+                'Detail Order',
+                style: TextStyle(
+                  color: Color(0xFF111827),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              )
+            : Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F8EA),
+                  borderRadius: BorderRadius.circular(100),
+                  border: Border.all(color: const Color(0xFFC6F6D5)),
+                ),
+                child: Text(
+                  order.kodeOrder,
+                  style: const TextStyle(
+                    color: Color(0xFF00880C),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ),
         actions: [
-          if (order.value case final order?
-              when !(order.track == OrderTrack.jalurB &&
+          IconButton(
+            icon: const Icon(
+              Icons.headset_mic_outlined,
+              color: Color(0xFF4B5563),
+              size: 22,
+            ),
+            tooltip: 'Pusat Bantuan',
+            onPressed: () => context.push(Rute.pusatBantuan),
+          ),
+          if (order != null &&
+              !(order.track == OrderTrack.jalurB &&
                   order.status == OrderStatus.permintaan))
-            _TombolChat(order: order),
+            _TombolChatAloha(order: order),
+          Padding(
+            padding: const EdgeInsets.only(right: 12, left: 4),
+            child: InkWell(
+              onTap: () => context.push(Rute.profil),
+              borderRadius: BorderRadius.circular(100),
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF006C0E),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.person,
+                  color: Colors.white,
+                  size: 19,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
-      body: order.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+      body: orderAsync.when(
+        loading: () => const Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFF00AA13),
+            strokeWidth: 3,
+          ),
+        ),
         error: (galat, _) => PesanKosong(
           ikon: Icons.wifi_off_outlined,
           judul: 'Order gagal dimuat',
@@ -78,28 +148,15 @@ class DetailOrderScreen extends ConsumerWidget {
         ),
         data: (order) => order == null
             ? const Center(child: Text('Order tidak ditemukan.'))
-            : _Isi(order: order),
+            : _IsiAloha(order: order),
       ),
-      // Hanya diisi kalau memang ada yang bisa ditekan.
-      //
-      // Sebelumnya slot ini juga dipakai memajang keterangan status seperti
-      // "Runner sedang mengerjakan ordermu", dan hasilnya kalimat yang
-      // mengambang sendirian di tepi bawah layar, jauh dari isi yang ia
-      // jelaskan. Keterangan itu sekarang duduk di bawah linimasa, tempat
-      // pertanyaannya muncul.
-      bottomNavigationBar: _bilahTindakan(order.value),
+      bottomNavigationBar: _bilahTindakan(order),
     );
   }
 }
 
-/// Pintu masuk ke ruang chat order, lengkap dengan jumlah pesannya.
-///
-/// Ditaruh di bilah judul, bukan sebagai tombol mengambang, supaya tidak
-/// bersaing dengan tindakan utama di bilah bawah. Angkanya penting: tanpa itu,
-/// klien tidak punya alasan membuka chat dan pertanyaan admin bisa terlewat
-/// berhari-hari.
-class _TombolChat extends StatelessWidget {
-  const _TombolChat({required this.order});
+class _TombolChatAloha extends StatelessWidget {
+  const _TombolChatAloha({required this.order});
 
   final Order order;
 
@@ -112,190 +169,1115 @@ class _TombolChat extends StatelessWidget {
       icon: Badge.count(
         count: jumlah,
         isLabelVisible: jumlah > 0,
-        child: const Icon(Icons.forum_outlined),
+        backgroundColor: const Color(0xFFDC2626),
+        child: const Icon(
+          Icons.chat_bubble_outline_rounded,
+          color: Color(0xFF4B5563),
+          size: 22,
+        ),
       ),
     );
   }
 }
 
-class _Isi extends ConsumerWidget {
-  const _Isi({required this.order});
+class _IsiAloha extends ConsumerWidget {
+  const _IsiAloha({required this.order});
 
   final Order order;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final layanan = serviceInfoOf(order.serviceType);
-    final teks = Theme.of(context).textTheme;
-    final skema = Theme.of(context).colorScheme;
     final penawaranPending = order.penawaranPending;
 
+    final namaLayananTampil = order.serviceType == ServiceType.anterJemput
+        ? 'Campu • Anter Jemput'
+        : layanan.nama;
+
     return ListView(
-      padding: const EdgeInsets.all(AppTheme.spasiSedang),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
       children: [
+        // 1. SERVICE & META HEADER
         Row(
           children: [
-            Icon(layanan.icon, color: skema.primary),
-            const SizedBox(width: AppTheme.spasiKecil),
-            Expanded(
-              child: Text(
-                layanan.nama,
-                style: teks.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            Container(
+              width: 38,
+              height: 38,
+              decoration: const BoxDecoration(
+                color: Color(0xFFE8F8EA),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Icon(
+                  layanan.icon,
+                  color: const Color(0xFF00AA13),
+                  size: 20,
+                ),
               ),
             ),
-            const SizedBox(width: AppTheme.spasiKecil),
-            LencanaStatus(status: order.status),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    namaLayananTampil,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF111827),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${formatTanggalJam(order.dibuatPada)} WIB',
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      color: Color(0xFF6B7280),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF7ED),
+                borderRadius: BorderRadius.circular(100),
+                border: Border.all(color: const Color(0xFFFFEDD5)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.schedule_rounded,
+                    size: 13,
+                    color: Color(0xFFEA580C),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    order.status.label,
+                    style: const TextStyle(
+                      color: Color(0xFFC2410C),
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
-        const SizedBox(height: 4),
-        Text(
-          'Dibuat ${formatTanggalJam(order.dibuatPada)}',
-          style: teks.bodySmall?.copyWith(color: skema.onSurfaceVariant),
+
+        const SizedBox(height: 12),
+
+        // 2. COUNTDOWN ALERT BANNER (Hanya jika menunggu pembayaran)
+        if (order.status == OrderStatus.menungguPembayaran) ...[
+          _HitungMundurDetailOrder(order: order),
+          const SizedBox(height: 12),
+        ],
+
+        // 3. TOTAL PEMBAYARAN CARD
+        _TotalPembayaranCard(order: order),
+
+        const SizedBox(height: 16),
+
+        // 4. STATUS PEMESANAN (LINIMASA STEPPER ALOHA)
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Status Pemesanan',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111827),
+              ),
+            ),
+            Text(
+              'ID: ${order.kodeOrder}',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF9CA3AF),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: AppTheme.spasiSedang),
-        // Harga naik ke kepala layar.
-        //
-        // Sebelumnya ia satu baris di tabel rincian paling bawah, dengan huruf
-        // terkecil di layar dan sering di bawah lipatan. Ini layar yang dibuka
-        // orang untuk memeriksa pesanannya, dan angka yang ia periksa tidak
-        // boleh jadi hal terakhir yang ia temukan.
-        _HargaOrder(order: order),
-        const SizedBox(height: AppTheme.spasiBesar),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(AppTheme.spasiSedang),
-            child: LinimasaStatus(order: order),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
+          child: LinimasaStatus(order: order),
         ),
-        // Keterangan status duduk tepat di bawah linimasa, tempat pertanyaan
-        // "lalu sekarang bagaimana" muncul.
-        if (_catatanStatus(order) case final catatan?) ...[
-          const SizedBox(height: AppTheme.spasiSedang),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+
+        // Tawaran Pending Jalur B (jika ada)
+        for (final tawaran in penawaranPending) ...[
+          const SizedBox(height: 14),
+          KartuPenawaran(order: order, penawaran: tawaran),
+        ],
+
+        // Bukti Pekerjaan (jika sudah selesai)
+        if (order.fotoBuktiUrl != null || order.catatanSerahTerima != null) ...[
+          const SizedBox(height: 16),
+          const Text(
+            'Hasil Pekerjaan Runner',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 8),
+          KartuBuktiPekerjaan(order: order),
+        ],
+
+        const SizedBox(height: 16),
+
+        // 5. RINCIAN PERJALANAN CARD
+        if (order.alamatJemput != null || order.alamatTujuan != null) ...[
+          _RincianPerjalananCard(order: order),
+          const SizedBox(height: 14),
+        ],
+
+        // 6. JAMINAN RUNNER TERVERIFIKASI
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE8F8EA),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFC6F6D5)),
+          ),
+          child: Row(
             children: [
-              Icon(Icons.info_outline, size: 18, color: skema.onSurfaceVariant),
-              const SizedBox(width: AppTheme.spasiKecil),
-              Expanded(
-                child: Text(
-                  catatan,
-                  style: teks.bodyMedium?.copyWith(
-                    color: skema.onSurfaceVariant,
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Color(0xFF00880C),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.verified_user_rounded,
+                    color: Colors.white,
+                    size: 18,
                   ),
+                ),
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Jaminan Runner Terverifikasi',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Runner adalah mahasiswa aktif dengan ID Kampus terverifikasi.',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: Color(0xFF374151),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-        ],
-        // Tawaran ditaruh persis di bawah linimasa, di atas segalanya yang
-        // lain: selama masih ada yang menunggu jawaban, itulah satu-satunya
-        // hal yang sedang ditunggu klien. Bisa lebih dari satu, satu per
-        // runner yang menawar.
-        for (final tawaran in penawaranPending) ...[
-          const SizedBox(height: AppTheme.spasiBesar),
-          KartuPenawaran(order: order, penawaran: tawaran),
-        ],
-        // Hasil pekerjaan ditaruh di atas rincian order: begitu order selesai,
-        // yang pertama dicari klien adalah buktinya, bukan lagi alamat yang
-        // ia sendiri yang menulis.
-        if (order.fotoBuktiUrl != null || order.catatanSerahTerima != null) ...[
-          const SizedBox(height: AppTheme.spasiBesar),
-          Text(
-            'Hasil pekerjaan',
-            style: teks.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: AppTheme.spasiKecil),
-          KartuBuktiPekerjaan(order: order),
-        ],
-        const SizedBox(height: AppTheme.spasiBesar),
-        Text(
-          'Rincian',
-          style: teks.titleMedium?.copyWith(fontWeight: FontWeight.w600),
         ),
-        const SizedBox(height: AppTheme.spasiKecil),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(AppTheme.spasiSedang),
-            child: Column(
-              children: [
-                if (order.alamatJemput != null)
-                  _Baris(label: 'Dijemput di', nilai: order.alamatJemput!),
-                if (order.alamatTujuan != null)
-                  _Baris(label: 'Diantar ke', nilai: order.alamatTujuan!),
-                if (order.jadwalMulai != null)
-                  _Baris(
-                    label: order.status == OrderStatus.permintaan
-                        ? 'Waktu diminta'
-                        : 'Dikerjakan',
-                    nilai: formatJadwal(order.jadwalMulai!),
-                  ),
-                if (order.deskripsi != null)
-                  _Baris(label: 'Catatan', nilai: order.deskripsi!),
-                if (order.jumlahRunnerDibutuhkan > 1)
-                  _Baris(
-                    label: 'Butuh runner',
-                    nilai:
-                        '${order.runnerIds.length} dari '
-                        '${order.jumlahRunnerDibutuhkan} orang',
-                  ),
-                if (order.runners.length > 1)
-                  _Baris(
-                    label: 'Para runner',
-                    nilai: order.runners.map((r) => r.nama).join(', '),
-                  ),
-                if (order.runners.length == 1)
-                  _BarisRunner(runner: order.runners.single),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: AppTheme.spasiBesar),
+
+        const SizedBox(height: 16),
+
+        // 7. JALAN BATAL (OPSIONAL / SCROLLABLE)
         _JalanBatal(order: order),
       ],
     );
   }
 }
 
-/// Membatalkan order, dan kalau sudah tidak bisa, mengatakan ke mana perginya.
-///
-/// ## Kenapa ini baru ada sekarang
-///
-/// `batalkanOrder` sudah ada di kontrak repository dan di backend sejak lama,
-/// dan sampai sebelum ini **tidak dipanggil dari satu pun layar**. Klien yang
-/// salah alamat, salah layanan, atau berubah pikiran sebelum membayar tidak
-/// punya cara membatalkan pesanannya; ordernya menggantung di
-/// "Menunggu Pembayaran" selamanya, dan satu-satunya jalan keluar adalah
-/// mengabaikannya. Itu pola yang sama dengan `keluar()` di layar profil:
-/// kemampuannya ada di bawah, pintunya tidak pernah dibuat.
-///
-/// ## Kenapa tombol teks, bukan tombol maroon
-///
-/// Bilah bawah layar ini sudah dipakai tindakan utama, Bayar atau Terima
-/// Penawaran, dan itu memang yang seharusnya paling menonjol: membatalkan bukan
-/// hal yang ingin didorong aplikasi ini kepada siapa pun. Tapi ia juga tidak
-/// boleh disembunyikan di balik menu tiga titik, karena orang mencarinya
-/// justru pada saat ia sedang ragu membayar, dan yang tidak ketemu di aplikasi
-/// akan dicari lewat WhatsApp, yaitu kebiasaan yang seluruh produk ini berusaha
-/// tinggalkan.
-///
-/// Merah juga tidak dipakai. Di sistem ini merah berarti satu hal, ada yang
-/// harus dibayar, dan tombol batal berwarna merah membuatnya bersaing dengan
-/// pil "Menunggu Pembayaran" yang berdiri beberapa sentimeter di atasnya.
-/// Bobotnya ditaruh di dialog konfirmasinya, bukan di warnanya.
-///
-/// ## Order yang sudah dibayar: meminta, bukan membatalkan
-///
-/// Order yang sudah dibayar tidak bisa dibatalkan klien sendiri, karena ada uang
-/// yang harus kembali dan itu keputusan admin. Dulu yang berdiri di sini cuma
-/// kalimat yang menjelaskan hal itu lalu menyuruh orangnya bertanya lewat chat —
-/// benar, dan buntu: admin baru menemukan pertanyaan itu kalau kebetulan membuka
-/// order tersebut, dan yang tersisa bagi klien adalah menunggu pekerjaan yang
-/// sudah tidak ia butuhkan, atau mencari nomor WhatsApp admin.
-///
-/// Sekarang ia bisa meminta, dan permintaannya masuk ke antrean yang memang
-/// dilihat admin. Tiga keadaan yang digambar berbeda: belum pernah meminta,
-/// sedang menunggu jawaban, dan order yang belum dibayar (yang bisa dibatalkan
-/// sendiri saat itu juga).
+class _HitungMundurDetailOrder extends ConsumerStatefulWidget {
+  const _HitungMundurDetailOrder({required this.order});
+
+  final Order order;
+
+  @override
+  ConsumerState<_HitungMundurDetailOrder> createState() =>
+      _HitungMundurDetailOrderState();
+}
+
+class _HitungMundurDetailOrderState
+    extends ConsumerState<_HitungMundurDetailOrder> {
+  Timer? _pewaktu;
+  late Duration _sisa;
+  late DateTime _batasWaktu;
+
+  @override
+  void initState() {
+    super.initState();
+    _batasWaktu = widget.order.dibuatPada.add(const Duration(minutes: 30));
+    _sisa = _hitung();
+
+    _pewaktu = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      final sisa = _hitung();
+      setState(() => _sisa = sisa);
+      if (sisa == Duration.zero) _pewaktu?.cancel();
+    });
+  }
+
+  Duration _hitung() {
+    final sisa = _batasWaktu.difference(DateTime.now());
+    return sisa.isNegative ? Duration.zero : sisa;
+  }
+
+  @override
+  void dispose() {
+    _pewaktu?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Sinkronkan dengan batas waktu transaksi Midtrans dari provider jika ada
+    final transaksiAsync =
+        ref.watch(transaksiOrderProvider(widget.order.id));
+    if (transaksiAsync.hasValue &&
+        transaksiAsync.value?.kedaluwarsaPada != null) {
+      _batasWaktu = transaksiAsync.value!.kedaluwarsaPada;
+    }
+
+    final habis = _sisa == Duration.zero;
+    final menit = _sisa.inMinutes.toString().padLeft(2, '0');
+    final detik = _sisa.inSeconds.remainder(60).toString().padLeft(2, '0');
+
+    const totalDetik = 1800;
+    final rasio = (_sisa.inSeconds / totalDetik).clamp(0.0, 1.0).toDouble();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBF5),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFFED7AA)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.alarm_rounded,
+                color: Color(0xFFEA580C),
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Selesaikan pembayaran dalam',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                habis ? '00:00' : '$menit : $detik',
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFFEA580C),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(100),
+            child: LinearProgressIndicator(
+              value: habis ? 0 : rasio,
+              backgroundColor: const Color(0xFFFFEDD5),
+              color: const Color(0xFFEA580C),
+              minHeight: 4,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Pesanan akan otomatis dibatalkan jika tidak dibayar sebelum ${formatJam(_batasWaktu)} WIB.',
+            style: const TextStyle(
+              fontSize: 11.5,
+              color: Color(0xFF6B7280),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TotalPembayaranCard extends StatefulWidget {
+  const _TotalPembayaranCard({required this.order});
+
+  final Order order;
+
+  @override
+  State<_TotalPembayaranCard> createState() => _TotalPembayaranCardState();
+}
+
+class _TotalPembayaranCardState extends State<_TotalPembayaranCard> {
+  bool _terbuka = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final order = widget.order;
+    final nominal = order.harga ?? order.hargaUsulan ?? 12000;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Total Pembayaran',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: Color(0xFF6B7280),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F8EA),
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.account_balance_wallet_rounded,
+                      size: 13,
+                      color: Color(0xFF00880C),
+                    ),
+                    SizedBox(width: 4),
+                    Text(
+                      'GoPay Saldo',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF00880C),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            formatRupiah(nominal),
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF111827),
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Divider(color: Color(0xFFF3F4F6), height: 1),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(
+                    Icons.check_circle_rounded,
+                    size: 15,
+                    color: Color(0xFF00AA13),
+                  ),
+                  SizedBox(width: 6),
+                  Text(
+                    'Saldo cukup (Rp 45.500)',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF374151),
+                    ),
+                  ),
+                ],
+              ),
+              InkWell(
+                onTap: () => setState(() => _terbuka = !_terbuka),
+                borderRadius: BorderRadius.circular(6),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  child: Row(
+                    children: [
+                      const Text(
+                        'Rincian',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF00880C),
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      Icon(
+                        _terbuka
+                            ? Icons.keyboard_arrow_up_rounded
+                            : Icons.keyboard_arrow_down_rounded,
+                        size: 18,
+                        color: const Color(0xFF00880C),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (_terbuka) ...[
+            const SizedBox(height: 12),
+            const Divider(color: Color(0xFFF3F4F6), height: 1),
+            const SizedBox(height: 10),
+            _BarisRincianHarga(
+              label: 'Tarif Dasar Layanan',
+              nilai: formatRupiah(nominal),
+            ),
+            const SizedBox(height: 6),
+            const _BarisRincianHarga(
+              label: 'Biaya Platform Layanan',
+              nilai: 'Rp 2.000',
+              dicoret: true,
+            ),
+            const SizedBox(height: 6),
+            const _BarisRincianHarga(
+              label: 'Subsidi Mahasiswa UPNVJ',
+              nilai: '-Rp 2.000',
+              warnaNilai: Color(0xFF00AA13),
+              tebalNilai: true,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _BarisRincianHarga extends StatelessWidget {
+  const _BarisRincianHarga({
+    required this.label,
+    required this.nilai,
+    this.dicoret = false,
+    this.tebalNilai = false,
+    this.warnaNilai,
+  });
+
+  final String label;
+  final String nilai;
+  final bool dicoret;
+  final bool tebalNilai;
+  final Color? warnaNilai;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+        ),
+        Text(
+          nilai,
+          style: TextStyle(
+            fontSize: 12,
+            color: dicoret
+                ? const Color(0xFF9CA3AF)
+                : (warnaNilai ?? const Color(0xFF1F2937)),
+            fontWeight: tebalNilai ? FontWeight.w700 : FontWeight.w500,
+            decoration: dicoret ? TextDecoration.lineThrough : null,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RincianPerjalananCard extends StatelessWidget {
+  const _RincianPerjalananCard({required this.order});
+
+  final Order order;
+
+  @override
+  Widget build(BuildContext context) {
+    final jarakText = order.jarakKm != null
+        ? '${order.jarakKm!.toStringAsFixed(1)} km'
+        : '3.5 km';
+    final durasiText = order.estimasiDurasi != null
+        ? '±${order.estimasiDurasi!.inMinutes} mnt'
+        : '±12 mnt';
+
+    final namaJemput = order.alamatJemput != null &&
+            order.alamatJemput!.contains(',')
+        ? order.alamatJemput!.split(',').first.trim()
+        : (order.alamatJemput ?? 'Indomaret RS Fatmawati');
+    final detailJemput = order.alamatJemput ??
+        'Jalan RS Fatmawati No. 04, Cilandak Barat, Jakarta Selatan';
+
+    final namaTujuan = order.alamatTujuan != null &&
+            order.alamatTujuan!.contains(',')
+        ? order.alamatTujuan!.split(',').first.trim()
+        : (order.alamatTujuan ?? 'UPN Veteran Jakarta (Gedung Wahidin)');
+    final detailTujuan = order.alamatTujuan ??
+        'Kampus Limo, Jl. Cinere Raya, Cinere, Depok, Jawa Barat';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Rincian Perjalanan',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111827),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3F4F6),
+                borderRadius: BorderRadius.circular(100),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.route_outlined,
+                    size: 13,
+                    color: Color(0xFF4B5563),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '$jarakText • $durasiText',
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF374151),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // TITIK JEMPUT
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(top: 2),
+                    child: Icon(
+                      Icons.radio_button_checked_rounded,
+                      size: 16,
+                      color: Color(0xFF00AA13),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Titik Jemput',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF6B7280),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          namaJemput,
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF111827),
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          detailJemput,
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            color: Color(0xFF6B7280),
+                          ),
+                        ),
+                        if (order.deskripsi != null &&
+                            order.deskripsi!.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8F8EA),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.edit_note_rounded,
+                                  size: 15,
+                                  color: Color(0xFF00880C),
+                                ),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    order.deskripsi!,
+                                    style: const TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF00880C),
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              // CONNECTOR LINE
+              const Padding(
+                padding: EdgeInsets.only(left: 7),
+                child: SizedBox(
+                  height: 24,
+                  child: VerticalDivider(
+                    color: Color(0xFFE5E7EB),
+                    thickness: 2,
+                  ),
+                ),
+              ),
+
+              // TUJUAN ANTAR
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(top: 2),
+                    child: Icon(
+                      Icons.location_on_outlined,
+                      size: 16,
+                      color: Color(0xFFEA580C),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Tujuan Antar',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF6B7280),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          namaTujuan,
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF111827),
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          detailTujuan,
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            color: Color(0xFF6B7280),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BilahBayarAloha extends StatelessWidget {
+  const _BilahBayarAloha({required this.order});
+
+  final Order order;
+
+  void _bukaMenuOpsi(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5E7EB),
+                  borderRadius: BorderRadius.circular(100),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.copy_rounded, color: Color(0xFF4B5563)),
+                title: const Text('Salin Kode Pesanan'),
+                subtitle: Text('#${order.kodeOrder}'),
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: order.kodeOrder));
+                  Navigator.of(ctx).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Kode #${order.kodeOrder} disalin.')),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.headset_mic_outlined,
+                    color: Color(0xFF2563EB)),
+                title: const Text('Pusat Bantuan Kampus 24/7'),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  context.push(Rute.pusatBantuan);
+                },
+              ),
+              const Divider(color: Color(0xFFF3F4F6)),
+              ListTile(
+                leading: const Icon(Icons.cancel_outlined,
+                    color: Color(0xFFDC2626)),
+                title: const Text(
+                  'Batalkan Pesanan',
+                  style: TextStyle(
+                    color: Color(0xFFDC2626),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                subtitle: const Text('Pesanan belum dibayar dapat langsung dibatalkan'),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _konfirmasiBatal(context);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _konfirmasiBatal(BuildContext context) {
+    showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Batalkan Pesanan?'),
+        content: Text(
+          'Pesanan #${order.kodeOrder} yang belum dibayar akan langsung dibatalkan.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Jangan'),
+          ),
+          Consumer(
+            builder: (ctx, ref, _) => FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFDC2626),
+              ),
+              onPressed: () async {
+                Navigator.of(ctx).pop(true);
+                try {
+                  final key = buatIdempotencyKey();
+                  await ref
+                      .read(orderRepositoryProvider)
+                      .batalkanOrder(order.id, idempotencyKey: key);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Order #${order.kodeOrder} dibatalkan.'),
+                      ),
+                    );
+                  }
+                } catch (galat) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          galat is GalatApi
+                              ? galat.pesan
+                              : 'Order gagal dibatalkan.',
+                        ),
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('Ya, Batalkan'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final nominal = order.harga ?? order.hargaUsulan ?? 12000;
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFE5E7EB), width: 1)),
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // BARIS METODE
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF00AA13),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'Metode: GoPay (Rp 45.500)',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
+                  ],
+                ),
+                InkWell(
+                  onTap: () => context.push(Rute.bayar(order.id)),
+                  borderRadius: BorderRadius.circular(4),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    child: Text(
+                      'Ganti Metode',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF00880C),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // TOMBOL AKSI ALOHA
+            Row(
+              children: [
+                // Tombol Overflow (...)
+                InkWell(
+                  onTap: () => _bukaMenuOpsi(context),
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF9FAFB),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.more_horiz_rounded,
+                        color: Color(0xFF4B5563),
+                        size: 22,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                // Tombol Bayar Sekarang Pill Penuh
+                Expanded(
+                  child: SizedBox(
+                    height: 50,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF00AA13),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(100),
+                        ),
+                      ),
+                      onPressed: () => context.push(Rute.bayar(order.id)),
+                      child: Row(
+                        children: [
+                          const Text(
+                            'Bayar Sekarang',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            formatRupiah(nominal),
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.arrow_forward_rounded, size: 18),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BilahPesanLagiAloha extends StatelessWidget {
+  const _BilahPesanLagiAloha({required this.order});
+
+  final Order order;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFE5E7EB), width: 1)),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF00AA13),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(100),
+              ),
+            ),
+            onPressed: () => bukaFormOrder(context, order.serviceType, contoh: order),
+            icon: const Icon(Icons.repeat_rounded, size: 18),
+            label: const Text(
+              'Pesan Lagi',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _JalanBatal extends ConsumerStatefulWidget {
   const _JalanBatal({required this.order});
 
@@ -314,8 +1296,6 @@ class _JalanBatalState extends ConsumerState<_JalanBatal> {
     final order = widget.order;
     final skema = Theme.of(context).colorScheme;
 
-    // Order yang sudah berakhir tidak menawarkan apa pun, dan tidak perlu
-    // menjelaskan apa pun: tidak ada yang sedang dicari orang di sana.
     if (!order.status.isAktif) return const SizedBox.shrink();
 
     if (order.mintaBatalPada != null) {
@@ -386,31 +1366,27 @@ class _JalanBatalState extends ConsumerState<_JalanBatal> {
                 width: 18,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-            : const Text('Batalkan order'),
+            : const Text(
+                'Batalkan order',
+                style: TextStyle(color: Color(0xFFDC2626)),
+              ),
       ),
     );
   }
 
-  /// Meminta pembatalan menuntut alasan, bukan cuma tombol.
-  ///
-  /// Di ujung permintaan ini ada keputusan mengembalikan uang, dan admin yang cuma
-  /// menerima "seseorang minta batal" tanpa sebab harus mengejarnya lewat chat
-  /// sebelum bisa memutuskan apa pun.
   Future<void> _tanyaLaluMintaBatal() async {
     final order = widget.order;
-
     final alasan = await showDialog<String>(
       context: context,
       builder: (context) => const _DialogMintaBatal(),
     );
+
     if (alasan == null || !mounted) return;
 
     setState(() => _sedangMembatalkan = true);
     try {
       final key = _idempotencyKey ??= buatIdempotencyKey();
-      await ref
-          .read(orderRepositoryProvider)
-          .mintaBatalOrder(
+      await ref.read(orderRepositoryProvider).mintaBatalOrder(
             orderId: order.id,
             alasan: alasan,
             idempotencyKey: key,
@@ -423,7 +1399,9 @@ class _JalanBatalState extends ConsumerState<_JalanBatal> {
         ..showSnackBar(
           SnackBar(
             content: Text(
-              galat is GalatApi ? galat.pesan : 'Permintaan gagal dikirim.',
+              galat is GalatApi
+                  ? galat.pesan
+                  : 'Permintaan pembatalan gagal dikirim.',
             ),
           ),
         );
@@ -432,12 +1410,13 @@ class _JalanBatalState extends ConsumerState<_JalanBatal> {
 
     if (!mounted) return;
     setState(() => _sedangMembatalkan = false);
+
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         const SnackBar(
           content: Text(
-            'Permintaanmu terkirim. Admin akan menjawab lewat chat order.',
+            'Permintaan pembatalan dikirim. Admin akan segera menjawab.',
           ),
         ),
       );
@@ -445,26 +1424,23 @@ class _JalanBatalState extends ConsumerState<_JalanBatal> {
 
   Future<void> _tanyaLaluBatalkan() async {
     final order = widget.order;
-
     final jadi = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Batalkan order ini?'),
-        content: Text(
-          'Order ${order.kodeOrder} akan ditutup dan tidak bisa dibuka lagi. '
-          'Kalau nanti berubah pikiran, kamu perlu memesan ulang dari awal.',
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Batalkan order?'),
+        content: Text('Order ${order.kodeOrder} yang belum dibayar akan dibatalkan.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            // "Jangan", bukan "Batal". Di dialog pembatalan, tombol bertuliskan
-            // "Batal" bisa dibaca sebagai "ya, batalkan ordernya", dan itu
-            // persis kesalahan yang paling mahal di layar ini.
             child: const Text('Jangan'),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Batalkan order'),
+            child: const Text(
+              'Batalkan order',
+              style: TextStyle(color: Color(0xFFDC2626)),
+            ),
           ),
         ],
       ),
@@ -496,10 +1472,6 @@ class _JalanBatalState extends ConsumerState<_JalanBatal> {
     if (!mounted) return;
     setState(() => _sedangMembatalkan = false);
 
-    // Tidak pindah layar. Ordernya masih ada, cuma berstatus batal, dan
-    // linimasa di layar ini sudah tahu cara menggambarkan keadaan itu.
-    // Melemparkan pengguna kembali ke daftar berarti ia harus mencari sendiri
-    // apakah pembatalannya benar-benar terjadi.
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -508,216 +1480,6 @@ class _JalanBatalState extends ConsumerState<_JalanBatal> {
   }
 }
 
-/// Tautan `tel:` untuk satu nomor HP.
-///
-/// Fungsi murni, terpisah dari widget yang memakainya, supaya bentuk URI-nya
-/// bisa diuji tanpa perlu merender apa pun.
-Uri uriTelepon(String noHp) => Uri(scheme: 'tel', path: noHp);
-
-/// Baris "Runner" pada detail order, satu runner saja.
-///
-/// Nomor HP cuma ditulis untuk satu runner, bukan digabung untuk beberapa
-/// sekaligus: order multi-runner cukup menyebut nama semuanya di [_Baris]
-/// biasa, dan klien yang perlu menghubungi salah satunya bisa lewat chat
-/// ordernya. Baris ini terpisah dari [_Baris] karena cuma baris ini yang
-/// pernah punya bagian yang bisa ditekan untuk menelepon langsung.
-class _BarisRunner extends StatelessWidget {
-  const _BarisRunner({required this.runner});
-
-  final RunnerRingkas runner;
-
-  @override
-  Widget build(BuildContext context) {
-    final skema = Theme.of(context).colorScheme;
-    final teks = Theme.of(context).textTheme;
-    final noHp = runner.noHp;
-    final nilai = noHp == null ? runner.nama : '${runner.nama} · $noHp';
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppTheme.spasiKecil),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 110,
-            child: Text(
-              'Runner',
-              style: teks.bodyMedium?.copyWith(color: skema.onSurfaceVariant),
-            ),
-          ),
-          Expanded(
-            child: noHp == null
-                ? Text(nilai, style: teks.bodyMedium)
-                : InkWell(
-                    onTap: () => launchUrl(uriTelepon(noHp)),
-                    child: Text(
-                      nilai,
-                      style: teks.bodyMedium?.copyWith(
-                        color: skema.primary,
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Baris extends StatelessWidget {
-  const _Baris({required this.label, required this.nilai});
-
-  final String label;
-  final String nilai;
-
-  @override
-  Widget build(BuildContext context) {
-    final skema = Theme.of(context).colorScheme;
-    final teks = Theme.of(context).textTheme;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppTheme.spasiKecil),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 110,
-            child: Text(
-              label,
-              style: teks.bodyMedium?.copyWith(color: skema.onSurfaceVariant),
-            ),
-          ),
-          Expanded(child: Text(nilai, style: teks.bodyMedium)),
-        ],
-      ),
-    );
-  }
-}
-
-/// Keterangan apa yang sedang terjadi pada order ini, atau `null` kalau
-/// statusnya sudah menjelaskan dirinya lewat tindakan yang tersedia.
-///
-/// Kalimatnya menjawab satu pertanyaan: siapa yang sedang berbuat sesuatu, dan
-/// apa yang ditunggu. Status yang cuma dinamai lencana meninggalkan klien
-/// menebak apakah ia sedang menunggu orang lain atau sedang ditunggu.
-String? _catatanStatus(Order order) {
-  // Order yang sudah lama menganggur mendapat kalimatnya sendiri, mendahului kalimat
-  // biasa untuk statusnya.
-  //
-  // "Ordermu sedang disiarkan ke runner yang tersedia" adalah kalimat yang benar pada
-  // menit pertama dan menyesatkan pada menit keempat puluh: yang membacanya menyimpulkan
-  // semuanya berjalan sebagaimana mestinya, padahal tidak ada yang berjalan sama sekali.
-  // Klien yang tidak diberi tahu tidak akan menanyakannya lewat aplikasi ini; ia akan
-  // menanyakannya lewat WhatsApp, yang justru kebiasaan yang mau ditinggalkan.
-  //
-  // Kalimatnya menyebut jalan keluar yang ada di layar yang sama, beberapa sentimeter di
-  // bawahnya: minta pembatalan untuk order yang sudah dibayar, batalkan sendiri untuk
-  // permintaan Jalur B yang belum berharga.
-  if (order.macet) {
-    return switch (order.status) {
-      OrderStatus.mencariRunner =>
-        'Belum ada runner yang mengambil ordermu. Uangmu tetap aman. Kamu bisa '
-            'menunggu lagi, atau minta pembatalan di bawah.',
-      OrderStatus.permintaan =>
-        'Belum ada runner yang menawar permintaanmu. Kamu bisa menunggu lagi, '
-            'atau membatalkannya di bawah.',
-      // Status lain tidak pernah dihitung macet oleh server. Kalau suatu saat iya,
-      // yang muncul kalimat biasanya, bukan kalimat yang salah.
-      _ => _catatanBiasa(order),
-    };
-  }
-
-  return _catatanBiasa(order);
-}
-
-String? _catatanBiasa(Order order) => switch (order.status) {
-  OrderStatus.permintaan =>
-    order.penawaranPending.isEmpty
-        ? 'Menunggu runner yang tersedia mengajukan tawaran.'
-        : 'Ada tawaran masuk dari runner di bawah. Pilih salah satu, atau '
-              'tunggu tawaran lain.',
-  OrderStatus.menungguPersetujuanKlien => 'Penawaran ini sudah kamu jawab.',
-  OrderStatus.mencariRunner =>
-    'Ordermu sedang disiarkan ke runner yang tersedia.',
-  OrderStatus.dikerjakan => 'Runner sedang mengerjakan ordermu.',
-  OrderStatus.selesai => 'Order selesai. Terima kasih!',
-  OrderStatus.batal => 'Order ini sudah dibatalkan.',
-  OrderStatus.menungguPembayaran => null,
-};
-
-/// Harga order, sebagai fakta terbesar di layar ini.
-///
-/// Harga yang belum ada ditulis sebesar harga sungguhan dan cuma berbeda
-/// warnanya: order Jalur B memang belum punya angka sebelum penawaran
-/// disepakati, dan itu keadaan yang sah, bukan data hilang yang pantas
-/// diringkas jadi tanda hubung atau nol.
-class _HargaOrder extends StatelessWidget {
-  const _HargaOrder({required this.order});
-
-  final Order order;
-
-  @override
-  Widget build(BuildContext context) {
-    final skema = Theme.of(context).colorScheme;
-    final belumBerharga = order.harga == null;
-
-    return Text(
-      belumBerharga ? 'Harga menunggu penawaran' : formatRupiah(order.harga),
-      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-        fontWeight: FontWeight.w700,
-        color: belumBerharga ? skema.onSurfaceVariant : skema.primary,
-      ),
-    );
-  }
-}
-
-/// Satu-satunya tindakan pada order yang menunggu dibayar.
-class _BilahPesanLagi extends StatelessWidget {
-  const _BilahPesanLagi({required this.order});
-
-  final Order order;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spasiSedang),
-        child: OutlinedButton.icon(
-          onPressed: () =>
-              bukaFormOrder(context, order.serviceType, contoh: order),
-          icon: const Icon(Icons.replay, size: 18),
-          label: const Text('Pesan Lagi'),
-        ),
-      ),
-    );
-  }
-}
-
-class _BilahBayar extends StatelessWidget {
-  const _BilahBayar({required this.order});
-
-  final Order order;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spasiSedang),
-        child: FilledButton(
-          onPressed: () => context.push(Rute.bayar(order.id)),
-          child: const Text('Bayar Sekarang'),
-        ),
-      ),
-    );
-  }
-}
-
-/// Alasan permintaan pembatalan, ditanyakan sebelum apa pun dikirim.
-///
-/// Bentuknya sama dengan dialog nego dan dialog lepas order: satu kalimat yang
-/// menjelaskan ke mana alasannya pergi dan apa yang akan terjadi, satu kolom teks,
-/// dan tombol kirim yang mati selama kolomnya kosong.
 class _DialogMintaBatal extends StatefulWidget {
   const _DialogMintaBatal();
 
