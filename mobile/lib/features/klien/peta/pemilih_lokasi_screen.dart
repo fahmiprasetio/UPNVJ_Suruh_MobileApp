@@ -210,8 +210,8 @@ class _PemilihLokasiScreenState extends State<PemilihLokasiScreen> {
                   children: [
                     TileLayer(
                       urlTemplate:
-                          'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
-                      subdomains: const ['a', 'b', 'c', 'd'],
+                          'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+                      subdomains: const ['a', 'b', 'c'],
                       userAgentPackageName: 'com.upnvjsuruh.mobile',
                       maxZoom: 19,
                     ),
