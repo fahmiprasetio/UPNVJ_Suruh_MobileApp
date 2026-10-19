@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -72,42 +73,22 @@ class PembukaOverlay extends ConsumerStatefulWidget {
 
 class _PembukaOverlayState extends ConsumerState<PembukaOverlay>
     with TickerProviderStateMixin {
-  /// Waktu tetap untuk gerakan dekoratif: naik, berputar, menulis. Selalu
-  /// selesai dalam waktu ini, apa pun keadaan jaringannya.
-  static const Duration _durasiUtama = Duration(milliseconds: 2100);
+  /// Waktu tetap untuk gerakan dekoratif: naik, berputar, menulis.
+  /// Di Web dibuat cepat (800ms) agar interaksi pengguna instan tanpa jeda tunggu.
+  static const Duration _durasiUtama = kIsWeb
+      ? Duration(milliseconds: 800)
+      : Duration(milliseconds: 2100);
 
   /// Waktu lapisan ini menjadi tembus pandang di ujung.
-  ///
-  /// Bukan "memudar jadi putih": yang memudar seluruh lapisannya, sehingga yang
-  /// tersingkap adalah halaman yang sudah tergambar di belakangnya. Sepanjang
-  /// 220 milidetik ini lencananya masih terlihat, menumpuk di atas halaman yang
-  /// sedang muncul, jadi tidak pernah ada bingkai yang isinya putih saja.
-  static const Duration _durasiAngkat = Duration(milliseconds: 220);
+  static const Duration _durasiAngkat = Duration(milliseconds: 150);
 
-  /// Batas sabar menunggu [kesiapanSesiProvider], terpisah dari
-  /// `KonfigurasiApi.batasWaktu` (20 detik) yang dipakai permintaan API biasa.
-  ///
-  /// Dua puluh detik masuk akal untuk permintaan yang penggunanya sudah tahu
-  /// sedang menunggu, misalnya menekan tombol dan melihat putaran pemuatan. Di
-  /// layar pembuka, penggunanya belum menekan apa pun dan tidak tahu ada
-  /// permintaan yang sedang berjalan sama sekali; menahannya belasan detik
-  /// terbaca sebagai aplikasi yang macet. Kalau sesi belum juga siap setelah
-  /// batas ini, lapisan pembuka tetap diangkat. Kalau ternyata penggunanya
-  /// sedang masuk, `_PendengarSesi` di `app_router.dart` tetap menyimak jawaban
-  /// server begitu akhirnya datang, dan router memindahkannya sendiri dari layar
-  /// masuk ke beranda tanpa perlu diminta.
+  /// Batas sabar menunggu [kesiapanSesiProvider].
   static const Duration _batasTungguSesi = Duration(seconds: 3);
 
-  /// Jeda diam sesudah gerakan dekoratif berhenti, sebelum lapisannya mulai
-  /// diangkat.
-  ///
-  /// Tanpa ini, begitu putaran dan tulisannya selesai, lapisannya langsung
-  /// terangkat di bingkai berikutnya (lebih cepat lagi kalau sesinya sudah siap
-  /// duluan). Gerakan yang berhenti lalu SEKETIKA disusul gerakan lain terbaca
-  /// tergesa-gesa, seperti animasinya terpotong sebelum selesai betul-betul.
-  /// Sedetik diam ini memberi lencananya waktu untuk benar-benar terlihat utuh
-  /// dan diam, bukan cuma singgah sekilas di keadaan akhirnya.
-  static const Duration _durasiDiam = Duration(seconds: 1);
+  /// Jeda diam sesudah gerakan dekoratif berhenti, sebelum lapisannya mulai diangkat.
+  static const Duration _durasiDiam = kIsWeb
+      ? Duration(milliseconds: 100)
+      : Duration(seconds: 1);
 
   late final AnimationController _utama = AnimationController(
     vsync: this,
@@ -218,31 +199,40 @@ class _PembukaOverlayState extends ConsumerState<PembukaOverlay>
     super.dispose();
   }
 
+  void _langsungSelesai() {
+    if (!mounted) return;
+    _utama.stop();
+    _diam.stop();
+    _angkat.stop();
+    ref.read(statusPembukaProvider.notifier).tandaiSelesai();
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: Listenable.merge([_utama, _angkat]),
       builder: (context, _) => Opacity(
-        // Seluruh lapisan yang memudar, bukan lencananya sendirian. Kalau cuma
-        // lencananya, yang tersisa di layar adalah latar putih lapisan ini, dan
-        // itu persis bingkai putih kosong yang harus tidak ada.
-        opacity: 1 - _angkat.value,
+        // Seluruh lapisan yang memudar, bukan lencananya sendirian.
+        opacity: (1 - _angkat.value).clamp(0.0, 1.0),
         child: ColoredBox(
           color: Colors.white,
-          // Ketukan tidak boleh tembus ke halaman di belakangnya selagi
-          // tertutup: tombol yang tidak terlihat tetap bisa tertekan.
-          child: AbsorbPointer(
-            child: Center(
-              child: LayoutBuilder(
-                builder: (context, batas) {
-                  final sisi = _sisiLencana(batas.biggest);
-                  return _Komposisi(
-                    sisi: sisi,
-                    naik: _naik.value,
-                    putar: _putar.value,
-                    tulis: _tulis.value,
-                  );
-                },
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _langsungSelesai,
+            child: AbsorbPointer(
+              absorbing: _angkat.value == 0,
+              child: Center(
+                child: LayoutBuilder(
+                  builder: (context, batas) {
+                    final sisi = _sisiLencana(batas.biggest);
+                    return _Komposisi(
+                      sisi: sisi,
+                      naik: _naik.value,
+                      putar: _putar.value,
+                      tulis: _tulis.value,
+                    );
+                  },
+                ),
               ),
             ),
           ),

@@ -226,7 +226,7 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
 
   List<Widget> get _isiLangkah => switch (_langkah) {
     _Langkah.nomor => [
-      _kolomNoHp(),
+      _kolomNoHp(autofocus: true),
       const SizedBox(height: AppTheme.spasiSedang),
       _tombolUtama(label: 'Kirim kode', aksi: _kirimKode),
       const SizedBox(height: AppTheme.spasiKecil),
@@ -334,8 +334,9 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
     ],
   };
 
-  Widget _kolomNoHp() => TextFormField(
+  Widget _kolomNoHp({bool autofocus = false}) => TextFormField(
     controller: _noHpController,
+    autofocus: autofocus,
     keyboardType: TextInputType.phone,
     inputFormatters: [
       FilteringTextInputFormatter.digitsOnly,
