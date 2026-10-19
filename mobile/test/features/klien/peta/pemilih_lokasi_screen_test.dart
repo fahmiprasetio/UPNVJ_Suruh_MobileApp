@@ -24,7 +24,7 @@ void main() {
 
   Future<void> cari(WidgetTester tester, String kueri) async {
     await tester.enterText(find.byType(TextField), kueri);
-    await tester.tap(find.widgetWithIcon(IconButton, Icons.search));
+    await tester.tap(find.widgetWithIcon(IconButton, Icons.search_rounded));
     await tester.pumpAndSettle();
   }
 
@@ -56,7 +56,7 @@ void main() {
     expect(
       tester
           .widget<FilledButton>(
-            find.widgetWithText(FilledButton, 'Pakai lokasi ini'),
+            find.widgetWithText(FilledButton, 'Pakai Lokasi Ini'),
           )
           .onPressed,
       isNotNull,
@@ -80,7 +80,10 @@ void main() {
       expect(find.text('UPNVJ Pondok Labu'), findsOneWidget);
       expect(find.text('UPNVJ Limo'), findsOneWidget);
       // Belum ada yang jadi alamat terpilih (itu masih daftar kandidat).
-      expect(find.text('Belum ada titik yang dipilih.'), findsOneWidget);
+      expect(
+        find.text('Ketuk pada peta untuk memilih titik lokasi.'),
+        findsOneWidget,
+      );
 
       await tester.tap(find.widgetWithText(ListTile, 'UPNVJ Limo'));
       await tester.pumpAndSettle();
@@ -136,7 +139,7 @@ void main() {
         ),
       );
 
-      await tester.tap(find.widgetWithText(FilledButton, 'Pakai lokasi ini'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Pakai Lokasi Ini'));
       await tester.pumpAndSettle();
 
       expect(hasil, isNotNull);
