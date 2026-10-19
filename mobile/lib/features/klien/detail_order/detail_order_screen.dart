@@ -57,6 +57,7 @@ class DetailOrderScreen extends ConsumerWidget {
     // runner, serta order yang sudah selesai, harus tetap menampilkan detail
     // dan tindakan sesuai status sebenarnya.
     final isLiveTracking = order != null &&
+        order.serviceType == ServiceType.anterJemput &&
         order.status == OrderStatus.dikerjakan &&
         order.runners.isNotEmpty;
 
@@ -492,7 +493,7 @@ class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> 
                   // RUNNER MOTORCYCLE MARKER
                   Marker(
                     point: _posisiRunner,
-                    width: 150,
+                    width: 200,
                     height: 80,
                     alignment: Alignment.center,
                     child: Column(
@@ -1030,42 +1031,34 @@ class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> 
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 2),
-                              const Text(
-                                'Honda Vario 160 Hitam • B 4921 EAB',
-                                style: TextStyle(
-                                  fontSize: 11.5,
-                                  color: Color(0xFF4B5563),
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
                               const SizedBox(height: 3),
-                              const Row(
-                                children: [
-                                  Icon(
-                                    Icons.star_rounded,
-                                    color: Color(0xFFF59E0B),
-                                    size: 15,
-                                  ),
-                                  SizedBox(width: 3),
-                                  Text(
-                                    '4.98',
-                                    style: TextStyle(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF111827),
+                              if (runnerTelp != null)
+                                InkWell(
+                                  onTap: () => launchUrl(uriTelepon(runnerTelp)),
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 2,
+                                    ),
+                                    child: Text(
+                                      runnerTelp,
+                                      style: const TextStyle(
+                                        fontSize: 11.5,
+                                        color: Color(0xFF006C0E),
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                     ),
                                   ),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    '(340+ trip kampus)',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Color(0xFF6B7280),
-                                    ),
+                                )
+                              else
+                                const Text(
+                                  'Runner ditugaskan',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: Color(0xFF4B5563),
+                                    fontWeight: FontWeight.w500,
                                   ),
-                                ],
-                              ),
+                                ),
                             ],
                           ),
                         ),
