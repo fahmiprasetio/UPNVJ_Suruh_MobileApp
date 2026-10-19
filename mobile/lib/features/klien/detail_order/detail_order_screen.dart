@@ -680,7 +680,7 @@ class _TotalPembayaranCardState extends State<_TotalPembayaranCard> {
             const SizedBox(height: 10),
             _BarisRincianHarga(
               label: 'Tarif Dasar Layanan',
-              nilai: formatRupiah(nominal),
+              nilai: formatRupiah(nominal + 2000),
             ),
             const SizedBox(height: 6),
             const _BarisRincianHarga(

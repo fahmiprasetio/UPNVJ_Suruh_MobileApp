@@ -1202,7 +1202,7 @@ class _DetailPesananAlohaCardState extends State<_DetailPesananAlohaCard> {
                   // Rincian Biaya
                   _BarisBiaya(
                     label: 'Tarif Dasar Layanan',
-                    nilai: formatRupiah(widget.jumlah),
+                    nilai: formatRupiah(widget.jumlah + 2000),
                   ),
                   const SizedBox(height: 8),
                   const _BarisBiaya(
