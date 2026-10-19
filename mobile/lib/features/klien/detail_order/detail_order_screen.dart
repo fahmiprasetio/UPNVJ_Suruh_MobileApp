@@ -592,13 +592,13 @@ class _TotalPembayaranCardState extends State<_TotalPembayaranCard> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      Icons.account_balance_wallet_rounded,
+                      Icons.lock_outline_rounded,
                       size: 13,
                       color: Color(0xFF00880C),
                     ),
                     SizedBox(width: 4),
                     Text(
-                      'GoPay Saldo',
+                      'Midtrans Snap',
                       style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w700,
@@ -629,13 +629,13 @@ class _TotalPembayaranCardState extends State<_TotalPembayaranCard> {
               const Row(
                 children: [
                   Icon(
-                    Icons.check_circle_rounded,
+                    Icons.security_rounded,
                     size: 15,
                     color: Color(0xFF00AA13),
                   ),
                   SizedBox(width: 6),
                   Text(
-                    'Saldo cukup (Rp 45.500)',
+                    'Pembayaran Resmi & Aman',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -1118,119 +1118,70 @@ class _BilahBayarAloha extends StatelessWidget {
         color: Colors.white,
         border: Border(top: BorderSide(color: Color(0xFFE5E7EB), width: 1)),
       ),
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
       child: SafeArea(
         top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: Row(
           children: [
-            // BARIS METODE
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 7,
-                      height: 7,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF00AA13),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    const Text(
-                      'Metode: GoPay (Rp 45.500)',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF111827),
-                      ),
-                    ),
-                  ],
-                ),
-                InkWell(
-                  onTap: () => context.push(Rute.bayar(order.id)),
-                  borderRadius: BorderRadius.circular(4),
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                    child: Text(
-                      'Ganti Metode',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF00880C),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            // TOMBOL AKSI ALOHA
-            Row(
-              children: [
-                // Tombol Overflow (...)
-                InkWell(
-                  onTap: () => _bukaMenuOpsi(context),
+            // Tombol Overflow (...)
+            InkWell(
+              onTap: () => _bukaMenuOpsi(context),
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9FAFB),
                   borderRadius: BorderRadius.circular(14),
-                  child: Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF9FAFB),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFE5E7EB)),
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.more_horiz_rounded,
-                        color: Color(0xFF4B5563),
-                        size: 22,
-                      ),
-                    ),
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.more_horiz_rounded,
+                    color: Color(0xFF4B5563),
+                    size: 22,
                   ),
                 ),
-                const SizedBox(width: 10),
-                // Tombol Bayar Sekarang Pill Penuh
-                Expanded(
-                  child: SizedBox(
-                    height: 50,
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF00AA13),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(100),
+              ),
+            ),
+            const SizedBox(width: 10),
+            // Tombol Bayar Sekarang Pill Penuh
+            Expanded(
+              child: SizedBox(
+                height: 50,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF00AA13),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(100),
+                    ),
+                  ),
+                  onPressed: () => context.push(Rute.bayar(order.id)),
+                  child: Row(
+                    children: [
+                      const Text(
+                        'Bayar Sekarang',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                      onPressed: () => context.push(Rute.bayar(order.id)),
-                      child: Row(
-                        children: [
-                          const Text(
-                            'Bayar Sekarang',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const Spacer(),
-                          Text(
-                            formatRupiah(nominal),
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          const Icon(Icons.arrow_forward_rounded, size: 18),
-                        ],
+                      const Spacer(),
+                      Text(
+                        formatRupiah(nominal),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 6),
+                      const Icon(Icons.arrow_forward_rounded, size: 18),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
           ],
         ),
