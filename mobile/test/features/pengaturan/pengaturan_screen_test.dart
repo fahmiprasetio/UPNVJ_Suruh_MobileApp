@@ -125,7 +125,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Syarat & Ketentuan Layanan'), findsOneWidget);
-    expect(find.text('1. Ketentuan Umum'), findsOneWidget);
+    expect(find.text('1. Ketentuan umum'), findsOneWidget);
   });
 
   testWidgets('mengetuk Kebijakan Privasi membuka layar kebijakan privasi', (tester) async {
@@ -134,8 +134,7 @@ void main() {
     await tester.tap(find.widgetWithText(ListTile, 'Kebijakan Privasi'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Penggunaan Nomor Telepon'), findsOneWidget);
-    expect(find.text('Pembersihan Metadata Foto (EXIF)'), findsOneWidget);
+    expect(find.text('1. Data yang kami kumpulkan'), findsOneWidget);
   });
 
   testWidgets('mengetuk Tentang Aplikasi membuka layar tentang aplikasi', (tester) async {

@@ -61,11 +61,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Syarat & Ketentuan'), findsOneWidget);
-      expect(find.text('1. Ketentuan Umum'), findsOneWidget);
-      expect(find.text('2. Pemesanan dan Pembayaran'), findsOneWidget);
-      expect(find.text('3. Larangan dan Batasan Jasa'), findsOneWidget);
-      expect(find.text('4. Pelaksanaan dan Bukti Selesai'), findsOneWidget);
-      expect(find.text('5. Pembatalan dan Pengembalian Dana'), findsOneWidget);
+      expect(find.text('1. Ketentuan umum'), findsOneWidget);
+      expect(find.text('2. Pemesanan dan pembayaran'), findsOneWidget);
+      expect(find.text('3. Larangan dan batasan jasa'), findsOneWidget);
+      expect(find.text('4. Pelaksanaan dan bukti selesai'), findsOneWidget);
+      expect(find.text('5. Pembatalan dan pengembalian dana'), findsOneWidget);
     });
   });
 
@@ -73,16 +73,22 @@ void main() {
     testWidgets('menampilkan komitmen privasi dan butir perlindungan data', (
       tester,
     ) async {
+      // Layarnya panjang sejak isinya disamakan dengan halaman publik; ListView hanya
+      // membangun bagian yang kelihatan, jadi jendelanya dibuat cukup tinggi.
+      tester.view.physicalSize = const Size(1000, 8000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
       await tester.pumpWidget(bungkus(const KebijakanPrivasiScreen()));
       await tester.pumpAndSettle();
 
       // Judul muncul di AppBar dan judul konten utama
       expect(find.text('Kebijakan Privasi'), findsNWidgets(2));
-      expect(find.text('Penggunaan Nomor Telepon'), findsOneWidget);
-      expect(find.text('Privasi Lokasi dan Alamat Kos'), findsOneWidget);
-      expect(find.text('Pembersihan Metadata Foto (EXIF)'), findsOneWidget);
-      expect(find.text('Keamanan Autentikasi dan Kata Sandi'), findsOneWidget);
-      expect(find.text('Hak Pembaruan Data Pengguna'), findsOneWidget);
+      expect(find.text('1. Data yang kami kumpulkan'), findsOneWidget);
+      expect(find.text('3. Dengan siapa data dibagikan'), findsOneWidget);
+      expect(find.text('4. Keamanan'), findsOneWidget);
+      expect(find.text('5. Menghapus akun dan data'), findsOneWidget);
+      expect(find.text('6. Hakmu'), findsOneWidget);
     });
   });
 

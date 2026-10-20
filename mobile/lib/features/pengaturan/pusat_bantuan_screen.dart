@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/config/kontak_bantuan.dart';
 import '../../core/theme/app_theme.dart';
 
 /// Layar Pusat Bantuan dan FAQ resmi UPNVJ Suruh.
@@ -8,15 +10,19 @@ import '../../core/theme/app_theme.dart';
 /// Menyediakan panduan lengkap seputar alur Jalur A/B, pembayaran Midtrans Snap,
 /// pembatalan order, serta tombol kontak langsung ke admin mitra.
 class PusatBantuanScreen extends StatelessWidget {
-  const PusatBantuanScreen({super.key});
+  /// [kontak] diisi tes. Tanpa itu, kontaknya dibaca dari konfigurasi build, lihat
+  /// [KontakBantuan]: nomor dan jam layanan adalah keputusan mitra, bukan isi kode.
+  const PusatBantuanScreen({super.key, this.kontak});
 
-  static const String noHpAdmin = '6281290001958';
+  final KontakBantuan? kontak;
+
+  KontakBantuan get _kontak => kontak ?? KontakBantuan.baca(modeDebug: kDebugMode);
 
   Future<void> _bukaWhatsApp(BuildContext context) async {
     final uri = Uri(
       scheme: 'https',
       host: 'wa.me',
-      path: noHpAdmin,
+      path: _kontak.noHpWhatsapp,
       queryParameters: {
         'text': 'Halo Admin UPNVJ Suruh, saya ingin bertanya seputar layanan aplikasi.',
       },
@@ -42,6 +48,16 @@ class PusatBantuanScreen extends StatelessWidget {
           content: Text('Tidak dapat membuka WhatsApp. Silakan hubungi nomor admin langsung.'),
         ),
       );
+  }
+
+  /// Jam layanan hanya disebut kalau memang diketahui, tidak pernah dikarang.
+  String get _kalimatKontak {
+    if (!_kontak.tersedia) {
+      return 'Kontak admin belum tersedia di versi aplikasi ini. Pertanyaan tentang '
+          'pesananmu bisa dilihat di daftar pertanyaan di bawah.';
+    }
+    final jam = _kontak.punyaJamLayanan ? ' ${_kontak.jamLayanan}' : '';
+    return 'Tim admin UPNVJ Suruh siap membantu kendala pesanan atau pertanyaan Anda$jam.';
   }
 
   @override
@@ -87,27 +103,32 @@ class PusatBantuanScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: AppTheme.spasiKecil),
                 Text(
-                  'Tim admin UPNVJ Suruh siap membantu kendala pesanan atau pertanyaan Anda setiap hari pukul 08.00 - 20.00 WIB.',
+                  _kalimatKontak,
                   style: teks.bodySmall?.copyWith(
                     color: skema.onPrimaryContainer.withValues(alpha: 0.9),
                   ),
                 ),
-                const SizedBox(height: AppTheme.spasiSedang),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: () => _bukaWhatsApp(context),
-                    icon: const Icon(Icons.chat_bubble_outline),
-                    label: const Text('Hubungi Admin via WhatsApp'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: skema.primary,
-                      foregroundColor: skema.onPrimary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppTheme.radiusKontrol),
+                // Tombolnya hanya ada kalau ada nomor yang bisa dihubungi. Tombol yang
+                // mengarah ke nomor yang belum ditetapkan mitra lebih buruk daripada
+                // tidak ada tombol.
+                if (_kontak.tersedia) ...[
+                  const SizedBox(height: AppTheme.spasiSedang),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () => _bukaWhatsApp(context),
+                      icon: const Icon(Icons.chat_bubble_outline),
+                      label: const Text('Hubungi Admin via WhatsApp'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: skema.primary,
+                        foregroundColor: skema.onPrimary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppTheme.radiusKontrol),
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -138,6 +159,11 @@ class PusatBantuanScreen extends StatelessWidget {
             context,
             'Siapa yang mengerjakan pesanan saya?',
             'Runner UPNVJ Suruh adalah mahasiswa aktif UPN Veteran Jakarta yang telah terverifikasi identitasnya. Setiap pesanan Jalur A maupun Jalur B wajib diselesaikan disertai foto bukti serah terima asli sebelum status dinyatakan selesai.',
+          ),
+          _butirFaq(
+            context,
+            'Bagaimana cara menghapus akun saya?',
+            'Buka Pengaturan lalu pilih Hapus Akun di bagian paling bawah. Kami mengirim kode sekali pakai ke nomor HP Anda untuk memastikan itu benar Anda. Akun tidak bisa dihapus selama masih ada pesanan yang berjalan, pengembalian dana yang belum selesai, atau (untuk runner) pekerjaan aktif dan bayaran yang belum dicairkan; alasannya ditampilkan di aplikasi. Catatan transaksi tetap disimpan tanpa terhubung ke identitas Anda. Anda juga bisa menghapus akun lewat halaman web penghapusan akun tanpa memasang aplikasi.',
           ),
           _butirFaq(
             context,

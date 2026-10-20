@@ -6,8 +6,65 @@ import '../../core/theme/app_theme.dart';
 ///
 /// Memuat aturan main perantara jasa serabutan mahasiswa kampus UPNVJ,
 /// larangan pemesanan barang berbahaya, dan tata cara pembatalan.
+///
+/// Isinya sama dengan halaman publik `/syarat-ketentuan` yang dilayani API
+/// (`HalamanPublik.Syarat`): judul pasal, urutan, dan kalimatnya. Kalau salah satunya diubah,
+/// ubah keduanya. Tes di kedua sisi menjaga daftar judul pasalnya ([judulPasal]).
 class SyaratKetentuanScreen extends StatelessWidget {
   const SyaratKetentuanScreen({super.key});
+
+  /// Ikut diubah bersama isi di bawah dan di halaman publik.
+  static const String diperbaruiPada = '20 Oktober 2026';
+
+  /// Judul pasal, urutannya sama dengan `<h2>` di halaman publik. Dipakai tes.
+  static List<String> get judulPasal => [for (final p in _pasal) p.$1];
+
+  static const List<(String, String)> _pasal = [
+    (
+      '1. Ketentuan umum',
+      'UPNVJ Suruh adalah platform perantara jasa serabutan mahasiswa di lingkungan '
+          'Universitas Pembangunan Nasional "Veteran" Jakarta, di bawah naungan Bidang '
+          'Ekonomi Kreatif. Pengguna terdiri atas Klien (pemesan jasa) dan Runner (mitra '
+          'pelaksana yang terdaftar dan terverifikasi).',
+    ),
+    (
+      '2. Pemesanan dan pembayaran',
+      'Klien wajib memberikan alamat, nomor kontak, dan deskripsi pekerjaan yang jelas dan '
+          'benar. Pembayaran dilakukan melalui halaman Midtrans. Pesanan Jalur A baru '
+          'disiarkan ke runner setelah pembayaran terverifikasi. Pada Jalur B, pembayaran '
+          'dilakukan setelah klien menyetujui salah satu penawaran harga dari runner.',
+    ),
+    (
+      '3. Larangan dan batasan jasa',
+      'Klien dilarang memesan pengantaran atau pembelian barang yang melanggar hukum dan '
+          'tata tertib kampus, termasuk minuman beralkohol, rokok atau vape ilegal, '
+          'narkotika, obat-obatan terlarang, senjata tajam, dan barang berbahaya lainnya. '
+          'Runner berhak membatalkan pesanan bila menemukan indikasi pelanggaran ini.',
+    ),
+    (
+      '4. Pelaksanaan dan bukti selesai',
+      'Runner menyelesaikan pesanan sesuai kesepakatan waktu dan alamat. Pesanan baru dapat '
+          'ditandai selesai setelah runner melampirkan foto bukti serah terima beserta '
+          'catatannya.',
+    ),
+    (
+      '5. Pembatalan dan pengembalian dana',
+      'Pesanan yang belum dibayar dapat dibatalkan klien kapan saja. Untuk pesanan yang '
+          'sudah dibayar, pembatalan dilakukan lewat admin, yang sekaligus mencatat '
+          'pengembalian dana. Dana dikembalikan melalui penyedia pembayaran sesuai '
+          'ketentuannya.',
+    ),
+    (
+      '6. Akun',
+      'Satu nomor HP untuk satu akun. Akun dapat ditangguhkan bila ada penyalahgunaan, dan '
+          'pemiliknya dapat menghapus akunnya sendiri sesuai Kebijakan Privasi.',
+    ),
+    (
+      '7. Kontak',
+      'Pertanyaan tentang data dan privasi dapat disampaikan lewat menu Pusat Bantuan di '
+          'aplikasi.',
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -30,37 +87,13 @@ class SyaratKetentuanScreen extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Terakhir diperbarui: September 2026',
+            'Terakhir diperbarui: $diperbaruiPada',
             style: teks.bodySmall?.copyWith(
               color: skema.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: AppTheme.spasiSedang),
-          _bagianPasal(
-            context,
-            '1. Ketentuan Umum',
-            'UPNVJ Suruh merupakan platform perantara jasa serabutan mahasiswa di lingkungan Universitas Pembangunan Nasional "Veteran" Jakarta di bawah naungan Bidang Ekonomi Kreatif.\n\nPengguna platform terdiri atas Klien (pemesan jasa) dan Runner (mitra eksekutor jasa yang terdaftar dan terverifikasi).',
-          ),
-          _bagianPasal(
-            context,
-            '2. Pemesanan dan Pembayaran',
-            'Klien wajib memberikan rincian alamat, nomor kontak, serta deskripsi pekerjaan yang jelas dan benar.\n\nPembayaran seluruh layanan dilakukan melalui halaman Midtrans Snap. Pesanan Jalur A baru disiarkan setelah pembayaran terverifikasi. Pada Jalur B, pembayaran dilakukan setelah klien menyetujui salah satu penawaran harga dari runner.',
-          ),
-          _bagianPasal(
-            context,
-            '3. Larangan dan Batasan Jasa',
-            'Klien dilarang keras memesan pengantaran atau pembelian barang yang melanggar hukum dan tata tertib kampus UPNVJ, termasuk namun tidak terbatas pada: minuman beralkohol, rokok/vape ilegal, narkotika, obat-obatan terlarang, senjata tajam, serta barang berbahaya lainnya.\n\nRunner berhak membatalkan pesanan secara sepihak jika menemukan indikasi pelanggaran aturan ini.',
-          ),
-          _bagianPasal(
-            context,
-            '4. Pelaksanaan dan Bukti Selesai',
-            'Runner bertanggung jawab menyelesaikan pesanan sesuai kesepakatan waktu dan alamat. Sebelum pesanan dapat ditandai selesai, runner wajib melampirkan foto bukti serah terima pekerjaan yang sah dan asli melalui aplikasi.',
-          ),
-          _bagianPasal(
-            context,
-            '5. Pembatalan dan Pengembalian Dana',
-            'Pesanan yang belum dibayar dapat dibatalkan kapan saja oleh klien. Untuk pesanan yang telah dibayar, pembatalan memerlukan persetujuan admin untuk melindungi kepentingan kedua belah pihak dan memproses pengembalian dana (refund).',
-          ),
+          for (final (judul, isi) in _pasal) _bagianPasal(context, judul, isi),
         ],
       ),
     );

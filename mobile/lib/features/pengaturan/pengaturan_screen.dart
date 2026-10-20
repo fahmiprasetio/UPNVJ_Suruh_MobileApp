@@ -8,6 +8,7 @@ import '../../core/providers/repository_providers.dart';
 import '../../core/providers/tema_providers.dart';
 import '../klien/buka_form_order.dart' show belumTersedia;
 import '../profil/atur_password_dialog.dart';
+import 'hapus_akun_dialog.dart';
 
 /// Pengaturan aplikasi.
 ///
@@ -81,6 +82,22 @@ class PengaturanScreen extends ConsumerWidget {
         trailing: const Icon(Icons.chevron_right),
         onTap: () => context.push(Rute.tentangAplikasi),
       ),
+      // Paling bawah dan berwarna galat, terpisah dari butir yang aman disentuh:
+      // satu-satunya butir di layar ini yang tidak bisa ditarik kembali.
+      if (user != null)
+        ListTile(
+          leading: Icon(
+            Icons.delete_forever_outlined,
+            color: Theme.of(context).colorScheme.error,
+          ),
+          title: Text(
+            'Hapus Akun',
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+          subtitle: const Text('Hapus akun dan data pribadimu'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _hapusAkun(context, user),
+        ),
     ];
 
     return Scaffold(
@@ -113,6 +130,15 @@ class PengaturanScreen extends ConsumerWidget {
     ThemeMode.dark => 'Gelap',
     ThemeMode.system => 'Ikuti sistem',
   };
+
+  /// Tidak ada navigasi sesudahnya. Kalau akunnya terhapus, sesi berakhir dan router
+  /// yang memindahkan layar ke layar masuk, sama seperti saat keluar.
+  Future<void> _hapusAkun(BuildContext context, AppUser user) async {
+    await showDialog<bool>(
+      context: context,
+      builder: (context) => HapusAkunDialog(noHp: user.noHp),
+    );
+  }
 
   Future<void> _aturPassword(BuildContext context, WidgetRef ref, AppUser user) async {
     await showDialog<AppUser>(

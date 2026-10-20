@@ -239,6 +239,35 @@ class ApiAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<List<String>> penghalangPenghapusanAkun() async {
+    final jawaban = await _klien.get('/api/akun/penghapusan');
+    final penghalang = jawaban['penghalang'];
+    if (penghalang is! List) return const [];
+    return [for (final alasan in penghalang) alasan.toString()];
+  }
+
+  @override
+  Future<void> hapusAkun({required String kode}) async {
+    final user = _userAktif;
+    if (user == null) throw StateError('Belum masuk');
+
+    // Nomornya diambil dari akun yang sedang masuk, bukan diketik ulang: yang
+    // dibuktikan lewat kode adalah kepemilikan nomor ITU. Server menolak (400)
+    // kalau kodenya salah dan sesi tidak disentuh sama sekali, jadi salah ketik
+    // tidak mengeluarkan siapa pun.
+    await _klien.post(
+      '/api/akun/hapus',
+      badan: {'noHp': user.noHp, 'kode': kode.trim()},
+    );
+
+    // Berhasil: akunnya sudah tidak ada di server, dan token yang masih berlaku
+    // pun sudah mati di sana. Yang tersisa mengakhiri sesi di sisi ini, lewat
+    // jalur yang sama dengan keluar supaya urutannya (token dulu, baru
+    // pengumuman) tidak ditulis dua kali.
+    await keluar();
+  }
+
+  @override
   Future<void> keluar() async {
     // Tokennya dibuang lebih dulu. Kalau urutannya terbalik, layar yang bereaksi
     // pada user yang jadi null sempat mengirim permintaan terakhir yang masih

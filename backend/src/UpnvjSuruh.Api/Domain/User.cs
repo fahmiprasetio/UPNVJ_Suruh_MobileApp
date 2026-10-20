@@ -68,6 +68,31 @@ public class User
     /// </summary>
     public bool Ditangguhkan => SuspendedAt is not null;
 
+    /// <summary>
+    /// Kapan pemilik akun ini menghapusnya sendiri, atau <c>null</c> kalau akunnya masih ada.
+    /// </summary>
+    /// <remarks>
+    /// Akun yang dihapus tidak dibuang dari tabel, tapi dianonimkan (lihat
+    /// <c>AkunController.Hapus</c>): namanya diganti, nomor HP-nya diganti nomor sekali
+    /// pakai yang tidak mungkin dimasuki siapa pun, alamat dan password dihapus, perannya
+    /// dikembalikan jadi klien saja, dan seluruh perangkat notifikasinya dibuang.
+    ///
+    /// Barisnya sendiri harus tetap ada karena order, pembayaran, bayaran runner, dan seluruh
+    /// tabel jejak audit menunjuk ke sini dengan aturan Restrict. Itu bukan kelalaian: riwayat
+    /// uang dan jejak audit adalah catatan yang justru paling mungkin dipersoalkan belakangan,
+    /// dan tidak boleh ikut hilang hanya karena salah satu pihaknya meninggalkan aplikasi.
+    /// Yang dihapus adalah hubungannya dengan orangnya, bukan catatan transaksinya.
+    /// </remarks>
+    public DateTime? DeletedAt { get; set; }
+
+    /// <summary>
+    /// Benar selama akun ini sudah dihapus pemiliknya dan tidak boleh dipakai lagi.
+    ///
+    /// Diperiksa di tempat yang sama dengan <see cref="Ditangguhkan"/>, saat token divalidasi
+    /// (lihat Program.cs), supaya token yang masih berlaku ikut mati seketika.
+    /// </summary>
+    public bool Dihapus => DeletedAt is not null;
+
     public bool IsKlien => Roles.Contains(UserRole.Klien);
     public bool IsRunner => Roles.Contains(UserRole.Runner);
     public bool IsAdmin => Roles.Contains(UserRole.Admin);

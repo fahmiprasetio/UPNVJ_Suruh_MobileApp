@@ -352,13 +352,15 @@ builder.Services
                 var akun = await db.Users
                     .AsNoTracking()
                     .Where(u => u.Id == id)
-                    .Select(u => new { u.SuspendedAt, u.Roles })
+                    .Select(u => new { u.SuspendedAt, u.DeletedAt, u.Roles })
                     .SingleOrDefaultAsync(konteks.HttpContext.RequestAborted);
 
-                // Akun yang sudah tidak ada diperlakukan sama dengan yang ditangguhkan.
-                // Keduanya berujung sama bagi aplikasi, yaitu masuk lagi, dan token yang
-                // sah untuk akun yang tidak ada tidak boleh membuka apa pun.
-                if (akun is null || akun.SuspendedAt is not null)
+                // Akun yang sudah tidak ada diperlakukan sama dengan yang ditangguhkan, dan
+                // yang sudah dihapus pemiliknya juga. Ketiganya berujung sama bagi aplikasi,
+                // yaitu masuk lagi, dan token yang sah untuk akun yang tidak ada tidak boleh
+                // membuka apa pun. Akun yang dihapus tetap ada barisnya (dianonimkan), jadi
+                // tanpa pemeriksaan DeletedAt di sini tokennya masih berlaku sampai kedaluwarsa.
+                if (akun is null || akun.SuspendedAt is not null || akun.DeletedAt is not null)
                 {
                     konteks.Fail("Akun tidak berlaku.");
                     return;

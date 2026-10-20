@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import '../../core/api/galat_api.dart';
 import '../../domain/enums.dart';
 import '../../domain/models/app_user.dart';
 import '../../domain/repositories/auth_repository.dart';
@@ -39,6 +40,13 @@ class FakeAuthRepository implements AuthRepository {
   /// jalur sungguhan -- server sungguhan yang menyidiknya, lihat
   /// `ApiAuthRepository`.
   final Map<String, String> _password = {};
+
+  /// Alasan penghapusan akun ditolak, diisi tes atau pengembang untuk melihat layar
+  /// dalam keadaan "belum bisa dihapus". Kosong berarti boleh.
+  ///
+  /// Tiruan ini tidak punya pesanan sungguhan untuk diperiksa seperti server, jadi
+  /// keadaannya diatur dari luar, bukan dihitung.
+  List<String> penghalangPenghapusan = [];
 
   final Random _acak = Random();
 
@@ -281,6 +289,44 @@ class FakeAuthRepository implements AuthRepository {
     _userAktif = baru;
     _controller.add(baru);
     return baru;
+  }
+
+  @override
+  Future<List<String>> penghalangPenghapusanAkun() async {
+    await Future<void>.delayed(_jedaJaringan);
+
+    if (_userAktif == null) {
+      throw StateError('Belum masuk');
+    }
+
+    return List.unmodifiable(penghalangPenghapusan);
+  }
+
+  @override
+  Future<void> hapusAkun({required String kode}) async {
+    await Future<void>.delayed(_jedaJaringan);
+
+    final sekarang = _userAktif;
+    if (sekarang == null) {
+      throw StateError('Belum masuk');
+    }
+
+    final tersimpan = _kode[sekarang.noHp];
+    if (tersimpan == null || tersimpan != kode.trim()) {
+      throw StateError('Kode salah atau sudah kedaluwarsa');
+    }
+
+    // Kode terpakai walaupun penghapusannya ditolak, seperti di server.
+    _kode.remove(sekarang.noHp);
+
+    if (penghalangPenghapusan.isNotEmpty) {
+      throw GalatBentrok(penghalangPenghapusan.join('\n'));
+    }
+
+    _users.removeWhere((u) => u.id == sekarang.id);
+    _password.remove(sekarang.noHp);
+    _userAktif = null;
+    _controller.add(null);
   }
 
   @override

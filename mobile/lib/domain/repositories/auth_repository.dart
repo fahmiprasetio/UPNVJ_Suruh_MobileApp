@@ -128,5 +128,28 @@ abstract interface class AuthRepository {
     required String kode,
   });
 
+  /// Alasan akun yang sedang masuk belum boleh dihapus, satu kalimat per alasan,
+  /// atau daftar kosong kalau boleh.
+  ///
+  /// Dipanggil SEBELUM meminta kode, supaya orang yang akunnya masih punya pesanan
+  /// berjalan atau pengembalian dana yang belum selesai tahu itu sebelum menunggu
+  /// SMS, bukan sesudahnya. Kalimatnya sudah ditulis server untuk dibaca pemiliknya
+  /// apa adanya; layar menampilkannya tanpa mengubah.
+  Future<List<String>> penghalangPenghapusanAkun();
+
+  /// Menghapus akun sendiri, dibuktikan lewat kode OTP ke nomor akun yang sedang
+  /// masuk -- diminta lewat [mintaKode] yang sama, bukan endpoint terpisah.
+  ///
+  /// Menuntut kode, bukan cuma sesi yang sedang berjalan, dengan alasan yang sama
+  /// seperti [aturPassword] dan [konfirmasiGantiNomor]: penghapusan tidak bisa
+  /// ditarik, dan sesi yang dicuri sesaat tidak boleh cukup untuk melakukannya.
+  ///
+  /// Kalau berhasil, sesi ikut berakhir seperti [keluar]: tokennya dibuang dan
+  /// [watchUserAktif] mengumumkan `null`, sehingga router memindahkan layar ke
+  /// layar masuk sendiri. Kalau server menolak karena masih ada penghalang (lihat
+  /// [penghalangPenghapusanAkun]) atau kodenya salah, sesi TIDAK berubah dan
+  /// pemanggil menerima galat dengan kalimat yang layak ditampilkan.
+  Future<void> hapusAkun({required String kode});
+
   Future<void> keluar();
 }
