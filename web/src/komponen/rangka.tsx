@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { useLayoutEffect, useRef, useState } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 
 import { alamatApi } from '../inti/klien_api';
 import { useSesi, usePengguna } from '../auth/sesi';
@@ -15,6 +16,35 @@ import { useSesi, usePengguna } from '../auth/sesi';
 export function Rangka() {
   const pengguna = usePengguna();
   const { keluar } = useSesi();
+  const lokasi = useLocation();
+  const navRef = useRef<HTMLElement>(null);
+  const [sorot, setSorot] = useState<{ kiri: number; lebar: number } | null>(null);
+
+  /*
+   * Sorotan menu diukur dari DOM, bukan dihitung dari urutan menu: lebar tiap tautan
+   * berbeda menurut panjang teksnya dan bisa berubah saat jendela diubah ukurannya.
+   * Satu elemen latar dipindahkan dengan transform, jadi saat menu berganti sorotannya
+   * bergeser dari posisi lama ke posisi baru, bukan melompat.
+   */
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    if (nav === null) return;
+
+    const ukur = () => {
+      const aktif = nav.querySelector<HTMLAnchorElement>('a.aktif');
+      if (aktif === null) return;
+      const kotakNav = nav.getBoundingClientRect();
+      const kotakAktif = aktif.getBoundingClientRect();
+      setSorot({ kiri: kotakAktif.left - kotakNav.left, lebar: kotakAktif.width });
+    };
+
+    ukur();
+
+    if (typeof ResizeObserver === 'undefined') return;
+    const pengamat = new ResizeObserver(ukur);
+    pengamat.observe(nav);
+    return () => pengamat.disconnect();
+  }, [lokasi.pathname]);
 
   return (
     <div className="rangka">
@@ -24,7 +54,14 @@ export function Rangka() {
           <span className="rangka__anak-judul">Dashboard Admin</span>
         </div>
 
-        <nav className="rangka__nav">
+        <nav className="rangka__nav" ref={navRef}>
+          {sorot !== null && (
+            <span
+              aria-hidden="true"
+              className="rangka__nav-sorot"
+              style={{ transform: `translateX(${sorot.kiri}px)`, width: sorot.lebar }}
+            />
+          )}
           <NavLink to="/order" className={({ isActive }) => (isActive ? 'aktif' : '')}>
             Pantauan Order
           </NavLink>
