@@ -118,6 +118,10 @@ abstract interface class OrderRepository {
     String? deskripsi,
     String? alamatJemput,
     String? alamatTujuan,
+    double? latitudeJemput,
+    double? longitudeJemput,
+    double? latitudeTujuan,
+    double? longitudeTujuan,
     String? idempotencyKey,
   });
 

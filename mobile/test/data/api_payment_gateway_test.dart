@@ -11,6 +11,7 @@ import 'package:upnvj_suruh/core/config/tarif_config.dart';
 import 'package:upnvj_suruh/core/realtime/order_hub_client.dart';
 import 'package:upnvj_suruh/data/api/api_payment_gateway.dart';
 import 'package:upnvj_suruh/domain/enums.dart';
+import 'package:upnvj_suruh/domain/models/lokasi_runner.dart';
 import 'package:upnvj_suruh/domain/models/transaksi_pembayaran.dart';
 
 /// Contoh jawaban di bawah disalin apa adanya dari server yang berjalan, hasil
@@ -325,6 +326,9 @@ class _HubTiruan implements SaluranHubOrder {
   final List<String> diikuti = [];
   final List<String> ditinggalkan = [];
   final StreamController<void> _perubahan = StreamController<void>.broadcast();
+
+  @override
+  Stream<LokasiRunner> get lokasiRunner => const Stream.empty();
 
   @override
   void ikutiOrder(String orderId) => diikuti.add(orderId);

@@ -356,6 +356,7 @@ class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
   }
 
   Future<void> _bukaLembarSelesai(BuildContext context, Order order) async {
+    final messenger = ScaffoldMessenger.of(context);
     final ditutup = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -366,8 +367,8 @@ class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
       builder: (context) => LembarSelesaikanOrder(order: order),
     );
 
-    if (ditutup != true || !context.mounted) return;
-    ScaffoldMessenger.of(context)
+    if (ditutup != true || !messenger.mounted) return;
+    messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(content: Text('Order ${order.kodeOrder} ditandai selesai.')),

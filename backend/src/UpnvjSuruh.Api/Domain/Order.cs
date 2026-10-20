@@ -39,6 +39,10 @@ public class Order
 
     public string? PickupAddress { get; set; }
     public string? DestinationAddress { get; set; }
+    public double? PickupLatitude { get; set; }
+    public double? PickupLongitude { get; set; }
+    public double? DestinationLatitude { get; set; }
+    public double? DestinationLongitude { get; set; }
 
     /// <summary>
     /// Perkiraan jarak yang diisi klien, dipakai menghitung harga Jalur A. Disimpan apa

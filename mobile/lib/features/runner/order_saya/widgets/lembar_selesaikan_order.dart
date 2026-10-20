@@ -184,7 +184,6 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
         _sedangAmbilFoto = false;
         _pesanGalatFoto = pesan;
       });
-      _kabari(pesan);
       return;
     }
 
@@ -204,8 +203,7 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
   Future<void> _tandaiSelesai() async {
     final fotoBuktiUrl = _fotoBuktiUrl;
     final catatan = _catatanController.text.trim();
-    final user = ref.read(userAktifProvider).value;
-    if (fotoBuktiUrl == null || catatan.isEmpty || user == null) return;
+    if (fotoBuktiUrl == null || catatan.isEmpty) return;
 
     setState(() => _sedangMenutup = true);
 

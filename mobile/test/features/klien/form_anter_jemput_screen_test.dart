@@ -15,22 +15,27 @@ void main() {
   /// Layar cukup tinggi supaya seluruh isi form terbangun dalam satu viewport;
   /// tanpa ini ringkasan harga berada di luar layar dan tidak terjangkau tes.
   setUp(() {
-    final view = TestWidgetsFlutterBinding.ensureInitialized().platformDispatcher.views.first;
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
+        .platformDispatcher
+        .views
+        .first;
     view.physicalSize = const Size(1000, 2400);
     view.devicePixelRatio = 1;
   });
 
   tearDown(() {
-    final view = TestWidgetsFlutterBinding.ensureInitialized().platformDispatcher.views.first;
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
+        .platformDispatcher
+        .views
+        .first;
     view.resetPhysicalSize();
     view.resetDevicePixelRatio();
   });
 
   Future<void> bukaForm(WidgetTester tester) async {
-    await tester.pumpWidget(ProviderScope(
-        overrides: [sumberTiruan],
-        child: const UpnvjSuruhApp(),
-      ));
+    await tester.pumpWidget(
+      ProviderScope(overrides: [sumberTiruan], child: const UpnvjSuruhApp()),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Anter Jemput'));
     await tester.pumpAndSettle();
@@ -41,8 +46,8 @@ void main() {
   testWidgets('beranda membuka form saat Anter Jemput ditekan', (tester) async {
     await bukaForm(tester);
 
-    expect(find.text('Dijemput di mana?'), findsOneWidget);
-    expect(find.text('Diantar ke mana?'), findsOneWidget);
+    expect(find.text('LOKASI JEMPUT'), findsOneWidget);
+    expect(find.text('TUJUAN PENGANTARAN'), findsOneWidget);
   });
 
   testWidgets('harga belum ditampilkan sebelum jarak diisi', (tester) async {
@@ -50,7 +55,7 @@ void main() {
 
     expect(find.text('Total'), findsNothing);
     expect(
-      find.text('Isi perkiraan jarak dulu, harganya langsung muncul di sini.'),
+      find.text('Pilih rute untuk melihat rincian tarif.'),
       findsOneWidget,
     );
   });
@@ -96,8 +101,16 @@ void main() {
   ) async {
     await bukaForm(tester);
 
-    await tester.enterText(kolom(0), 'Kos Melati, Jl. Pondok Labu Raya No. 12');
-    await tester.enterText(kolom(1), 'Gedung FIK UPNVJ');
+    await tester.enterText(kolom(0), 'Kos Putri Melati');
+    await tester.pump();
+    await tester.tap(find.text('Kos Putri Melati Pondok Labu'));
+    await tester.pump();
+
+    await tester.enterText(kolom(1), 'Gedung FIK');
+    await tester.pump();
+    await tester.tap(find.text('Gedung FIK Kampus Pondok Labu'));
+    await tester.pumpAndSettle();
+
     await tester.enterText(kolom(2), '3');
     await tester.pumpAndSettle();
 
@@ -111,7 +124,7 @@ void main() {
 
     // Order baru Jalur A langsung berstatus menunggu pembayaran.
     expect(find.text('Bayar Sekarang'), findsOneWidget);
-    expect(find.text('Rp 11.000'), findsOneWidget);
+    expect(find.text('Rp 11.000'), findsNWidgets(2));
 
     // Pekerjaannya sudah selesai, tidak boleh ada yang masih berputar.
     expect(find.byType(CircularProgressIndicator), findsNothing);

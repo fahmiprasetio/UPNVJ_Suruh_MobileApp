@@ -65,6 +65,7 @@ Future<void> main() async {
   // provider Riverpod yang tidak pernah dibaca tidak pernah berjalan. Ia sendiri tidak
   // melakukan apa-apa sampai ada yang masuk (lihat [notifikasiPushProvider]).
   wadah.read(notifikasiPushProvider);
+  wadah.read(pelacakRunnerProvider);
 
   runApp(
     UncontrolledProviderScope(container: wadah, child: const UpnvjSuruhApp()),

@@ -47,6 +47,17 @@ public class OrdersController(
             });
         }
 
+        if (permintaan.ServiceType == ServiceType.AnterJemput &&
+            AdaKoordinat(permintaan) && !KoordinatLengkapDanValid(permintaan))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Titik perjalanan belum lengkap",
+                Detail = "Pilih titik jemput dan tujuan pada peta agar perjalanan dapat dilacak.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
         // Baris tunggal, disemai lewat migrasi, tidak pernah null dalam keadaan normal.
         // Kalau sampai hilang, itu basis data yang rusak, bukan sesuatu yang layak
         // ditangkap dan dijawab 400 seolah-olah kesalahan pemanggil.
@@ -124,6 +135,10 @@ public class OrdersController(
             Description = permintaan.Deskripsi?.Trim(),
             PickupAddress = permintaan.AlamatJemput?.Trim(),
             DestinationAddress = permintaan.AlamatTujuan?.Trim(),
+            PickupLatitude = permintaan.LatitudeJemput,
+            PickupLongitude = permintaan.LongitudeJemput,
+            DestinationLatitude = permintaan.LatitudeTujuan,
+            DestinationLongitude = permintaan.LongitudeTujuan,
             DistanceKm = permintaan.JarakKm,
         };
 
@@ -184,6 +199,20 @@ public class OrdersController(
 
         return CreatedAtAction(nameof(Ambil), new { id = order.Id }, hasil);
     }
+
+    private static bool KoordinatLengkapDanValid(BuatOrderJalurARequest p)
+    {
+        var nilai = new[] { p.LatitudeJemput, p.LongitudeJemput, p.LatitudeTujuan, p.LongitudeTujuan };
+        if (nilai.Any(v => v is null || !double.IsFinite(v.Value))) return false;
+        return Math.Abs(p.LatitudeJemput!.Value) <= 90
+            && Math.Abs(p.LatitudeTujuan!.Value) <= 90
+            && Math.Abs(p.LongitudeJemput!.Value) <= 180
+            && Math.Abs(p.LongitudeTujuan!.Value) <= 180;
+    }
+
+    private static bool AdaKoordinat(BuatOrderJalurARequest p) =>
+        p.LatitudeJemput is not null || p.LongitudeJemput is not null ||
+        p.LatitudeTujuan is not null || p.LongitudeTujuan is not null;
 
     /// <summary>
     /// Satu order. Hanya bisa dibaca pemesannya, runner yang memegangnya, dan admin.
@@ -886,6 +915,7 @@ public class OrdersController(
         var sekarang = DateTime.UtcNow;
         penugasan.MarkedDoneAt = sekarang;
         penugasan.CompletionPhotoUrl = permintaan.FotoBuktiUrl.Trim();
+        foreach (var tugas in order.RunnerAssignments) tugas.HapusLokasi();
 
         var perpindahan = OrderStatusChange.Catat(order, OrderStatus.Selesai, runnerId);
         db.OrderStatusChanges.Add(perpindahan);

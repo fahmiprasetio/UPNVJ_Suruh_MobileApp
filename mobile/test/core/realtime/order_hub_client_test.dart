@@ -116,6 +116,39 @@ void main() {
     });
   });
 
+  group('bacaLokasiRunner', () {
+    test('membaca event lokasi bertipe kuat', () {
+      final lokasi = bacaLokasiRunner(
+        jsonEncode({
+          'type': 1,
+          'target': 'RunnerLocationChanged',
+          'arguments': [
+            {
+              'orderId': 'order-1',
+              'runnerId': 'runner-1',
+              'latitude': -6.32,
+              'longitude': 106.80,
+              'akurasiMeter': 8,
+              'arahDerajat': 120,
+              'kecepatanMeterPerDetik': 5.5,
+              'direkamPada': '2026-10-20T13:00:00Z',
+              'diterimaPada': '2026-10-20T13:00:01Z',
+            },
+          ],
+        }),
+      );
+
+      expect(lokasi, isNotNull);
+      expect(lokasi!.orderId, 'order-1');
+      expect(lokasi.latitude, -6.32);
+    });
+
+    test('event lain dan payload rusak diabaikan', () {
+      expect(bacaLokasiRunner('{"type":1,"target":"OrderChanged"}'), isNull);
+      expect(bacaLokasiRunner('bukan-json'), isNull);
+    });
+  });
+
   group('hitungJedaSambungUlang', () {
     test('bertambah eksponensial sampai batas atas', () {
       const dasar = Duration(seconds: 5);

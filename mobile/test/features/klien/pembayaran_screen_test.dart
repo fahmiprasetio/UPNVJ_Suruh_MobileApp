@@ -44,6 +44,6 @@ void main() {
     expect(find.text('Bayar dengan Midtrans'), findsOneWidget);
     expect(find.text('Buka Midtrans'), findsOneWidget);
     expect(find.text('ALAT PENGUJI'), findsNothing);
-    expect(find.textContaining('QRIS'), findsNothing);
+    expect(find.textContaining('QRIS'), findsWidgets);
   });
 }

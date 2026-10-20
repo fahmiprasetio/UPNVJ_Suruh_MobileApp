@@ -23,6 +23,10 @@ class Order {
     this.deskripsi,
     this.alamatJemput,
     this.alamatTujuan,
+    this.latitudeJemput,
+    this.longitudeJemput,
+    this.latitudeTujuan,
+    this.longitudeTujuan,
     this.jarakKm,
     this.harga,
     this.hargaUsulan,
@@ -56,6 +60,10 @@ class Order {
   final String? deskripsi;
   final String? alamatJemput;
   final String? alamatTujuan;
+  final double? latitudeJemput;
+  final double? longitudeJemput;
+  final double? latitudeTujuan;
+  final double? longitudeTujuan;
 
   /// Perkiraan jarak yang diisi klien saat membuat order Jalur A.
   ///
@@ -140,8 +148,10 @@ class Order {
   /// Order tetap terbuka untuk runner sampai kuotanya penuh (bagian 5).
   bool get kuotaRunnerPenuh => runnerIds.length >= jumlahRunnerDibutuhkan;
 
-  int get sisaKuotaRunner =>
-      (jumlahRunnerDibutuhkan - runnerIds.length).clamp(0, jumlahRunnerDibutuhkan);
+  int get sisaKuotaRunner => (jumlahRunnerDibutuhkan - runnerIds.length).clamp(
+    0,
+    jumlahRunnerDibutuhkan,
+  );
 
   /// Seluruh penawaran yang masih menunggu jawaban klien, dari runner mana pun.
   ///
@@ -173,6 +183,10 @@ class Order {
     String? deskripsi,
     String? alamatJemput,
     String? alamatTujuan,
+    double? latitudeJemput,
+    double? longitudeJemput,
+    double? latitudeTujuan,
+    double? longitudeTujuan,
     int? harga,
     int? hargaUsulan,
     Duration? estimasiDurasi,
@@ -201,6 +215,10 @@ class Order {
       deskripsi: deskripsi ?? this.deskripsi,
       alamatJemput: alamatJemput ?? this.alamatJemput,
       alamatTujuan: alamatTujuan ?? this.alamatTujuan,
+      latitudeJemput: latitudeJemput ?? this.latitudeJemput,
+      longitudeJemput: longitudeJemput ?? this.longitudeJemput,
+      latitudeTujuan: latitudeTujuan ?? this.latitudeTujuan,
+      longitudeTujuan: longitudeTujuan ?? this.longitudeTujuan,
       jarakKm: jarakKm,
       harga: harga ?? this.harga,
       hargaUsulan: hargaUsulan ?? this.hargaUsulan,

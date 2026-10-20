@@ -83,7 +83,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Selamat Datang di UPNVJ Suruh!'), findsOneWidget);
-    expect(find.text('Pembayaran Cepat & Otomatis via QRIS'), findsOneWidget);
+    expect(find.text('Pembayaran Aman melalui Midtrans Snap'), findsOneWidget);
 
     // Ketuk salah satu pengumuman untuk membuka modal detail
     await tester.tap(find.text('Selamat Datang di UPNVJ Suruh!'));

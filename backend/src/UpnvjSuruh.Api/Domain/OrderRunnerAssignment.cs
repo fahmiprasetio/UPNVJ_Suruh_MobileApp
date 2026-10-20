@@ -18,6 +18,27 @@ public class OrderRunnerAssignment
     public DateTime? MarkedDoneAt { get; set; }
     public string? CompletionPhotoUrl { get; set; }
 
+    // Hanya snapshot terakhir yang diperlukan untuk pelacakan langsung. Riwayat
+    // lintasan tidak disimpan agar lokasi runner tidak menjadi data permanen.
+    public double? LastLatitude { get; set; }
+    public double? LastLongitude { get; set; }
+    public double? LastAccuracyMeters { get; set; }
+    public double? LastHeadingDegrees { get; set; }
+    public double? LastSpeedMetersPerSecond { get; set; }
+    public DateTime? LocationRecordedAt { get; set; }
+    public DateTime? LocationReceivedAt { get; set; }
+
+    public void HapusLokasi()
+    {
+        LastLatitude = null;
+        LastLongitude = null;
+        LastAccuracyMeters = null;
+        LastHeadingDegrees = null;
+        LastSpeedMetersPerSecond = null;
+        LocationRecordedAt = null;
+        LocationReceivedAt = null;
+    }
+
     /// <summary>
     /// Bayaran runner ini untuk order ini, dibekukan saat ordernya selesai.
     /// </summary>

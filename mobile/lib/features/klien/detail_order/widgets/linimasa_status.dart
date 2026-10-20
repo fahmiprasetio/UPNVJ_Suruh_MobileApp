@@ -66,38 +66,36 @@ class _TahapAloha extends StatelessWidget {
     return switch (status) {
       OrderStatus.permintaan => (
         Icons.handshake_outlined,
-        'Mencari Penawaran',
+        status.label,
         'Menunggu tawaran harga dan kesediaan jadwal dari runner kampus',
       ),
       OrderStatus.menungguPembayaran => (
         Icons.payment_rounded,
-        'Menunggu Pembayaran',
+        status.label,
         'Konfirmasi pembayaran untuk mengirim order ke runner',
       ),
       OrderStatus.mencariRunner => (
         Icons.person_search_rounded,
-        'Mencari Runner Kampus',
+        status.label,
         'Runner mahasiswa terdekat di area kampus siap ditugaskan',
       ),
       OrderStatus.dikerjakan => (
         order.serviceType == ServiceType.anterJemput
             ? Icons.two_wheeler_rounded
             : Icons.work_outline_rounded,
-        order.serviceType == ServiceType.anterJemput
-            ? 'Perjalanan ke Tujuan'
-            : 'Sedang Dikerjakan',
+        status.label,
         order.serviceType == ServiceType.anterJemput
             ? 'Perjalanan dimulai setelah kamu dijemput'
             : 'Runner sedang menyelesaikan pekerjaan pesananmu',
       ),
       OrderStatus.selesai => (
         Icons.check_circle_outline_rounded,
-        'Selesai',
+        status.label,
         'Tiba dengan selamat di $tujuanSingkat',
       ),
       OrderStatus.batal => (
         Icons.cancel_outlined,
-        'Dibatalkan',
+        status.label,
         'Pesanan telah dibatalkan',
       ),
       _ => (

@@ -280,11 +280,14 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
     }
 
     // 1. Fast path: cari di daftar titik lokal kampus
-    final hasilLokal = _daftarLokasiKampus.where((loc) {
-      return loc.nama.toLowerCase().contains(q) ||
-          loc.kategori.toLowerCase().contains(q) ||
-          (loc.sublabel?.toLowerCase().contains(q) ?? false);
-    }).take(4).toList();
+    final hasilLokal = _daftarLokasiKampus
+        .where((loc) {
+          return loc.nama.toLowerCase().contains(q) ||
+              loc.kategori.toLowerCase().contains(q) ||
+              (loc.sublabel?.toLowerCase().contains(q) ?? false);
+        })
+        .take(4)
+        .toList();
 
     if (hasilLokal.isNotEmpty) {
       setState(() {
@@ -378,16 +381,18 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
         final meter = const Distance().as(LengthUnit.Meter, jemput, tujuan);
         final perkiraanKm = (meter / 1000.0) * 1.25;
         final finalKm = (perkiraanKm < 0.3) ? 0.5 : perkiraanKm;
-        _jarakController.text =
-            tulisJarak(double.parse(finalKm.toStringAsFixed(1)));
+        _jarakController.text = tulisJarak(
+          double.parse(finalKm.toStringAsFixed(1)),
+        );
       }
     } catch (_) {
       if (!mounted) return;
       final meter = const Distance().as(LengthUnit.Meter, jemput, tujuan);
       final perkiraanKm = (meter / 1000.0) * 1.25;
       final finalKm = (perkiraanKm < 0.3) ? 0.5 : perkiraanKm;
-      _jarakController.text =
-          tulisJarak(double.parse(finalKm.toStringAsFixed(1)));
+      _jarakController.text = tulisJarak(
+        double.parse(finalKm.toStringAsFixed(1)),
+      );
     } finally {
       if (mounted) {
         setState(() => _sedangHitungRute = false);
@@ -435,7 +440,7 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
             labelTotal: melebihiBatas ? 'Di Luar Batas' : null,
             labelAksi: melebihiBatas
                 ? 'Maks. ${tarif.anjemJarakMaksimalKm.round()} km'
-                : 'Pesan Sekarang',
+                : 'Buat Order',
             sedangMengirim: _sedangMengirim,
             onTekan: (hasil == null || melebihiBatas) ? null : _buatOrder,
             melebihiBatas: melebihiBatas,
@@ -453,8 +458,7 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
         : 'Mahasiswa';
 
     final jarak = bacaJarak(_jarakController.text);
-    final melebihiBatas =
-        jarak != null && jarak > tarif.anjemJarakMaksimalKm;
+    final melebihiBatas = jarak != null && jarak > tarif.anjemJarakMaksimalKm;
     final hasil = melebihiBatas ? null : _hasilTarif(tarif);
 
     return SafeArea(
@@ -515,9 +519,7 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
   /// Header hijau Gojek Aloha yang ringkas tanpa banner berlebih
   Widget _buildGojekHeader(BuildContext context, String nama) {
     return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF00AA13),
-      ),
+      decoration: const BoxDecoration(color: Color(0xFF00AA13)),
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top + 8,
         left: 16,
@@ -636,8 +638,10 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
             InkWell(
               onTap: () => _pilihSaran(item, untukJemput: untukJemput),
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 child: Row(
                   children: [
                     Container(
@@ -725,8 +729,10 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
                 height: 22,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border:
-                      Border.all(color: const Color(0xFF00AA13), width: 2.5),
+                  border: Border.all(
+                    color: const Color(0xFF00AA13),
+                    width: 2.5,
+                  ),
                 ),
                 child: Center(
                   child: Container(
@@ -783,8 +789,7 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
                           fontWeight: FontWeight.w400,
                         ),
                       ),
-                      onChanged: (val) =>
-                          _saringSaran(val, untukJemput: true),
+                      onChanged: (val) => _saringSaran(val, untukJemput: true),
                       onTap: () => _saringSaran(
                         _jemputController.text,
                         untukJemput: true,
@@ -862,8 +867,10 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
                 height: 22,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border:
-                      Border.all(color: const Color(0xFFFF5722), width: 2.5),
+                  border: Border.all(
+                    color: const Color(0xFFFF5722),
+                    width: 2.5,
+                  ),
                 ),
                 child: Center(
                   child: Container(
@@ -919,8 +926,7 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
                           fontWeight: FontWeight.w400,
                         ),
                       ),
-                      onChanged: (val) =>
-                          _saringSaran(val, untukJemput: false),
+                      onChanged: (val) => _saringSaran(val, untukJemput: false),
                       onTap: () => _saringSaran(
                         _tujuanController.text,
                         untukJemput: false,
@@ -1049,10 +1055,12 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
                             controller: _jarakController,
                             enabled: !_sedangHitungRute,
                             keyboardType: const TextInputType.numberWithOptions(
-                                decimal: true),
+                              decimal: true,
+                            ),
                             inputFormatters: [
                               FilteringTextInputFormatter.allow(
-                                  RegExp(r'[0-9.,]')),
+                                RegExp(r'[0-9.,]'),
+                              ),
                             ],
                             style: TextStyle(
                               fontSize: 16,
@@ -1101,8 +1109,10 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
                 )
               else
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: melebihiBatas
                         ? const Color(0xFFFFF3E0)
@@ -1142,8 +1152,11 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.info_outline_rounded,
-                          color: Color(0xFFE65100), size: 16),
+                      const Icon(
+                        Icons.info_outline_rounded,
+                        color: Color(0xFFE65100),
+                        size: 16,
+                      ),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
@@ -1177,7 +1190,9 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
                     borderRadius: BorderRadius.circular(8),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 7),
+                        horizontal: 10,
+                        vertical: 7,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFE65100),
                         borderRadius: BorderRadius.circular(8),
@@ -1194,8 +1209,11 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
                             ),
                           ),
                           SizedBox(width: 4),
-                          Icon(Icons.arrow_forward_rounded,
-                              color: Colors.white, size: 14),
+                          Icon(
+                            Icons.arrow_forward_rounded,
+                            color: Colors.white,
+                            size: 14,
+                          ),
                         ],
                       ),
                     ),
@@ -1324,8 +1342,10 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
                 ],
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 3,
+                ),
                 decoration: BoxDecoration(
                   color: melebihiBatas
                       ? const Color(0xFFFFF3E0)
@@ -1390,7 +1410,8 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
                       style: TextStyle(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w600,
-                        color: baris.label.toLowerCase().contains('parkir') ||
+                        color:
+                            baris.label.toLowerCase().contains('parkir') ||
                                 baris.label.toLowerCase().contains('layanan')
                             ? const Color(0xFF00AA13)
                             : const Color(0xFF1E2124),
@@ -1431,6 +1452,21 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
   Future<void> _buatOrder() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final jemput = _posisiJemput;
+    final tujuan = _posisiTujuan;
+    if (jemput == null || tujuan == null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Pilih titik jemput dan tujuan dari saran atau peta.',
+            ),
+          ),
+        );
+      return;
+    }
+
     final jarak = bacaJarak(_jarakController.text);
     if (jarak == null) return;
 
@@ -1463,6 +1499,10 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
                 : _catatanController.text.trim(),
             alamatJemput: _jemputController.text.trim(),
             alamatTujuan: _tujuanController.text.trim(),
+            latitudeJemput: jemput.latitude,
+            longitudeJemput: jemput.longitude,
+            latitudeTujuan: tujuan.latitude,
+            longitudeTujuan: tujuan.longitude,
             idempotencyKey: _idempotencyKey,
           );
     } catch (galat) {
@@ -1535,7 +1575,7 @@ class _BilahBawahGojek extends StatelessWidget {
   const _BilahBawahGojek({
     required this.total,
     this.labelTotal,
-    this.labelAksi = 'Pesan Sekarang',
+    this.labelAksi = 'Buat Order',
     required this.sedangMengirim,
     required this.onTekan,
     this.melebihiBatas = false,

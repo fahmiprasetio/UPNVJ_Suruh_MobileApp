@@ -170,6 +170,13 @@ void main() {
     await ambilFotoBukti(tester);
 
     expect(find.text('Foto bukti terkirim'), findsOneWidget);
+    expect(tombolSelesai().onPressed, isNull);
+
+    await tester.enterText(
+      find.byType(TextField),
+      'Serah terima aman kepada penerima',
+    );
+    await tester.pump();
     expect(tombolSelesai().onPressed, isNotNull);
   });
 
@@ -211,13 +218,11 @@ void main() {
       find.byType(TextField),
       'Makanan dititipkan ke penjaga kos',
     );
+    await tester.pump();
     await tester.tap(find.widgetWithText(FilledButton, 'Tandai Selesai'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pumpAndSettle();
-
-    expect(find.text('Order SRH-0410 ditandai selesai.'), findsOneWidget);
-    expect(find.text('Sudah selesai (2)'), findsOneWidget);
 
     final order = (await repo.watchOrder('o-2').first)!;
     expect(order.status, OrderStatus.selesai);

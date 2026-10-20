@@ -37,6 +37,11 @@ public record BuatOrderJalurARequest
 
     [MaxLength(BatasMasukan.Alamat)]
     public string? AlamatTujuan { get; init; }
+
+    public double? LatitudeJemput { get; init; }
+    public double? LongitudeJemput { get; init; }
+    public double? LatitudeTujuan { get; init; }
+    public double? LongitudeTujuan { get; init; }
 }
 
 public record RincianTarifResponse(string Label, decimal Nominal)
@@ -57,6 +62,10 @@ public record OrderResponse(
     string? Deskripsi,
     string? AlamatJemput,
     string? AlamatTujuan,
+    double? LatitudeJemput,
+    double? LongitudeJemput,
+    double? LatitudeTujuan,
+    double? LongitudeTujuan,
     double? JarakKm,
     int JumlahRunnerDibutuhkan,
     /// <summary>
@@ -119,6 +128,10 @@ public record OrderResponse(
         order.Description,
         order.PickupAddress,
         order.DestinationAddress,
+        order.PickupLatitude,
+        order.PickupLongitude,
+        order.DestinationLatitude,
+        order.DestinationLongitude,
         order.DistanceKm,
         order.RequiredRunnerCount,
         [.. order.RunnerAssignments.Select(a =>

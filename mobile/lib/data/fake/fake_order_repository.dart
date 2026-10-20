@@ -142,7 +142,9 @@ class FakeOrderRepository implements OrderRepository {
     if (o.klienId == runnerId) return false;
 
     // Order yang tidak ditangani lebih dari 1 hari tidak disiarkan.
-    final batasKedaluwarsa = DateTime.now().toUtc().subtract(const Duration(days: 1));
+    final batasKedaluwarsa = DateTime.now().toUtc().subtract(
+      const Duration(days: 1),
+    );
     final waktuMulai = o.dibayarPada ?? o.dibuatPada;
     if (waktuMulai.isBefore(batasKedaluwarsa)) return false;
 
@@ -265,6 +267,10 @@ class FakeOrderRepository implements OrderRepository {
     String? deskripsi,
     String? alamatJemput,
     String? alamatTujuan,
+    double? latitudeJemput,
+    double? longitudeJemput,
+    double? latitudeTujuan,
+    double? longitudeTujuan,
     String? idempotencyKey,
   }) async {
     await Future<void>.delayed(_jedaJaringan);
@@ -307,6 +313,10 @@ class FakeOrderRepository implements OrderRepository {
       deskripsi: deskripsiBersih,
       alamatJemput: jemputBersih,
       alamatTujuan: tujuanBersih,
+      latitudeJemput: latitudeJemput,
+      longitudeJemput: longitudeJemput,
+      latitudeTujuan: latitudeTujuan,
+      longitudeTujuan: longitudeTujuan,
       harga: tarif.total,
     );
     _orders.add(order);

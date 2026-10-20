@@ -187,6 +187,10 @@ class ApiOrderRepository implements OrderRepository {
     String? deskripsi,
     String? alamatJemput,
     String? alamatTujuan,
+    double? latitudeJemput,
+    double? longitudeJemput,
+    double? latitudeTujuan,
+    double? longitudeTujuan,
     String? idempotencyKey,
   }) async {
     final jawaban = await _klien.post(
@@ -197,6 +201,10 @@ class ApiOrderRepository implements OrderRepository {
         'deskripsi': ?deskripsi,
         'alamatJemput': ?alamatJemput,
         'alamatTujuan': ?alamatTujuan,
+        'latitudeJemput': ?latitudeJemput,
+        'longitudeJemput': ?longitudeJemput,
+        'latitudeTujuan': ?latitudeTujuan,
+        'longitudeTujuan': ?longitudeTujuan,
       },
       headerTambahan: idempotencyKey == null
           ? null

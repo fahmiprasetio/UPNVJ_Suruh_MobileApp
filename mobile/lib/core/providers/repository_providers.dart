@@ -10,10 +10,12 @@ import '../config/sumber_data.dart';
 import '../notifikasi/konfigurasi_firebase.dart';
 import '../notifikasi/notifikasi_push.dart';
 import '../realtime/order_hub_client.dart';
+import '../tracking/pelacak_runner.dart';
 import '../router/app_router.dart';
 import '../../domain/enums.dart';
 import 'peran_providers.dart';
 import '../../data/api/api_auth_repository.dart';
+import '../../data/api/api_tracking_repository.dart';
 import '../../data/api/api_foto_bukti_repository.dart';
 import '../../data/api/api_order_repository.dart';
 import '../../data/api/api_pendapatan_repository.dart';
@@ -206,6 +208,33 @@ final orderHubClientProvider = Provider<OrderHubClient?>((ref) {
   }, fireImmediately: true);
 
   return client;
+});
+
+final trackingRepositoryProvider = Provider<ApiTrackingRepository?>((ref) {
+  if (ref.watch(sumberDataProvider) == SumberData.tiruan) return null;
+  return ApiTrackingRepository(
+    klien: ref.watch(klienApiProvider),
+    hub: ref.watch(orderHubClientProvider),
+  );
+});
+
+final pelacakRunnerProvider = Provider<PelacakRunner?>((ref) {
+  final tracking = ref.watch(trackingRepositoryProvider);
+  if (tracking == null) return null;
+  final pelacak = PelacakRunner(
+    orders: ref.watch(orderRepositoryProvider),
+    tracking: tracking,
+  );
+  ref.onDispose(pelacak.dispose);
+  ref.listen(userAktifProvider, (_, sekarang) {
+    final user = sekarang.value;
+    if (user?.isRunner ?? false) {
+      pelacak.mulai(user!.id);
+    } else {
+      pelacak.berhenti();
+    }
+  }, fireImmediately: true);
+  return pelacak;
 });
 
 /// Pendaftaran perangkat untuk notifikasi push, mengikuti status masuk.

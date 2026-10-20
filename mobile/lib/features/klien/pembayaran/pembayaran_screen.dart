@@ -553,7 +553,7 @@ class _MenungguBayarAloha extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Lanjutkan ke Midtrans Snap',
+                          'Bayar dengan Midtrans',
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
@@ -616,7 +616,7 @@ class _MenungguBayarAloha extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'Buka Gerbang Midtrans',
+                        'Buka Midtrans',
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,

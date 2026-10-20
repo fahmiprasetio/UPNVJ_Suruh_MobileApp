@@ -13,6 +13,7 @@ import '../../../core/format/formatters.dart';
 import '../../../core/providers/order_providers.dart';
 import '../../../core/providers/payment_providers.dart';
 import '../../../core/providers/repository_providers.dart';
+import '../../../core/providers/tracking_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/pesan_kosong.dart';
@@ -39,6 +40,29 @@ class DetailOrderScreen extends ConsumerWidget {
     if (order.status == OrderStatus.menungguPembayaran) {
       return _BilahBayarAloha(order: order);
     }
+    if (order.status == OrderStatus.mencariRunner) {
+      return Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: Color(0xFFE5E7EB), width: 1)),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: SafeArea(
+          top: false,
+          child: Text(
+            order.macet
+                ? 'Belum ada runner yang mengambil. Kamu bisa menunggu atau minta pembatalan.'
+                : 'Ordermu sedang disiarkan ke runner yang tersedia.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 13,
+              color: Color(0xFF4B5563),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      );
+    }
     if (!order.status.isAktif && adaFormOrder(order.serviceType)) {
       return _BilahPesanLagiAloha(order: order);
     }
@@ -54,10 +78,15 @@ class DetailOrderScreen extends ConsumerWidget {
     // dikerjakan oleh runner. Order yang baru dibayar tetapi masih mencari
     // runner, serta order yang sudah selesai, harus tetap menampilkan detail
     // dan tindakan sesuai status sebenarnya.
-    final isLiveTracking = order != null &&
+    final isLiveTracking =
+        order != null &&
         order.serviceType == ServiceType.anterJemput &&
         order.status == OrderStatus.dikerjakan &&
-        order.runners.isNotEmpty;
+        order.runners.isNotEmpty &&
+        order.latitudeJemput != null &&
+        order.longitudeJemput != null &&
+        order.latitudeTujuan != null &&
+        order.longitudeTujuan != null;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -216,40 +245,27 @@ class _LiveTrackingAlohaView extends ConsumerStatefulWidget {
       _LiveTrackingAlohaViewState();
 }
 
-class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> {
+class _LiveTrackingAlohaViewState
+    extends ConsumerState<_LiveTrackingAlohaView> {
   late final MapController _mapController;
 
-  late final List<LatLng> _titikRute;
   late final LatLng _posisiJemput;
   late final LatLng _posisiTujuan;
-  late LatLng _posisiRunner;
-  late final String _pinJemput;
+  LatLng? _posisiRunner;
 
   @override
   void initState() {
     super.initState();
     _mapController = MapController();
 
-    _posisiJemput = const LatLng(-6.3142, 106.7946); // UPNVJ Kampus Pondok Labu
-    _posisiTujuan = const LatLng(-6.3312, 106.8335); // Stasiun Lenteng Agung
-
-    _titikRute = [
-      const LatLng(-6.2975, 106.7915), // Runner area Fatmawati
-      const LatLng(-6.3020, 106.7928),
-      const LatLng(-6.3065, 106.7939),
-      const LatLng(-6.3105, 106.7943),
-      const LatLng(-6.3142, 106.7946), // Titik Jemput (UPNVJ)
-      const LatLng(-6.3190, 106.8040),
-      const LatLng(-6.3235, 106.8160),
-      const LatLng(-6.3275, 106.8250),
-      const LatLng(-6.3312, 106.8335), // Titik Tujuan (Stasiun)
-    ];
-
-    _posisiRunner = _titikRute[1];
-
-    final digit = widget.order.kodeOrder.replaceAll(RegExp(r'[^0-9]'), '');
-    _pinJemput = digit.length >= 4 ? digit.substring(digit.length - 4) : '8419';
-
+    _posisiJemput = LatLng(
+      widget.order.latitudeJemput!,
+      widget.order.longitudeJemput!,
+    );
+    _posisiTujuan = LatLng(
+      widget.order.latitudeTujuan!,
+      widget.order.longitudeTujuan!,
+    );
   }
 
   @override
@@ -259,14 +275,16 @@ class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> 
   }
 
   void _pusatkanPeta() {
-    _mapController.move(_posisiRunner, 15.0);
+    _mapController.move(_posisiRunner ?? _posisiJemput, 15.0);
   }
 
   void _tampilkanSemuaRute() {
     _mapController.move(
       LatLng(
-        (_posisiJemput.latitude + _posisiRunner.latitude) / 2,
-        (_posisiJemput.longitude + _posisiRunner.longitude) / 2,
+        (_posisiJemput.latitude + (_posisiRunner ?? _posisiTujuan).latitude) /
+            2,
+        (_posisiJemput.longitude + (_posisiRunner ?? _posisiTujuan).longitude) /
+            2,
       ),
       14.2,
     );
@@ -296,14 +314,19 @@ class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> 
                 ),
               ),
               ListTile(
-                leading: const Icon(Icons.copy_rounded, color: Color(0xFF4B5563)),
+                leading: const Icon(
+                  Icons.copy_rounded,
+                  color: Color(0xFF4B5563),
+                ),
                 title: const Text('Salin Kode Pesanan'),
                 subtitle: Text('#${order.kodeOrder}'),
                 onTap: () {
                   Clipboard.setData(ClipboardData(text: order.kodeOrder));
                   Navigator.of(ctx).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Kode #${order.kodeOrder} disalin.')),
+                    SnackBar(
+                      content: Text('Kode #${order.kodeOrder} disalin.'),
+                    ),
                   );
                 },
               ),
@@ -321,7 +344,10 @@ class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> 
               if (order.status.isAktif) ...[
                 const Divider(color: Color(0xFFF3F4F6)),
                 ListTile(
-                  leading: const Icon(Icons.cancel_outlined, color: Color(0xFFDC2626)),
+                  leading: const Icon(
+                    Icons.cancel_outlined,
+                    color: Color(0xFFDC2626),
+                  ),
                   title: const Text(
                     'Batalkan Pesanan',
                     style: TextStyle(
@@ -329,7 +355,9 @@ class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> 
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  subtitle: const Text('Kirim permohonan pembatalan ke pusat bantuan'),
+                  subtitle: const Text(
+                    'Kirim permohonan pembatalan ke pusat bantuan',
+                  ),
                   onTap: () {
                     Navigator.of(ctx).pop();
                     _konfirmasiBatal(context);
@@ -368,11 +396,17 @@ class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> 
                   final key = buatIdempotencyKey();
                   await ref
                       .read(orderRepositoryProvider)
-                      .batalkanOrder(widget.order.id, idempotencyKey: key);
+                      .mintaBatalOrder(
+                        orderId: widget.order.id,
+                        alasan: 'Permohonan dari layar pelacakan perjalanan.',
+                        idempotencyKey: key,
+                      );
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Order #${widget.order.kodeOrder} dibatalkan.'),
+                        content: Text(
+                          'Order #${widget.order.kodeOrder} dibatalkan.',
+                        ),
                       ),
                     );
                   }
@@ -401,25 +435,32 @@ class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> 
   @override
   Widget build(BuildContext context) {
     final order = widget.order;
-    const menitTiba = 3;
+    final lokasi = ref.watch(lokasiRunnerProvider(order.id)).value;
+    _posisiRunner = lokasi == null
+        ? null
+        : LatLng(lokasi.latitude, lokasi.longitude);
+    final lokasiSegar =
+        lokasi != null &&
+        DateTime.now().difference(lokasi.diterimaPada) <
+            const Duration(seconds: 45);
 
-    final namaJemput = order.alamatJemput != null &&
-            order.alamatJemput!.contains(',')
+    final namaJemput =
+        order.alamatJemput != null && order.alamatJemput!.contains(',')
         ? order.alamatJemput!.split(',').first.trim()
-        : (order.alamatJemput ?? 'Indomaret RS Fatmawati');
+        : (order.alamatJemput ?? 'Titik jemput');
 
-    final namaTujuan = order.alamatTujuan != null &&
-            order.alamatTujuan!.contains(',')
+    final namaTujuan =
+        order.alamatTujuan != null && order.alamatTujuan!.contains(',')
         ? order.alamatTujuan!.split(',').first.trim()
-        : (order.alamatTujuan ?? 'UPN Veteran Jakarta (Gedung Wahidin)');
+        : (order.alamatTujuan ?? 'Titik tujuan');
 
     final runnerNama = order.runners.isNotEmpty
         ? order.runners.first.nama
-        : 'Fajar Pratama';
+        : 'Runner';
 
     final runnerTelp = order.runners.isNotEmpty
         ? order.runners.first.noHp
-        : '08254653349';
+        : null;
 
     return Stack(
       children: [
@@ -441,103 +482,84 @@ class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> 
                 userAgentPackageName: 'com.upnvjsuruh.mobile',
                 maxZoom: 19,
               ),
-              PolylineLayer(
-                polylines: [
-                  // Border luar polyline untuk kontras
-                  Polyline(
-                    points: _titikRute,
-                    strokeWidth: 8.0,
-                    color: const Color(0xFF006C0E),
-                    strokeCap: StrokeCap.round,
-                    strokeJoin: StrokeJoin.round,
-                  ),
-                  // Jalur utama hijau Gojek
-                  Polyline(
-                    points: _titikRute,
-                    strokeWidth: 5.5,
-                    color: const Color(0xFF00AA13),
-                    strokeCap: StrokeCap.round,
-                    strokeJoin: StrokeJoin.round,
-                  ),
-                ],
-              ),
               MarkerLayer(
                 markers: [
                   // RUNNER MOTORCYCLE MARKER
-                  Marker(
-                    point: _posisiRunner,
-                    width: 200,
-                    height: 80,
-                    alignment: Alignment.center,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 6,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 7,
-                                height: 7,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF00AA13),
-                                  shape: BoxShape.circle,
+                  if (_posisiRunner != null)
+                    Marker(
+                      point: _posisiRunner!,
+                      width: 200,
+                      height: 80,
+                      alignment: Alignment.center,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black26,
+                                  blurRadius: 6,
+                                  offset: Offset(0, 2),
                                 ),
-                              ),
-                              const SizedBox(width: 5),
-                              Text(
-                                menitTiba > 0
-                                    ? '$menitTiba mnt menuju jemput'
-                                    : 'Runner tiba di jemput',
-                                style: const TextStyle(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF111827),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 7,
+                                  height: 7,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF00AA13),
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 5),
+                                Text(
+                                  lokasiSegar
+                                      ? 'Posisi runner terkini'
+                                      : 'Posisi terakhir runner',
+                                  style: const TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF111827),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 3),
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF00AA13),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 3),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 8,
-                                offset: Offset(0, 3),
-                              ),
-                            ],
+                          const SizedBox(height: 3),
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF00AA13),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 3),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black26,
+                                  blurRadius: 8,
+                                  offset: Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.motorcycle_rounded,
+                              color: Colors.white,
+                              size: 24,
+                            ),
                           ),
-                          child: const Icon(
-                            Icons.motorcycle_rounded,
-                            color: Colors.white,
-                            size: 24,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
 
                   // TITIK JEMPUT (KAMU DI SINI) MARKER
                   Marker(
@@ -763,7 +785,7 @@ class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> 
                         SizedBox(width: 6),
                         Flexible(
                           child: Text(
-                            'Terlindungi Asuransi & Kampus Shield 24/7',
+                            'Lokasi dibagikan hanya selama perjalanan aktif',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -854,10 +876,10 @@ class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> 
                           children: [
                             Text(
                               order.status == OrderStatus.dikerjakan
-                                  ? 'Driver menuju titik jemput'
+                                  ? 'Perjalanan sedang berlangsung'
                                   : (order.status == OrderStatus.mencariRunner
-                                      ? 'Mencari Runner Kampus'
-                                      : 'Perjalanan ke Tujuan'),
+                                        ? 'Mencari Runner Kampus'
+                                        : 'Perjalanan ke Tujuan'),
                               style: const TextStyle(
                                 fontSize: 16.5,
                                 fontWeight: FontWeight.w800,
@@ -875,7 +897,11 @@ class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> 
                                 const SizedBox(width: 5),
                                 Expanded(
                                   child: Text(
-                                    'Tiba di $namaJemput ${menitTiba > 0 ? "±$menitTiba mnt" : "sebentar lagi"}',
+                                    lokasi == null
+                                        ? 'Menunggu runner membagikan lokasi'
+                                        : lokasiSegar
+                                        ? 'Lokasi diperbarui beberapa detik lalu'
+                                        : 'Lokasi terakhir belum diperbarui',
                                     style: const TextStyle(
                                       fontSize: 12.5,
                                       fontWeight: FontWeight.w600,
@@ -904,7 +930,7 @@ class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> 
                         child: Column(
                           children: [
                             const Text(
-                              'PIN JEMPUT',
+                              'STATUS GPS',
                               style: TextStyle(
                                 fontSize: 9.5,
                                 fontWeight: FontWeight.w700,
@@ -914,12 +940,12 @@ class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> 
                             ),
                             const SizedBox(height: 1),
                             Text(
-                              _pinJemput,
+                              lokasiSegar ? 'AKTIF' : 'MENUNGGU',
                               style: const TextStyle(
-                                fontSize: 18,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w900,
                                 color: Color(0xFF00AA13),
-                                letterSpacing: 1.5,
+                                letterSpacing: 0.5,
                               ),
                             ),
                           ],
@@ -1007,7 +1033,8 @@ class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> 
                               const SizedBox(height: 3),
                               if (runnerTelp != null)
                                 InkWell(
-                                  onTap: () => launchUrl(uriTelepon(runnerTelp)),
+                                  onTap: () =>
+                                      launchUrl(uriTelepon(runnerTelp)),
                                   borderRadius: BorderRadius.circular(4),
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
@@ -1049,7 +1076,9 @@ class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> 
                             decoration: BoxDecoration(
                               color: const Color(0xFFF3F4F6),
                               shape: BoxShape.circle,
-                              border: Border.all(color: const Color(0xFFE5E7EB)),
+                              border: Border.all(
+                                color: const Color(0xFFE5E7EB),
+                              ),
                             ),
                             child: const Icon(
                               Icons.phone_outlined,
@@ -1110,7 +1139,7 @@ class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> 
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            '$runnerNama: "Halo kak, saya sudah lewat lampu merah yaa..."',
+                            'Buka chat untuk melihat pesan terbaru dari $runnerNama.',
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -1120,9 +1149,9 @@ class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> 
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const Text(
-                          '1 mnt lalu',
-                          style: TextStyle(
+                        Text(
+                          '${widget.order.jumlahPesanBelumDibaca} belum dibaca',
+                          style: const TextStyle(
                             fontSize: 10.5,
                             color: Color(0xFF6B7280),
                           ),
@@ -1132,28 +1161,12 @@ class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> 
                   ),
                   const SizedBox(height: 8),
                   SizedBox(
-                    height: 32,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: [
-                        _ChipBalasCepat(
-                          label: '👕 Saya pakai kemeja biru',
-                          onTap: () =>
-                              context.push(Rute.chatOrder(widget.order.id)),
-                        ),
-                        const SizedBox(width: 8),
-                        _ChipBalasCepat(
-                          label: '🏪 Tunggu di depan Indomaret',
-                          onTap: () =>
-                              context.push(Rute.chatOrder(widget.order.id)),
-                        ),
-                        const SizedBox(width: 8),
-                        _ChipBalasCepat(
-                          label: '📍 Di dekat pos satpam',
-                          onTap: () =>
-                              context.push(Rute.chatOrder(widget.order.id)),
-                        ),
-                      ],
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () =>
+                          context.push(Rute.chatOrder(widget.order.id)),
+                      icon: const Icon(Icons.chat_bubble_outline_rounded),
+                      label: const Text('Buka percakapan order'),
                     ),
                   ),
 
@@ -1219,7 +1232,7 @@ class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> 
                       order.catatanSerahTerima != null) ...[
                     const SizedBox(height: 16),
                     const Text(
-                      'Hasil Pekerjaan Runner',
+                      'Hasil pekerjaan',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
@@ -1241,12 +1254,12 @@ class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> 
                             Clipboard.setData(
                               ClipboardData(
                                 text:
-                                    'Lacak Pesanan UPNVJ Suruh #${order.kodeOrder}: http://localhost:5174/#/order/${order.id}',
+                                    'Kode order UPNVJ Suruh: ${order.kodeOrder}',
                               ),
                             );
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Tautan rute berhasil disalin!'),
+                                content: Text('Kode order berhasil disalin.'),
                               ),
                             );
                           },
@@ -1256,7 +1269,7 @@ class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> 
                             color: Color(0xFF374151),
                           ),
                           label: const Text(
-                            'Bagikan Rute',
+                            'Salin Kode',
                             style: TextStyle(
                               color: Color(0xFF374151),
                               fontWeight: FontWeight.w700,
@@ -1304,39 +1317,6 @@ class _LiveTrackingAlohaViewState extends ConsumerState<_LiveTrackingAlohaView> 
           },
         ),
       ],
-    );
-  }
-}
-
-class _ChipBalasCepat extends StatelessWidget {
-  const _ChipBalasCepat({required this.label, required this.onTap});
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(100),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF3F4F6),
-          borderRadius: BorderRadius.circular(100),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF374151),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -1438,6 +1418,78 @@ class _IsiAloha extends ConsumerWidget {
           const SizedBox(height: 12),
         ],
 
+        if (order.runners.isNotEmpty) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFE8F8EA),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.two_wheeler_rounded,
+                      color: Color(0xFF00880C),
+                      size: 24,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        order.runners.first.nama,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF111827),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      if (order.runners.first.noHp != null)
+                        InkWell(
+                          onTap: () =>
+                              launchUrl(uriTelepon(order.runners.first.noHp!)),
+                          borderRadius: BorderRadius.circular(4),
+                          child: Text(
+                            order.runners.first.noHp!,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF006C0E),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (order.runners.first.noHp != null)
+                  IconButton(
+                    onPressed: () =>
+                        launchUrl(uriTelepon(order.runners.first.noHp!)),
+                    icon: const Icon(
+                      Icons.phone_rounded,
+                      color: Color(0xFF00880C),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
         // 3. TOTAL PEMBAYARAN CARD
         _TotalPembayaranCard(order: order),
 
@@ -1494,7 +1546,7 @@ class _IsiAloha extends ConsumerWidget {
         if (order.fotoBuktiUrl != null || order.catatanSerahTerima != null) ...[
           const SizedBox(height: 16),
           const Text(
-            'Hasil Pekerjaan Runner',
+            'Hasil pekerjaan',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
@@ -1584,8 +1636,7 @@ class _HitungMundurDetailOrder extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Sinkronkan dengan batas waktu transaksi Midtrans dari provider jika ada
-    final transaksiAsync =
-        ref.watch(transaksiOrderProvider(order.id));
+    final transaksiAsync = ref.watch(transaksiOrderProvider(order.id));
     var batasWaktu = order.dibuatPada.add(const Duration(minutes: 30));
     if (transaksiAsync.hasValue &&
         transaksiAsync.value?.kedaluwarsaPada != null) {
@@ -1652,10 +1703,7 @@ class _HitungMundurDetailOrder extends ConsumerWidget {
           const SizedBox(height: 8),
           Text(
             'Pesanan akan otomatis dibatalkan jika tidak dibayar sebelum ${formatJam(batasWaktu)} WIB.',
-            style: const TextStyle(
-              fontSize: 11.5,
-              color: Color(0xFF6B7280),
-            ),
+            style: const TextStyle(fontSize: 11.5, color: Color(0xFF6B7280)),
           ),
         ],
       ),
@@ -1710,8 +1758,10 @@ class _TotalPembayaranCardState extends State<_TotalPembayaranCard> {
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFE8F8EA),
                   borderRadius: BorderRadius.circular(100),
@@ -1740,14 +1790,30 @@ class _TotalPembayaranCardState extends State<_TotalPembayaranCard> {
           ),
           const SizedBox(height: 6),
           Text(
-            formatRupiah(nominal),
-            style: const TextStyle(
-              fontSize: 28,
+            order.harga != null
+                ? formatRupiah(order.harga!)
+                : 'Harga menunggu penawaran',
+            style: TextStyle(
+              fontSize: order.harga != null ? 28 : 20,
               fontWeight: FontWeight.w900,
-              color: Color(0xFF111827),
+              color: const Color(0xFF111827),
               letterSpacing: -0.5,
             ),
           ),
+          if (order.harga == null) ...[
+            const SizedBox(height: 4),
+            const Text(
+              'Menunggu runner yang tersedia mengajukan tawaran.',
+              style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+            ),
+          ],
+          if (order.jumlahRunnerDibutuhkan > 1) ...[
+            const SizedBox(height: 4),
+            Text(
+              '${order.runnerIds.length} dari ${order.jumlahRunnerDibutuhkan} orang',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+            ),
+          ],
           const SizedBox(height: 12),
           const Divider(color: Color(0xFFF3F4F6), height: 1),
           const SizedBox(height: 10),
@@ -1776,8 +1842,10 @@ class _TotalPembayaranCardState extends State<_TotalPembayaranCard> {
                 onTap: () => setState(() => _terbuka = !_terbuka),
                 borderRadius: BorderRadius.circular(6),
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 2,
+                  ),
                   child: Row(
                     children: [
                       const Text(
@@ -1879,24 +1947,22 @@ class _RincianPerjalananCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final jarakText = order.jarakKm != null
         ? '${order.jarakKm!.toStringAsFixed(1)} km'
-        : '3.5 km';
+        : 'Belum tersedia';
     final durasiText = order.estimasiDurasi != null
         ? '±${order.estimasiDurasi!.inMinutes} mnt'
-        : '±12 mnt';
+        : 'Belum tersedia';
 
-    final namaJemput = order.alamatJemput != null &&
-            order.alamatJemput!.contains(',')
+    final namaJemput =
+        order.alamatJemput != null && order.alamatJemput!.contains(',')
         ? order.alamatJemput!.split(',').first.trim()
-        : (order.alamatJemput ?? 'Indomaret RS Fatmawati');
-    final detailJemput = order.alamatJemput ??
-        'Jalan RS Fatmawati No. 04, Cilandak Barat, Jakarta Selatan';
+        : (order.alamatJemput ?? 'Titik jemput belum tersedia');
+    final detailJemput = order.alamatJemput ?? 'Alamat jemput belum tersedia';
 
-    final namaTujuan = order.alamatTujuan != null &&
-            order.alamatTujuan!.contains(',')
+    final namaTujuan =
+        order.alamatTujuan != null && order.alamatTujuan!.contains(',')
         ? order.alamatTujuan!.split(',').first.trim()
-        : (order.alamatTujuan ?? 'UPN Veteran Jakarta (Gedung Wahidin)');
-    final detailTujuan = order.alamatTujuan ??
-        'Kampus Limo, Jl. Cinere Raya, Cinere, Depok, Jawa Barat';
+        : (order.alamatTujuan ?? 'Titik tujuan belum tersedia');
+    final detailTujuan = order.alamatTujuan ?? 'Alamat tujuan belum tersedia';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2138,20 +2204,27 @@ class _BilahBayarAloha extends StatelessWidget {
                 ),
               ),
               ListTile(
-                leading: const Icon(Icons.copy_rounded, color: Color(0xFF4B5563)),
+                leading: const Icon(
+                  Icons.copy_rounded,
+                  color: Color(0xFF4B5563),
+                ),
                 title: const Text('Salin Kode Pesanan'),
                 subtitle: Text('#${order.kodeOrder}'),
                 onTap: () {
                   Clipboard.setData(ClipboardData(text: order.kodeOrder));
                   Navigator.of(ctx).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Kode #${order.kodeOrder} disalin.')),
+                    SnackBar(
+                      content: Text('Kode #${order.kodeOrder} disalin.'),
+                    ),
                   );
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.headset_mic_outlined,
-                    color: Color(0xFF2563EB)),
+                leading: const Icon(
+                  Icons.headset_mic_outlined,
+                  color: Color(0xFF2563EB),
+                ),
                 title: const Text('Pusat Bantuan Kampus 24/7'),
                 onTap: () {
                   Navigator.of(ctx).pop();
@@ -2160,8 +2233,10 @@ class _BilahBayarAloha extends StatelessWidget {
               ),
               const Divider(color: Color(0xFFF3F4F6)),
               ListTile(
-                leading: const Icon(Icons.cancel_outlined,
-                    color: Color(0xFFDC2626)),
+                leading: const Icon(
+                  Icons.cancel_outlined,
+                  color: Color(0xFFDC2626),
+                ),
                 title: const Text(
                   'Batalkan Pesanan',
                   style: TextStyle(
@@ -2169,7 +2244,9 @@ class _BilahBayarAloha extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                subtitle: const Text('Pesanan belum dibayar dapat langsung dibatalkan'),
+                subtitle: const Text(
+                  'Pesanan belum dibayar dapat langsung dibatalkan',
+                ),
                 onTap: () {
                   Navigator.of(ctx).pop();
                   _konfirmasiBatal(context);
@@ -2333,24 +2410,42 @@ class _BilahPesanLagiAloha extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: SafeArea(
         top: false,
-        child: SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: FilledButton.icon(
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF00AA13),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(100),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              order.status == OrderStatus.selesai
+                  ? 'Order selesai. Terima kasih!'
+                  : 'Order ini telah dibatalkan.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF4B5563),
+                fontWeight: FontWeight.w500,
               ),
             ),
-            onPressed: () => bukaFormOrder(context, order.serviceType, contoh: order),
-            icon: const Icon(Icons.repeat_rounded, size: 18),
-            label: const Text(
-              'Pesan Lagi',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF00AA13),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                ),
+                onPressed: () =>
+                    bukaFormOrder(context, order.serviceType, contoh: order),
+                icon: const Icon(Icons.repeat_rounded, size: 18),
+                label: const Text(
+                  'Pesan Lagi',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                ),
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -2465,7 +2560,9 @@ class _JalanBatalState extends ConsumerState<_JalanBatal> {
     setState(() => _sedangMembatalkan = true);
     try {
       final key = _idempotencyKey ??= buatIdempotencyKey();
-      await ref.read(orderRepositoryProvider).mintaBatalOrder(
+      await ref
+          .read(orderRepositoryProvider)
+          .mintaBatalOrder(
             orderId: order.id,
             alasan: alasan,
             idempotencyKey: key,
@@ -2507,8 +2604,10 @@ class _JalanBatalState extends ConsumerState<_JalanBatal> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Batalkan order?'),
-        content: Text('Order ${order.kodeOrder} yang belum dibayar akan dibatalkan.'),
+        title: const Text('Batalkan order ini?'),
+        content: Text(
+          'Order ${order.kodeOrder} yang belum dibayar akan dibatalkan.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),

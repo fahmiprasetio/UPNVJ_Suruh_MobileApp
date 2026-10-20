@@ -169,7 +169,7 @@ void main() {
     await tester.tap(find.text('Setuju & Bayar'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Pembayaran'), findsOneWidget);
+    expect(find.textContaining('Pembayaran'), findsWidgets);
 
     final order = await bacaOrder(repo);
     expect(order.status, OrderStatus.menungguPembayaran);

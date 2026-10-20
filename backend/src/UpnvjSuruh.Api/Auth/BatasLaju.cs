@@ -39,6 +39,7 @@ public static class BatasLaju
 
     /// <summary>Unggahan berkas, yang satu permintaannya jauh lebih mahal dari yang lain.</summary>
     public const string KebijakanUnggah = "unggah";
+    public const string KebijakanLokasi = "lokasi";
 
     // --- Per nomor HP ---
 
@@ -79,6 +80,7 @@ public static class BatasLaju
     /// banyak cakram bisa dihabiskan satu akun dalam sejam.
     /// </summary>
     public const int UnggahPerJam = 20;
+    public const int LokasiPerMenit = 30;
 
     // --- Jaring terakhir, berlaku untuk semua permintaan termasuk berkas statis ---
 

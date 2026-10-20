@@ -270,6 +270,7 @@ public class AdminOrderController(
 
         var perpindahan = OrderStatusChange.Catat(order, OrderStatus.Batal, adminId);
         db.OrderStatusChanges.Add(perpindahan);
+        foreach (var tugas in order.RunnerAssignments) tugas.HapusLokasi();
 
         // Permintaan yang sedang menunggu (kalau pembatalan ini memang menjawabnya) ikut
         // diturunkan benderanya. Membiarkannya berarti order yang sudah batal tetap terhitung

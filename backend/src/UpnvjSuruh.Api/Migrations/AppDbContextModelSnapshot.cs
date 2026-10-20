@@ -418,6 +418,12 @@ namespace UpnvjSuruh.Api.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<double?>("DestinationLatitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("DestinationLongitude")
+                        .HasColumnType("double precision");
+
                     b.Property<double?>("DistanceKm")
                         .HasColumnType("double precision");
 
@@ -445,6 +451,12 @@ namespace UpnvjSuruh.Api.Migrations
                     b.Property<string>("PickupAddress")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<double?>("PickupLatitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("PickupLongitude")
+                        .HasColumnType("double precision");
 
                     b.Property<decimal?>("Price")
                         .HasColumnType("numeric");
@@ -642,6 +654,27 @@ namespace UpnvjSuruh.Api.Migrations
 
                     b.Property<string>("CompletionPhotoUrl")
                         .HasColumnType("text");
+
+                    b.Property<double?>("LastAccuracyMeters")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("LastHeadingDegrees")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("LastLatitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("LastLongitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("LastSpeedMetersPerSecond")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime?>("LocationReceivedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LocationRecordedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("MarkedDoneAt")
                         .HasColumnType("timestamp with time zone");

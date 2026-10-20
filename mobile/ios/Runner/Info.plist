@@ -75,6 +75,12 @@
 	     Dibaca sekali saat tombol "Pakai lokasi saat ini" ditekan di pemilih
 	     lokasi Anter Jemput, bukan diikuti terus-menerus di latar belakang. -->
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Lokasi dipakai mengisi titik jemput atau tujuan secara akurat saat kamu menekan "Pakai lokasi saat ini".</string>
+	<string>Lokasi dipakai untuk memilih titik perjalanan dan membagikan posisi runner kepada pemesan selama order aktif.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Lokasi runner dibagikan hanya selama order Anter Jemput sedang dikerjakan, termasuk ketika aplikasi berada di latar belakang.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 </dict>
 </plist>

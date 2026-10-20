@@ -434,6 +434,15 @@ builder.Services.AddRateLimiter(opsi =>
                 Window = TimeSpan.FromHours(1),
             }));
 
+    opsi.AddPolicy(BatasLaju.KebijakanLokasi, konteks =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            BatasLaju.Pemanggil(konteks),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = BatasLaju.LokasiPerMenit,
+                Window = TimeSpan.FromMinutes(1),
+            }));
+
     // Ditolak dengan bentuk yang sama dengan penolakan lain di API ini, yaitu ProblemDetails,
     // bukan badan kosong. Aplikasi mengambil kalimat yang ditampilkan ke pengguna dari sana,
     // dan 429 berbadan kosong akan muncul di layar sebagai "server sedang bermasalah", yang

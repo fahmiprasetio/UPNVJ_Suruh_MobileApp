@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../api/klien_api.dart' show PengambilToken;
+import '../../domain/models/lokasi_runner.dart';
 
 /// Pemisah pesan di Protokol Hub JSON milik SignalR: karakter Record Separator.
 const String _pemisahPesan = '\x1e';
@@ -45,6 +46,24 @@ bool apakahPesanInvocation(String pesanJson) {
     return pesan is Map<String, dynamic> && pesan['type'] == 1;
   } on FormatException {
     return false;
+  }
+}
+
+/// Mengambil payload lokasi hanya dari event tracking yang bentuknya sah.
+LokasiRunner? bacaLokasiRunner(String pesanJson) {
+  try {
+    final pesan = jsonDecode(pesanJson);
+    if (pesan is! Map<String, dynamic> ||
+        pesan['type'] != 1 ||
+        pesan['target'] != 'RunnerLocationChanged') {
+      return null;
+    }
+    final argumen = pesan['arguments'];
+    if (argumen is! List || argumen.isEmpty) return null;
+    final isi = argumen.first;
+    return isi is Map<String, dynamic> ? LokasiRunner.dariJson(isi) : null;
+  } catch (_) {
+    return null;
   }
 }
 
@@ -93,6 +112,7 @@ abstract interface class SaluranHubOrder {
   void ikutiOrder(String orderId);
   void berhentiIkutiOrder(String orderId);
   Stream<void> get perubahan;
+  Stream<LokasiRunner> get lokasiRunner;
 }
 
 /// Klien SignalR minimal, ditulis tangan alih-alih memakai paket `signalr_netcore`.
@@ -158,6 +178,8 @@ class OrderHubClient implements SaluranHubOrder {
   final Duration _jedaPing;
 
   final StreamController<void> _perubahan = StreamController<void>.broadcast();
+  final StreamController<LokasiRunner> _lokasiRunner =
+      StreamController<LokasiRunner>.broadcast();
 
   /// Menyala setiap kali server mengirim pesan apa pun ke hub ini.
   ///
@@ -168,6 +190,9 @@ class OrderHubClient implements SaluranHubOrder {
   /// backend di dua tempat, untuk sesuatu yang tidak dipakai layar mana pun.
   @override
   Stream<void> get perubahan => _perubahan.stream;
+
+  @override
+  Stream<LokasiRunner> get lokasiRunner => _lokasiRunner.stream;
 
   WebSocketChannel? _soket;
   StreamSubscription<void>? _langgananSoket;
@@ -388,7 +413,12 @@ class OrderHubClient implements SaluranHubOrder {
 
     for (final pesan in hasil.pesanUtuh) {
       if (apakahPesanInvocation(pesan) && !_perubahan.isClosed) {
-        _perubahan.add(null);
+        final lokasi = bacaLokasiRunner(pesan);
+        if (lokasi != null && !_lokasiRunner.isClosed) {
+          _lokasiRunner.add(lokasi);
+        } else {
+          _perubahan.add(null);
+        }
       }
     }
   }
@@ -432,5 +462,6 @@ class OrderHubClient implements SaluranHubOrder {
     berhenti();
     _klienHttp.close();
     _perubahan.close();
+    _lokasiRunner.close();
   }
 }
