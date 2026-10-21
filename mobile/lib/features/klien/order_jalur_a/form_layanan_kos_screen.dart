@@ -870,22 +870,52 @@ class _FormLayananKosScreenState
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: _alamatController,
-            maxLength: BatasMasukan.alamat,
-            maxLines: 2,
-            minLines: 1,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1E2124),
-            ),
-            decoration: const InputDecoration(
-              counterText: '',
-              hintText: 'Alamat kos lengkap (kamar, nomor, patokan)',
-            ),
-            validator: _validasiAlamat,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _alamatController,
+                  maxLength: BatasMasukan.alamat,
+                  maxLines: 2,
+                  minLines: 1,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1E2124),
+                  ),
+                  decoration: const InputDecoration(
+                    counterText: '',
+                    hintText: 'Alamat kos lengkap (kamar, nomor, patokan)',
+                  ),
+                  validator: _validasiAlamat,
+                ),
+              ),
+              const SizedBox(width: 10),
+              InkWell(
+                onTap: _sedangMengirim
+                    ? null
+                    : () => _pilihLokasi(
+                          _alamatController,
+                          'Lokasi kos/kontrakan',
+                          true,
+                        ),
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF4F7F4),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.map_outlined,
+                    color: Color(0xFF00AA13),
+                    size: 20,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../../core/api/galat_api.dart';
+import '../peta/pemilih_lokasi_screen.dart';
 import '../../../core/api/idempotency_key.dart';
 import '../../../core/config/batas_masukan.dart';
 
@@ -56,6 +58,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
   Uint8List? _foto;
   String? _namaFoto;
   bool _sedangMemilihFoto = false;
+  LatLng? _posisiAlamat;
 
   bool get _isKebersihan =>
       widget.serviceType == ServiceType.bersihKos ||
@@ -157,7 +160,15 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
 
             const SizedBox(height: 14),
 
-            // 3. Kartu Detail Kebutuhan
+            // 3. Kartu Alamat Pengerjaan (dengan Tombol Buka Peta)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _buildAlamatCard(),
+            ),
+
+            const SizedBox(height: 14),
+
+            // 4. Kartu Detail Kebutuhan
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: _buildKebutuhanCard(),
@@ -165,26 +176,10 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
 
             const SizedBox(height: 14),
 
-            // 4. Kartu Foto Kondisi
+            // 5. Kartu Foto Kondisi
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: _buildFotoKondisiCard(),
-            ),
-
-            const SizedBox(height: 14),
-
-            // 5. Kartu Tawaran Harga Awal
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _buildTawaranHargaCard(),
-            ),
-
-            const SizedBox(height: 14),
-
-            // 5. Kartu Alamat Pengerjaan
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _buildAlamatCard(),
             ),
 
             const SizedBox(height: 14),
@@ -193,6 +188,14 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: _buildJadwalDanRunnerCard(),
+            ),
+
+            const SizedBox(height: 14),
+
+            // 7. Kartu Tawaran Harga Awal
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _buildTawaranHargaCard(),
             ),
 
             const SizedBox(height: 28),
@@ -695,27 +698,67 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _alamatController,
-            maxLength: BatasMasukan.alamat,
-            textCapitalization: TextCapitalization.sentences,
-            maxLines: 2,
-            minLines: 1,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1E2124),
-            ),
-            decoration: const InputDecoration(
-              counterText: '',
-              hintText: 'Alamat tempat pengerjaan',
-            ),
-            validator: _validasiAlamat,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _alamatController,
+                  maxLength: BatasMasukan.alamat,
+                  textCapitalization: TextCapitalization.sentences,
+                  maxLines: 2,
+                  minLines: 1,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1E2124),
+                  ),
+                  decoration: const InputDecoration(
+                    counterText: '',
+                    hintText: 'Alamat tempat pengerjaan',
+                  ),
+                  validator: _validasiAlamat,
+                ),
+              ),
+              const SizedBox(width: 10),
+              InkWell(
+                onTap: _sedangMengirim ? null : _bukaPetaAlamat,
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF3E0),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.map_outlined,
+                    color: Color(0xFFFF7043),
+                    size: 22,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _bukaPetaAlamat() async {
+    final hasil = await Navigator.of(context).push<HasilPilihLokasi>(
+      MaterialPageRoute(
+        builder: (_) => PemilihLokasiScreen(
+          judul: 'Lokasi Pengerjaan',
+          posisiAwal: _posisiAlamat,
+        ),
+      ),
+    );
+    if (hasil == null || !mounted) return;
+    setState(() {
+      _alamatController.text = hasil.alamat;
+      _posisiAlamat = hasil.posisi;
+    });
   }
 
   /// Kartu Jadwal & Jumlah Runner
