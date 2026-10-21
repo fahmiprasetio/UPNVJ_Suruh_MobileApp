@@ -204,31 +204,47 @@ class _FormLayananKosScreenState
       ikon: Icons.location_on_outlined,
       untukAsal: false,
     ),
-    const SizedBox(height: AppTheme.spasiSedang),
-    TextFormField(
-      controller: _jarakController,
-      enabled: !_sedangHitungRute,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-      ],
-      decoration: InputDecoration(
-        labelText: 'Jarak rute',
-        suffixText: 'km',
-        prefixIcon: const Icon(Icons.route_outlined),
-        helperText: _sedangHitungRute
-            ? 'Menghitung rute jalan...'
-            : 'Terisi otomatis setelah dua titik dipilih di peta.',
+    const SizedBox(height: AppTheme.spasiKecil),
+    if (_sedangHitungRute)
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Menghitung rute perjalanan...',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      )
+    else if (_jarakController.text.isNotEmpty)
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            Icon(
+              Icons.route_outlined,
+              size: 16,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Jarak rute: ${_jarakController.text} km',
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ],
+        ),
       ),
-      validator: (nilai) {
-        final jarak = bacaJarak(nilai ?? '');
-        if (jarak == null || jarak <= 0) return 'Jarak wajib diisi';
-        if (jarak > tarif.anjemJarakMaksimalKm) {
-          return 'Maksimal ${tarif.anjemJarakMaksimalKm.round()} km';
-        }
-        return null;
-      },
-    ),
     const SizedBox(height: AppTheme.spasiBesar),
     Text('Butuh berapa runner?', style: Theme.of(context).textTheme.titleSmall),
     const SizedBox(height: AppTheme.spasiKecil),
@@ -267,7 +283,7 @@ class _FormLayananKosScreenState
             },
     ),
     const SizedBox(height: AppTheme.spasiSedang),
-    _kolomCatatan('Catatan tambahan (opsional)', 'Contoh: waktu pindahan atau akses gerbang kos.'),
+    _kolomCatatan('Catatan tambahan (opsional)'),
   ];
 
   List<Widget> _formKebersihan() => [
@@ -283,10 +299,7 @@ class _FormLayananKosScreenState
       validator: _validasiAlamat,
     ),
     const SizedBox(height: AppTheme.spasiSedang),
-    _kolomCatatan(
-      'Catatan kondisi (opsional)',
-      'Tulis hal penting yang tidak terlihat jelas dari foto.',
-    ),
+    _kolomCatatan('Catatan kondisi (opsional)'),
     const SizedBox(height: AppTheme.spasiBesar),
     Text('Foto kondisi', style: Theme.of(context).textTheme.titleSmall),
     const SizedBox(height: 4),
@@ -316,7 +329,7 @@ class _FormLayananKosScreenState
       ),
   ];
 
-  Widget _kolomCatatan(String label, String hint) => TextFormField(
+  Widget _kolomCatatan(String label) => TextFormField(
     controller: _catatanController,
     maxLength: BatasMasukan.deskripsi,
     maxLines: 3,
@@ -325,7 +338,6 @@ class _FormLayananKosScreenState
     decoration: InputDecoration(
       counterText: '',
       labelText: label,
-      hintText: hint,
       prefixIcon: const Icon(Icons.notes_outlined),
     ),
   );
@@ -384,26 +396,28 @@ class _FormLayananKosScreenState
 
     if (_posisiAsal == null || _posisiTujuan == null) return;
     setState(() => _sedangHitungRute = true);
-    final kilometer = await JarakRuteOsrm.kilometer(
-      _posisiAsal!,
-      _posisiTujuan!,
-    );
+    double? jarakFinal;
+    try {
+      final kilometer = await JarakRuteOsrm.kilometer(
+        _posisiAsal!,
+        _posisiTujuan!,
+      );
+      if (kilometer != null && kilometer > 0) {
+        jarakFinal = double.parse(kilometer.toStringAsFixed(1));
+      }
+    } catch (_) {}
+
+    if (jarakFinal == null) {
+      final meter = const Distance().as(LengthUnit.Meter, _posisiAsal!, _posisiTujuan!);
+      final perkiraanKm = (meter / 1000.0) * 1.25;
+      jarakFinal = double.parse(((perkiraanKm < 0.3) ? 0.5 : perkiraanKm).toStringAsFixed(1));
+    }
+
     if (!mounted) return;
     setState(() {
       _sedangHitungRute = false;
-      if (kilometer != null) {
-        _jarakController.text = tulisJarak(
-          double.parse(kilometer.toStringAsFixed(1)),
-        );
-      }
+      _jarakController.text = tulisJarak(jarakFinal!);
     });
-    if (kilometer == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Rute gagal dihitung. Isi jarak secara manual.'),
-        ),
-      );
-    }
   }
 
   Future<void> _pilihFoto() async {
@@ -441,9 +455,16 @@ class _FormLayananKosScreenState
       return;
     }
 
+    final jarak = _pindahan ? bacaJarak(_jarakController.text) : null;
+    if (_pindahan && jarak == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih lokasi asal dan tujuan pindahan pada peta.')),
+      );
+      return;
+    }
+
     setState(() => _sedangMengirim = true);
     try {
-      final jarak = _pindahan ? bacaJarak(_jarakController.text) : null;
       final order = await ref.read(orderRepositoryProvider).buatOrderJalurA(
         serviceType: widget.serviceType,
         jarakKm: jarak,

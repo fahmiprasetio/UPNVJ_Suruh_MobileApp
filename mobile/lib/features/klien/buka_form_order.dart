@@ -57,8 +57,6 @@ void bukaFormOrder(
     case ServiceType.jastipMakanan:
       context.push(Rute.formJastipMakanan, extra: contoh);
     case ServiceType.bantuPindahKos:
-    case ServiceType.bersihKos:
-    case ServiceType.bersihKamarMandi:
       context.push(Rute.formLayananKos(layanan), extra: contoh);
     case _:
       belumTersedia(context, serviceInfoOf(layanan).nama);

@@ -15,22 +15,6 @@ import '../../../core/providers/repository_providers.dart';
 import '../../../core/widgets/pesan_kosong.dart';
 import '../peta/pemilih_lokasi_screen.dart';
 
-/// Pilihan cepat menu favorit kampus untuk inspirasi pesanan cepat
-class _MenuCepatModel {
-  const _MenuCepatModel({required this.label, required this.teks});
-  final String label;
-  final String teks;
-}
-
-const _rekomendasiMenu = [
-  _MenuCepatModel(label: '🍗 Ayam Geprek', teks: 'Ayam Geprek Sambal Bawang (Paha, Level 2)'),
-  _MenuCepatModel(label: '🍛 Nasi Padang', teks: 'Nasi Padang Rendang + Sayur Daun Singkong'),
-  _MenuCepatModel(label: '🍜 Mie Ayam / Bakso', teks: 'Mie Ayam Bakso Komplit + Es Teh Manis'),
-  _MenuCepatModel(label: '☕ Kopi / Minuman', teks: 'Es Kopi Susu Gula Aren (Less Sugar)'),
-  _MenuCepatModel(label: '🥪 Roti / Toast', teks: 'Roti Bakar Cokelat Keju'),
-  _MenuCepatModel(label: '🥗 Gado-Gado', teks: 'Gado-Gado Lontong Pedas Sedang'),
-];
-
 /// Form Jalur A untuk Jastip Makanan dengan Desain Modern Gojek Aloha.
 ///
 /// Menyediakan pemilihan makanan/minuman dengan quick chips, pemilihan lokasi
@@ -103,15 +87,6 @@ class _FormJastipMakananScreenState
     super.dispose();
   }
 
-  void _tambahMenuCepat(String teks) {
-    final saatIni = _makananController.text.trim();
-    if (saatIni.isEmpty) {
-      _makananController.text = teks;
-    } else {
-      _makananController.text = '$saatIni, $teks';
-    }
-    setState(() {});
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -356,7 +331,7 @@ class _FormJastipMakananScreenState
           Container(
             decoration: BoxDecoration(
               color: const Color(0xFFF9FAFB),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(color: const Color(0xFFE5E7EB)),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -377,58 +352,8 @@ class _FormJastipMakananScreenState
                 border: InputBorder.none,
                 isDense: true,
                 contentPadding: EdgeInsets.symmetric(vertical: 6),
-                hintText:
-                    'Contoh: Ayam Geprek Sambal Bawang (Paha, Level 2) + Es Teh Manis Jumbo',
-                hintStyle: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w400,
-                  color: Color(0xFF9CA3AF),
-                ),
               ),
               validator: _validasiMakanan,
-            ),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Inspirasi Cepat:',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF4B5563),
-            ),
-          ),
-          const SizedBox(height: 6),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: _rekomendasiMenu.map((menu) {
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: InkWell(
-                    onTap: () => _tambahMenuCepat(menu.teks),
-                    borderRadius: BorderRadius.circular(999),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 11,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF3F4F6),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: const Color(0xFFE5E7EB)),
-                      ),
-                      child: Text(
-                        menu.label,
-                        style: const TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF374151),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
             ),
           ),
         ],
@@ -512,12 +437,6 @@ class _FormJastipMakananScreenState
                         isDense: true,
                         contentPadding: EdgeInsets.symmetric(vertical: 4),
                         border: InputBorder.none,
-                        hintText: 'Ketik nama warung/kantin (misal: Warung Mavera)...',
-                        hintStyle: TextStyle(
-                          color: Color(0xFF9EA8A0),
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w400,
-                        ),
                       ),
                       validator: (nilai) => _wajibAlamat(nilai, 'warung'),
                     ),
@@ -619,12 +538,6 @@ class _FormJastipMakananScreenState
                         isDense: true,
                         contentPadding: EdgeInsets.symmetric(vertical: 4),
                         border: InputBorder.none,
-                        hintText: 'Ketik tempat antar (misal: Selasar FIK / Kos)...',
-                        hintStyle: TextStyle(
-                          color: Color(0xFF9EA8A0),
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w400,
-                        ),
                       ),
                       validator: (nilai) => _wajibAlamat(nilai, 'tujuan'),
                     ),

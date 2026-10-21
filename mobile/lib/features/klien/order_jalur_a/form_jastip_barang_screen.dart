@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
@@ -167,8 +166,6 @@ class _FormJastipBarangScreenState
               decoration: const InputDecoration(
                 counterText: '',
                 labelText: 'Barang apa yang dititip?',
-                hintText:
-                    'Ambil paket di Indomaret Pondok Labu, atas nama Dina',
                 prefixIcon: Icon(Icons.inventory_2_outlined),
               ),
               validator: _validasiBarang,
@@ -183,7 +180,6 @@ class _FormJastipBarangScreenState
               decoration: InputDecoration(
                 counterText: '',
                 labelText: 'Diambil di mana?',
-                hintText: 'Indomaret Pondok Labu',
                 prefixIcon: const Icon(Icons.store_outlined),
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.map_outlined),
@@ -207,7 +203,6 @@ class _FormJastipBarangScreenState
               decoration: InputDecoration(
                 counterText: '',
                 labelText: 'Diantar ke mana?',
-                hintText: 'Kos Melati kamar 7',
                 prefixIcon: const Icon(Icons.place_outlined),
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.map_outlined),
@@ -221,36 +216,48 @@ class _FormJastipBarangScreenState
               ),
               validator: (nilai) => _wajibAlamat(nilai, 'tujuan'),
             ),
-            const SizedBox(height: AppTheme.spasiSedang),
-            TextFormField(
-              controller: _jarakController,
-              enabled: !_sedangHitungRute,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
+            if (_sedangHitungRute)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Menghitung jarak rute jalan...',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: skema.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else if (_jarakController.text.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.route_outlined,
+                      size: 16,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Jarak rute: ${_jarakController.text} km',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-              ],
-              decoration: InputDecoration(
-                counterText: '',
-                labelText: 'Perkiraan jarak',
-                suffixText: 'km',
-                prefixIcon: const Icon(Icons.straighten_outlined),
-                helperText: _sedangHitungRute
-                    ? 'Menghitung jarak rute jalan...'
-                    : null,
-              ),
-              autovalidateMode: AutovalidateMode.onUserInteraction,
-              validator: (nilai) => validasiJarak(nilai, tarif),
-            ),
-            const SizedBox(height: AppTheme.spasiKecil),
-            Text(
-              'Perkiraan saja, runner dan kamu bisa sesuaikan di lapangan '
-              'kalau meleset jauh.',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: skema.onSurfaceVariant),
-            ),
             const SizedBox(height: AppTheme.spasiBesar),
             if (melebihiBatas)
               Container(
@@ -293,7 +300,18 @@ class _FormJastipBarangScreenState
     if (!_formKey.currentState!.validate()) return;
 
     final jarak = bacaJarak(_jarakController.text);
-    if (jarak == null) return;
+    if (jarak == null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Pilih titik pengambilan dan tujuan di peta untuk menentukan rute.',
+            ),
+          ),
+        );
+      return;
+    }
 
     final tarifAsync = ref.read(tarifProvider);
     final tarif = tarifAsync.asData?.value;
@@ -400,25 +418,25 @@ class _FormJastipBarangScreenState
     if (ambil == null || tujuan == null) return;
 
     setState(() => _sedangHitungRute = true);
-    final km = await JarakRuteOsrm.kilometer(ambil, tujuan);
-    if (!mounted) return;
-    setState(() => _sedangHitungRute = false);
+    double? jarakFinal;
+    try {
+      final km = await JarakRuteOsrm.kilometer(ambil, tujuan);
+      if (km != null && km > 0) {
+        jarakFinal = double.parse(km.toStringAsFixed(1));
+      }
+    } catch (_) {}
 
-    if (km == null) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Jarak rute gagal dihitung. Isi kolom jarak secara manual.',
-            ),
-          ),
-        );
-      return;
+    if (jarakFinal == null) {
+      final meter = const Distance().as(LengthUnit.Meter, ambil, tujuan);
+      final perkiraanKm = (meter / 1000.0) * 1.25;
+      final finalKm = (perkiraanKm < 0.3) ? 0.5 : perkiraanKm;
+      jarakFinal = double.parse(finalKm.toStringAsFixed(1));
     }
 
+    if (!mounted) return;
     setState(() {
-      _jarakController.text = tulisJarak(double.parse(km.toStringAsFixed(1)));
+      _sedangHitungRute = false;
+      _jarakController.text = tulisJarak(jarakFinal!);
     });
   }
 }

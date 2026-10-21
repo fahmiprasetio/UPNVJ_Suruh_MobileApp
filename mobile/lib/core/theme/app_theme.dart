@@ -72,7 +72,7 @@ class AppTheme {
 
   /// Lebih rapat daripada kartu, supaya kendali tidak pernah terbaca sebagai
   /// kartu: tombol, kolom isian, dan keping ikon di dalam kartu layanan.
-  static const double radiusKontrol = 12;
+  static const double radiusKontrol = 8;
 
   /// Sudut penuh, khusus label keadaan. Bulat penuh adalah cara mata menemukan
   /// status tanpa membacanya, jadi ia tidak boleh dipakai untuk hal lain.

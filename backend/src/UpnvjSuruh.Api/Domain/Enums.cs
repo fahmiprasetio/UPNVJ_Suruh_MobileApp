@@ -145,8 +145,8 @@ public static class ServiceTypeExtensions
         ServiceType.JastipMakanan => OrderTrack.JalurA,
         ServiceType.JastipBarang => OrderTrack.JalurA,
         ServiceType.BantuPindahKos => OrderTrack.JalurA,
-        ServiceType.BersihKos => OrderTrack.JalurA,
-        ServiceType.BersihKamarMandi => OrderTrack.JalurA,
+        ServiceType.BersihKos => OrderTrack.JalurB,
+        ServiceType.BersihKamarMandi => OrderTrack.JalurB,
         ServiceType.PermintaanLain => OrderTrack.JalurB,
         _ => throw new ArgumentOutOfRangeException(nameof(serviceType), serviceType, null),
     };

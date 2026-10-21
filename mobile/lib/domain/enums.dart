@@ -46,8 +46,8 @@ enum ServiceType {
   jastipMakanan(OrderTrack.jalurA),
   jastipBarang(OrderTrack.jalurA),
   bantuPindahKos(OrderTrack.jalurA),
-  bersihKos(OrderTrack.jalurA),
-  bersihKamarMandi(OrderTrack.jalurA),
+  bersihKos(OrderTrack.jalurB),
+  bersihKamarMandi(OrderTrack.jalurB),
   permintaanLain(OrderTrack.jalurB);
 
   const ServiceType(this.track);

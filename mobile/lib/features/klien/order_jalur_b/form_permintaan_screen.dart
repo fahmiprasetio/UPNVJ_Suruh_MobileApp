@@ -145,7 +145,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
                 decoration: InputDecoration(
                   counterText: '',
                   labelText: 'Ceritakan kebutuhanmu',
-                  hintText: _contohUntuk(widget.serviceType),
+                  hintText: null,
                   alignLabelWithHint: true,
                 ),
                 validator: _validasiKebutuhan,
@@ -187,7 +187,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
                 decoration: const InputDecoration(
                   counterText: '',
                   labelText: 'Alamat',
-                  hintText: 'Kos Melati, Jl. Pondok Labu Raya No. 12',
+                  hintText: null,
                   prefixIcon: Icon(Icons.place_outlined),
                 ),
                 validator: _validasiAlamat,
@@ -353,9 +353,8 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
     return null;
   }
 
-  static String _contohUntuk(ServiceType _) =>
-      'Ceritakan apa yang kamu butuhkan dan di mana. Apa pun boleh selama '
-      'masuk akal dan aman dikerjakan.';
+
+
 }
 
 /// Penjelasan alur Jalur B sebelum klien mulai menulis.
