@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
@@ -477,20 +476,12 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
             // 2. Kartu Rute Terhubung dengan Autocomplete Dropdown
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _buildConnectedRouteCard(),
+              child: _buildConnectedRouteCard(tarif, melebihiBatas),
             ),
 
             const SizedBox(height: 14),
 
-            // 3. Kartu Perkiraan Jarak (Akurat & Otomatis)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _buildCardPerkiraanJarak(tarif),
-            ),
-
-            const SizedBox(height: 14),
-
-            // 4. Kartu Catatan untuk Driver / Runner (Ringkas & Rapi)
+            // 3. Kartu Catatan untuk Driver / Runner (Ringkas & Rapi)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: _buildCardCatatanDriver(),
@@ -702,7 +693,7 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
   }
 
   /// Kartu Rute Terhubung dengan input jemput & tujuan + live autocomplete
-  Widget _buildConnectedRouteCard() {
+  Widget _buildConnectedRouteCard(Tarif tarif, bool melebihiBatas) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -977,247 +968,56 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
           // Tampilan Saran Dropdown Tujuan
           if (_saranTujuan.isNotEmpty)
             _buildDropdownSaran(daftar: _saranTujuan, untukJemput: false),
-        ],
-      ),
-    );
-  }
 
-  /// Kartu Perkiraan Jarak dengan indikator otomatis/menit dan peringatan jika melebihi batas
-  Widget _buildCardPerkiraanJarak(Tarif tarif) {
-    final jarak = bacaJarak(_jarakController.text);
-    final bool melebihiBatas =
-        jarak != null && jarak > tarif.anjemJarakMaksimalKm;
-    final String menitEstimasi = jarak != null
-        ? '(± ${(jarak * 2.5).clamp(4, 30).round()}-${(jarak * 3.5).clamp(8, 45).round()} menit)'
-        : '(± 5-10 menit)';
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: melebihiBatas
-              ? const Color(0xFFFFB74D)
-              : const Color(0xFFEDF2ED),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: melebihiBatas
-                      ? const Color(0xFFFFF3E0)
-                      : const Color(0xFFE8F8EA),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  melebihiBatas
-                      ? Icons.warning_amber_rounded
-                      : Icons.access_time_filled_rounded,
-                  color: melebihiBatas
-                      ? const Color(0xFFE65100)
-                      : const Color(0xFF00AA13),
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'PERKIRAAN JARAK & WAKTU',
-                      style: TextStyle(
-                        color: Color(0xFF6B7A6E),
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        SizedBox(
-                          width: 65,
-                          child: TextFormField(
-                            controller: _jarakController,
-                            enabled: !_sedangHitungRute,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            inputFormatters: [
-                              FilteringTextInputFormatter.allow(
-                                RegExp(r'[0-9.,]'),
-                              ),
-                            ],
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: melebihiBatas
-                                  ? const Color(0xFFD32F2F)
-                                  : const Color(0xFF1E2124),
-                            ),
-                            decoration: const InputDecoration(
-                              isDense: true,
-                              contentPadding: EdgeInsets.zero,
-                              border: InputBorder.none,
-                              hintText: '0.0',
-                              suffixText: ' km',
-                              suffixStyle: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF1E2124),
-                              ),
-                            ),
-                            validator: (nilai) => validasiJarak(nilai, tarif),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          menitEstimasi,
-                          style: const TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF6B7A6E),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              if (_sedangHitungRute)
-                const SizedBox(
-                  width: 18,
-                  height: 18,
+          // Indikator Jarak Rute Otomatis
+          if (_sedangHitungRute) ...[
+            const SizedBox(height: 12),
+            const Row(
+              children: [
+                SizedBox(
+                  width: 14,
+                  height: 14,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
                     color: Color(0xFF00AA13),
                   ),
-                )
-              else
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: melebihiBatas
-                        ? const Color(0xFFFFF3E0)
-                        : const Color(0xFFE8F8EA),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: melebihiBatas
-                          ? const Color(0xFFE65100)
-                          : const Color(0xFF00AA13),
-                      width: 1,
-                    ),
-                  ),
-                  child: Text(
-                    melebihiBatas ? 'Kejauhan' : 'Otomatis',
-                    style: TextStyle(
-                      color: melebihiBatas
-                          ? const Color(0xFFE65100)
-                          : const Color(0xFF00AA13),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
                 ),
-            ],
-          ),
-          if (melebihiBatas) ...[
+                SizedBox(width: 8),
+                Text(
+                  'Menghitung rute otomatis...',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF6B7A6E)),
+                ),
+              ],
+            ),
+          ] else if (_jarakController.text.isNotEmpty) ...[
             const SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFF8E1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFFFE082)),
+                color: melebihiBatas
+                    ? const Color(0xFFFFEBEE)
+                    : const Color(0xFFE8F5E9),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.info_outline_rounded,
-                        color: Color(0xFFE65100),
-                        size: 16,
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          'Jarak melebihi batas Anter Jemput (maks. ${tarif.anjemJarakMaksimalKm.round()} km)',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFFB74700),
-                          ),
-                        ),
-                      ),
-                    ],
+                  Icon(
+                    Icons.route_outlined,
+                    size: 15,
+                    color: melebihiBatas
+                        ? const Color(0xFFD32F2F)
+                        : const Color(0xFF00AA13),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(width: 6),
                   Text(
-                    'Layanan Anter Jemput kampus hanya melayani perjalanan hingga ${tarif.anjemJarakMaksimalKm.round()} km. Karena jarak tujuan Anda ${tulisJarak(jarak)} km, silakan buat penawaran khusus lewat Jalur B (Permintaan Lain).',
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF5D4037),
-                      height: 1.35,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  InkWell(
-                    onTap: () {
-                      context.push(
-                        Rute.formPermintaan(ServiceType.permintaanLain),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 7,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE65100),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Pindah ke Permintaan Lain (Jalur B)',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          SizedBox(width: 4),
-                          Icon(
-                            Icons.arrow_forward_rounded,
-                            color: Colors.white,
-                            size: 14,
-                          ),
-                        ],
-                      ),
+                    'Jarak: ${_jarakController.text} km',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: melebihiBatas
+                          ? const Color(0xFFD32F2F)
+                          : const Color(0xFF00AA13),
                     ),
                   ),
                 ],
@@ -1228,6 +1028,7 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
       ),
     );
   }
+
 
   /// Kartu Catatan untuk Driver / Runner (Ringkas 1 baris bersih)
   Widget _buildCardCatatanDriver() {

@@ -682,21 +682,71 @@ class _FormLayananKosScreenState
                   ],
                 ),
               ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F5E9),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '$_jumlahRunner Orang',
+                  style: const TextStyle(
+                    color: Color(0xFF00AA13),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: SegmentedButton<int>(
-              segments: [
-                for (var nilai = 1; nilai <= 5; nilai++)
-                  ButtonSegment(value: nilai, label: Text('$nilai Orang')),
-              ],
-              selected: {_jumlahRunner},
-              onSelectionChanged: _sedangMengirim
-                  ? null
-                  : (nilai) => setState(() => _jumlahRunner = nilai.single),
-            ),
+          Row(
+            children: [
+              for (var nilai = 1; nilai <= 5; nilai++)
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      left: nilai == 1 ? 0 : 4,
+                      right: nilai == 5 ? 0 : 4,
+                    ),
+                    child: InkWell(
+                      onTap: _sedangMengirim
+                          ? null
+                          : () => setState(() => _jumlahRunner = nilai),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: _jumlahRunner == nilai
+                              ? const Color(0xFF00AA13)
+                              : const Color(0xFFF7F9F7),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _jumlahRunner == nilai
+                                ? const Color(0xFF00AA13)
+                                : const Color(0xFFE2E8E2),
+                            width: _jumlahRunner == nilai ? 1.5 : 1,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '$nilai',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: _jumlahRunner == nilai
+                                  ? FontWeight.w900
+                                  : FontWeight.w700,
+                              color: _jumlahRunner == nilai
+                                  ? Colors.white
+                                  : const Color(0xFF2C352E),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 16),
           const Divider(color: Color(0xFFEDF2ED), height: 1),
