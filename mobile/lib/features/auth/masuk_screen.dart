@@ -68,6 +68,7 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
   });
 
   Future<void> _masuk() => jalankan(_formKey, () async {
+    FocusScope.of(context).unfocus();
     await ref
         .read(authRepositoryProvider)
         .masuk(
@@ -78,6 +79,7 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
   });
 
   Future<void> _masukPassword() => jalankan(_formKey, () async {
+    FocusScope.of(context).unfocus();
     await ref
         .read(authRepositoryProvider)
         .masukPassword(
@@ -542,7 +544,7 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
             validator: validasiKode,
             onChanged: (val) {
               setState(() {});
-              if (val.trim().length == 6) {
+              if (val.trim().length == 6 && !sedangMengirim) {
                 _masuk();
               }
             },
@@ -860,30 +862,7 @@ class _KotakInputOtpAlohaState extends State<_KotakInputOtpAloha> {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  // Hidden textfield untuk input keyboard asli
-                  Opacity(
-                    opacity: 0.0,
-                    child: SizedBox(
-                      width: 1,
-                      height: 1,
-                      child: TextField(
-                        controller: widget.controller,
-                        focusNode: _focusNode,
-                        autofocus: true,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(6),
-                        ],
-                        onChanged: (val) {
-                          state.didChange(val);
-                          widget.onChanged(val);
-                        },
-                      ),
-                    ),
-                  ),
-
-                  // 6 Box Segmented Display
+                  // 6 Box Segmented Display di latar
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: List.generate(6, (index) {
@@ -924,13 +903,34 @@ class _KotakInputOtpAlohaState extends State<_KotakInputOtpAloha> {
                             hasChar ? text[index] : '',
                             style: const TextStyle(
                               fontSize: 22,
-                              fontWeight: FontWeight.w900,
+                              fontWeight: FontWeight.w800,
                               color: Color(0xFF111827),
                             ),
                           ),
                         ),
                       );
                     }),
+                  ),
+
+                  // Invisible textfield menutupi seluruh kotak untuk deteksi klik & ketikan alami di mobile web
+                  Positioned.fill(
+                    child: Opacity(
+                      opacity: 0.0,
+                      child: TextField(
+                        controller: widget.controller,
+                        focusNode: _focusNode,
+                        autofocus: true,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(6),
+                        ],
+                        onChanged: (val) {
+                          state.didChange(val);
+                          widget.onChanged(val);
+                        },
+                      ),
+                    ),
                   ),
                 ],
               ),

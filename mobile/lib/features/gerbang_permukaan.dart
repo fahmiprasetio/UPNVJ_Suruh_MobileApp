@@ -56,9 +56,17 @@ class GerbangPermukaan extends ConsumerWidget {
         // pantas mengisi sepersekian detik itu bukan kalimat apa pun,
         // melainkan tidak ada apa-apa, karena kalimat yang sempat terbaca
         // sekejap lalu hilang lebih mengganggu daripada layar yang diam.
-        if (user == null) return const Scaffold();
+        if (user == null) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(color: Color(0xFF00AA13)),
+            ),
+          );
+        }
 
-        return switch (ref.watch(peranAktifProvider)) {
+        final peran =
+            ref.watch(peranAktifProvider) ?? user.peranBawaan ?? UserRole.klien;
+        return switch (peran) {
           UserRole.klien => const CangkangKlien(),
           UserRole.runner => const BerandaRunnerScreen(),
           // Peran admin tidak punya permukaan mobile, dan akun yang cuma

@@ -56,6 +56,7 @@ class AppUser {
   UserRole? get peranBawaan {
     if (isKlien) return UserRole.klien;
     if (isRunner) return UserRole.runner;
+    if (roles.isEmpty) return UserRole.klien;
     return null;
   }
 
