@@ -782,6 +782,12 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
                         isDense: true,
                         contentPadding: EdgeInsets.symmetric(vertical: 4),
                         border: InputBorder.none,
+                        hintText: 'Titik penjemputan',
+                        hintStyle: TextStyle(
+                          color: Color(0xFF9EA8A0),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                        ),
                       ),
                       onChanged: (val) => _saringSaran(val, untukJemput: true),
                       onTap: () => _saringSaran(
@@ -793,6 +799,7 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
                   ],
                 ),
               ),
+              const SizedBox(width: 14),
               if (_sedangCariJemput)
                 const Padding(
                   padding: EdgeInsets.only(right: 6),
@@ -913,6 +920,12 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
                         isDense: true,
                         contentPadding: EdgeInsets.symmetric(vertical: 4),
                         border: InputBorder.none,
+                        hintText: 'Titik tujuan pengantaran',
+                        hintStyle: TextStyle(
+                          color: Color(0xFF9EA8A0),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                        ),
                       ),
                       onChanged: (val) => _saringSaran(val, untukJemput: false),
                       onTap: () => _saringSaran(
@@ -924,6 +937,7 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
                   ],
                 ),
               ),
+              const SizedBox(width: 14),
               if (_sedangCariTujuan)
                 const Padding(
                   padding: EdgeInsets.only(right: 6),

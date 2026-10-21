@@ -145,7 +145,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
                 decoration: InputDecoration(
                   counterText: '',
                   labelText: 'Ceritakan kebutuhanmu',
-                  hintText: null,
+                  hintText: 'Jelaskan bantuan yang kamu butuhkan...',
                   alignLabelWithHint: true,
                 ),
                 validator: _validasiKebutuhan,
@@ -158,13 +158,13 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
               ),
               const SizedBox(height: AppTheme.spasiBesar),
               Text(
-                'Berapa kamu mau bayar?',
+                'Berapa tawaran harga awalmu?',
                 style: teks.titleSmall?.copyWith(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 4),
               Text(
-                'Ini titik awal tawar-menawar, bukan harga pasti. Runner bisa '
-                'langsung menyanggupi angka ini, atau menawar balik.',
+                'Harga penawaran yang kamu buka untuk runner. Runner bisa '
+                'langsung menyetujui tawaran ini atau menawar balik.',
                 style: teks.bodySmall?.copyWith(color: skema.onSurfaceVariant),
               ),
               const SizedBox(height: AppTheme.spasiKecil),
@@ -172,7 +172,8 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
                 controller: _hargaController,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
-                  labelText: 'Harga yang kamu sanggupi',
+                  labelText: 'Harga tawaran kamu',
+                  hintText: 'Misal: 25000',
                   prefixText: 'Rp ',
                 ),
                 validator: _validasiHarga,
@@ -187,7 +188,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
                 decoration: const InputDecoration(
                   counterText: '',
                   labelText: 'Alamat',
-                  hintText: null,
+                  hintText: 'Alamat tempat pengerjaan',
                   prefixIcon: Icon(Icons.place_outlined),
                 ),
                 validator: _validasiAlamat,
@@ -340,7 +341,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
 
   static String? _validasiHarga(String? nilai) {
     final bersih = nilai?.trim() ?? '';
-    if (bersih.isEmpty) return 'Sebutkan harga yang kamu sanggupi';
+    if (bersih.isEmpty) return 'Masukkan tawaran harga kamu';
     final angka = int.tryParse(bersih);
     if (angka == null || angka <= 0) return 'Masukkan angka yang masuk akal';
     return null;
@@ -386,9 +387,9 @@ class _PitaCaraKerja extends StatelessWidget {
           Expanded(
             child: Text(
               'Layanan ini tidak punya harga tetap. Kamu menulis kebutuhan '
-              'dan mengusulkan harga, lalu runner yang tersedia bisa '
-              'menyanggupinya atau menawar balik. Kamu bayar hanya kalau '
-              'salah satu tawarannya kamu setujui.',
+              'dan membuka tawaran harga, lalu runner yang tersedia bisa '
+              'langsung menerima atau menawar balik. Kamu bayar hanya kalau '
+              'salah satu penawaran kamu setujui.',
               style: Theme.of(
                 context,
               ).textTheme.bodySmall?.copyWith(color: skema.onPrimaryContainer),

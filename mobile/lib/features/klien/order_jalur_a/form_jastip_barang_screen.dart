@@ -166,6 +166,7 @@ class _FormJastipBarangScreenState
               decoration: const InputDecoration(
                 counterText: '',
                 labelText: 'Barang apa yang dititip?',
+                hintText: 'Nama barang yang dititipkan',
                 prefixIcon: Icon(Icons.inventory_2_outlined),
               ),
               validator: _validasiBarang,
@@ -180,14 +181,18 @@ class _FormJastipBarangScreenState
               decoration: InputDecoration(
                 counterText: '',
                 labelText: 'Diambil di mana?',
+                hintText: 'Titik pengambilan barang',
                 prefixIcon: const Icon(Icons.store_outlined),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.map_outlined),
-                  tooltip: 'Pilih di peta',
-                  onPressed: () => _pilihDiPeta(
-                    controller: _ambilController,
-                    judul: 'Titik pengambilan barang',
-                    untukAmbil: true,
+                suffixIcon: Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: IconButton(
+                    icon: const Icon(Icons.map_outlined),
+                    tooltip: 'Pilih di peta',
+                    onPressed: () => _pilihDiPeta(
+                      controller: _ambilController,
+                      judul: 'Titik pengambilan barang',
+                      untukAmbil: true,
+                    ),
                   ),
                 ),
               ),
@@ -203,14 +208,18 @@ class _FormJastipBarangScreenState
               decoration: InputDecoration(
                 counterText: '',
                 labelText: 'Diantar ke mana?',
+                hintText: 'Titik tujuan pengantaran',
                 prefixIcon: const Icon(Icons.place_outlined),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.map_outlined),
-                  tooltip: 'Pilih di peta',
-                  onPressed: () => _pilihDiPeta(
-                    controller: _tujuanController,
-                    judul: 'Titik tujuan pengantaran',
-                    untukAmbil: false,
+                suffixIcon: Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: IconButton(
+                    icon: const Icon(Icons.map_outlined),
+                    tooltip: 'Pilih di peta',
+                    onPressed: () => _pilihDiPeta(
+                      controller: _tujuanController,
+                      judul: 'Titik tujuan pengantaran',
+                      untukAmbil: false,
+                    ),
                   ),
                 ),
               ),

@@ -294,6 +294,7 @@ class _FormLayananKosScreenState
       decoration: const InputDecoration(
         counterText: '',
         labelText: 'Alamat kos',
+        hintText: 'Alamat kos lengkap (kamar, nomor, patokan)',
         prefixIcon: Icon(Icons.place_outlined),
       ),
       validator: _validasiAlamat,
@@ -338,6 +339,7 @@ class _FormLayananKosScreenState
     decoration: InputDecoration(
       counterText: '',
       labelText: label,
+      hintText: 'Contoh: Lantai 2, kamar mandi di dalam...',
       prefixIcon: const Icon(Icons.notes_outlined),
     ),
   );
@@ -354,11 +356,17 @@ class _FormLayananKosScreenState
     decoration: InputDecoration(
       counterText: '',
       labelText: label,
+      hintText: untukAsal
+          ? 'Lokasi asal kos/kontrakan'
+          : 'Lokasi tujuan pindahan',
       prefixIcon: Icon(ikon),
-      suffixIcon: IconButton(
-        tooltip: 'Pilih di peta',
-        icon: const Icon(Icons.map_outlined),
-        onPressed: () => _pilihLokasi(controller, label, untukAsal),
+      suffixIcon: Padding(
+        padding: const EdgeInsets.only(right: 6),
+        child: IconButton(
+          tooltip: 'Pilih di peta',
+          icon: const Icon(Icons.map_outlined),
+          onPressed: () => _pilihLokasi(controller, label, untukAsal),
+        ),
       ),
     ),
     validator: _validasiAlamat,
