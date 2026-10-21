@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import '../../../core/api/galat_api.dart';
 import '../../../core/api/idempotency_key.dart';
 import '../../../core/config/batas_masukan.dart';
+import '../../../core/format/formatters.dart';
 import '../../../core/format/jarak.dart';
 import '../../../core/peta/jarak_rute.dart';
 import '../../../core/providers/repository_providers.dart';
@@ -149,47 +150,20 @@ class _FormLayananKosScreenState
           final melebihiBatas = _pindahan &&
               jarak != null &&
               jarak > tarif.anjemJarakMaksimalKm;
-          return SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(AppTheme.spasiSedang),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Total bayar',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                        Text(
-                          hasil == null || melebihiBatas
-                              ? '-'
-                              : 'Rp ${_rupiah(hasil.total)}',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.primary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  FilledButton(
-                    onPressed: _sedangMengirim || hasil == null || melebihiBatas
-                        ? null
-                        : _buatOrder,
-                    child: _sedangMengirim
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Buat Order'),
-                  ),
-                ],
-              ),
-            ),
+          final bool bolehKirim = !_sedangMengirim &&
+              (!_pindahan || (hasil != null && !melebihiBatas));
+
+          return _BilahBawahGojekKos(
+            total: hasil?.total,
+            labelTotal: melebihiBatas
+                ? 'Di Luar Batas'
+                : (_pindahan ? 'Pilih Rute' : null),
+            labelAksi: melebihiBatas
+                ? 'Maks. ${tarif.anjemJarakMaksimalKm.round()} km'
+                : 'Buat Order',
+            sedangMengirim: _sedangMengirim,
+            onTekan: bolehKirim ? _buatOrder : null,
+            melebihiBatas: melebihiBatas,
           );
         },
         orElse: () => null,
@@ -209,6 +183,7 @@ class _FormLayananKosScreenState
             if (_pindahan) ..._formPindahan(tarif) else ..._formKebersihan(),
             const SizedBox(height: AppTheme.spasiBesar),
             if (hasil != null) RingkasanHarga(hasil: hasil),
+            const SizedBox(height: 80),
           ],
         ),
       ),
@@ -513,11 +488,128 @@ class _FormLayananKosScreenState
     }
   }
 
-  static String _rupiah(int nilai) {
-    final teks = nilai.toString();
-    return teks.replaceAllMapped(
-      RegExp(r'\B(?=(\d{3})+(?!\d))'),
-      (_) => '.',
+}
+
+/// Bilah bawah tombol aksi pemesanan layanan kos ala Gojek
+class _BilahBawahGojekKos extends StatelessWidget {
+  const _BilahBawahGojekKos({
+    required this.total,
+    this.labelTotal,
+    this.labelAksi = 'Buat Order',
+    required this.sedangMengirim,
+    required this.onTekan,
+    this.melebihiBatas = false,
+  });
+
+  final int? total;
+  final String? labelTotal;
+  final String labelAksi;
+  final bool sedangMengirim;
+  final VoidCallback? onTekan;
+  final bool melebihiBatas;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: FilledButton(
+              onPressed: sedangMengirim ? null : onTekan,
+              style: FilledButton.styleFrom(
+                backgroundColor: melebihiBatas
+                    ? const Color(0xFFC4C4C4)
+                    : const Color(0xFF00AA13),
+                disabledBackgroundColor: melebihiBatas
+                    ? const Color(0xFFE2E2E2)
+                    : const Color(0xFFB0D9B3),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                elevation: 0,
+              ),
+              child: sedangMengirim
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              melebihiBatas ? 'Batas Layanan' : 'Total Biaya',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white.withValues(alpha: 0.85),
+                              ),
+                            ),
+                            Text(
+                              total != null
+                                  ? formatRupiah(total)
+                                  : (labelTotal ?? '-'),
+                              style: TextStyle(
+                                fontSize: melebihiBatas ? 13.5 : 16,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            Text(
+                              labelAksi,
+                              style: const TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Icon(
+                              melebihiBatas
+                                  ? Icons.block_rounded
+                                  : Icons.arrow_forward_rounded,
+                              size: 18,
+                              color: Colors.white,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
+
