@@ -53,11 +53,10 @@ class _FormJastipMakananScreenState
   bool _sedangMengirim = false;
 
   /// Titik peta untuk kolom warung, kalau diisi lewat sana.
-  ///
-  /// Tidak ada kolom jarak di form ini -- tarif Jastip Makanan flat, tidak
-  /// menghitung rute -- jadi titiknya cuma dipakai membuka kembali peta di
-  /// posisi terakhir, sama sekali tidak dikirim ke server.
   LatLng? _posisiBeli;
+
+  /// Titik peta untuk kolom tujuan antar, kalau diisi lewat sana.
+  LatLng? _posisiTujuan;
 
   /// Alamat tersimpan mengisi sendiri kolom "Diantar ke mana?", mengikuti
   /// alasan yang sama seperti Jastip Barang: yang dibeli ada di warung, yang
@@ -74,6 +73,12 @@ class _FormJastipMakananScreenState
       _makananController.text = contoh.deskripsi ?? '';
       _belipController.text = contoh.alamatJemput ?? '';
       _tujuanController.text = contoh.alamatTujuan ?? '';
+      if (contoh.latitudeJemput != null && contoh.longitudeJemput != null) {
+        _posisiBeli = LatLng(contoh.latitudeJemput!, contoh.longitudeJemput!);
+      }
+      if (contoh.latitudeTujuan != null && contoh.longitudeTujuan != null) {
+        _posisiTujuan = LatLng(contoh.latitudeTujuan!, contoh.longitudeTujuan!);
+      }
       return;
     }
 
@@ -170,11 +175,16 @@ class _FormJastipMakananScreenState
               textCapitalization: TextCapitalization.sentences,
               maxLines: 2,
               minLines: 1,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 counterText: '',
                 labelText: 'Diantar ke mana?',
                 hintText: 'Kos Melati kamar 7',
-                prefixIcon: Icon(Icons.place_outlined),
+                prefixIcon: const Icon(Icons.place_outlined),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.map_outlined),
+                  tooltip: 'Pilih di peta',
+                  onPressed: _pilihDiPetaTujuan,
+                ),
               ),
               validator: (nilai) => _wajibAlamat(nilai, 'tujuan'),
             ),
@@ -202,6 +212,10 @@ class _FormJastipMakananScreenState
             deskripsi: _makananController.text.trim(),
             alamatJemput: _belipController.text.trim(),
             alamatTujuan: _tujuanController.text.trim(),
+            latitudeJemput: _posisiBeli?.latitude,
+            longitudeJemput: _posisiBeli?.longitude,
+            latitudeTujuan: _posisiTujuan?.latitude,
+            longitudeTujuan: _posisiTujuan?.longitude,
             idempotencyKey: _idempotencyKey,
           );
     } catch (galat) {
@@ -247,6 +261,23 @@ class _FormJastipMakananScreenState
     setState(() {
       _belipController.text = hasil.alamat;
       _posisiBeli = hasil.posisi;
+    });
+  }
+
+  Future<void> _pilihDiPetaTujuan() async {
+    final hasil = await Navigator.of(context).push<HasilPilihLokasi>(
+      MaterialPageRoute(
+        builder: (context) => PemilihLokasiScreen(
+          judul: 'Lokasi tujuan antar',
+          posisiAwal: _posisiTujuan,
+        ),
+      ),
+    );
+    if (hasil == null || !mounted) return;
+
+    setState(() {
+      _tujuanController.text = hasil.alamat;
+      _posisiTujuan = hasil.posisi;
     });
   }
 
