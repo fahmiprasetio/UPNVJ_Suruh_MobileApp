@@ -1,45 +1,51 @@
-import '../../core/api/galat_api.dart';
+import '../../core/config/tarif_config.dart';
 import '../../domain/models/tarif.dart';
 import 'pemeta_dasar.dart';
 
 /// Menerjemahkan jawaban tarif dari API.
 ///
-/// Terpisah dari repositorynya dengan alasan yang sama seperti [PemetaTransaksi]:
-/// bentuk JSON adalah hal yang paling gampang salah diasumsikan dan paling sunyi
-/// kalau salah, jadi ia diuji sendiri terhadap contoh jawaban yang benar-benar
-/// diambil dari server yang berjalan.
+/// Menggunakan fallback aman ke [TarifConfig] jika terdapat nilai yang bernilai null
+/// atau belum dikirim oleh backend lama, sehingga form order Jalur A tidak pernah gagal dimuat.
 class PemetaTarif {
   const PemetaTarif._();
 
   static Tarif tarif(Map<String, dynamic> isi) {
     return Tarif(
-      anjemTarifDasar: PemetaDasar.rupiah(isi['anjemTarifDasar'])!,
-      anjemTarifPerKm: PemetaDasar.rupiah(isi['anjemTarifPerKm'])!,
-      anjemJarakMinimalKm: _pecahan(isi, 'anjemJarakMinimalKm'),
-      anjemJarakMaksimalKm: _pecahan(isi, 'anjemJarakMaksimalKm'),
-      jastipMakananFee: PemetaDasar.rupiah(isi['jastipMakananFee'])!,
-      jastipBarangFee: PemetaDasar.rupiah(isi['jastipBarangFee'])!,
-      jastipBarangTarifPerKm: PemetaDasar.rupiah(isi['jastipBarangTarifPerKm'])!,
-      pindahKosTarifDasar: PemetaDasar.rupiah(isi['pindahKosTarifDasar'])!,
-      pindahKosTarifPerKm: PemetaDasar.rupiah(isi['pindahKosTarifPerKm'])!,
-      pindahKosTambahanRunner: PemetaDasar.rupiah(isi['pindahKosTambahanRunner'])!,
-      pindahKosTambahanMobil: PemetaDasar.rupiah(isi['pindahKosTambahanMobil'])!,
-      pindahKosTambahanPickup: PemetaDasar.rupiah(isi['pindahKosTambahanPickup'])!,
-      bersihKosFee: PemetaDasar.rupiah(isi['bersihKosFee'])!,
-      bersihKamarMandiFee: PemetaDasar.rupiah(isi['bersihKamarMandiFee'])!,
+      anjemTarifDasar: PemetaDasar.rupiah(isi['anjemTarifDasar']) ??
+          TarifConfig.anjemTarifDasar,
+      anjemTarifPerKm: PemetaDasar.rupiah(isi['anjemTarifPerKm']) ??
+          TarifConfig.anjemTarifPerKm,
+      anjemJarakMinimalKm: _pecahan(isi, 'anjemJarakMinimalKm', TarifConfig.anjemJarakMinimalKm),
+      anjemJarakMaksimalKm: _pecahan(isi, 'anjemJarakMaksimalKm', TarifConfig.anjemJarakMaksimalKm),
+      jastipMakananFee: PemetaDasar.rupiah(isi['jastipMakananFee']) ??
+          TarifConfig.jastipMakananFee,
+      jastipBarangFee: PemetaDasar.rupiah(isi['jastipBarangFee']) ??
+          TarifConfig.jastipBarangFee,
+      jastipBarangTarifPerKm: PemetaDasar.rupiah(isi['jastipBarangTarifPerKm']) ??
+          TarifConfig.jastipBarangTarifPerKm,
+      pindahKosTarifDasar: PemetaDasar.rupiah(isi['pindahKosTarifDasar']) ??
+          TarifConfig.pindahKosTarifDasar,
+      pindahKosTarifPerKm: PemetaDasar.rupiah(isi['pindahKosTarifPerKm']) ??
+          TarifConfig.pindahKosTarifPerKm,
+      pindahKosTambahanRunner: PemetaDasar.rupiah(isi['pindahKosTambahanRunner']) ??
+          TarifConfig.pindahKosTambahanRunner,
+      pindahKosTambahanMobil: PemetaDasar.rupiah(isi['pindahKosTambahanMobil']) ??
+          TarifConfig.pindahKosTambahanMobil,
+      pindahKosTambahanPickup: PemetaDasar.rupiah(isi['pindahKosTambahanPickup']) ??
+          TarifConfig.pindahKosTambahanPickup,
+      bersihKosFee: PemetaDasar.rupiah(isi['bersihKosFee']) ??
+          TarifConfig.bersihKosFee,
+      bersihKamarMandiFee: PemetaDasar.rupiah(isi['bersihKamarMandiFee']) ??
+          TarifConfig.bersihKamarMandiFee,
     );
   }
 
-  /// Jarak dikirim server sebagai `double` (kilometer boleh pecahan), beda dari
-  /// kolom rupiah yang selalu dibulatkan [PemetaDasar.rupiah]. Melempar untuk
-  /// bentuk yang tidak sesuai, sama seperti pembacaan lain di sini: jarak yang
-  /// diam-diam jadi nol akan membuat setiap order Jalur A ditagih tarif dasar
-  /// saja, dan itu tidak akan ketahuan dari layar mana pun.
-  static double _pecahan(Map<String, dynamic> isi, String kunci) {
+  /// Membaca jarak pecahan secara aman dengan fallback bila kunci tidak tersedia.
+  static double _pecahan(Map<String, dynamic> isi, String kunci, double cadangan) {
     final nilai = isi[kunci];
-    if (nilai is! num) {
-      throw GalatServer('Jawaban server tidak memuat $kunci.');
+    if (nilai is num) {
+      return nilai.toDouble();
     }
-    return nilai.toDouble();
+    return cadangan;
   }
 }
