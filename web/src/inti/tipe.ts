@@ -100,6 +100,8 @@ export interface Order {
   alamatTujuan: string | null;
   jarakKm: number | null;
   jumlahRunnerDibutuhkan: number;
+  jenisKendaraan: 'Motor' | 'Mobil' | 'Pickup' | null;
+  fotoEstimasiUrl: string | null;
   runners: RunnerRingkas[];
   estimasiDurasiMenit: number | null;
   jadwalMulai: string | null;
@@ -163,6 +165,13 @@ export interface Tarif {
   jastipMakananFee: number;
   jastipBarangFee: number;
   jastipBarangTarifPerKm: number;
+  pindahKosTarifDasar: number;
+  pindahKosTarifPerKm: number;
+  pindahKosTambahanRunner: number;
+  pindahKosTambahanMobil: number;
+  pindahKosTambahanPickup: number;
+  bersihKosFee: number;
+  bersihKamarMandiFee: number;
   diubahPada: string | null;
 }
 

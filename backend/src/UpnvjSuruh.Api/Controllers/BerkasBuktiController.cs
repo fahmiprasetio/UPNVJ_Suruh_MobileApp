@@ -68,7 +68,12 @@ public class BerkasBuktiController(AppDbContext db, PenyimpanFoto penyimpan) : C
         // Aturan yang sama persis dengan membaca ordernya: pemesannya, runner yang
         // memegangnya, dan admin. Ditulis sekali di AksesOrder supaya foto dan order tidak
         // bisa berselisih tentang siapa yang berhak, karena keduanya membuka hal yang sama.
-        if (!AksesOrder.BolehLihat(order, User.Id(), User)) return NotFound();
+        var url = PenyimpanFoto.Prefiks + nama;
+        var fotoEstimasiSiaran = order.EstimatePhotoUrl == url &&
+                                 order.Status == Domain.OrderStatus.MencariRunner &&
+                                 User.Punya(Peran.Runner) &&
+                                 order.ClientId != User.Id();
+        if (!AksesOrder.BolehLihat(order, User.Id(), User) && !fotoEstimasiSiaran) return NotFound();
 
         // Berkas kiriman orang, dilayani kembali ke browser. Jenisnya sudah dipastikan dari
         // isi berkasnya saat diunggah, dan header ini menutup sisanya: tanpa nosniff, browser

@@ -24,6 +24,13 @@ public enum OrderTrack
     JalurB
 }
 
+public enum MovingVehicleType
+{
+    Motor,
+    Mobil,
+    Pickup
+}
+
 public enum OrderStatus
 {
     Permintaan,
@@ -137,9 +144,9 @@ public static class ServiceTypeExtensions
         ServiceType.AnterJemput => OrderTrack.JalurA,
         ServiceType.JastipMakanan => OrderTrack.JalurA,
         ServiceType.JastipBarang => OrderTrack.JalurA,
-        ServiceType.BantuPindahKos => OrderTrack.JalurB,
-        ServiceType.BersihKos => OrderTrack.JalurB,
-        ServiceType.BersihKamarMandi => OrderTrack.JalurB,
+        ServiceType.BantuPindahKos => OrderTrack.JalurA,
+        ServiceType.BersihKos => OrderTrack.JalurA,
+        ServiceType.BersihKamarMandi => OrderTrack.JalurA,
         ServiceType.PermintaanLain => OrderTrack.JalurB,
         _ => throw new ArgumentOutOfRangeException(nameof(serviceType), serviceType, null),
     };

@@ -80,7 +80,7 @@ void main() {
 
     await expectLater(
       repo.buatPermintaanJalurB(
-        serviceType: ServiceType.bersihKos,
+        serviceType: ServiceType.permintaanLain,
         deskripsi: panjang(BatasMasukan.deskripsi + 1),
         jadwalMulai: DateTime.now().add(const Duration(days: 1)),
         hargaUsulan: 150000,

@@ -202,7 +202,7 @@ public class PesanTerlihatTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
 
         var dibuat = await klien.PostAsJsonAsync("/api/orders/jalur-b", new
         {
-            ServiceType = nameof(ServiceType.BantuPindahKos),
+            ServiceType = nameof(ServiceType.PermintaanLain),
             Deskripsi = "Pindahan satu kamar kos.",
             JadwalMulai = DateTime.UtcNow.AddDays(1),
             JumlahRunnerDibutuhkan = 2,

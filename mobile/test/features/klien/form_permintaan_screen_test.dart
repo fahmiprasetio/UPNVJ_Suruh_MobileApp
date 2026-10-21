@@ -88,16 +88,16 @@ void main() {
     expect(find.text('Kirim Permintaan'), findsOneWidget);
   });
 
-  testWidgets('layanan Jalur B berkatalog memakai form yang sama', (
+  testWidgets('hanya Permintaan Lain memakai form Jalur B', (
     tester,
   ) async {
-    await bukaForm(tester, namaLayanan: 'Bantu Pindah Kos');
+    await bukaForm(tester, namaLayanan: 'Permintaan Lain');
 
-    expect(find.widgetWithText(AppBar, 'Bantu Pindah Kos'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Permintaan Lain'), findsOneWidget);
   });
 
   testWidgets('form Jalur B tidak menjanjikan harga apa pun', (tester) async {
-    await bukaForm(tester, namaLayanan: 'Bersih-Bersih Kos');
+    await bukaForm(tester, namaLayanan: 'Permintaan Lain');
 
     // Tidak ada total, tidak ada tombol bayar. Harga order baru ada setelah
     // klien menyetujui salah satu tawaran runner.
@@ -124,7 +124,7 @@ void main() {
   testWidgets('permintaan terkirim jadi order berstatus Permintaan', (
     tester,
   ) async {
-    final repo = await bukaForm(tester, namaLayanan: 'Bantu Pindah Kos');
+    final repo = await bukaForm(tester, namaLayanan: 'Permintaan Lain');
     await isiForm(tester);
 
     await tester.tap(find.widgetWithText(FilledButton, 'Kirim Permintaan'));
@@ -137,14 +137,14 @@ void main() {
     final orders = (await repo.watchOrderKlienUntuk('u-klien-1').first).isi;
     expect(orders, hasLength(1));
     expect(orders.single.status, OrderStatus.permintaan);
-    expect(orders.single.serviceType, ServiceType.bantuPindahKos);
+    expect(orders.single.serviceType, ServiceType.permintaanLain);
     expect(orders.single.harga, isNull);
     expect(orders.single.hargaUsulan, 150000);
     expect(orders.single.jumlahRunnerDibutuhkan, 1);
   });
 
   testWidgets('jumlah runner yang dipilih ikut terkirim', (tester) async {
-    final repo = await bukaForm(tester, namaLayanan: 'Bantu Pindah Kos');
+    final repo = await bukaForm(tester, namaLayanan: 'Permintaan Lain');
     await isiForm(tester);
 
     await tester.tap(find.text('3 orang'));
@@ -164,7 +164,7 @@ void main() {
   /// sama-sama alamat orangnya sendiri. Itu yang membedakannya dari Jalur A,
   /// tempat pengisian ini harus memilih satu dari sepasang kolom.
   testWidgets('alamat tersimpan mengisi sendiri kolom alamat', (tester) async {
-    await bukaForm(tester, namaLayanan: 'Bersih-Bersih Kos');
+    await bukaForm(tester, namaLayanan: 'Permintaan Lain');
 
     expect(
       tester
@@ -180,7 +180,7 @@ void main() {
   testWidgets('alamat yang disunting menang atas yang terisi sendiri', (
     tester,
   ) async {
-    final repo = await bukaForm(tester, namaLayanan: 'Bersih-Bersih Kos');
+    final repo = await bukaForm(tester, namaLayanan: 'Permintaan Lain');
     await isiForm(tester, alamat: 'Kos Anggrek, Jl. RS Fatmawati No. 3');
 
     await tester.tap(find.widgetWithText(FilledButton, 'Kirim Permintaan'));

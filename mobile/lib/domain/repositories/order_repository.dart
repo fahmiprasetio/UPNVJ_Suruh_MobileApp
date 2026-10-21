@@ -122,6 +122,8 @@ abstract interface class OrderRepository {
     double? longitudeJemput,
     double? latitudeTujuan,
     double? longitudeTujuan,
+    int jumlahRunnerDibutuhkan = 1,
+    MovingVehicleType? jenisKendaraan,
     String? idempotencyKey,
   });
 

@@ -62,4 +62,23 @@ class ApiFotoBuktiRepository implements FotoBuktiRepository {
     }
     return url;
   }
+
+  @override
+  Future<String> unggahFotoEstimasi({
+    required String orderId,
+    required String namaBerkas,
+    required Uint8List isi,
+  }) async {
+    final jawaban = await _klien.postBerkas(
+      '/api/orders/$orderId/foto-estimasi',
+      kolom: 'berkas',
+      namaBerkas: namaBerkas,
+      isi: isi,
+    );
+    final url = jawaban['url'];
+    if (url is! String || url.isEmpty) {
+      throw StateError('Server tidak mengembalikan alamat foto.');
+    }
+    return url;
+  }
 }

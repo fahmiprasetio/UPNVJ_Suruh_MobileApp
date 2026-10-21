@@ -42,6 +42,11 @@ public record BuatOrderJalurARequest
     public double? LongitudeJemput { get; init; }
     public double? LatitudeTujuan { get; init; }
     public double? LongitudeTujuan { get; init; }
+
+    [Range(1, 5)]
+    public int JumlahRunnerDibutuhkan { get; init; } = 1;
+
+    public MovingVehicleType? JenisKendaraan { get; init; }
 }
 
 public record RincianTarifResponse(string Label, decimal Nominal)
@@ -68,6 +73,8 @@ public record OrderResponse(
     double? LongitudeTujuan,
     double? JarakKm,
     int JumlahRunnerDibutuhkan,
+    string? JenisKendaraan,
+    string? FotoEstimasiUrl,
     /// <summary>
     /// Runner yang sudah menerima order ini, lengkap dengan nama dan nomor HP-nya.
     ///
@@ -134,6 +141,8 @@ public record OrderResponse(
         order.DestinationLongitude,
         order.DistanceKm,
         order.RequiredRunnerCount,
+        order.MovingVehicleType?.ToString(),
+        order.EstimatePhotoUrl,
         [.. order.RunnerAssignments.Select(a =>
             new RunnerRingkasResponse(a.RunnerId, a.Runner?.Name ?? "Runner", a.Runner?.Phone))],
         order.EstimatedDuration is null ? null : (int)order.EstimatedDuration.Value.TotalMinutes,

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 /// Kontrak pengambilan dan penyimpanan foto bukti pekerjaan.
 ///
 /// Dua hal terjadi di balik satu panggilan: kamera perangkat dibuka, lalu
@@ -16,4 +18,10 @@ abstract interface class FotoBuktiRepository {
   /// Mengembalikan `null` kalau runner menutup kamera tanpa memotret, itu
   /// keadaan yang sah, bukan galat.
   Future<String?> ambilDanUnggah({required String orderId});
+
+  Future<String> unggahFotoEstimasi({
+    required String orderId,
+    required String namaBerkas,
+    required Uint8List isi,
+  });
 }

@@ -20,7 +20,7 @@ void main() {
 
   Order permintaan({
     OrderStatus status = OrderStatus.permintaan,
-    ServiceType serviceType = ServiceType.bantuPindahKos,
+    ServiceType serviceType = ServiceType.permintaanLain,
     int? hargaUsulan = 150000,
   }) {
     return Order(

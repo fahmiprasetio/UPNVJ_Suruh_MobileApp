@@ -94,7 +94,7 @@ void main() {
       kodeOrder: 'SRH-9200',
       klienId: SeedData.klien.id,
       namaKlien: SeedData.klien.nama,
-      serviceType: ServiceType.bantuPindahKos,
+      serviceType: ServiceType.permintaanLain,
       status: OrderStatus.permintaan,
       dibuatPada: sekarang.subtract(const Duration(hours: 3)),
       deskripsi: 'Pindah dari kos lama ke kos baru, sekitar 2 km.',

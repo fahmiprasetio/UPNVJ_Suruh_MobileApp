@@ -56,6 +56,13 @@ public partial class TarifSelarasDenganMobileTests
         Assert.Equal(TarifConfig.JastipMakananFee, mobile["jastipMakananFee"]);
         Assert.Equal(TarifConfig.JastipBarangFee, mobile["jastipBarangFee"]);
         Assert.Equal(TarifConfig.JastipBarangTarifPerKm, mobile["jastipBarangTarifPerKm"]);
+        Assert.Equal(TarifConfig.PindahKosTarifDasar, mobile["pindahKosTarifDasar"]);
+        Assert.Equal(TarifConfig.PindahKosTarifPerKm, mobile["pindahKosTarifPerKm"]);
+        Assert.Equal(TarifConfig.PindahKosTambahanRunner, mobile["pindahKosTambahanRunner"]);
+        Assert.Equal(TarifConfig.PindahKosTambahanMobil, mobile["pindahKosTambahanMobil"]);
+        Assert.Equal(TarifConfig.PindahKosTambahanPickup, mobile["pindahKosTambahanPickup"]);
+        Assert.Equal(TarifConfig.BersihKosFee, mobile["bersihKosFee"]);
+        Assert.Equal(TarifConfig.BersihKamarMandiFee, mobile["bersihKamarMandiFee"]);
     }
 
     [Fact]
@@ -68,6 +75,9 @@ public partial class TarifSelarasDenganMobileTests
         {
             "anjemTarifDasar", "anjemTarifPerKm", "anjemJarakMinimalKm", "anjemJarakMaksimalKm",
             "jastipMakananFee", "jastipBarangFee", "jastipBarangTarifPerKm",
+            "pindahKosTarifDasar", "pindahKosTarifPerKm", "pindahKosTambahanRunner",
+            "pindahKosTambahanMobil", "pindahKosTambahanPickup", "bersihKosFee",
+            "bersihKamarMandiFee",
         };
 
         var belumDikenal = mobile.Keys.Except(dikenal).ToArray();

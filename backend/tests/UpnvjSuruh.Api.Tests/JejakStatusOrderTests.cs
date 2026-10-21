@@ -282,7 +282,7 @@ public class JejakStatusOrderTests(DatabaseApiFactory pabrik) : IClassFixture<Da
 
         var order = (await (await klien.PostAsJsonAsync("/api/orders/jalur-b", new
         {
-            ServiceType = nameof(ServiceType.BersihKos),
+            ServiceType = nameof(ServiceType.PermintaanLain),
             Deskripsi = "Kos dua kamar, sudah lama tidak dibersihkan.",
             JadwalMulai = DateTime.UtcNow.AddDays(2),
             JumlahRunnerDibutuhkan = 1,

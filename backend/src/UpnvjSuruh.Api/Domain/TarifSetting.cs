@@ -41,6 +41,14 @@ public class TarifSetting
     public decimal JastipBarangFee { get; set; }
     public decimal JastipBarangTarifPerKm { get; set; }
 
+    public decimal PindahKosTarifDasar { get; set; }
+    public decimal PindahKosTarifPerKm { get; set; }
+    public decimal PindahKosTambahanRunner { get; set; }
+    public decimal PindahKosTambahanMobil { get; set; }
+    public decimal PindahKosTambahanPickup { get; set; }
+    public decimal BersihKosFee { get; set; }
+    public decimal BersihKamarMandiFee { get; set; }
+
     public DateTime? UpdatedAt { get; set; }
     public Guid? UpdatedByAdminId { get; set; }
 }

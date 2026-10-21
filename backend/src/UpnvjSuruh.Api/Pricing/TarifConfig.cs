@@ -19,5 +19,14 @@ public static class TarifConfig
     public const decimal JastipBarangFee = 10000m;
     public const decimal JastipBarangTarifPerKm = 2000m;
 
+    public const decimal PindahKosTarifDasar = 25000m;
+    public const decimal PindahKosTarifPerKm = 3000m;
+    public const decimal PindahKosTambahanRunner = 20000m;
+    public const decimal PindahKosTambahanMobil = 25000m;
+    public const decimal PindahKosTambahanPickup = 40000m;
+
+    public const decimal BersihKosFee = 30000m;
+    public const decimal BersihKamarMandiFee = 20000m;
+
     public static readonly TimeSpan BatasWaktuBayar = TimeSpan.FromMinutes(30);
 }

@@ -52,7 +52,7 @@ void main() {
       kodeOrder: 'SRH-9004',
       klienId: SeedData.klien.id,
       namaKlien: SeedData.klien.nama,
-      serviceType: ServiceType.bantuPindahKos,
+      serviceType: ServiceType.permintaanLain,
       // Order Jalur B tetap Permintaan selama masih menerima tawaran, tidak
       // peduli sudah ada berapa tawaran yang menunggu di dalamnya.
       status: OrderStatus.permintaan,

@@ -143,7 +143,7 @@ class PusatBantuanScreen extends StatelessWidget {
           _butirFaq(
             context,
             'Apa perbedaan Jalur A dan Jalur B?',
-            'Jalur A (Anter Jemput, Jastip Makanan, Jastip Barang) tarifnya dihitung otomatis oleh sistem berdasarkan jarak atau ketentuan tetap. Setelah pembayaran lunas, pesanan langsung disiarkan ke seluruh runner yang tersedia.\n\nJalur B (Bantu Pindah Kos, Bersih Kos, Bersih Kamar Mandi, dan Permintaan Lain) menggunakan mekanisme tawar-menawar. Anda mengisi kebutuhan dan perkiraan biaya, kemudian runner akan mengajukan penawaran harga. Anda bebas memilih penawaran yang paling sesuai.',
+            'Jalur A mencakup enam layanan utama: Anter Jemput, Jastip Makanan, Jastip Barang, Bantu Pindah Kos, Bersih-Bersih Kos, dan Bersih Kamar Mandi. Tarifnya dihitung otomatis oleh sistem dari isian layanan. Setelah pembayaran lunas, pesanan disiarkan ke runner yang tersedia.\n\nJalur B hanya untuk Permintaan Lain. Anda menjelaskan kebutuhan dan mengusulkan biaya, lalu runner dapat menyanggupi atau menawar harga.',
           ),
           _butirFaq(
             context,

@@ -54,7 +54,7 @@ public class AdminOrderTests(DatabaseApiFactory pabrik) : IClassFixture<Database
     {
         var jawaban = await klien.PostAsJsonAsync("/api/orders/jalur-b", new
         {
-            ServiceType = nameof(ServiceType.BersihKos),
+            ServiceType = nameof(ServiceType.PermintaanLain),
             Deskripsi = "Kos dua kamar, sudah lama tidak disapu.",
             JadwalMulai = DateTime.UtcNow.AddDays(1),
             HargaUsulan = 100000m,

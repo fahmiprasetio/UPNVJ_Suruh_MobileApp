@@ -21,7 +21,7 @@ void main() {
       kodeOrder: 'SRH-9101',
       klienId: 'u-klien-1',
       namaKlien: 'Dina Rahmawati',
-      serviceType: ServiceType.bersihKos,
+      serviceType: ServiceType.permintaanLain,
       status: OrderStatus.permintaan,
       dibuatPada: sekarang,
       hargaUsulan: 150000,

@@ -16,15 +16,14 @@ import '../../../core/providers/repository_providers.dart';
 
 /// Form Jalur B: klien menuliskan kebutuhannya, harga menyusul.
 ///
-/// Satu layar ini melayani seluruh layanan Jalur B, termasuk pintu
-/// "Permintaan Lain", karena yang dibutuhkan sama saja: cerita kebutuhan,
-/// tempat, dan berapa orang yang diperlukan. Yang membedakan Jalur B dari
+/// Satu layar ini melayani "Permintaan Lain", satu-satunya layanan Jalur B.
+/// Yang membedakan Jalur B dari
 /// Jalur A bukan isian formnya, melainkan tidak adanya harga di ujung
 /// (rencana capstone bagian 3).
 ///
 /// Karena itu layar ini sengaja tidak punya kalkulator, tidak punya total, dan
 /// tidak punya tombol bayar. Menampilkan angka apa pun di sini akan
-/// menjanjikan sesuatu yang belum tentu disetujui admin.
+/// menjanjikan sesuatu yang belum tentu disanggupi runner.
 class FormPermintaanScreen extends ConsumerStatefulWidget {
   const FormPermintaanScreen({
     super.key,
@@ -200,9 +199,8 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Jadwal ini yang dibaca admin saat menghitung harga. Kalau '
-                'timnya penuh di jam itu, admin akan mengusulkan waktu lain '
-                'lewat penawarannya.',
+                'Jadwal ini dibaca runner saat mengajukan harga. Runner dapat '
+                'mengusulkan waktu lain lewat penawarannya.',
                 style: teks.bodySmall?.copyWith(color: skema.onSurfaceVariant),
               ),
               const SizedBox(height: AppTheme.spasiKecil),
@@ -334,7 +332,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
     final bersih = nilai?.trim() ?? '';
     if (bersih.isEmpty) return 'Ceritakan dulu apa yang kamu butuhkan';
     if (bersih.length < 20) {
-      return 'Ceritakan lebih lengkap, admin tidak bisa memberi harga dari '
+      return 'Ceritakan lebih lengkap, runner tidak bisa memberi harga dari '
           'satu kalimat pendek';
     }
     return null;
@@ -355,21 +353,9 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
     return null;
   }
 
-  static String _contohUntuk(ServiceType type) => switch (type) {
-    ServiceType.bantuPindahKos =>
-      'Pindah dari Kos Melati ke Kos Anggrek, sekitar 2 km. Barang: lemari '
-          'plastik, 2 koper, kasur lipat, sekardus buku. Kos lama lantai 2, '
-          'tangganya sempit.',
-    ServiceType.bersihKos =>
-      'Kamar kos 3x4 meter, sudah lama tidak dibersihkan. Perlu sapu, pel, '
-          'dan beres-beres meja. Alat pel belum ada.',
-    ServiceType.bersihKamarMandi =>
-      'Kamar mandi kos, kloset dan bak mandi berkerak. Alat dan sabun sudah '
-          'ada di tempat.',
-    _ =>
+  static String _contohUntuk(ServiceType _) =>
       'Ceritakan apa yang kamu butuhkan dan di mana. Apa pun boleh selama '
-          'masuk akal dan aman dikerjakan.',
-  };
+      'masuk akal dan aman dikerjakan.';
 }
 
 /// Penjelasan alur Jalur B sebelum klien mulai menulis.
@@ -418,7 +404,7 @@ class _PitaCaraKerja extends StatelessWidget {
 /// Pemilih tanggal dan jam pekerjaan.
 ///
 /// Sebelum ada isian ini, klien diminta menyebut waktunya di dalam ceritanya,
-/// dan admin harus menebaknya dari kalimat bebas. Jadwal yang terstruktur bisa
+/// dan runner harus menebaknya dari kalimat bebas. Jadwal yang terstruktur bisa
 /// dibandingkan dengan jadwal penawaran, diurutkan, dan nanti dipakai
 /// mengingatkan runner.
 class _PemilihJadwal extends StatelessWidget {

@@ -60,6 +60,13 @@ public class TarifEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
         JastipMakananFee = 8000m,
         JastipBarangFee = 10000m,
         JastipBarangTarifPerKm = 2000m,
+        PindahKosTarifDasar = 25000m,
+        PindahKosTarifPerKm = 3000m,
+        PindahKosTambahanRunner = 20000m,
+        PindahKosTambahanMobil = 25000m,
+        PindahKosTambahanPickup = 40000m,
+        BersihKosFee = 30000m,
+        BersihKamarMandiFee = 20000m,
     };
 
     /// <summary>

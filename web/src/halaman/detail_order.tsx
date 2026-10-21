@@ -118,6 +118,7 @@ function RincianOrder({ order }: { order: Order }) {
           <Baris label="Harga usulan klien">{formatRupiah(order.hargaUsulan)}</Baris>
         )}
         {order.jarakKm !== null && <Baris label="Jarak">{order.jarakKm} km</Baris>}
+        {order.jenisKendaraan && <Baris label="Kendaraan runner">{order.jenisKendaraan}</Baris>}
         {order.alamatJemput && <Baris label="Alamat jemput">{order.alamatJemput}</Baris>}
         {order.alamatTujuan && <Baris label="Alamat tujuan">{order.alamatTujuan}</Baris>}
         {order.deskripsi && <Baris label="Kebutuhan klien">{order.deskripsi}</Baris>}
@@ -149,6 +150,11 @@ function RincianOrder({ order }: { order: Order }) {
               tab baru pun akan meminta masuk, dan itu kabar yang jujur, bukan kotak kosong. */}
           Foto bukti tersimpan di server. Butuh sesi yang sama untuk membukanya:{' '}
           <code>{order.fotoBuktiUrl}</code>
+        </p>
+      )}
+      {order.fotoEstimasiUrl && (
+        <p className="detail__bukti">
+          Foto kondisi klien tersimpan aman di server: <code>{order.fotoEstimasiUrl}</code>
         </p>
       )}
     </article>

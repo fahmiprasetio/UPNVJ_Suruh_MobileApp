@@ -25,6 +25,13 @@ public class KalkulatorTarifTests
         JastipMakananFee = TarifConfig.JastipMakananFee,
         JastipBarangFee = TarifConfig.JastipBarangFee,
         JastipBarangTarifPerKm = TarifConfig.JastipBarangTarifPerKm,
+        PindahKosTarifDasar = TarifConfig.PindahKosTarifDasar,
+        PindahKosTarifPerKm = TarifConfig.PindahKosTarifPerKm,
+        PindahKosTambahanRunner = TarifConfig.PindahKosTambahanRunner,
+        PindahKosTambahanMobil = TarifConfig.PindahKosTambahanMobil,
+        PindahKosTambahanPickup = TarifConfig.PindahKosTambahanPickup,
+        BersihKosFee = TarifConfig.BersihKosFee,
+        BersihKamarMandiFee = TarifConfig.BersihKamarMandiFee,
     };
 
     [Fact]
@@ -86,16 +93,34 @@ public class KalkulatorTarifTests
         Assert.Throws<ArgumentException>(() => _kalkulator.Hitung(ServiceType.AnterJemput, null, Bawaan()));
     }
 
-    [Theory]
-    [InlineData(ServiceType.BantuPindahKos)]
-    [InlineData(ServiceType.BersihKos)]
-    [InlineData(ServiceType.BersihKamarMandi)]
-    [InlineData(ServiceType.PermintaanLain)]
-    public void LayananJalurBTidakBisaDihitungOtomatis(ServiceType serviceType)
+    [Fact]
+    public void LayananJalurBTidakBisaDihitungOtomatis()
     {
         // Harganya datang dari penawaran admin. Menghitungnya di sini berarti memberi harga
         // pada pekerjaan yang belum dilihat siapa pun.
-        Assert.Throws<ArgumentException>(() => _kalkulator.Hitung(serviceType, jarakKm: 3, Bawaan()));
+        Assert.Throws<ArgumentException>(() =>
+            _kalkulator.Hitung(ServiceType.PermintaanLain, jarakKm: 3, Bawaan()));
+    }
+
+    [Fact]
+    public void PindahKosMenghitungJarakRunnerDanKendaraan()
+    {
+        var hasil = _kalkulator.Hitung(
+            ServiceType.BantuPindahKos,
+            jarakKm: 2,
+            Bawaan(),
+            jumlahRunner: 2,
+            jenisKendaraan: MovingVehicleType.Pickup);
+
+        Assert.Equal(25_000m + 6_000m + 20_000m + 40_000m, hasil.Total);
+    }
+
+    [Theory]
+    [InlineData(ServiceType.BersihKos, 30_000)]
+    [InlineData(ServiceType.BersihKamarMandi, 20_000)]
+    public void LayananKebersihanMemakaiTarifTetap(ServiceType layanan, decimal harga)
+    {
+        Assert.Equal(harga, _kalkulator.Hitung(layanan, null, Bawaan()).Total);
     }
 
     [Fact]
@@ -107,7 +132,13 @@ public class KalkulatorTarifTests
 
         foreach (var layanan in jalurA)
         {
-            var hasil = _kalkulator.Hitung(layanan, jarakKm: 2, Bawaan());
+            var hasil = _kalkulator.Hitung(
+                layanan,
+                jarakKm: 2,
+                Bawaan(),
+                jenisKendaraan: layanan == ServiceType.BantuPindahKos
+                    ? MovingVehicleType.Motor
+                    : null);
             Assert.True(hasil.Total > 0, $"{layanan} menghasilkan harga {hasil.Total}");
         }
     }

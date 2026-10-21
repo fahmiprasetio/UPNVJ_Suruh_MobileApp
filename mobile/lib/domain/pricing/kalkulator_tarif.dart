@@ -45,7 +45,13 @@ class KalkulatorTarif {
   /// Yang mengikat tetap hitungan server. Hitungan di sini gunanya menampilkan
   /// rincian sebelum klien memesan, supaya ia tidak perlu menekan tombol dulu
   /// untuk tahu berapa yang akan ditagih.
-  static HasilTarif hitung(ServiceType serviceType, double? jarakKm, Tarif tarif) {
+  static HasilTarif hitung(
+    ServiceType serviceType,
+    double? jarakKm,
+    Tarif tarif, {
+    int jumlahRunner = 1,
+    MovingVehicleType? jenisKendaraan,
+  }) {
     if (serviceType.track != OrderTrack.jalurA) {
       throw StateError(
         '${serviceType.name} adalah Jalur B, harganya ditentukan admin lewat '
@@ -63,6 +69,20 @@ class KalkulatorTarif {
         tarif: tarif,
       ),
       ServiceType.jastipMakanan => jastipMakanan(tarif: tarif),
+      ServiceType.bantuPindahKos => pindahKos(
+        jarakKm: _wajibJarak(serviceType, jarakKm),
+        jumlahRunner: jumlahRunner,
+        jenisKendaraan: jenisKendaraan,
+        tarif: tarif,
+      ),
+      ServiceType.bersihKos => _tarifTetap(
+        'Jasa bersih-bersih kos',
+        tarif.bersihKosFee,
+      ),
+      ServiceType.bersihKamarMandi => _tarifTetap(
+        'Jasa bersih kamar mandi',
+        tarif.bersihKamarMandiFee,
+      ),
       _ => throw StateError('${serviceType.name} belum punya rumus tarif'),
     };
   }
@@ -142,6 +162,59 @@ class KalkulatorTarif {
       total: tarif.jastipBarangFee + ongkosJarak,
     );
   }
+
+  static HasilTarif pindahKos({
+    required double jarakKm,
+    required int jumlahRunner,
+    required MovingVehicleType? jenisKendaraan,
+    required Tarif tarif,
+  }) {
+    if (jumlahRunner < 1 || jumlahRunner > 5) {
+      throw StateError('Jumlah runner harus 1 sampai 5');
+    }
+    if (jenisKendaraan == null) {
+      throw StateError('Pilih kendaraan untuk pindahan');
+    }
+
+    final jarakDipakai = jarakKm.clamp(
+      tarif.anjemJarakMinimalKm,
+      tarif.anjemJarakMaksimalKm,
+    );
+    final ongkosJarak = (jarakDipakai * tarif.pindahKosTarifPerKm).round();
+    final tambahanRunner =
+        (jumlahRunner - 1) * tarif.pindahKosTambahanRunner;
+    final tambahanKendaraan = switch (jenisKendaraan) {
+      MovingVehicleType.motor => 0,
+      MovingVehicleType.mobil => tarif.pindahKosTambahanMobil,
+      MovingVehicleType.pickup => tarif.pindahKosTambahanPickup,
+    };
+    final rincian = <RincianTarif>[
+      RincianTarif(label: 'Jasa pindah kos', nominal: tarif.pindahKosTarifDasar),
+      RincianTarif(
+        label: 'Jarak ${_formatJarak(jarakDipakai)} km',
+        nominal: ongkosJarak,
+      ),
+      if (tambahanRunner > 0)
+        RincianTarif(
+          label: 'Tambahan ${jumlahRunner - 1} runner',
+          nominal: tambahanRunner,
+        ),
+      if (tambahanKendaraan > 0)
+        RincianTarif(
+          label: 'Kendaraan ${jenisKendaraan.label}',
+          nominal: tambahanKendaraan,
+        ),
+    ];
+    return HasilTarif(
+      rincian: rincian,
+      total: rincian.fold(0, (jumlah, baris) => jumlah + baris.nominal),
+    );
+  }
+
+  static HasilTarif _tarifTetap(String label, int nominal) => HasilTarif(
+    rincian: [RincianTarif(label: label, nominal: nominal)],
+    total: nominal,
+  );
 
   static String _formatJarak(double jarak) =>
       jarak == jarak.roundToDouble()

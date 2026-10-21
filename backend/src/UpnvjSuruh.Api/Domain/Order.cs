@@ -35,6 +35,7 @@ public class Order
 
     public string? Description { get; set; }
     public string? PhotoUrl { get; set; }
+    public string? EstimatePhotoUrl { get; set; }
     public string? VoiceNoteUrl { get; set; }
 
     public string? PickupAddress { get; set; }
@@ -71,6 +72,7 @@ public class Order
     public TimeSpan? EstimatedDuration { get; set; }
 
     public int RequiredRunnerCount { get; set; } = 1;
+    public MovingVehicleType? MovingVehicleType { get; set; }
 
     public string? HandoverNote { get; set; }
 

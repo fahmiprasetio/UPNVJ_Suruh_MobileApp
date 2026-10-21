@@ -34,6 +34,15 @@ void main() {
     }
   });
 
+  test('enam layanan utama Jalur A dan hanya permintaan lain Jalur B', () {
+    final jalurB = serviceCatalog
+        .where((layanan) => layanan.type.track == OrderTrack.jalurB)
+        .map((layanan) => layanan.type)
+        .toList();
+
+    expect(jalurB, [ServiceType.permintaanLain]);
+  });
+
   test(
     'tiap ilustrasi maskot punya jalur unik, tidak ada yang menimpa yang lain',
     () {

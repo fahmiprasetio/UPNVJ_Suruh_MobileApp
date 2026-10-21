@@ -191,6 +191,8 @@ class ApiOrderRepository implements OrderRepository {
     double? longitudeJemput,
     double? latitudeTujuan,
     double? longitudeTujuan,
+    int jumlahRunnerDibutuhkan = 1,
+    MovingVehicleType? jenisKendaraan,
     String? idempotencyKey,
   }) async {
     final jawaban = await _klien.post(
@@ -205,6 +207,10 @@ class ApiOrderRepository implements OrderRepository {
         'longitudeJemput': ?longitudeJemput,
         'latitudeTujuan': ?latitudeTujuan,
         'longitudeTujuan': ?longitudeTujuan,
+        if (jumlahRunnerDibutuhkan != 1)
+          'jumlahRunnerDibutuhkan': jumlahRunnerDibutuhkan,
+        if (jenisKendaraan != null)
+          'jenisKendaraan': _namaServer(jenisKendaraan.name),
       },
       headerTambahan: idempotencyKey == null
           ? null

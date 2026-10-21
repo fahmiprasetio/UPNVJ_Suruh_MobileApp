@@ -22,7 +22,10 @@ bool adaFormOrder(ServiceType layanan) =>
     layanan.track == OrderTrack.jalurB ||
     layanan == ServiceType.anterJemput ||
     layanan == ServiceType.jastipBarang ||
-    layanan == ServiceType.jastipMakanan;
+    layanan == ServiceType.jastipMakanan ||
+    layanan == ServiceType.bantuPindahKos ||
+    layanan == ServiceType.bersihKos ||
+    layanan == ServiceType.bersihKamarMandi;
 
 /// Membuka form order untuk [layanan].
 ///
@@ -53,6 +56,10 @@ void bukaFormOrder(
       context.push(Rute.formJastipBarang, extra: contoh);
     case ServiceType.jastipMakanan:
       context.push(Rute.formJastipMakanan, extra: contoh);
+    case ServiceType.bantuPindahKos:
+    case ServiceType.bersihKos:
+    case ServiceType.bersihKamarMandi:
+      context.push(Rute.formLayananKos(layanan), extra: contoh);
     case _:
       belumTersedia(context, serviceInfoOf(layanan).nama);
   }

@@ -18,6 +18,13 @@ class Tarif {
     required this.jastipMakananFee,
     required this.jastipBarangFee,
     required this.jastipBarangTarifPerKm,
+    required this.pindahKosTarifDasar,
+    required this.pindahKosTarifPerKm,
+    required this.pindahKosTambahanRunner,
+    required this.pindahKosTambahanMobil,
+    required this.pindahKosTambahanPickup,
+    required this.bersihKosFee,
+    required this.bersihKamarMandiFee,
   });
 
   final int anjemTarifDasar;
@@ -27,6 +34,13 @@ class Tarif {
   final int jastipMakananFee;
   final int jastipBarangFee;
   final int jastipBarangTarifPerKm;
+  final int pindahKosTarifDasar;
+  final int pindahKosTarifPerKm;
+  final int pindahKosTambahanRunner;
+  final int pindahKosTambahanMobil;
+  final int pindahKosTambahanPickup;
+  final int bersihKosFee;
+  final int bersihKamarMandiFee;
 
   /// Nilai bawaan sebelum tarif sungguhan sempat diambil dari server, dan
   /// nilai yang dipakai [FakeTarifRepository] untuk tiruan.
@@ -43,5 +57,12 @@ class Tarif {
     jastipMakananFee: TarifConfig.jastipMakananFee,
     jastipBarangFee: TarifConfig.jastipBarangFee,
     jastipBarangTarifPerKm: TarifConfig.jastipBarangTarifPerKm,
+    pindahKosTarifDasar: TarifConfig.pindahKosTarifDasar,
+    pindahKosTarifPerKm: TarifConfig.pindahKosTarifPerKm,
+    pindahKosTambahanRunner: TarifConfig.pindahKosTambahanRunner,
+    pindahKosTambahanMobil: TarifConfig.pindahKosTambahanMobil,
+    pindahKosTambahanPickup: TarifConfig.pindahKosTambahanPickup,
+    bersihKosFee: TarifConfig.bersihKosFee,
+    bersihKamarMandiFee: TarifConfig.bersihKamarMandiFee,
   );
 }

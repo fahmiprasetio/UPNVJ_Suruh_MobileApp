@@ -265,7 +265,7 @@ void main() {
       // membuat jadwal bergeser sejauh selisih zonanya, diam-diam.
       final uji = buat(jawabanUmum);
       await uji.repo.buatPermintaanJalurB(
-        serviceType: ServiceType.bersihKos,
+        serviceType: ServiceType.permintaanLain,
         deskripsi: 'Kos dua kamar',
         jadwalMulai: DateTime(2026, 8, 30, 9),
         hargaUsulan: 150000,
@@ -281,7 +281,7 @@ void main() {
     test('Jalur B meneruskan Idempotency-Key draft ke server', () async {
       final uji = buat(jawabanUmum);
       await uji.repo.buatPermintaanJalurB(
-        serviceType: ServiceType.bersihKos,
+        serviceType: ServiceType.permintaanLain,
         deskripsi: 'Kos dua kamar',
         jadwalMulai: DateTime(2026, 8, 30, 9),
         hargaUsulan: 150000,

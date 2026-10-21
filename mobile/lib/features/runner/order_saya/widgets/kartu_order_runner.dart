@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/format/formatters.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/foto_estimasi_order.dart';
 import '../../../../domain/models/order.dart';
 import '../../../../domain/service_catalog.dart';
 import '../../widgets/rute_order.dart';
@@ -105,6 +106,14 @@ class KartuOrderRunner extends StatelessWidget {
             if (adaRute) ...[
               const SizedBox(height: AppTheme.spasiSedang),
               RuteOrder(jemput: order.alamatJemput, tujuan: order.alamatTujuan),
+            ],
+            if (order.jenisKendaraan != null) ...[
+              const SizedBox(height: AppTheme.spasiKecil),
+              Text('Kendaraan: ${order.jenisKendaraan!.label}'),
+            ],
+            if (order.fotoEstimasiUrl != null) ...[
+              const SizedBox(height: AppTheme.spasiSedang),
+              FotoEstimasiOrder(order: order, height: 160),
             ],
             const SizedBox(height: AppTheme.spasiSedang),
             Text(

@@ -27,6 +27,15 @@ class TarifConfig {
   static const int jastipBarangFee = 10000;
   static const int jastipBarangTarifPerKm = 2000;
 
+  static const int pindahKosTarifDasar = 25000;
+  static const int pindahKosTarifPerKm = 3000;
+  static const int pindahKosTambahanRunner = 20000;
+  static const int pindahKosTambahanMobil = 25000;
+  static const int pindahKosTambahanPickup = 40000;
+
+  static const int bersihKosFee = 30000;
+  static const int bersihKamarMandiFee = 20000;
+
   /// Batas waktu klien menyelesaikan pembayaran sebelum order hangus.
   /// Angka ini juga menunggu keputusan mitra (bagian 14.7e).
   static const Duration batasWaktuBayar = Duration(minutes: 30);

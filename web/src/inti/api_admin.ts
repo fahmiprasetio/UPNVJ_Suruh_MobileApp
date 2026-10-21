@@ -358,7 +358,7 @@ export function ambilTarif(api: KlienApi, sinyal?: AbortSignal): Promise<Tarif> 
 /**
  * Mengubah tarif Jalur A.
  *
- * Seluruh tujuh angka dikirim sekaligus, mengikuti bentuk `PerbaruiTarifRequest` di
+ * Seluruh angka dikirim sekaligus, mengikuti bentuk `PerbaruiTarifRequest` di
  * backend: layar mengisi form dari keadaan sekarang, lalu mengirim keadaan yang
  * diinginkan secara utuh, bukan satu per satu.
  */

@@ -367,6 +367,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(o => o.DestinationAddress).HasMaxLength(BatasMasukan.Alamat);
             entity.Property(o => o.HandoverNote).HasMaxLength(BatasMasukan.CatatanSerahTerima);
             entity.Property(o => o.PhotoUrl).HasMaxLength(BatasMasukan.Url);
+            entity.Property(o => o.EstimatePhotoUrl).HasMaxLength(BatasMasukan.Url);
             entity.Property(o => o.VoiceNoteUrl).HasMaxLength(BatasMasukan.Url);
 
             // Postgres system column used as optimistic-concurrency token: a runner-accept
@@ -508,6 +509,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 JastipMakananFee = TarifConfig.JastipMakananFee,
                 JastipBarangFee = TarifConfig.JastipBarangFee,
                 JastipBarangTarifPerKm = TarifConfig.JastipBarangTarifPerKm,
+                PindahKosTarifDasar = TarifConfig.PindahKosTarifDasar,
+                PindahKosTarifPerKm = TarifConfig.PindahKosTarifPerKm,
+                PindahKosTambahanRunner = TarifConfig.PindahKosTambahanRunner,
+                PindahKosTambahanMobil = TarifConfig.PindahKosTambahanMobil,
+                PindahKosTambahanPickup = TarifConfig.PindahKosTambahanPickup,
+                BersihKosFee = TarifConfig.BersihKosFee,
+                BersihKamarMandiFee = TarifConfig.BersihKamarMandiFee,
             });
         });
 

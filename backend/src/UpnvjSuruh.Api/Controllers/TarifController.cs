@@ -60,7 +60,14 @@ public class TarifController(AppDbContext db) : ControllerBase
             permintaan.AnjemJarakMaksimalKm.ToString("R", System.Globalization.CultureInfo.InvariantCulture),
             permintaan.JastipMakananFee.ToString(System.Globalization.CultureInfo.InvariantCulture),
             permintaan.JastipBarangFee.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            permintaan.JastipBarangTarifPerKm.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            permintaan.JastipBarangTarifPerKm.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            permintaan.PindahKosTarifDasar.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            permintaan.PindahKosTarifPerKm.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            permintaan.PindahKosTambahanRunner.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            permintaan.PindahKosTambahanMobil.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            permintaan.PindahKosTambahanPickup.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            permintaan.BersihKosFee.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            permintaan.BersihKamarMandiFee.ToString(System.Globalization.CultureInfo.InvariantCulture));
         if (key is not null)
         {
             var sebelumnya = await db.IdempotensiAksiAdmin.AsNoTracking()
@@ -83,6 +90,13 @@ public class TarifController(AppDbContext db) : ControllerBase
         tarif.JastipMakananFee = permintaan.JastipMakananFee;
         tarif.JastipBarangFee = permintaan.JastipBarangFee;
         tarif.JastipBarangTarifPerKm = permintaan.JastipBarangTarifPerKm;
+        tarif.PindahKosTarifDasar = permintaan.PindahKosTarifDasar;
+        tarif.PindahKosTarifPerKm = permintaan.PindahKosTarifPerKm;
+        tarif.PindahKosTambahanRunner = permintaan.PindahKosTambahanRunner;
+        tarif.PindahKosTambahanMobil = permintaan.PindahKosTambahanMobil;
+        tarif.PindahKosTambahanPickup = permintaan.PindahKosTambahanPickup;
+        tarif.BersihKosFee = permintaan.BersihKosFee;
+        tarif.BersihKamarMandiFee = permintaan.BersihKamarMandiFee;
         tarif.UpdatedAt = DateTime.UtcNow;
         tarif.UpdatedByAdminId = adminId;
 

@@ -55,7 +55,7 @@ void main() {
       kodeOrder: 'SRH-9101',
       klienId: SeedData.klien.id,
       namaKlien: SeedData.klien.nama,
-      serviceType: ServiceType.bersihKos,
+      serviceType: ServiceType.permintaanLain,
       status: OrderStatus.permintaan,
       dibuatPada: sekarang.subtract(const Duration(minutes: 5)),
       deskripsi: 'Kos dua kamar.',

@@ -1,7 +1,6 @@
 import '../../domain/enums.dart';
 import '../../domain/models/app_user.dart';
 import '../../domain/models/order.dart';
-import '../../domain/models/order_message.dart';
 import '../../domain/models/runner_ringkas.dart';
 
 /// Data contoh untuk pengembangan antarmuka.
@@ -90,40 +89,15 @@ class SeedData {
         klienId: klien.id,
         namaKlien: klien.nama,
         serviceType: ServiceType.bantuPindahKos,
-        status: OrderStatus.permintaan,
+        status: OrderStatus.menungguPembayaran,
         dibuatPada: sekarang.subtract(const Duration(hours: 3)),
-        deskripsi:
-            'Pindah dari kos lama ke kos baru, jaraknya sekitar 2 km. '
-            'Barang: 1 lemari plastik, 2 koper, kasur lipat, sekardus buku.',
+        deskripsi: 'Mohon datang Sabtu pagi dan hubungi saya sebelum berangkat.',
+        alamatJemput: 'Kos Melati, Jl. Pondok Labu Raya',
         alamatTujuan: 'Kos Anggrek, Jl. RS Fatmawati',
-        jadwalMulai: DateTime(
-          sekarang.year,
-          sekarang.month,
-          sekarang.day,
-          9,
-        ).add(const Duration(days: 2)),
+        jarakKm: 2,
+        harga: 111000,
         jumlahRunnerDibutuhkan: 3,
-        // Percakapan contoh untuk order Jalur B: admin bertanya dulu sebelum
-        // bisa memberi harga, persis alur di bagian 3.
-        jumlahPesan: 2,
-        messages: [
-          OrderMessage(
-            id: 'm-1',
-            orderId: 'o-3',
-            pengirim: MessageSender.admin,
-            isi:
-                'Halo, kosnya di lantai berapa ya? Ada lift atau tangga saja? '
-                'Ini yang paling menentukan berapa orang yang kami kirim.',
-            dikirimPada: sekarang.subtract(const Duration(hours: 2, minutes: 40)),
-          ),
-          OrderMessage(
-            id: 'm-2',
-            orderId: 'o-3',
-            pengirim: MessageSender.klien,
-            isi: 'Kos lama lantai 2, tangga. Kos baru lantai 1.',
-            dikirimPada: sekarang.subtract(const Duration(hours: 2, minutes: 30)),
-          ),
-        ],
+        jenisKendaraan: MovingVehicleType.pickup,
       ),
       Order(
         id: 'o-4',

@@ -42,18 +42,52 @@ public class OrdersController(
             return BadRequest(new ProblemDetails
             {
                 Title = "Layanan ini Jalur B",
-                Detail = "Harganya ditentukan admin lewat penawaran, bukan dihitung otomatis.",
+                Detail = "Harganya ditentukan lewat penawaran runner, bukan dihitung otomatis.",
                 Status = StatusCodes.Status400BadRequest,
             });
         }
 
-        if (permintaan.ServiceType == ServiceType.AnterJemput &&
+        if (permintaan.ServiceType is ServiceType.AnterJemput or ServiceType.BantuPindahKos &&
             AdaKoordinat(permintaan) && !KoordinatLengkapDanValid(permintaan))
         {
             return BadRequest(new ProblemDetails
             {
                 Title = "Titik perjalanan belum lengkap",
                 Detail = "Pilih titik jemput dan tujuan pada peta agar perjalanan dapat dilacak.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        if (permintaan.ServiceType == ServiceType.BantuPindahKos &&
+            (string.IsNullOrWhiteSpace(permintaan.AlamatJemput) ||
+             string.IsNullOrWhiteSpace(permintaan.AlamatTujuan)))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Lokasi pindahan belum lengkap",
+                Detail = "Isi lokasi asal dan tujuan pindahan.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        if (permintaan.ServiceType is ServiceType.BersihKos or ServiceType.BersihKamarMandi &&
+            string.IsNullOrWhiteSpace(permintaan.AlamatTujuan))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Alamat kos belum diisi",
+                Detail = "Isi alamat tempat layanan kebersihan dikerjakan.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        if (permintaan.ServiceType != ServiceType.BantuPindahKos &&
+            (permintaan.JumlahRunnerDibutuhkan != 1 || permintaan.JenisKendaraan is not null))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Isian pindahan tidak sesuai layanan",
+                Detail = "Jumlah runner dan kendaraan hanya dipakai untuk Bantu Pindah Kos.",
                 Status = StatusCodes.Status400BadRequest,
             });
         }
@@ -66,7 +100,12 @@ public class OrdersController(
         HasilTarif tarif;
         try
         {
-            tarif = kalkulator.Hitung(permintaan.ServiceType, permintaan.JarakKm, pengaturanTarif);
+            tarif = kalkulator.Hitung(
+                permintaan.ServiceType,
+                permintaan.JarakKm,
+                pengaturanTarif,
+                permintaan.JumlahRunnerDibutuhkan,
+                permintaan.JenisKendaraan);
         }
         catch (ArgumentException galat)
         {
@@ -78,7 +117,7 @@ public class OrdersController(
             });
         }
 
-        if (permintaan.ServiceType is ServiceType.AnterJemput or ServiceType.JastipBarang)
+        if (permintaan.ServiceType is ServiceType.AnterJemput or ServiceType.JastipBarang or ServiceType.BantuPindahKos)
         {
             if (permintaan.JarakKm is not null && permintaan.JarakKm > pengaturanTarif.AnjemJarakMaksimalKm)
             {
@@ -140,6 +179,8 @@ public class OrdersController(
             DestinationLatitude = permintaan.LatitudeTujuan,
             DestinationLongitude = permintaan.LongitudeTujuan,
             DistanceKm = permintaan.JarakKm,
+            RequiredRunnerCount = permintaan.JumlahRunnerDibutuhkan,
+            MovingVehicleType = permintaan.JenisKendaraan,
         };
 
         BuatOrderResponse hasil;

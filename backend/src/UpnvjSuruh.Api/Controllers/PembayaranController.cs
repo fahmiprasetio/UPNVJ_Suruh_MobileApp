@@ -61,7 +61,18 @@ public class PembayaranController(AppDbContext db, IPembayaranGateway gateway) :
             return BadRequest(new ProblemDetails
             {
                 Title = "Order ini belum punya harga",
-                Detail = "Jalur B baru bisa dibayar setelah penawaran admin disetujui.",
+                Detail = "Jalur B baru bisa dibayar setelah penawaran runner disetujui.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        if (order.ServiceType is ServiceType.BersihKos or ServiceType.BersihKamarMandi &&
+            string.IsNullOrWhiteSpace(order.EstimatePhotoUrl))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Foto kondisi belum ada",
+                Detail = "Unggah foto kondisi kos agar runner dapat menilai pekerjaan sebelum pembayaran.",
                 Status = StatusCodes.Status400BadRequest,
             });
         }

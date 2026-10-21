@@ -55,7 +55,7 @@ public class JalurBEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Data
         HttpClient klien, decimal hargaUsulan = 150000) =>
         (await (await klien.PostAsJsonAsync("/api/orders/jalur-b", new
         {
-            ServiceType = nameof(ServiceType.BersihKos),
+            ServiceType = nameof(ServiceType.PermintaanLain),
             Deskripsi = "Kos dua kamar, sudah lama tidak dibersihkan.",
             JadwalMulai = DateTime.UtcNow.AddDays(2),
             JumlahRunnerDibutuhkan = 1,
@@ -115,7 +115,7 @@ public class JalurBEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Data
 
         var jawaban = await klien.PostAsJsonAsync("/api/orders/jalur-b", new
         {
-            ServiceType = nameof(ServiceType.BersihKos),
+            ServiceType = nameof(ServiceType.PermintaanLain),
             Deskripsi = "",
             JadwalMulai = DateTime.UtcNow.AddDays(1),
             HargaUsulan = 100000m,
@@ -131,7 +131,7 @@ public class JalurBEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Data
 
         var jawaban = await klien.PostAsJsonAsync("/api/orders/jalur-b", new
         {
-            ServiceType = nameof(ServiceType.BersihKos),
+            ServiceType = nameof(ServiceType.PermintaanLain),
             Deskripsi = "Kos dua kamar.",
             JadwalMulai = DateTime.UtcNow.AddDays(1),
             HargaUsulan = 0m,
@@ -147,7 +147,7 @@ public class JalurBEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Data
 
         var jawaban = await runner.PostAsJsonAsync("/api/orders/jalur-b", new
         {
-            ServiceType = nameof(ServiceType.BersihKos),
+            ServiceType = nameof(ServiceType.PermintaanLain),
             Deskripsi = "Titip bersih-bersih",
             JadwalMulai = DateTime.UtcNow.AddDays(1),
             HargaUsulan = 100000m,

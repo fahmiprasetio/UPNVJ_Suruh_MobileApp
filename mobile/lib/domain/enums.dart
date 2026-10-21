@@ -29,13 +29,25 @@ enum OrderTrack {
   jalurB,
 }
 
+enum MovingVehicleType {
+  motor,
+  mobil,
+  pickup;
+
+  String get label => switch (this) {
+    MovingVehicleType.motor => 'Motor',
+    MovingVehicleType.mobil => 'Mobil',
+    MovingVehicleType.pickup => 'Mobil pickup',
+  };
+}
+
 enum ServiceType {
   anterJemput(OrderTrack.jalurA),
   jastipMakanan(OrderTrack.jalurA),
   jastipBarang(OrderTrack.jalurA),
-  bantuPindahKos(OrderTrack.jalurB),
-  bersihKos(OrderTrack.jalurB),
-  bersihKamarMandi(OrderTrack.jalurB),
+  bantuPindahKos(OrderTrack.jalurA),
+  bersihKos(OrderTrack.jalurA),
+  bersihKamarMandi(OrderTrack.jalurA),
   permintaanLain(OrderTrack.jalurB);
 
   const ServiceType(this.track);

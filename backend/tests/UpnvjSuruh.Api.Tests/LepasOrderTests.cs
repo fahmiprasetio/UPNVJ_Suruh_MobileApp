@@ -249,7 +249,7 @@ public class LepasOrderTests(DatabaseApiFactory pabrik) : IClassFixture<Database
 
         var dibuat = await klien.PostAsJsonAsync("/api/orders/jalur-b", new
         {
-            ServiceType = nameof(ServiceType.BantuPindahKos),
+            ServiceType = nameof(ServiceType.PermintaanLain),
             Deskripsi = "Pindahan kos, butuh dua orang.",
             JadwalMulai = DateTime.UtcNow.AddDays(1),
             JumlahRunnerDibutuhkan = 2,

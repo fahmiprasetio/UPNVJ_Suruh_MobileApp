@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/format/formatters.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/widgets/foto_estimasi_order.dart';
 import '../../../../domain/enums.dart';
 import '../../../../domain/models/order.dart';
 import '../../../../domain/service_catalog.dart';
@@ -207,6 +208,19 @@ class KartuOrderSiaran extends StatelessWidget {
                       ),
                     ],
                   ),
+                ),
+              ],
+
+              if (order.fotoEstimasiUrl != null) ...[
+                const SizedBox(height: 12),
+                FotoEstimasiOrder(order: order, height: 160),
+              ],
+
+              if (order.jenisKendaraan != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  'Kendaraan: ${order.jenisKendaraan!.label}',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
               ],
 

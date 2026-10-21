@@ -9,7 +9,7 @@ import type { Tarif } from '../inti/tipe';
 import { KotakGalat, Memuat, pesanGalat } from '../komponen/keadaan';
 
 /**
- * Kelola tarif Jalur A: satu form, tujuh angka, semuanya dikirim sekaligus.
+ * Kelola tarif Jalur A: satu form, seluruh angka dikirim sekaligus.
  *
  * Mengubah baris ini tidak mengubah harga order yang sudah dibuat — order menyimpan
  * harganya sendiri, dihitung sekali saat dibuat (lihat `Order.Price` di backend). Yang
@@ -29,8 +29,8 @@ export function HalamanKelolaTarif() {
       <header>
         <h1>Kelola Tarif</h1>
         <p className="kelola-tarif__keterangan">
-          Cuma Jalur A: anter jemput, jastip makanan, jastip barang. Harga Jalur B lewat
-          tawar-menawar langsung antara klien dan runner, tidak diatur dari sini.
+          Enam layanan utama memakai tarif Jalur A. Hanya Permintaan Lain yang memakai
+          tawar-menawar Jalur B dan tidak diatur dari sini.
         </p>
       </header>
 
@@ -142,6 +142,28 @@ function FormTarif({ tarif, onDisimpan }: { tarif: Tarif; onDisimpan: () => void
           disabled={sibuk}
           onChange={(t) => ubah('jastipBarangTarifPerKm', t)}
         />
+      </fieldset>
+
+      <fieldset>
+        <legend>Bantu Pindah Kos</legend>
+        <p className="kelola-tarif__catatan">
+          Jarak minimal dan maksimal memakai batas Anter Jemput. Runner menyediakan kendaraan.
+        </p>
+        <Kolom label="Tarif dasar (Rp)" nilai={nilai.pindahKosTarifDasar} disabled={sibuk} onChange={(t) => ubah('pindahKosTarifDasar', t)} />
+        <Kolom label="Tarif per km (Rp)" nilai={nilai.pindahKosTarifPerKm} disabled={sibuk} onChange={(t) => ubah('pindahKosTarifPerKm', t)} />
+        <Kolom label="Tambahan per runner (Rp)" nilai={nilai.pindahKosTambahanRunner} disabled={sibuk} onChange={(t) => ubah('pindahKosTambahanRunner', t)} />
+        <Kolom label="Tambahan mobil (Rp)" nilai={nilai.pindahKosTambahanMobil} disabled={sibuk} onChange={(t) => ubah('pindahKosTambahanMobil', t)} />
+        <Kolom label="Tambahan pickup (Rp)" nilai={nilai.pindahKosTambahanPickup} disabled={sibuk} onChange={(t) => ubah('pindahKosTambahanPickup', t)} />
+      </fieldset>
+
+      <fieldset>
+        <legend>Bersih-Bersih Kos</legend>
+        <Kolom label="Tarif jasa (Rp)" nilai={nilai.bersihKosFee} disabled={sibuk} onChange={(t) => ubah('bersihKosFee', t)} />
+      </fieldset>
+
+      <fieldset>
+        <legend>Bersih Kamar Mandi</legend>
+        <Kolom label="Tarif jasa (Rp)" nilai={nilai.bersihKamarMandiFee} disabled={sibuk} onChange={(t) => ubah('bersihKamarMandiFee', t)} />
       </fieldset>
 
       <div className="kelola-tarif__kaki">

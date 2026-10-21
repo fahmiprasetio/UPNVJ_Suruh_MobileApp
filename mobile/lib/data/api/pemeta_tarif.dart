@@ -20,6 +20,13 @@ class PemetaTarif {
       jastipMakananFee: PemetaDasar.rupiah(isi['jastipMakananFee'])!,
       jastipBarangFee: PemetaDasar.rupiah(isi['jastipBarangFee'])!,
       jastipBarangTarifPerKm: PemetaDasar.rupiah(isi['jastipBarangTarifPerKm'])!,
+      pindahKosTarifDasar: PemetaDasar.rupiah(isi['pindahKosTarifDasar'])!,
+      pindahKosTarifPerKm: PemetaDasar.rupiah(isi['pindahKosTarifPerKm'])!,
+      pindahKosTambahanRunner: PemetaDasar.rupiah(isi['pindahKosTambahanRunner'])!,
+      pindahKosTambahanMobil: PemetaDasar.rupiah(isi['pindahKosTambahanMobil'])!,
+      pindahKosTambahanPickup: PemetaDasar.rupiah(isi['pindahKosTambahanPickup'])!,
+      bersihKosFee: PemetaDasar.rupiah(isi['bersihKosFee'])!,
+      bersihKamarMandiFee: PemetaDasar.rupiah(isi['bersihKamarMandiFee'])!,
     );
   }
 

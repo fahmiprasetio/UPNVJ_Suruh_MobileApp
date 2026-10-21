@@ -18,6 +18,8 @@ namespace UpnvjSuruh.Api.Tests;
 /// </summary>
 public class PembayaranEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<DatabaseApiFactory>
 {
+    private static readonly byte[] JpegTerkecil = [0xFF, 0xD8, 0xFF, 0xDA, 0x00, 0x02, 0xFF, 0xD9];
+
     private static string NomorBaru() => "08" + Random.Shared.NextInt64(100000000, 999999999);
 
     private async Task<(HttpClient Klien, Guid Id)> AkunAsync(params UserRole[] roles)
@@ -69,6 +71,17 @@ public class PembayaranEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<
         return (await jawaban.Content.ReadFromJsonAsync<TransaksiPembayaranResponse>())!;
     }
 
+    private static Task<HttpResponseMessage> UnggahFotoEstimasiAsync(
+        HttpClient klien,
+        Guid orderId)
+    {
+        var isi = new MultipartFormDataContent();
+        var berkas = new ByteArrayContent(JpegTerkecil);
+        berkas.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+        isi.Add(berkas, "berkas", "kondisi.jpg");
+        return klien.PostAsync($"/api/orders/{orderId}/foto-estimasi", isi);
+    }
+
     [Fact]
     public async Task JumlahnyaDiambilDariHargaOrderBukanDariPermintaan()
     {
@@ -84,6 +97,47 @@ public class PembayaranEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<
         var transaksi = (await jawaban.Content.ReadFromJsonAsync<TransaksiPembayaranResponse>())!;
 
         Assert.Equal(order.Harga, transaksi.Jumlah);
+    }
+
+    [Fact]
+    public async Task KebersihanWajibPunyaFotoKondisiSebelumDibayar()
+    {
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+        var dibuat = await klien.PostAsJsonAsync("/api/orders/jalur-a", new
+        {
+            ServiceType = nameof(ServiceType.BersihKos),
+            AlamatTujuan = "Kos Melati, Pondok Labu",
+        });
+        dibuat.EnsureSuccessStatusCode();
+        var order = (await dibuat.Content.ReadFromJsonAsync<BuatOrderResponse>())!.Order;
+
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            (await klien.PostAsync($"/api/orders/{order.Id}/pembayaran", null)).StatusCode);
+
+        (await UnggahFotoEstimasiAsync(klien, order.Id)).EnsureSuccessStatusCode();
+        (await klien.PostAsync($"/api/orders/{order.Id}/pembayaran", null)).EnsureSuccessStatusCode();
+
+        var sesudah = await klien.GetFromJsonAsync<OrderResponse>($"/api/orders/{order.Id}");
+        Assert.NotNull(sesudah!.FotoEstimasiUrl);
+    }
+
+    [Fact]
+    public async Task KlienLainTidakBisaMengunggahFotoEstimasi()
+    {
+        var (pemilik, _) = await AkunAsync(UserRole.Klien);
+        var (orangLain, _) = await AkunAsync(UserRole.Klien);
+        var dibuat = await pemilik.PostAsJsonAsync("/api/orders/jalur-a", new
+        {
+            ServiceType = nameof(ServiceType.BersihKamarMandi),
+            AlamatTujuan = "Kos Melati, Pondok Labu",
+        });
+        dibuat.EnsureSuccessStatusCode();
+        var order = (await dibuat.Content.ReadFromJsonAsync<BuatOrderResponse>())!.Order;
+
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            (await UnggahFotoEstimasiAsync(orangLain, order.Id)).StatusCode);
     }
 
     [Fact]
@@ -171,7 +225,7 @@ public class PembayaranEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<
         var (klien, _) = await AkunAsync(UserRole.Klien);
         var buat = await klien.PostAsJsonAsync("/api/orders/jalur-b", new
         {
-            ServiceType = nameof(ServiceType.BersihKos),
+            ServiceType = nameof(ServiceType.PermintaanLain),
             Deskripsi = "Kos dua kamar",
             JadwalMulai = DateTime.UtcNow.AddDays(2),
             HargaUsulan = 100000m,

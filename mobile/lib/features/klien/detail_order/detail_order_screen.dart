@@ -17,6 +17,7 @@ import '../../../core/providers/tracking_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/pesan_kosong.dart';
+import '../../../core/widgets/foto_estimasi_order.dart';
 import '../../../domain/enums.dart';
 import '../../../domain/models/order.dart';
 import '../../../domain/service_catalog.dart';
@@ -1174,6 +1175,11 @@ class _LiveTrackingAlohaViewState
                   const Divider(color: Color(0xFFF3F4F6), height: 1),
                   const SizedBox(height: 14),
 
+                  if (order.fotoEstimasiUrl != null) ...[
+                    FotoEstimasiOrder(order: order),
+                    const SizedBox(height: 14),
+                  ],
+
                   // D. RINCIAN PERJALANAN (TITIK JEMPUT & TUJUAN)
                   if (order.alamatJemput != null ||
                       order.alamatTujuan != null) ...[
@@ -1558,6 +1564,11 @@ class _IsiAloha extends ConsumerWidget {
         ],
 
         const SizedBox(height: 16),
+
+        if (order.fotoEstimasiUrl != null) ...[
+          FotoEstimasiOrder(order: order),
+          const SizedBox(height: 14),
+        ],
 
         // 5. RINCIAN PERJALANAN CARD
         if (order.alamatJemput != null || order.alamatTujuan != null) ...[

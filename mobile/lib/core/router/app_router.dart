@@ -11,6 +11,7 @@ import '../../features/klien/detail_order/detail_order_screen.dart';
 import '../../features/klien/order_jalur_a/form_anter_jemput_screen.dart';
 import '../../features/klien/order_jalur_a/form_jastip_barang_screen.dart';
 import '../../features/klien/order_jalur_a/form_jastip_makanan_screen.dart';
+import '../../features/klien/order_jalur_a/form_layanan_kos_screen.dart';
 import '../../features/klien/order_jalur_b/form_permintaan_screen.dart';
 import '../../features/klien/pembayaran/pembayaran_screen.dart';
 import '../../features/klien/riwayat/riwayat_order_screen.dart';
@@ -50,6 +51,7 @@ class Rute {
   static const String formAnterJemput = '/buat/anter-jemput';
   static const String formJastipBarang = '/buat/jastip-barang';
   static const String formJastipMakanan = '/buat/jastip-makanan';
+  static const String formLayananKosPola = '/buat/layanan-kos/:layanan';
   static const String formPermintaanPola = '/buat/permintaan/:layanan';
   static const String ajukanTawaranPola = '/runner/order/:orderId/tawar';
 
@@ -75,6 +77,9 @@ class Rute {
   /// Satu rute untuk seluruh layanan Jalur B, jenis layanannya ikut di jalur.
   static String formPermintaan(ServiceType layanan) =>
       '/buat/permintaan/${layanan.name}';
+
+  static String formLayananKos(ServiceType layanan) =>
+      '/buat/layanan-kos/${layanan.name}';
 }
 
 /// Router dibuat lewat provider, bukan variabel global.
@@ -198,6 +203,24 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: Rute.formJastipMakanan,
         builder: (context, state) =>
             FormJastipMakananScreen(contoh: state.extra as Order?),
+      ),
+      GoRoute(
+        path: Rute.formLayananKosPola,
+        builder: (context, state) {
+          final nama = state.pathParameters['layanan'];
+          final layanan = [
+            ServiceType.bantuPindahKos,
+            ServiceType.bersihKos,
+            ServiceType.bersihKamarMandi,
+          ].firstWhere(
+            (layanan) => layanan.name == nama,
+            orElse: () => ServiceType.bersihKos,
+          );
+          return FormLayananKosScreen(
+            serviceType: layanan,
+            contoh: state.extra as Order?,
+          );
+        },
       ),
       GoRoute(
         path: Rute.formPermintaanPola,

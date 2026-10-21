@@ -55,7 +55,7 @@ public class CabutPenawaranTests(DatabaseApiFactory pabrik) : IClassFixture<Data
     private static async Task<OrderResponse> PermintaanAsync(HttpClient klien) =>
         (await (await klien.PostAsJsonAsync("/api/orders/jalur-b", new
         {
-            ServiceType = nameof(ServiceType.BersihKos),
+            ServiceType = nameof(ServiceType.PermintaanLain),
             Deskripsi = "Kos dua kamar.",
             JadwalMulai = DateTime.UtcNow.AddDays(2),
             JumlahRunnerDibutuhkan = 1,

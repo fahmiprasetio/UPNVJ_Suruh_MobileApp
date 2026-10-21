@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:upnvj_suruh/core/config/tarif_config.dart';
+import 'package:upnvj_suruh/domain/enums.dart';
 import 'package:upnvj_suruh/domain/models/tarif.dart';
 import 'package:upnvj_suruh/domain/pricing/kalkulator_tarif.dart';
 
@@ -55,6 +56,38 @@ void main() {
           reason: 'Rincian tidak menjumlah ke total pada jarak $jarak km',
         );
       }
+    });
+  });
+
+  group('layanan kos Jalur A', () {
+    test('pindah kos menghitung jarak, runner, dan pickup', () {
+      final hasil = KalkulatorTarif.pindahKos(
+        jarakKm: 2,
+        jumlahRunner: 2,
+        jenisKendaraan: MovingVehicleType.pickup,
+        tarif: Tarif.bawaan,
+      );
+
+      expect(hasil.total, 91000);
+    });
+
+    test('layanan kebersihan memakai tarif tetap', () {
+      expect(
+        KalkulatorTarif.hitung(
+          ServiceType.bersihKos,
+          null,
+          Tarif.bawaan,
+        ).total,
+        TarifConfig.bersihKosFee,
+      );
+      expect(
+        KalkulatorTarif.hitung(
+          ServiceType.bersihKamarMandi,
+          null,
+          Tarif.bawaan,
+        ).total,
+        TarifConfig.bersihKamarMandiFee,
+      );
     });
   });
 }

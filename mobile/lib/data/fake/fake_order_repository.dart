@@ -271,6 +271,8 @@ class FakeOrderRepository implements OrderRepository {
     double? longitudeJemput,
     double? latitudeTujuan,
     double? longitudeTujuan,
+    int jumlahRunnerDibutuhkan = 1,
+    MovingVehicleType? jenisKendaraan,
     String? idempotencyKey,
   }) async {
     await Future<void>.delayed(_jedaJaringan);
@@ -298,7 +300,13 @@ class FakeOrderRepository implements OrderRepository {
     // Harganya dihitung di sini, bukan diterima dari pemanggil, sama seperti di
     // server. Tiruan yang menerima harga jadi akan membuat layar dibangun dengan
     // asumsi yang tidak berlaku di sana.
-    final tarif = KalkulatorTarif.hitung(serviceType, jarakKm, Tarif.bawaan);
+    final tarif = KalkulatorTarif.hitung(
+      serviceType,
+      jarakKm,
+      Tarif.bawaan,
+      jumlahRunner: jumlahRunnerDibutuhkan,
+      jenisKendaraan: jenisKendaraan,
+    );
 
     final klienId = _pemanggil();
     final order = Order(
@@ -318,6 +326,9 @@ class FakeOrderRepository implements OrderRepository {
       latitudeTujuan: latitudeTujuan,
       longitudeTujuan: longitudeTujuan,
       harga: tarif.total,
+      jarakKm: jarakKm,
+      jumlahRunnerDibutuhkan: jumlahRunnerDibutuhkan,
+      jenisKendaraan: jenisKendaraan,
     );
     _orders.add(order);
     _pancarkan();

@@ -1,4 +1,5 @@
 import '../../domain/repositories/foto_bukti_repository.dart';
+import 'dart:typed_data';
 
 /// Tiruan kamera + penyimpanan foto.
 ///
@@ -18,5 +19,15 @@ class FakeFotoBuktiRepository implements FotoBuktiRepository {
   Future<String?> ambilDanUnggah({required String orderId}) async {
     await Future<void>.delayed(_jedaUnggah);
     return 'fake://bukti/$orderId-${DateTime.now().millisecondsSinceEpoch}.jpg';
+  }
+
+  @override
+  Future<String> unggahFotoEstimasi({
+    required String orderId,
+    required String namaBerkas,
+    required Uint8List isi,
+  }) async {
+    await Future<void>.delayed(_jedaUnggah);
+    return 'fake://estimasi/$orderId-$namaBerkas';
   }
 }

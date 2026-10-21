@@ -427,12 +427,19 @@ namespace UpnvjSuruh.Api.Migrations
                     b.Property<double?>("DistanceKm")
                         .HasColumnType("double precision");
 
+                    b.Property<string>("EstimatePhotoUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<TimeSpan?>("EstimatedDuration")
                         .HasColumnType("interval");
 
                     b.Property<string>("HandoverNote")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<int?>("MovingVehicleType")
+                        .HasColumnType("integer");
 
                     b.Property<string>("OrderCode")
                         .IsRequired()
@@ -881,6 +888,12 @@ namespace UpnvjSuruh.Api.Migrations
                     b.Property<decimal>("AnjemTarifPerKm")
                         .HasColumnType("numeric");
 
+                    b.Property<decimal>("BersihKamarMandiFee")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("BersihKosFee")
+                        .HasColumnType("numeric");
+
                     b.Property<decimal>("JastipBarangFee")
                         .HasColumnType("numeric");
 
@@ -888,6 +901,21 @@ namespace UpnvjSuruh.Api.Migrations
                         .HasColumnType("numeric");
 
                     b.Property<decimal>("JastipMakananFee")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("PindahKosTambahanMobil")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("PindahKosTambahanPickup")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("PindahKosTambahanRunner")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("PindahKosTarifDasar")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("PindahKosTarifPerKm")
                         .HasColumnType("numeric");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -914,9 +942,16 @@ namespace UpnvjSuruh.Api.Migrations
                             AnjemJarakMinimalKm = 0.5,
                             AnjemTarifDasar = 5000m,
                             AnjemTarifPerKm = 2000m,
+                            BersihKamarMandiFee = 20000m,
+                            BersihKosFee = 30000m,
                             JastipBarangFee = 10000m,
                             JastipBarangTarifPerKm = 2000m,
-                            JastipMakananFee = 8000m
+                            JastipMakananFee = 8000m,
+                            PindahKosTambahanMobil = 25000m,
+                            PindahKosTambahanPickup = 40000m,
+                            PindahKosTambahanRunner = 20000m,
+                            PindahKosTarifDasar = 25000m,
+                            PindahKosTarifPerKm = 3000m
                         });
                 });
 

@@ -11,7 +11,7 @@ import { buatTiruanHub } from './dukungan_hub';
 /**
  * Yang paling penting diuji di sini: form dimuat dari angka yang sedang berlaku (bukan
  * kosong), dan yang dikirim ke server saat disimpan persis apa yang tercantum di form
- * (tujuh angka sekaligus, sesuai `PerbaruiTarifRequest` di backend), bukan diam-diam
+ * (seluruh angka sekaligus, sesuai `PerbaruiTarifRequest` di backend), bukan diam-diam
  * membiarkan salah satu kolom terbawa nilai lama.
  */
 
@@ -24,6 +24,13 @@ function tarif(ubah: Partial<Tarif> = {}): Tarif {
     jastipMakananFee: 8000,
     jastipBarangFee: 10000,
     jastipBarangTarifPerKm: 2000,
+    pindahKosTarifDasar: 25000,
+    pindahKosTarifPerKm: 3000,
+    pindahKosTambahanRunner: 20000,
+    pindahKosTambahanMobil: 25000,
+    pindahKosTambahanPickup: 40000,
+    bersihKosFee: 30000,
+    bersihKamarMandiFee: 20000,
     diubahPada: null,
     ...ubah,
   };

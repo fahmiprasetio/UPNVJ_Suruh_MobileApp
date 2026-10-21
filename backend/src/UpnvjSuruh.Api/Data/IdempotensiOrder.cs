@@ -41,7 +41,9 @@ public static class IdempotensiOrder
         request.LatitudeJemput?.ToString("R", CultureInfo.InvariantCulture),
         request.LongitudeJemput?.ToString("R", CultureInfo.InvariantCulture),
         request.LatitudeTujuan?.ToString("R", CultureInfo.InvariantCulture),
-        request.LongitudeTujuan?.ToString("R", CultureInfo.InvariantCulture));
+        request.LongitudeTujuan?.ToString("R", CultureInfo.InvariantCulture),
+        request.JumlahRunnerDibutuhkan.ToString(CultureInfo.InvariantCulture),
+        request.JenisKendaraan?.ToString());
 
     public static string HashJalurB(BuatPermintaanJalurBRequest request) => Hash(
         "B",

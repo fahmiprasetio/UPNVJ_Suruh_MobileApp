@@ -19,6 +19,13 @@ public record TarifResponse(
     decimal JastipMakananFee,
     decimal JastipBarangFee,
     decimal JastipBarangTarifPerKm,
+    decimal PindahKosTarifDasar,
+    decimal PindahKosTarifPerKm,
+    decimal PindahKosTambahanRunner,
+    decimal PindahKosTambahanMobil,
+    decimal PindahKosTambahanPickup,
+    decimal BersihKosFee,
+    decimal BersihKamarMandiFee,
     DateTime? DiubahPada)
 {
     public static TarifResponse Dari(TarifSetting t) => new(
@@ -29,6 +36,13 @@ public record TarifResponse(
         t.JastipMakananFee,
         t.JastipBarangFee,
         t.JastipBarangTarifPerKm,
+        t.PindahKosTarifDasar,
+        t.PindahKosTarifPerKm,
+        t.PindahKosTambahanRunner,
+        t.PindahKosTambahanMobil,
+        t.PindahKosTambahanPickup,
+        t.BersihKosFee,
+        t.BersihKamarMandiFee,
         t.UpdatedAt);
 }
 
@@ -36,7 +50,7 @@ public record TarifResponse(
 /// Admin mengubah tarif Jalur A.
 /// </summary>
 /// <remarks>
-/// Seluruh tujuh angka dikirim sekaligus, bukan satu per satu: layar admin menampilkan
+/// Seluruh angka dikirim sekaligus, bukan satu per satu: layar admin menampilkan
 /// keadaan sekarang lalu mengirim keadaan yang diinginkan, sama seperti
 /// <see cref="TetapkanPeranRequest"/>. Batas atasnya sengaja longgar tapi tetap ada — tanpa
 /// batas, satu salah ketik (menambah nol) membuat setiap order Jalur A berikutnya ditagih
@@ -64,6 +78,27 @@ public record PerbaruiTarifRequest : IValidatableObject
 
     [Range(0, 100_000)]
     public decimal JastipBarangTarifPerKm { get; init; }
+
+    [Range(1, 10_000_000)]
+    public decimal PindahKosTarifDasar { get; init; }
+
+    [Range(0, 100_000)]
+    public decimal PindahKosTarifPerKm { get; init; }
+
+    [Range(0, 10_000_000)]
+    public decimal PindahKosTambahanRunner { get; init; }
+
+    [Range(0, 10_000_000)]
+    public decimal PindahKosTambahanMobil { get; init; }
+
+    [Range(0, 10_000_000)]
+    public decimal PindahKosTambahanPickup { get; init; }
+
+    [Range(1, 10_000_000)]
+    public decimal BersihKosFee { get; init; }
+
+    [Range(1, 10_000_000)]
+    public decimal BersihKamarMandiFee { get; init; }
 
     /// <summary>
     /// Batas bawah harus lebih kecil dari batas atas. <c>[Range]</c> memeriksa tiap kolom

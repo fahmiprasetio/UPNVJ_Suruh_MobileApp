@@ -116,7 +116,7 @@ public class ChatHubTests(DatabaseApiFactory pabrik) : IClassFixture<DatabaseApi
     private static async Task<OrderResponse> BuatPermintaanJalurBAsync(HttpClient klien) =>
         (await (await klien.PostAsJsonAsync("/api/orders/jalur-b", new
         {
-            ServiceType = nameof(ServiceType.BersihKos),
+            ServiceType = nameof(ServiceType.PermintaanLain),
             Deskripsi = "Bersih-bersih kos dua jam",
             JadwalMulai = DateTime.UtcNow.AddDays(1),
             HargaUsulan = 50000m,

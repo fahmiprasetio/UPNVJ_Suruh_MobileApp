@@ -148,7 +148,7 @@ public class OrderEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
         var key = "draft-payload-berbeda-uji";
         var pertama = await PostJsonDenganKeyAsync(klien, "/api/orders/jalur-b", new
         {
-            ServiceType = nameof(ServiceType.BersihKos),
+            ServiceType = nameof(ServiceType.PermintaanLain),
             Deskripsi = "Kos pertama",
             JadwalMulai = DateTime.UtcNow.AddDays(1),
             HargaUsulan = 100000m,
@@ -157,7 +157,7 @@ public class OrderEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
 
         var kedua = await PostJsonDenganKeyAsync(klien, "/api/orders/jalur-b", new
         {
-            ServiceType = nameof(ServiceType.BersihKos),
+            ServiceType = nameof(ServiceType.PermintaanLain),
             Deskripsi = "Kos kedua",
             JadwalMulai = DateTime.UtcNow.AddDays(1),
             HargaUsulan = 100000m,
@@ -226,11 +226,52 @@ public class OrderEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
 
         var jawaban = await klien.PostAsJsonAsync("/api/orders/jalur-a", new
         {
-            ServiceType = nameof(ServiceType.BersihKos),
+            ServiceType = nameof(ServiceType.PermintaanLain),
             JarakKm = 3.0,
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, jawaban.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(ServiceType.BersihKos, 30_000)]
+    [InlineData(ServiceType.BersihKamarMandi, 20_000)]
+    public async Task LayananKebersihanDibuatSebagaiJalurA(ServiceType layanan, decimal harga)
+    {
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+
+        var jawaban = await klien.PostAsJsonAsync("/api/orders/jalur-a", new
+        {
+            ServiceType = layanan.ToString(),
+            AlamatTujuan = "Kos Melati, Pondok Labu",
+        });
+
+        jawaban.EnsureSuccessStatusCode();
+        var hasil = await jawaban.Content.ReadFromJsonAsync<BuatOrderResponse>();
+        Assert.Equal(nameof(OrderTrack.JalurA), hasil!.Order.Track);
+        Assert.Equal(harga, hasil.Order.Harga);
+    }
+
+    [Fact]
+    public async Task PindahKosMenyimpanRunnerKendaraanDanMenghitungJarak()
+    {
+        var (klien, _) = await AkunAsync(UserRole.Klien);
+
+        var jawaban = await klien.PostAsJsonAsync("/api/orders/jalur-a", new
+        {
+            ServiceType = nameof(ServiceType.BantuPindahKos),
+            JarakKm = 2.0,
+            AlamatJemput = "Kos Melati, Pondok Labu",
+            AlamatTujuan = "Kos Anggrek, Cilandak",
+            JumlahRunnerDibutuhkan = 2,
+            JenisKendaraan = nameof(MovingVehicleType.Pickup),
+        });
+
+        jawaban.EnsureSuccessStatusCode();
+        var hasil = await jawaban.Content.ReadFromJsonAsync<BuatOrderResponse>();
+        Assert.Equal(2, hasil!.Order.JumlahRunnerDibutuhkan);
+        Assert.Equal(nameof(MovingVehicleType.Pickup), hasil.Order.JenisKendaraan);
+        Assert.Equal(91_000m, hasil.Order.Harga);
     }
 
     [Fact]
@@ -401,7 +442,7 @@ public class OrderEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
 
         var dibuat = await klien.PostAsJsonAsync("/api/orders/jalur-b", new
         {
-            ServiceType = nameof(ServiceType.BersihKos),
+            ServiceType = nameof(ServiceType.PermintaanLain),
             Deskripsi = "Kos dua kamar, sudah lama tidak dibersihkan.",
             JadwalMulai = DateTime.UtcNow.AddDays(1),
             HargaUsulan = 100000m,
@@ -422,7 +463,7 @@ public class OrderEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
 
         var dibuat = await klien.PostAsJsonAsync("/api/orders/jalur-b", new
         {
-            ServiceType = nameof(ServiceType.BersihKos),
+            ServiceType = nameof(ServiceType.PermintaanLain),
             Deskripsi = "Kos dua kamar, sudah lama tidak dibersihkan.",
             JadwalMulai = DateTime.UtcNow.AddDays(1),
             HargaUsulan = 100000m,
@@ -453,7 +494,7 @@ public class OrderEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
 
         var dibuat = await klien.PostAsJsonAsync("/api/orders/jalur-b", new
         {
-            ServiceType = nameof(ServiceType.BersihKos),
+            ServiceType = nameof(ServiceType.PermintaanLain),
             Deskripsi = "Kos dua kamar, sudah lama tidak dibersihkan.",
             JadwalMulai = DateTime.UtcNow.AddDays(1),
             HargaUsulan = 100000m,

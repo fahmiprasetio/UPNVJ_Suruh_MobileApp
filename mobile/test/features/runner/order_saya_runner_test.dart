@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -19,6 +21,13 @@ class _FotoGagal implements FotoBuktiRepository {
   Future<String?> ambilDanUnggah({required String orderId}) async {
     throw StateError('isi rahasia dari penyimpanan');
   }
+
+  @override
+  Future<String> unggahFotoEstimasi({
+    required String orderId,
+    required String namaBerkas,
+    required Uint8List isi,
+  }) => throw StateError('tidak dipakai pada tes ini');
 }
 
 void main() {

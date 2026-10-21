@@ -23,12 +23,17 @@ namespace UpnvjSuruh.Api.Pricing;
 /// </summary>
 public class KalkulatorTarif
 {
-    public HasilTarif Hitung(ServiceType serviceType, double? jarakKm, TarifSetting tarif)
+    public HasilTarif Hitung(
+        ServiceType serviceType,
+        double? jarakKm,
+        TarifSetting tarif,
+        int jumlahRunner = 1,
+        MovingVehicleType? jenisKendaraan = null)
     {
         if (serviceType.Track() != OrderTrack.JalurA)
         {
             throw new ArgumentException(
-                $"{serviceType} adalah Jalur B, harganya ditentukan admin lewat penawaran.",
+                $"{serviceType} adalah Jalur B, harganya ditentukan lewat penawaran runner.",
                 nameof(serviceType));
         }
 
@@ -37,6 +42,11 @@ public class KalkulatorTarif
             ServiceType.AnterJemput => AnterJemput(WajibJarak(serviceType, jarakKm), tarif),
             ServiceType.JastipBarang => JastipBarang(WajibJarak(serviceType, jarakKm), tarif),
             ServiceType.JastipMakanan => JastipMakanan(tarif),
+            ServiceType.BantuPindahKos => PindahKos(
+                WajibJarak(serviceType, jarakKm), jumlahRunner, jenisKendaraan, tarif),
+            ServiceType.BersihKos => TarifTetap("Jasa bersih-bersih kos", tarif.BersihKosFee),
+            ServiceType.BersihKamarMandi => TarifTetap(
+                "Jasa bersih kamar mandi", tarif.BersihKamarMandiFee),
             _ => throw new ArgumentOutOfRangeException(nameof(serviceType), serviceType, null),
         };
     }
@@ -91,6 +101,56 @@ public class KalkulatorTarif
 
     private static HasilTarif JastipMakanan(TarifSetting tarif) =>
         new([new RincianTarif("Ongkos jasa titip", tarif.JastipMakananFee)], tarif.JastipMakananFee);
+
+    private static HasilTarif PindahKos(
+        double jarakDiminta,
+        int jumlahRunner,
+        MovingVehicleType? jenisKendaraan,
+        TarifSetting tarif)
+    {
+        if (jumlahRunner is < 1 or > 5)
+        {
+            throw new ArgumentException("Jumlah runner harus 1 sampai 5.", nameof(jumlahRunner));
+        }
+
+        if (jenisKendaraan is null)
+        {
+            throw new ArgumentException("Pilih kendaraan untuk pindahan.", nameof(jenisKendaraan));
+        }
+
+        var jarakDipakai = Math.Clamp(
+            jarakDiminta, tarif.AnjemJarakMinimalKm, tarif.AnjemJarakMaksimalKm);
+        var ongkosJarak = Math.Round(
+            (decimal)jarakDipakai * tarif.PindahKosTarifPerKm,
+            MidpointRounding.AwayFromZero);
+        var tambahanRunner = (jumlahRunner - 1) * tarif.PindahKosTambahanRunner;
+        var tambahanKendaraan = jenisKendaraan switch
+        {
+            MovingVehicleType.Motor => 0m,
+            MovingVehicleType.Mobil => tarif.PindahKosTambahanMobil,
+            MovingVehicleType.Pickup => tarif.PindahKosTambahanPickup,
+            _ => throw new ArgumentOutOfRangeException(nameof(jenisKendaraan)),
+        };
+
+        var rincian = new List<RincianTarif>
+        {
+            new("Jasa pindah kos", tarif.PindahKosTarifDasar),
+            new($"Jarak {FormatJarak(jarakDipakai)} km", ongkosJarak),
+        };
+        if (tambahanRunner > 0)
+        {
+            rincian.Add(new RincianTarif($"Tambahan {jumlahRunner - 1} runner", tambahanRunner));
+        }
+        if (tambahanKendaraan > 0)
+        {
+            rincian.Add(new RincianTarif($"Kendaraan {jenisKendaraan}", tambahanKendaraan));
+        }
+
+        return new HasilTarif(rincian, rincian.Sum(r => r.Nominal));
+    }
+
+    private static HasilTarif TarifTetap(string label, decimal nominal) =>
+        new([new RincianTarif(label, nominal)], nominal);
 
     private static string FormatJarak(double jarak) =>
         jarak == Math.Round(jarak)

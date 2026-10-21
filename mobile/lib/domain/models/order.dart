@@ -33,6 +33,8 @@ class Order {
     this.estimasiDurasi,
     this.jadwalMulai,
     this.jumlahRunnerDibutuhkan = 1,
+    this.jenisKendaraan,
+    this.fotoEstimasiUrl,
     this.runners = const [],
     this.fotoBuktiUrl,
     this.catatanSerahTerima,
@@ -92,6 +94,8 @@ class Order {
 
   /// Pindah kos bisa butuh 2-3 runner sekaligus (bagian 5).
   final int jumlahRunnerDibutuhkan;
+  final MovingVehicleType? jenisKendaraan;
+  final String? fotoEstimasiUrl;
 
   /// Runner yang sudah menerima order ini, lengkap dengan nama dan nomor HP.
   final List<RunnerRingkas> runners;
@@ -192,6 +196,8 @@ class Order {
     Duration? estimasiDurasi,
     DateTime? jadwalMulai,
     int? jumlahRunnerDibutuhkan,
+    MovingVehicleType? jenisKendaraan,
+    String? fotoEstimasiUrl,
     List<RunnerRingkas>? runners,
     String? fotoBuktiUrl,
     String? catatanSerahTerima,
@@ -226,6 +232,8 @@ class Order {
       jadwalMulai: jadwalMulai ?? this.jadwalMulai,
       jumlahRunnerDibutuhkan:
           jumlahRunnerDibutuhkan ?? this.jumlahRunnerDibutuhkan,
+      jenisKendaraan: jenisKendaraan ?? this.jenisKendaraan,
+      fotoEstimasiUrl: fotoEstimasiUrl ?? this.fotoEstimasiUrl,
       runners: runners ?? this.runners,
       fotoBuktiUrl: fotoBuktiUrl ?? this.fotoBuktiUrl,
       catatanSerahTerima: catatanSerahTerima ?? this.catatanSerahTerima,

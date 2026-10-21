@@ -78,7 +78,7 @@ void main() {
 
     test('permintaan Jalur B ada di tahap pertama, bukan di luar alur', () {
       final order = buatOrder(
-        serviceType: ServiceType.bantuPindahKos,
+        serviceType: ServiceType.permintaanLain,
         status: OrderStatus.permintaan,
       );
 

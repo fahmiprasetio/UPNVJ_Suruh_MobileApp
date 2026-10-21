@@ -171,12 +171,18 @@ public class Penyapu(AppDbContext db, PenyimpanFoto penyimpan, ILogger<Penyapu> 
             .Select(o => o.PhotoUrl!)
             .ToListAsync(batal);
 
+        var dariEstimasi = await db.Orders
+            .Where(o => o.EstimatePhotoUrl != null)
+            .Select(o => o.EstimatePhotoUrl!)
+            .ToListAsync(batal);
+
         var dariPenugasan = await db.OrderRunnerAssignments
             .Where(a => a.CompletionPhotoUrl != null)
             .Select(a => a.CompletionPhotoUrl!)
             .ToListAsync(batal);
 
         return [.. dariOrder
+            .Concat(dariEstimasi)
             .Concat(dariPenugasan)
             .Select(PenyimpanFoto.NamaDari)
             .OfType<string>()];

@@ -38,6 +38,14 @@ class PemetaOrder {
       estimasiDurasi: _menit(isi['estimasiDurasiMenit']),
       jadwalMulai: _waktu(isi, 'jadwalMulai'),
       jumlahRunnerDibutuhkan: (isi['jumlahRunnerDibutuhkan'] as num?)?.toInt() ?? 1,
+      jenisKendaraan: isi['jenisKendaraan'] == null
+          ? null
+          : _enum(
+              MovingVehicleType.values,
+              isi['jenisKendaraan'],
+              'jenisKendaraan',
+            ),
+      fotoEstimasiUrl: _alamatFoto(isi['fotoEstimasiUrl']),
       runners: [
         for (final r in (isi['runners'] as List? ?? const []))
           runnerRingkas(r as Map<String, dynamic>),

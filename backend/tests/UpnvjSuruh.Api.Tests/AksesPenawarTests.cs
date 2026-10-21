@@ -66,7 +66,7 @@ public class AksesPenawarTests(DatabaseApiFactory pabrik) : IClassFixture<Databa
     private static async Task<OrderResponse> PermintaanJalurBAsync(HttpClient klien) =>
         (await (await klien.PostAsJsonAsync("/api/orders/jalur-b", new
         {
-            ServiceType = nameof(ServiceType.BersihKos),
+            ServiceType = nameof(ServiceType.PermintaanLain),
             Deskripsi = "Kos dua kamar, sudah lama tidak dibersihkan.",
             JadwalMulai = DateTime.UtcNow.AddDays(2),
             AlamatTujuan = "Kos Melati, Jl. Pondok Labu Raya No. 12",

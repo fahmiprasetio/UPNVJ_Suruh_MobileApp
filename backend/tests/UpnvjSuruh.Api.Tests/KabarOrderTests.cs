@@ -74,7 +74,7 @@ public class KabarOrderTests
     [Fact]
     public void PenawaranJalurBYangDisetujuiMengabariRunnerPemenangnya()
     {
-        var order = Order(OrderStatus.MenungguPembayaran, ServiceType.BantuPindahKos);
+        var order = Order(OrderStatus.MenungguPembayaran, ServiceType.PermintaanLain);
         order.Offers.Add(new OrderOffer
         {
             OrderId = order.Id,
@@ -103,7 +103,7 @@ public class KabarOrderTests
     [Fact]
     public void JalurBYangLangsungDikerjakanMengabariKliennyaDanRunnerPemenangnya()
     {
-        var order = Order(OrderStatus.Dikerjakan, ServiceType.BersihKos);
+        var order = Order(OrderStatus.Dikerjakan, ServiceType.PermintaanLain);
         order.Offers.Add(new OrderOffer
         {
             OrderId = order.Id,

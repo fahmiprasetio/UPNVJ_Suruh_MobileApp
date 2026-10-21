@@ -62,7 +62,7 @@ public class PenjagaanKecilTests(DatabaseApiFactory pabrik) : IClassFixture<Data
 
         var jawaban = await klien.PostAsJsonAsync("/api/orders/jalur-b", new
         {
-            ServiceType = nameof(ServiceType.BersihKos),
+            ServiceType = nameof(ServiceType.PermintaanLain),
             Deskripsi = "Kos dua kamar.",
             JadwalMulai = DateTime.UtcNow.AddDays(-1),
             HargaUsulan = 100000m,
@@ -80,7 +80,7 @@ public class PenjagaanKecilTests(DatabaseApiFactory pabrik) : IClassFixture<Data
 
         var jawaban = await klien.PostAsJsonAsync("/api/orders/jalur-b", new
         {
-            ServiceType = nameof(ServiceType.BersihKos),
+            ServiceType = nameof(ServiceType.PermintaanLain),
             Deskripsi = "Kos dua kamar.",
             JadwalMulai = DateTime.UtcNow.AddDays(1),
             HargaUsulan = 100000m,
@@ -100,7 +100,7 @@ public class PenjagaanKecilTests(DatabaseApiFactory pabrik) : IClassFixture<Data
 
         var jawaban = await klien.PostAsJsonAsync("/api/orders/jalur-b", new
         {
-            ServiceType = nameof(ServiceType.BersihKos),
+            ServiceType = nameof(ServiceType.PermintaanLain),
             Deskripsi = "Kos dua kamar.",
             JadwalMulai = DateTime.UtcNow.AddMinutes(-2),
             HargaUsulan = 100000m,
@@ -119,7 +119,7 @@ public class PenjagaanKecilTests(DatabaseApiFactory pabrik) : IClassFixture<Data
 
         var dibuat = await klien.PostAsJsonAsync("/api/orders/jalur-b", new
         {
-            ServiceType = nameof(ServiceType.BersihKos),
+            ServiceType = nameof(ServiceType.PermintaanLain),
             Deskripsi = "Kos dua kamar.",
             JadwalMulai = DateTime.UtcNow.AddDays(1),
             HargaUsulan = 100000m,
