@@ -3,36 +3,15 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/format/formatters.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../domain/enums.dart';
 import '../../../../domain/models/order.dart';
 import '../../../../domain/service_catalog.dart';
-import '../../widgets/rute_order.dart';
 
-/// Satu order yang sedang disiarkan, dilihat dari sisi runner.
+/// Satu order yang sedang disiarkan, dilihat dari sisi runner dengan gaya modern Gojek Aloha.
 ///
-/// Isinya berbeda dari kartu order milik klien: runner butuh tahu apakah
-/// pekerjaan ini layak diambil sekarang, jenis layanan, ke mana, dan berapa
-/// nilainya, bukan sejauh mana ordernya sudah berjalan.
-///
-/// ## Kenapa harganya yang paling besar
-///
-/// Sebelumnya nilai order ditulis seukuran nama layanan, dan yang paling
-/// menonjol di kartu justru nama layanannya. Padahal daftar ini dibaca dengan
-/// satu pertanyaan: mana yang kuambil. Nama layanan menjawab "pekerjaan apa",
-/// yang penting tapi tidak memutuskan; angkanya yang memutuskan. Sekarang
-/// angkanya 20 piksel tebal, sama besar dengan harga di kartu order klien,
-/// karena keduanya menjawab pertanyaan yang sama besarnya bagi pembacanya
-/// masing-masing (aturan Price Is Loudest di DESIGN.md).
-///
-/// ## Kenapa harga dan TERIMA tetap satu baris
-///
-/// Menumpuknya jadi dua baris selebar kartu memang membuat keduanya lebih
-/// gagah, tapi kartunya jadi lebih tinggi dan yang muat di satu layar jadi
-/// lebih sedikit. Layar ini perlombaan: order yang sama dilihat semua runner
-/// pada saat yang sama, dan yang kalah bukan yang salah memilih melainkan yang
-/// kalah cepat. Memaksa runner menggulung untuk melihat pilihan keempat adalah
-/// biaya yang nyata, sementara gagah tidak membayar apa pun.
+/// Kartu menampilkan identitas layanan dengan palet warna Aloha, rute penjemputan
+/// dan tujuan yang visual dan jelas, estimasi jarak, catatan pemesan, dan tombol
+/// aksi "TERIMA ORDER" hijau Gojek yang responsif dan empuk.
 class KartuOrderSiaran extends StatelessWidget {
   const KartuOrderSiaran({
     super.key,
@@ -51,157 +30,456 @@ class KartuOrderSiaran extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final layanan = serviceInfoOf(order.serviceType);
-    final teks = Theme.of(context).textTheme;
-    final skema = Theme.of(context).colorScheme;
     final adaRute = order.alamatJemput != null || order.alamatTujuan != null;
+    final warna = _warnaLayanan(order.serviceType);
+    final ikon = _ikonLayanan(order.serviceType, layanan.icon);
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spasiSedang),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(layanan.icon, size: 20, color: skema.onSurfaceVariant),
-                const SizedBox(width: AppTheme.spasiKecil),
-                Expanded(
-                  child: Text(
-                    layanan.nama,
-                    style: teks.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 1. HEADER: ICON LAYANAN + NAMA & KODE ORDER + UMUR SIARAN
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: warna.latar,
+                      shape: BoxShape.circle,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    child: Center(
+                      child: Icon(ikon, color: warna.aksen, size: 21),
+                    ),
                   ),
-                ),
-                const SizedBox(width: AppTheme.spasiKecil),
-                // Umur siaran, bukan hiasan. Order yang sudah menunggu setengah
-                // jam biasanya menunggu karena ada sebabnya, dan runner berhak
-                // tahu itu sebelum menekan tombol yang tidak bisa dibatalkan.
-                Text(
-                  formatWaktuRelatif(order.dibuatPada),
-                  style: teks.bodySmall?.copyWith(
-                    color: skema.onSurfaceVariant,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                layanan.nama,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF111827),
+                                  letterSpacing: -0.2,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF3F4F6),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                order.kodeOrder,
+                                style: const TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF4B5563),
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.person_outline_rounded,
+                              size: 13,
+                              color: Color(0xFF6B7280),
+                            ),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                order.namaKlien,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF6B7280),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 2),
-            Text(
-              '${order.kodeOrder} · ${order.namaKlien}',
-              style: teks.bodySmall?.copyWith(color: skema.onSurfaceVariant),
-            ),
-            if (order.deskripsi != null) ...[
-              const SizedBox(height: AppTheme.spasiKecil),
-              Text(
-                order.deskripsi!,
-                style: teks.bodyMedium,
-                // Dua baris, lalu dipotong. Permintaan Jalur B bisa sepanjang
-                // paragraf, dan satu kartu yang memanjang sendirian mendorong
-                // order lain keluar layar di daftar yang sedang diperlombakan.
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+                  const SizedBox(width: 8),
+                  // Waktu Relatif / Umur Siaran
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF9FAFB),
+                      borderRadius: BorderRadius.circular(100),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.schedule_rounded,
+                          size: 12,
+                          color: Color(0xFF6B7280),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          formatWaktuRelatif(order.dibuatPada),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF4B5563),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
-            if (adaRute) ...[
-              const SizedBox(height: AppTheme.spasiSedang),
-              RuteOrder(jemput: order.alamatJemput, tujuan: order.alamatTujuan),
-            ],
-            if (order.jumlahRunnerDibutuhkan > 1) ...[
-              const SizedBox(height: AppTheme.spasiKecil + 2),
-              _LencanaKuota(order: order),
-            ],
-            const SizedBox(height: AppTheme.spasiSedang),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: Column(
+
+              // 2. DESKRIPSI / CATATAN PESANAN (Jika Ada)
+              if (order.deskripsi != null && order.deskripsi!.trim().isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9FAFB),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFF3F4F6)),
+                  ),
+                  child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        _menungguTawaran ? 'Usulan klien' : 'Nilai order',
-                        style: teks.bodySmall?.copyWith(
-                          color: skema.onSurfaceVariant,
-                        ),
+                      const Icon(
+                        Icons.sticky_note_2_outlined,
+                        size: 14,
+                        color: Color(0xFF6B7280),
                       ),
-                      Text(
-                        formatRupiah(
-                          _menungguTawaran ? order.hargaUsulan : order.harga,
-                        ),
-                        style: TextStyle(
-                          fontSize: 20,
-                          height: 1.2,
-                          fontWeight: FontWeight.w700,
-                          color: skema.primary,
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          order.deskripsi!,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            color: Color(0xFF374151),
+                            height: 1.35,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
                   ),
                 ),
-                // Sengaja bukan "pendapatanmu": bagi hasil runner belum
-                // diputuskan mitra (rencana capstone bagian 14.7d). Menuliskan
-                // angka yang belum disepakati akan lebih menyesatkan daripada
-                // tidak menuliskannya.
-                const SizedBox(width: AppTheme.spasiSedang),
-                _menungguTawaran
-                    ? _TombolTawar(orderId: order.id)
-                    : _TombolTerima(
-                        sedangDiproses: sedangDiproses,
-                        onTerima: onTerima,
-                      ),
               ],
-            ),
-          ],
+
+              // 3. BLOK RUTE ALOHA (Jemput & Tujuan dengan Pin & Indikator Jarak)
+              if (adaRute) ...[
+                const SizedBox(height: 12),
+                _BlokRuteAloha(
+                  jemput: order.alamatJemput,
+                  tujuan: order.alamatTujuan,
+                  jarakKm: order.jarakKm,
+                ),
+              ],
+
+              // 4. LENCANA KUOTA (Jika butuh lebih dari 1 runner)
+              if (order.jumlahRunnerDibutuhkan > 1) ...[
+                const SizedBox(height: 10),
+                _LencanaKuotaAloha(order: order),
+              ],
+
+              const SizedBox(height: 14),
+
+              // Garis pemisah halus
+              const Divider(height: 1, thickness: 1, color: Color(0xFFF3F4F6)),
+
+              const SizedBox(height: 14),
+
+              // 5. FOOTER: TARIF BERSIH & TOMBOL TERIMA HIJAU GOJEK
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _menungguTawaran
+                              ? 'Usulan Penawaran Klien'
+                              : 'Tarif Bersih Runner',
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF6B7280),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          formatRupiah(
+                            _menungguTawaran
+                                ? order.hargaUsulan
+                                : order.harga,
+                          ),
+                          style: const TextStyle(
+                            fontSize: 19,
+                            height: 1.2,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF111827),
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  _menungguTawaran
+                      ? _TombolTawarAloha(orderId: order.id)
+                      : _TombolTerimaAloha(
+                          sedangDiproses: sedangDiproses,
+                          onTerima: onTerima,
+                        ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  /// Order Jalur B yang masih menerima tawaran, bukan pekerjaan siap kerja.
-  ///
-  /// Yang "diklaim" runner di sini kesempatan menawar, bukan pekerjaannya
-  /// sendiri: order ini belum dibayar, dan harganya belum pasti.
   bool get _menungguTawaran =>
       order.track == OrderTrack.jalurB && order.status == OrderStatus.permintaan;
+
+  static ({Color latar, Color aksen}) _warnaLayanan(ServiceType type) {
+    switch (type) {
+      case ServiceType.anterJemput:
+        return (latar: const Color(0xFFE8F8EA), aksen: const Color(0xFF00AA13));
+      case ServiceType.jastipMakanan:
+        return (latar: const Color(0xFFFFF7ED), aksen: const Color(0xFFEA580C));
+      case ServiceType.jastipBarang:
+        return (latar: const Color(0xFFEFF6FF), aksen: const Color(0xFF2563EB));
+      case ServiceType.bersihKamarMandi:
+      case ServiceType.bersihKos:
+        return (latar: const Color(0xFFF0FDF4), aksen: const Color(0xFF059669));
+      case ServiceType.bantuPindahKos:
+        return (latar: const Color(0xFFFAF5FF), aksen: const Color(0xFF9333EA));
+      case ServiceType.permintaanLain:
+        return (latar: const Color(0xFFF1F5F9), aksen: const Color(0xFF475569));
+    }
+  }
+
+  static IconData _ikonLayanan(ServiceType type, IconData bawaan) {
+    switch (type) {
+      case ServiceType.anterJemput:
+        return Icons.two_wheeler_rounded;
+      case ServiceType.jastipMakanan:
+        return Icons.lunch_dining_rounded;
+      case ServiceType.jastipBarang:
+        return Icons.shopping_bag_outlined;
+      case ServiceType.bersihKamarMandi:
+        return Icons.bathtub_outlined;
+      case ServiceType.bersihKos:
+        return Icons.cleaning_services_rounded;
+      case ServiceType.bantuPindahKos:
+        return Icons.local_shipping_outlined;
+      case ServiceType.permintaanLain:
+        return Icons.more_horiz_rounded;
+    }
+  }
 }
 
-/// Tombol untuk order Jalur B yang masih menerima tawaran.
-///
-/// Beda dari TERIMA: menekannya tidak langsung menjanjikan pekerjaan ke
-/// runner ini. Ia cuma membuka layar untuk mengajukan harga, dan runner lain
-/// masih tetap bisa mengajukan tawarannya sendiri sesudahnya.
-class _TombolTawar extends StatelessWidget {
-  const _TombolTawar({required this.orderId});
+/// Visual Rute Jemput-Tujuan gaya Gojek Aloha dengan konektor titik dan jarak
+class _BlokRuteAloha extends StatelessWidget {
+  const _BlokRuteAloha({
+    this.jemput,
+    this.tujuan,
+    this.jarakKm,
+  });
 
-  final String orderId;
+  final String? jemput;
+  final String? tujuan;
+  final double? jarakKm;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 148,
-      child: OutlinedButton(
-        onPressed: () => context.push(Rute.ajukanTawaran(orderId)),
-        style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-        child: const Text('AJUKAN TAWARAN'),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFF3F4F6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (jemput != null) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(top: 3),
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF00AA13),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFFC6F6D5), width: 2),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'TITIK JEMPUT',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF00880C),
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 1),
+                      Text(
+                        jemput!,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1F2937),
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                if (jarakKm != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F8EA),
+                      borderRadius: BorderRadius.circular(100),
+                      border: Border.all(color: const Color(0xFFC6F6D5)),
+                    ),
+                    child: Text(
+                      '${jarakKm!.toStringAsFixed(1)} km',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF00880C),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+          if (jemput != null && tujuan != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 6),
+              child: Container(
+                width: 2,
+                height: 16,
+                margin: const EdgeInsets.symmetric(vertical: 2),
+                color: const Color(0xFFCBD5E1),
+              ),
+            ),
+          if (tujuan != null) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(top: 3),
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEA580C),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFFFFEDD5), width: 2),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'TITIK TUJUAN',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFFEA580C),
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 1),
+                      Text(
+                        tujuan!,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1F2937),
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
       ),
     );
   }
 }
 
-/// Satu-satunya tombol berhuruf besar di aplikasi ini.
-///
-/// Huruf besarnya dibelanjakan di sini karena tindakan ini yang paling tidak
-/// bisa ditarik kembali: menekannya berarti menjanjikan waktu ke orang lain,
-/// dan begitu tertekan, ordernya berhenti disiarkan ke runner lain.
-///
-/// Bayangannya tidak ditulis di sini. Tema sudah memberi setiap [FilledButton]
-/// bayangan yang disemir maroonnya sendiri lewat `elevation`, dan menambahkan
-/// satu lagi di sini menghasilkan dua bayangan bertumpuk: yang terlihat bukan
-/// tombol yang lebih penting, melainkan tombol yang tepinya kotor.
-class _TombolTerima extends StatelessWidget {
-  const _TombolTerima({required this.sedangDiproses, required this.onTerima});
+/// Tombol TERIMA ORDER berwarna Hijau Gojek Aloha yang empuk dan jelas
+class _TombolTerimaAloha extends StatelessWidget {
+  const _TombolTerimaAloha({
+    required this.sedangDiproses,
+    required this.onTerima,
+  });
 
   final bool sedangDiproses;
   final VoidCallback onTerima;
@@ -209,51 +487,118 @@ class _TombolTerima extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 148,
-      child: FilledButton(
+      height: 46,
+      child: ElevatedButton(
         onPressed: sedangDiproses ? null : onTerima,
-        style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF00AA13),
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: const Color(0xFF86EFAC),
+          disabledForegroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
         child: sedangDiproses
             ? const SizedBox(
                 height: 18,
                 width: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
               )
-            : const Text('TERIMA'),
+            : const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.bolt_rounded, size: 18, color: Colors.white),
+                  SizedBox(width: 6),
+                  Text(
+                    'TERIMA',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.4,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }
 }
 
-/// Penanda order yang butuh lebih dari satu runner (bagian 5).
-///
-/// Wadahnya hijau, bukan maroon. Sejak maroon jadi warna sekunder,
-/// `secondaryContainer` dan `errorContainer` sama-sama merah muda dan tidak
-/// terbedakan pada pil selebar sebelas piksel; merah di sistem ini harus tetap
-/// berarti satu hal saja, yaitu ada yang harus dibayar. Berapa orang yang sudah
-/// bergabung adalah keadaan, bukan tagihan dan bukan tombol, jadi tempatnya di
-/// suara hijau (aturan Status Collision di DESIGN.md).
-class _LencanaKuota extends StatelessWidget {
-  const _LencanaKuota({required this.order});
+/// Tombol Ajukan Tawaran untuk pesanan Jalur B
+class _TombolTawarAloha extends StatelessWidget {
+  const _TombolTawarAloha({required this.orderId});
+
+  final String orderId;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 46,
+      child: OutlinedButton.icon(
+        onPressed: () => context.push(Rute.ajukanTawaran(orderId)),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFF00880C),
+          side: const BorderSide(color: Color(0xFF00AA13), width: 1.5),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        icon: const Icon(Icons.gavel_rounded, size: 16),
+        label: const Text(
+          'TAWAR',
+          style: TextStyle(
+            fontSize: 13.5,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.3,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Lencana kuota tim pelaksana
+class _LencanaKuotaAloha extends StatelessWidget {
+  const _LencanaKuotaAloha({required this.order});
 
   final Order order;
 
   @override
   Widget build(BuildContext context) {
-    final skema = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: skema.primaryContainer,
-        borderRadius: BorderRadius.circular(AppTheme.radiusPil),
+        color: const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(100),
+        border: Border.all(color: const Color(0xFFBFDBFE)),
       ),
-      child: Text(
-        'Butuh ${order.jumlahRunnerDibutuhkan} orang · '
-        '${order.runnerIds.length} sudah gabung',
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: skema.onPrimaryContainer,
-          fontWeight: FontWeight.w600,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.people_outline_rounded,
+            size: 13,
+            color: Color(0xFF2563EB),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'Butuh ${order.jumlahRunnerDibutuhkan} orang • '
+            '${order.runnerIds.length} bergabung',
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF1E40AF),
+            ),
+          ),
+        ],
       ),
     );
   }
