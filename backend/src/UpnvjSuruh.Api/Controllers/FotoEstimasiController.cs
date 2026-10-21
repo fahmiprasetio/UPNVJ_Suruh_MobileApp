@@ -28,7 +28,7 @@ public class FotoEstimasiController(AppDbContext db, PenyimpanFoto penyimpan) : 
         if (order is null) return NotFound();
 
         if (order.ServiceType is not (ServiceType.BersihKos or ServiceType.BersihKamarMandi) ||
-            order.Status != OrderStatus.MenungguPembayaran)
+            order.Status is not (OrderStatus.Permintaan or OrderStatus.MenungguPembayaran))
         {
             return Conflict(new ProblemDetails
             {

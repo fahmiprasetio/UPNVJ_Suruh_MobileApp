@@ -1,6 +1,9 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/api/galat_api.dart';
 import '../../../core/api/idempotency_key.dart';
@@ -50,6 +53,13 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
 
   int _jumlahRunner = 1;
   bool _sedangMengirim = false;
+  Uint8List? _foto;
+  String? _namaFoto;
+  bool _sedangMemilihFoto = false;
+
+  bool get _isKebersihan =>
+      widget.serviceType == ServiceType.bersihKos ||
+      widget.serviceType == ServiceType.bersihKamarMandi;
 
   /// Jadwal diisi di muka dengan besok pagi, bukan dibiarkan kosong.
   ///
@@ -155,7 +165,15 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
 
             const SizedBox(height: 14),
 
-            // 4. Kartu Tawaran Harga Awal
+            // 4. Kartu Foto Kondisi
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _buildFotoKondisiCard(),
+            ),
+
+            const SizedBox(height: 14),
+
+            // 5. Kartu Tawaran Harga Awal
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: _buildTawaranHargaCard(),
@@ -361,6 +379,175 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
         ],
       ),
     );
+  }
+
+  /// Kartu Foto Kondisi untuk pertimbangan penawaran harga runner
+  Widget _buildFotoKondisiCard() {
+    final judulFoto = widget.serviceType == ServiceType.bersihKamarMandi
+        ? 'FOTO KONDISI KAMAR MANDI'
+        : widget.serviceType == ServiceType.bersihKos
+            ? 'FOTO KONDISI KOS'
+            : 'FOTO PENDUKUNG (OPSIONAL)';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: _isKebersihan && _foto == null
+              ? const Color(0xFFE2E8E2)
+              : const Color(0xFFEDF2ED),
+          width: 1.2,
+        ),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F5E9),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.camera_alt_outlined,
+                  color: Color(0xFF00AA13),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      judulFoto,
+                      style: const TextStyle(
+                        color: Color(0xFF00AA13),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Foto kondisi agar runner dapat memperkirakan beban kerja & harga',
+                      style: TextStyle(
+                        color: Color(0xFF6B7A6E),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          if (_foto != null) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: Image.memory(
+                _foto!,
+                height: 180,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _sedangMemilihFoto || _sedangMengirim ? null : _pilihFoto,
+                  icon: Icon(
+                    _foto == null
+                        ? Icons.add_a_photo_outlined
+                        : Icons.refresh_rounded,
+                    size: 18,
+                  ),
+                  label: Text(
+                    _foto == null ? 'Pilih Foto Kondisi' : 'Ganti Foto',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF00AA13),
+                    side: const BorderSide(color: Color(0xFF00AA13), width: 1.2),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    minimumSize: const Size.fromHeight(44),
+                  ),
+                ),
+              ),
+              if (_foto != null) ...[
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: _sedangMemilihFoto || _sedangMengirim
+                      ? null
+                      : () => setState(() {
+                            _foto = null;
+                            _namaFoto = null;
+                          }),
+                  icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                  tooltip: 'Hapus Foto',
+                ),
+              ],
+            ],
+          ),
+          if (_foto == null && _isKebersihan)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text(
+                'Wajib melampirkan foto kondisi untuk layanan ini.',
+                style: TextStyle(
+                  color: Color(0xFFD32F2F),
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pilihFoto() async {
+    setState(() => _sedangMemilihFoto = true);
+    try {
+      final pilihan = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1600,
+        imageQuality: 85,
+      );
+      if (pilihan == null || !mounted) return;
+      final isi = await pilihan.readAsBytes();
+      if (!mounted) return;
+      setState(() {
+        _foto = isi;
+        _namaFoto = pilihan.name;
+      });
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Foto gagal dibuka. Coba foto lain.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _sedangMemilihFoto = false);
+    }
   }
 
   /// Kartu Tawaran Harga Awal
@@ -664,6 +851,19 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
   Future<void> _kirimPermintaan() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_isKebersihan && _foto == null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Pilih foto kondisi terlebih dahulu agar runner dapat melihatnya.',
+            ),
+          ),
+        );
+      return;
+    }
+
     setState(() => _sedangMengirim = true);
 
     final Order order;
@@ -679,6 +879,14 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
             hargaUsulan: int.parse(_hargaController.text.trim()),
             idempotencyKey: _idempotencyKey,
           );
+
+      if (_foto != null && _namaFoto != null) {
+        await ref.read(fotoBuktiRepositoryProvider).unggahFotoEstimasi(
+          orderId: order.id,
+          namaBerkas: _namaFoto!,
+          isi: _foto!,
+        );
+      }
     } catch (galat) {
       if (!mounted) return;
       setState(() => _sedangMengirim = false);
@@ -689,7 +897,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
             content: Text(
               galat is GalatApi
                   ? galat.pesan
-                  : 'Permintaan gagal dikirim. Terjadi kendala sambungan atau server.',
+                  : 'Permintaan atau foto gagal dikirim. Terjadi kendala sambungan atau server.',
             ),
           ),
         );
