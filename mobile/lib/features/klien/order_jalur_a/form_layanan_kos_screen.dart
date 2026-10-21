@@ -13,7 +13,6 @@ import '../../../core/format/jarak.dart';
 import '../../../core/peta/jarak_rute.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../core/router/app_router.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/pesan_kosong.dart';
 import '../../../domain/enums.dart';
 import '../../../domain/models/order.dart';
@@ -129,7 +128,7 @@ class _FormLayananKosScreenState
   Widget build(BuildContext context) {
     final tarifAsync = ref.watch(tarifProvider);
     return Scaffold(
-      appBar: AppBar(title: Text(serviceInfoOf(widget.serviceType).nama)),
+      backgroundColor: const Color(0xFFF7F9F7),
       body: tarifAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (galat, _) => PesanKosong(
@@ -171,206 +170,849 @@ class _FormLayananKosScreenState
     );
   }
 
-  Widget _isi(Tarif tarif) {
-    final hasil = _hasilTarif(tarif);
-    return SafeArea(
-      child: Form(
-        key: _formKey,
-        onChanged: () => setState(() {}),
-        child: ListView(
-          padding: const EdgeInsets.all(AppTheme.spasiSedang),
-          children: [
-            if (_pindahan) ..._formPindahan(tarif) else ..._formKebersihan(),
-            const SizedBox(height: AppTheme.spasiBesar),
-            if (hasil != null) RingkasanHarga(hasil: hasil),
-            const SizedBox(height: 80),
-          ],
-        ),
+  /// Header hijau Gojek Aloha yang ringkas & elegan
+  Widget _buildGojekHeader(BuildContext context, String judul, String nama) {
+    return Container(
+      decoration: const BoxDecoration(color: Color(0xFF00AA13)),
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 8,
+        left: 16,
+        right: 16,
+        bottom: 14,
+      ),
+      child: Row(
+        children: [
+          InkWell(
+            onTap: () => Navigator.of(context).maybePop(),
+            borderRadius: BorderRadius.circular(999),
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.18),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  judul,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  _pindahan
+                      ? 'Bantu angkut & pindahan praktis, $nama'
+                      : 'Layanan kebersihan kos & kamar, $nama',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  List<Widget> _formPindahan(Tarif tarif) => [
-    _kolomLokasi(
-      controller: _asalController,
-      label: 'Lokasi asal pindahan',
-      ikon: Icons.trip_origin,
-      untukAsal: true,
-    ),
-    const SizedBox(height: AppTheme.spasiSedang),
-    _kolomLokasi(
-      controller: _tujuanController,
-      label: 'Lokasi tujuan pindahan',
-      ikon: Icons.location_on_outlined,
-      untukAsal: false,
-    ),
-    const SizedBox(height: AppTheme.spasiKecil),
-    if (_sedangHitungRute)
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(
-          children: [
-            const SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(strokeWidth: 2),
+  Widget _isi(Tarif tarif) {
+    final hasil = _hasilTarif(tarif);
+    final user = ref.watch(authRepositoryProvider).userAktif;
+    final namaPanggilan = user?.nama.split(' ').first ?? 'Kak';
+    final jarak = bacaJarak(_jarakController.text);
+    final melebihiBatas = _pindahan &&
+        jarak != null &&
+        jarak > tarif.anjemJarakMaksimalKm;
+
+    return Form(
+      key: _formKey,
+      onChanged: () => setState(() {}),
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          // 1. Header Gojek Aloha
+          _buildGojekHeader(
+            context,
+            serviceInfoOf(widget.serviceType).nama,
+            namaPanggilan,
+          ),
+
+          const SizedBox(height: 14),
+
+          // 2. Konten Form Sesuai Jenis Layanan
+          if (_pindahan) ...[
+            // Kartu Rute Terhubung Pindahan
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _buildConnectedRouteCardPindahan(tarif, melebihiBatas),
             ),
-            const SizedBox(width: 8),
-            Text(
-              'Menghitung rute perjalanan...',
-              style: Theme.of(context).textTheme.bodySmall,
+            const SizedBox(height: 14),
+            // Kartu Opsi Runner & Kendaraan
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _buildOpsiPindahanCard(),
+            ),
+            const SizedBox(height: 14),
+            // Kartu Catatan Tambahan
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _buildCatatanCard('CATATAN TAMBAHAN (OPSIONAL)'),
+            ),
+          ] else ...[
+            // Kartu Alamat Kos
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _buildLokasiKosCard(),
+            ),
+            const SizedBox(height: 14),
+            // Kartu Catatan Kondisi
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _buildCatatanCard('CATATAN KONDISI (OPSIONAL)'),
+            ),
+            const SizedBox(height: 14),
+            // Kartu Foto Kondisi
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _buildFotoKondisiCard(),
             ),
           ],
-        ),
-      )
-    else if (_jarakController.text.isNotEmpty)
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Row(
-          children: [
-            Icon(
-              Icons.route_outlined,
-              size: 16,
-              color: Theme.of(context).colorScheme.primary,
+
+          const SizedBox(height: 14),
+
+          // 3. Ringkasan Tarif / Peringatan Batas Jarak
+          if (melebihiBatas)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFEBEE),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFFFCDD2)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.warning_amber_rounded,
+                      color: Color(0xFFD32F2F),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Jarak melebihi batas layanan (${tarif.anjemJarakMaksimalKm.round()} km). Gunakan Jalur B untuk jarak jauh.',
+                        style: const TextStyle(
+                          color: Color(0xFFC62828),
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else if (hasil != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: RingkasanHarga(hasil: hasil),
             ),
-            const SizedBox(width: 6),
-            Text(
-              'Jarak rute: ${_jarakController.text} km',
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.primary,
+
+          const SizedBox(height: 28),
+        ],
+      ),
+    );
+  }
+
+  /// Kartu Rute Terhubung Pindahan Kos (Asal & Tujuan)
+  Widget _buildConnectedRouteCardPindahan(Tarif tarif, bool melebihiBatas) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: const Color(0xFFEDF2ED), width: 1.2),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Titik Asal
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: const Color(0xFF00AA13),
+                    width: 2.5,
+                  ),
+                ),
+                child: Center(
+                  child: Container(
+                    width: 7,
+                    height: 7,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF00AA13),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'LOKASI ASAL PINDAHAN',
+                      style: TextStyle(
+                        color: Color(0xFF00AA13),
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    TextFormField(
+                      controller: _asalController,
+                      maxLength: BatasMasukan.alamat,
+                      textCapitalization: TextCapitalization.sentences,
+                      textInputAction: TextInputAction.next,
+                      style: const TextStyle(
+                        color: Color(0xFF1E2124),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      decoration: const InputDecoration(
+                        counterText: '',
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(vertical: 4),
+                        border: InputBorder.none,
+                        hintText: 'Lokasi asal kos/kontrakan',
+                        hintStyle: TextStyle(
+                          color: Color(0xFF9EA8A0),
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                      validator: _validasiAlamat,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              InkWell(
+                onTap: () => _pilihLokasi(
+                  _asalController,
+                  'Lokasi asal pindahan',
+                  true,
+                ),
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF4F7F4),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.map_outlined,
+                    color: Color(0xFF00AA13),
+                    size: 20,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // Garis Penghubung Vertikal
+          Padding(
+            padding: const EdgeInsets.only(left: 10),
+            child: SizedBox(
+              height: 18,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: List.generate(
+                  3,
+                  (index) => Container(
+                    width: 2,
+                    height: 2.5,
+                    color: const Color(0xFFBCC9BD),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Titik Tujuan
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: const Color(0xFFFF5722),
+                    width: 2.5,
+                  ),
+                ),
+                child: Center(
+                  child: Container(
+                    width: 7,
+                    height: 7,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFF5722),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'LOKASI TUJUAN PINDAHAN',
+                      style: TextStyle(
+                        color: Color(0xFFFF5722),
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    TextFormField(
+                      controller: _tujuanController,
+                      maxLength: BatasMasukan.alamat,
+                      textCapitalization: TextCapitalization.sentences,
+                      textInputAction: TextInputAction.done,
+                      style: const TextStyle(
+                        color: Color(0xFF1E2124),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      decoration: const InputDecoration(
+                        counterText: '',
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(vertical: 4),
+                        border: InputBorder.none,
+                        hintText: 'Lokasi tujuan pindahan',
+                        hintStyle: TextStyle(
+                          color: Color(0xFF9EA8A0),
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                      validator: _validasiAlamat,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              InkWell(
+                onTap: () => _pilihLokasi(
+                  _tujuanController,
+                  'Lokasi tujuan pindahan',
+                  false,
+                ),
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF3E0),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.map_outlined,
+                    color: Color(0xFFFF5722),
+                    size: 20,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // Jarak & Status Rute
+          if (_sedangHitungRute) ...[
+            const SizedBox(height: 12),
+            const Row(
+              children: [
+                SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Color(0xFF00AA13),
+                  ),
+                ),
+                SizedBox(width: 8),
+                Text(
+                  'Menghitung rute...',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF6B7A6E)),
+                ),
+              ],
+            ),
+          ] else if (_jarakController.text.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: melebihiBatas
+                    ? const Color(0xFFFFEBEE)
+                    : const Color(0xFFE8F5E9),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.route_outlined,
+                    size: 15,
+                    color: melebihiBatas
+                        ? const Color(0xFFD32F2F)
+                        : const Color(0xFF00AA13),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Jarak: ${_jarakController.text} km',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: melebihiBatas
+                          ? const Color(0xFFD32F2F)
+                          : const Color(0xFF00AA13),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
-        ),
+        ],
       ),
-    const SizedBox(height: AppTheme.spasiBesar),
-    Text('Butuh berapa runner?', style: Theme.of(context).textTheme.titleSmall),
-    const SizedBox(height: AppTheme.spasiKecil),
-    SegmentedButton<int>(
-      segments: [
-        for (var nilai = 1; nilai <= 5; nilai++)
-          ButtonSegment(value: nilai, label: Text('$nilai')),
-      ],
-      selected: {_jumlahRunner},
-      onSelectionChanged: _sedangMengirim
-          ? null
-          : (nilai) => setState(() => _jumlahRunner = nilai.single),
-    ),
-    const SizedBox(height: AppTheme.spasiBesar),
-    Text(
-      'Kendaraan yang dibawa runner',
-      style: Theme.of(context).textTheme.titleSmall,
-    ),
-    const SizedBox(height: 4),
-    Text(
-      'Runner menyediakan kendaraan yang kamu pilih.',
-      style: Theme.of(context).textTheme.bodySmall,
-    ),
-    const SizedBox(height: AppTheme.spasiKecil),
-    DropdownButtonFormField<MovingVehicleType>(
-      initialValue: _jenisKendaraan,
-      decoration: const InputDecoration(prefixIcon: Icon(Icons.local_shipping_outlined)),
-      items: [
-        for (final kendaraan in MovingVehicleType.values)
-          DropdownMenuItem(value: kendaraan, child: Text(kendaraan.label)),
-      ],
-      onChanged: _sedangMengirim
-          ? null
-          : (nilai) {
-              if (nilai != null) setState(() => _jenisKendaraan = nilai);
-            },
-    ),
-    const SizedBox(height: AppTheme.spasiSedang),
-    _kolomCatatan('Catatan tambahan (opsional)'),
-  ];
+    );
+  }
 
-  List<Widget> _formKebersihan() => [
-    TextFormField(
-      controller: _alamatController,
-      maxLength: BatasMasukan.alamat,
-      maxLines: 2,
-      decoration: const InputDecoration(
-        counterText: '',
-        labelText: 'Alamat kos',
-        hintText: 'Alamat kos lengkap (kamar, nomor, patokan)',
-        prefixIcon: Icon(Icons.place_outlined),
+  /// Kartu Opsi Pindahan (Jumlah Runner & Kendaraan)
+  Widget _buildOpsiPindahanCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: const Color(0xFFEDF2ED), width: 1.2),
       ),
-      validator: _validasiAlamat,
-    ),
-    const SizedBox(height: AppTheme.spasiSedang),
-    _kolomCatatan('Catatan kondisi (opsional)'),
-    const SizedBox(height: AppTheme.spasiBesar),
-    Text('Foto kondisi', style: Theme.of(context).textTheme.titleSmall),
-    const SizedBox(height: 4),
-    Text(
-      'Foto wajib agar runner dapat memperkirakan usaha pembersihan sebelum menerima order.',
-      style: Theme.of(context).textTheme.bodySmall,
-    ),
-    const SizedBox(height: AppTheme.spasiKecil),
-    if (_foto != null)
-      ClipRRect(
-        borderRadius: BorderRadius.circular(AppTheme.radiusKartu),
-        child: Image.memory(_foto!, height: 180, fit: BoxFit.cover),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F5E9),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.people_alt_outlined,
+                  color: Color(0xFF00AA13),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'JUMLAH RUNNER',
+                      style: TextStyle(
+                        color: Color(0xFF00AA13),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Pilih berapa orang yang dibutuhkan',
+                      style: TextStyle(
+                        color: Color(0xFF6B7A6E),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<int>(
+              segments: [
+                for (var nilai = 1; nilai <= 5; nilai++)
+                  ButtonSegment(value: nilai, label: Text('$nilai Orang')),
+              ],
+              selected: {_jumlahRunner},
+              onSelectionChanged: _sedangMengirim
+                  ? null
+                  : (nilai) => setState(() => _jumlahRunner = nilai.single),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Divider(color: Color(0xFFEDF2ED), height: 1),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F5E9),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.local_shipping_outlined,
+                  color: Color(0xFF00AA13),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'KENDARAAN RUNNER',
+                      style: TextStyle(
+                        color: Color(0xFF00AA13),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Runner menyediakan armada pilihanmu',
+                      style: TextStyle(
+                        color: Color(0xFF6B7A6E),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<MovingVehicleType>(
+            initialValue: _jenisKendaraan,
+            decoration: const InputDecoration(
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            ),
+            items: [
+              for (final kendaraan in MovingVehicleType.values)
+                DropdownMenuItem(value: kendaraan, child: Text(kendaraan.label)),
+            ],
+            onChanged: _sedangMengirim
+                ? null
+                : (nilai) {
+                    if (nilai != null) setState(() => _jenisKendaraan = nilai);
+                  },
+          ),
+        ],
       ),
-    if (_foto != null) const SizedBox(height: AppTheme.spasiKecil),
-    OutlinedButton.icon(
-      onPressed: _sedangMemilihFoto || _sedangMengirim ? null : _pilihFoto,
-      icon: const Icon(Icons.add_a_photo_outlined),
-      label: Text(_foto == null ? 'Pilih Foto Kondisi' : 'Ganti Foto'),
-    ),
-    if (_foto == null)
-      Padding(
-        padding: const EdgeInsets.only(top: 6),
-        child: Text(
-          'Foto kondisi belum dipilih.',
-          style: TextStyle(color: Theme.of(context).colorScheme.error),
-        ),
-      ),
-  ];
+    );
+  }
 
-  Widget _kolomCatatan(String label) => TextFormField(
-    controller: _catatanController,
-    maxLength: BatasMasukan.deskripsi,
-    maxLines: 3,
-    minLines: 2,
-    textCapitalization: TextCapitalization.sentences,
-    decoration: InputDecoration(
-      counterText: '',
-      labelText: label,
-      hintText: 'Contoh: Lantai 2, kamar mandi di dalam...',
-      prefixIcon: const Icon(Icons.notes_outlined),
-    ),
-  );
-
-  Widget _kolomLokasi({
-    required TextEditingController controller,
-    required String label,
-    required IconData ikon,
-    required bool untukAsal,
-  }) => TextFormField(
-    controller: controller,
-    maxLength: BatasMasukan.alamat,
-    maxLines: 2,
-    decoration: InputDecoration(
-      counterText: '',
-      labelText: label,
-      hintText: untukAsal
-          ? 'Lokasi asal kos/kontrakan'
-          : 'Lokasi tujuan pindahan',
-      prefixIcon: Icon(ikon),
-      suffixIcon: Padding(
-        padding: const EdgeInsets.only(right: 6),
-        child: IconButton(
-          tooltip: 'Pilih di peta',
-          icon: const Icon(Icons.map_outlined),
-          onPressed: () => _pilihLokasi(controller, label, untukAsal),
-        ),
+  /// Kartu Lokasi Kos (Bersih-Bersih)
+  Widget _buildLokasiKosCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: const Color(0xFFEDF2ED), width: 1.2),
       ),
-    ),
-    validator: _validasiAlamat,
-  );
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: const Color(0xFF00AA13),
+                    width: 2.5,
+                  ),
+                ),
+                child: Center(
+                  child: Container(
+                    width: 7,
+                    height: 7,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF00AA13),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'LOKASI KOS',
+                style: TextStyle(
+                  color: Color(0xFF00AA13),
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.6,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _alamatController,
+            maxLength: BatasMasukan.alamat,
+            maxLines: 2,
+            minLines: 1,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1E2124),
+            ),
+            decoration: const InputDecoration(
+              counterText: '',
+              hintText: 'Alamat kos lengkap (kamar, nomor, patokan)',
+            ),
+            validator: _validasiAlamat,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Kartu Catatan Tambahan / Kondisi
+  Widget _buildCatatanCard(String judul) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: const Color(0xFFEDF2ED), width: 1.2),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF3E0),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.notes_rounded,
+                  color: Color(0xFFFF9800),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      judul,
+                      style: const TextStyle(
+                        color: Color(0xFFFF9800),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Tulis detail yang perlu diperhatikan runner',
+                      style: TextStyle(
+                        color: Color(0xFF6B7A6E),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _catatanController,
+            maxLength: BatasMasukan.deskripsi,
+            maxLines: 3,
+            minLines: 2,
+            textCapitalization: TextCapitalization.sentences,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1E2124),
+            ),
+            decoration: const InputDecoration(
+              counterText: '',
+              hintText: 'Contoh: Lantai 2, banyak barang/perlu sikat...',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Kartu Foto Kondisi (Wajib untuk Bersih Kos / Kamar Mandi)
+  Widget _buildFotoKondisiCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: const Color(0xFFEDF2ED), width: 1.2),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F5E9),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.camera_alt_outlined,
+                  color: Color(0xFF00AA13),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'FOTO KONDISI KOS',
+                      style: TextStyle(
+                        color: Color(0xFF00AA13),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Foto wajib agar runner dapat memperkirakan kerjaan',
+                      style: TextStyle(
+                        color: Color(0xFF6B7A6E),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (_foto != null) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.memory(_foto!, height: 180, width: double.infinity, fit: BoxFit.cover),
+            ),
+            const SizedBox(height: 10),
+          ],
+          OutlinedButton.icon(
+            onPressed: _sedangMemilihFoto || _sedangMengirim ? null : _pilihFoto,
+            icon: const Icon(Icons.add_a_photo_outlined),
+            label: Text(_foto == null ? 'Pilih Foto Kondisi' : 'Ganti Foto'),
+          ),
+          if (_foto == null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                'Foto kondisi belum dipilih.',
+                style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
   static String? _validasiAlamat(String? nilai) {
     final bersih = nilai?.trim() ?? '';
