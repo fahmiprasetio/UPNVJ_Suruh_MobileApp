@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json;
 
 namespace UpnvjSuruh.Api.Auth;
 
@@ -24,14 +25,10 @@ public class PengirimOtpWhatsappTwilio(
     {
         var accountSid = konfigurasi["Whatsapp:Twilio:AccountSid"];
         var nomorPengirim = konfigurasi["Whatsapp:Twilio:NomorPengirim"];
+        var contentSidSandbox = konfigurasi["Whatsapp:Twilio:SandboxContentSid"];
 
         var isi = new FormUrlEncodedContent(
-            new Dictionary<string, string>
-            {
-                ["From"] = $"whatsapp:{nomorPengirim}",
-                ["To"] = $"whatsapp:+{PengirimOtpWhatsapp.NormalisasiNomorWhatsapp(noHp)}",
-                ["Body"] = $"Kode masuk UPNVJ Suruh kamu: {kode}. Jangan berikan kode ini ke siapa pun.",
-            }
+            BuatParameterPesan(nomorPengirim, noHp, kode, contentSidSandbox)
         );
 
         var jawaban = await http.PostAsync(
@@ -66,5 +63,38 @@ public class PengirimOtpWhatsappTwilio(
     {
         var gabungan = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{accountSid}:{authToken}"));
         return new AuthenticationHeaderValue("Basic", gabungan);
+    }
+
+    /// <summary>
+    /// Sandbox hanya mengizinkan pesan bebas selama 24 jam setelah pengguna menghubunginya.
+    /// Content SID template "Verification Codes" membuat OTP tetap dapat dikirim setelah
+    /// jendela itu; SID-nya tersedia di Twilio Console setelah sandbox diaktifkan.
+    /// </summary>
+    public static Dictionary<string, string> BuatParameterPesan(
+        string? nomorPengirim,
+        string noHp,
+        string kode,
+        string? contentSidSandbox
+    )
+    {
+        var parameter = new Dictionary<string, string>
+        {
+            ["From"] = $"whatsapp:{nomorPengirim}",
+            ["To"] = $"whatsapp:+{PengirimOtpWhatsapp.NormalisasiNomorWhatsapp(noHp)}",
+        };
+
+        if (!string.IsNullOrWhiteSpace(contentSidSandbox))
+        {
+            parameter["ContentSid"] = contentSidSandbox;
+            parameter["ContentVariables"] = JsonSerializer.Serialize(
+                new Dictionary<string, string> { ["1"] = "UPNVJ Suruh", ["2"] = kode }
+            );
+        }
+        else
+        {
+            parameter["Body"] = $"Kode masuk UPNVJ Suruh kamu: {kode}. Jangan berikan kode ini ke siapa pun.";
+        }
+
+        return parameter;
     }
 }

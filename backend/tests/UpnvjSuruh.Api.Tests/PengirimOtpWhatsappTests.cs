@@ -69,4 +69,21 @@ public class PengirimOtpWhatsappTests
         Assert.Contains("Twilio 21211:", hasil, StringComparison.Ordinal);
         Assert.Contains("is not a valid phone number", hasil, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void ParameterSandbox_DenganTemplateMemakaiDuaVariabelVerifikasi()
+    {
+        var hasil = PengirimOtpWhatsappTwilio.BuatParameterPesan(
+            "+14155238886",
+            "081234567890",
+            "123456",
+            "HX0123456789abcdef0123456789abcdef"
+        );
+
+        Assert.Equal("whatsapp:+14155238886", hasil["From"]);
+        Assert.Equal("whatsapp:+6281234567890", hasil["To"]);
+        Assert.Equal("HX0123456789abcdef0123456789abcdef", hasil["ContentSid"]);
+        Assert.Equal("{\"1\":\"UPNVJ Suruh\",\"2\":\"123456\"}", hasil["ContentVariables"]);
+        Assert.DoesNotContain("Body", hasil.Keys);
+    }
 }
