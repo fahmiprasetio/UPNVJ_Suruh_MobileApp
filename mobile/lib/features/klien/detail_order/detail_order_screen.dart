@@ -81,7 +81,8 @@ class DetailOrderScreen extends ConsumerWidget {
     // dan tindakan sesuai status sebenarnya.
     final isLiveTracking =
         order != null &&
-        order.serviceType == ServiceType.anterJemput &&
+        (order.serviceType == ServiceType.anterJemput ||
+            order.serviceType == ServiceType.jastipMakanan) &&
         order.status == OrderStatus.dikerjakan &&
         order.runners.isNotEmpty &&
         order.latitudeJemput != null &&
@@ -562,7 +563,7 @@ class _LiveTrackingAlohaViewState
                       ),
                     ),
 
-                  // TITIK JEMPUT (KAMU DI SINI) MARKER
+                  // TITIK JEMPUT (KAMU DI SINI / WARUNG MAKAN) MARKER
                   Marker(
                     point: _posisiJemput,
                     width: 180,
@@ -575,7 +576,9 @@ class _LiveTrackingAlohaViewState
                           width: 38,
                           height: 38,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF00AA13),
+                            color: order.serviceType == ServiceType.jastipMakanan
+                                ? const Color(0xFFEA580C)
+                                : const Color(0xFF00AA13),
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 2.5),
                             boxShadow: const [
@@ -586,8 +589,10 @@ class _LiveTrackingAlohaViewState
                               ),
                             ],
                           ),
-                          child: const Icon(
-                            Icons.location_on_rounded,
+                          child: Icon(
+                            order.serviceType == ServiceType.jastipMakanan
+                                ? Icons.storefront_rounded
+                                : Icons.location_on_rounded,
                             color: Colors.white,
                             size: 22,
                           ),
@@ -610,7 +615,9 @@ class _LiveTrackingAlohaViewState
                             ],
                           ),
                           child: Text(
-                            'Kamu di sini ($namaJemput)',
+                            order.serviceType == ServiceType.jastipMakanan
+                                ? 'Warung ($namaJemput)'
+                                : 'Kamu di sini ($namaJemput)',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 10,
@@ -637,7 +644,9 @@ class _LiveTrackingAlohaViewState
                           width: 34,
                           height: 34,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFEA580C),
+                            color: order.serviceType == ServiceType.jastipMakanan
+                                ? const Color(0xFF00AA13)
+                                : const Color(0xFFEA580C),
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 2.5),
                             boxShadow: const [
@@ -648,8 +657,10 @@ class _LiveTrackingAlohaViewState
                               ),
                             ],
                           ),
-                          child: const Icon(
-                            Icons.flag_rounded,
+                          child: Icon(
+                            order.serviceType == ServiceType.jastipMakanan
+                                ? Icons.home_rounded
+                                : Icons.flag_rounded,
                             color: Colors.white,
                             size: 18,
                           ),
@@ -672,7 +683,9 @@ class _LiveTrackingAlohaViewState
                             ],
                           ),
                           child: Text(
-                            namaTujuan,
+                            order.serviceType == ServiceType.jastipMakanan
+                                ? 'Antar ke: $namaTujuan'
+                                : namaTujuan,
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 10,
@@ -775,19 +788,23 @@ class _LiveTrackingAlohaViewState
                         ),
                       ],
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          Icons.shield_outlined,
-                          color: Color(0xFF00AA13),
+                          order.serviceType == ServiceType.jastipMakanan
+                              ? Icons.delivery_dining_rounded
+                              : Icons.shield_outlined,
+                          color: const Color(0xFF00AA13),
                           size: 16,
                         ),
-                        SizedBox(width: 6),
+                        const SizedBox(width: 6),
                         Flexible(
                           child: Text(
-                            'Lokasi dibagikan hanya selama perjalanan aktif',
-                            style: TextStyle(
+                            order.serviceType == ServiceType.jastipMakanan
+                                ? 'Pelacakan Pengantaran Makanan Aktif'
+                                : 'Lokasi dibagikan hanya selama perjalanan aktif',
+                            style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                               color: Color(0xFF111827),
@@ -876,11 +893,15 @@ class _LiveTrackingAlohaViewState
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              order.status == OrderStatus.dikerjakan
-                                  ? 'Perjalanan sedang berlangsung'
-                                  : (order.status == OrderStatus.mencariRunner
-                                        ? 'Mencari Runner Kampus'
-                                        : 'Perjalanan ke Tujuan'),
+                              order.serviceType == ServiceType.jastipMakanan
+                                  ? (order.status == OrderStatus.dikerjakan
+                                      ? 'Makanan Sedang Dibelikan & Diantar'
+                                      : 'Mencari Runner Kampus')
+                                  : (order.status == OrderStatus.dikerjakan
+                                      ? 'Perjalanan sedang berlangsung'
+                                      : (order.status == OrderStatus.mencariRunner
+                                          ? 'Mencari Runner Kampus'
+                                          : 'Perjalanan ke Tujuan')),
                               style: const TextStyle(
                                 fontSize: 16.5,
                                 fontWeight: FontWeight.w800,
@@ -1180,6 +1201,12 @@ class _LiveTrackingAlohaViewState
                     const SizedBox(height: 14),
                   ],
 
+                  // PESANAN MAKANAN KHUSUS JASTIP MAKANAN
+                  if (order.serviceType == ServiceType.jastipMakanan) ...[
+                    _KartuPesananMakananAloha(order: order),
+                    const SizedBox(height: 14),
+                  ],
+
                   // D. RINCIAN PERJALANAN (TITIK JEMPUT & TUJUAN)
                   if (order.alamatJemput != null ||
                       order.alamatTujuan != null) ...[
@@ -1339,7 +1366,9 @@ class _IsiAloha extends ConsumerWidget {
 
     final namaLayananTampil = order.serviceType == ServiceType.anterJemput
         ? 'Campu • Anter Jemput'
-        : layanan.nama;
+        : (order.serviceType == ServiceType.jastipMakanan
+            ? 'GoFood • Jastip Makanan'
+            : layanan.nama);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
@@ -1422,6 +1451,12 @@ class _IsiAloha extends ConsumerWidget {
         if (order.status == OrderStatus.menungguPembayaran) ...[
           _HitungMundurDetailOrder(order: order),
           const SizedBox(height: 12),
+        ],
+
+        // PESANAN MAKANAN KHUSUS JASTIP MAKANAN
+        if (order.serviceType == ServiceType.jastipMakanan) ...[
+          _KartuPesananMakananAloha(order: order),
+          const SizedBox(height: 14),
         ],
 
         if (order.runners.isNotEmpty) ...[
@@ -1737,7 +1772,8 @@ class _TotalPembayaranCardState extends State<_TotalPembayaranCard> {
   @override
   Widget build(BuildContext context) {
     final order = widget.order;
-    final nominal = order.harga ?? order.hargaUsulan ?? 12000;
+    final isMakanan = order.serviceType == ServiceType.jastipMakanan;
+    final nominal = order.harga ?? order.hargaUsulan ?? (isMakanan ? 8000 : 12000);
 
     return Container(
       width: double.infinity,
@@ -1760,9 +1796,9 @@ class _TotalPembayaranCardState extends State<_TotalPembayaranCard> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Total Pembayaran',
-                style: TextStyle(
+              Text(
+                isMakanan ? 'Total Ongkos Jasa Titip' : 'Total Pembayaran',
+                style: const TextStyle(
                   fontSize: 12.5,
                   color: Color(0xFF6B7280),
                   fontWeight: FontWeight.w500,
@@ -1886,7 +1922,7 @@ class _TotalPembayaranCardState extends State<_TotalPembayaranCard> {
             const Divider(color: Color(0xFFF3F4F6), height: 1),
             const SizedBox(height: 10),
             _BarisRincianHarga(
-              label: 'Tarif Dasar Layanan',
+              label: isMakanan ? 'Tarif Dasar Jasa Titip' : 'Tarif Dasar Layanan',
               nilai: formatRupiah(nominal + 2000),
             ),
             const SizedBox(height: 6),
@@ -1902,6 +1938,38 @@ class _TotalPembayaranCardState extends State<_TotalPembayaranCard> {
               warnaNilai: Color(0xFF00AA13),
               tebalNilai: true,
             ),
+            if (isMakanan) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFBBF7D0)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 15,
+                      color: Color(0xFF16A34A),
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Belum termasuk harga makanan. Biaya makanan dibayarkan langsung ke runner saat pesanan diantar (cash / transfer).',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF15803D),
+                          fontWeight: FontWeight.w500,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ],
       ),
@@ -1956,6 +2024,7 @@ class _RincianPerjalananCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMakanan = order.serviceType == ServiceType.jastipMakanan;
     final jarakText = order.jarakKm != null
         ? '${order.jarakKm!.toStringAsFixed(1)} km'
         : 'Belum tersedia';
@@ -1966,14 +2035,14 @@ class _RincianPerjalananCard extends StatelessWidget {
     final namaJemput =
         order.alamatJemput != null && order.alamatJemput!.contains(',')
         ? order.alamatJemput!.split(',').first.trim()
-        : (order.alamatJemput ?? 'Titik jemput belum tersedia');
-    final detailJemput = order.alamatJemput ?? 'Alamat jemput belum tersedia';
+        : (order.alamatJemput ?? (isMakanan ? 'Lokasi warung belum tersedia' : 'Titik jemput belum tersedia'));
+    final detailJemput = order.alamatJemput ?? (isMakanan ? 'Lokasi warung belum tersedia' : 'Alamat jemput belum tersedia');
 
     final namaTujuan =
         order.alamatTujuan != null && order.alamatTujuan!.contains(',')
         ? order.alamatTujuan!.split(',').first.trim()
-        : (order.alamatTujuan ?? 'Titik tujuan belum tersedia');
-    final detailTujuan = order.alamatTujuan ?? 'Alamat tujuan belum tersedia';
+        : (order.alamatTujuan ?? (isMakanan ? 'Lokasi antar belum tersedia' : 'Titik tujuan belum tersedia'));
+    final detailTujuan = order.alamatTujuan ?? (isMakanan ? 'Lokasi antar belum tersedia' : 'Alamat tujuan belum tersedia');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1981,9 +2050,9 @@ class _RincianPerjalananCard extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Rincian Perjalanan',
-              style: TextStyle(
+            Text(
+              isMakanan ? 'Rute Pengantaran Makanan' : 'Rincian Perjalanan',
+              style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF111827),
@@ -2035,16 +2104,20 @@ class _RincianPerjalananCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // TITIK JEMPUT
+              // TITIK JEMPUT / WARUNG
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.only(top: 2),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
                     child: Icon(
-                      Icons.radio_button_checked_rounded,
+                      isMakanan
+                          ? Icons.storefront_rounded
+                          : Icons.radio_button_checked_rounded,
                       size: 16,
-                      color: Color(0xFF00AA13),
+                      color: isMakanan
+                          ? const Color(0xFFEA580C)
+                          : const Color(0xFF00AA13),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -2052,9 +2125,9 @@ class _RincianPerjalananCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Titik Jemput',
-                          style: TextStyle(
+                        Text(
+                          isMakanan ? 'Warung / Tempat Beli' : 'Titik Jemput',
+                          style: const TextStyle(
                             fontSize: 11,
                             color: Color(0xFF6B7280),
                             fontWeight: FontWeight.w500,
@@ -2077,7 +2150,8 @@ class _RincianPerjalananCard extends StatelessWidget {
                             color: Color(0xFF6B7280),
                           ),
                         ),
-                        if (order.deskripsi != null &&
+                        if (!isMakanan &&
+                            order.deskripsi != null &&
                             order.deskripsi!.isNotEmpty) ...[
                           const SizedBox(height: 6),
                           Container(
@@ -2136,12 +2210,16 @@ class _RincianPerjalananCard extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.only(top: 2),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
                     child: Icon(
-                      Icons.location_on_outlined,
+                      isMakanan
+                          ? Icons.location_on_rounded
+                          : Icons.location_on_outlined,
                       size: 16,
-                      color: Color(0xFFEA580C),
+                      color: isMakanan
+                          ? const Color(0xFF00AA13)
+                          : const Color(0xFFEA580C),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -2149,9 +2227,9 @@ class _RincianPerjalananCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Tujuan Antar',
-                          style: TextStyle(
+                        Text(
+                          isMakanan ? 'Lokasi Pengantaran Mahasiswa' : 'Tujuan Antar',
+                          style: const TextStyle(
                             fontSize: 11,
                             color: Color(0xFF6B7280),
                             fontWeight: FontWeight.w500,
@@ -2183,6 +2261,154 @@ class _RincianPerjalananCard extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Kartu Informasi Pesanan Makanan Khusus Jastip Makanan Aloha
+class _KartuPesananMakananAloha extends StatelessWidget {
+  const _KartuPesananMakananAloha({required this.order});
+
+  final Order order;
+
+  @override
+  Widget build(BuildContext context) {
+    final menu = order.deskripsi?.trim() ?? '';
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF7ED),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.restaurant_menu_rounded,
+                    color: Color(0xFFEA580C),
+                    size: 18,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'PESANAN MAKANAN / MINUMAN',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFFEA580C),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    SizedBox(height: 1),
+                    Text(
+                      'Detail menu yang dibeli oleh runner',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: Color(0xFF6B7280),
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 3.5,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF7ED),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: const Color(0xFFFFEDD5)),
+                ),
+                child: const Text(
+                  'GoFood Mahasiswa',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFC2410C),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF9FAFB),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+            ),
+            child: Text(
+              menu.isNotEmpty ? menu : 'Tidak ada catatan menu khusus.',
+              style: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1E2124),
+                height: 1.4,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0FDF4),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFBBF7D0)),
+            ),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.payments_outlined,
+                  size: 15,
+                  color: Color(0xFF16A34A),
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Biaya makanan dibayar langsung ke runner saat pesanan diantar (cash / transfer). Simpan struk fisik dari runner.',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF15803D),
+                      fontWeight: FontWeight.w500,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

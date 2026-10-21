@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/format/formatters.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../domain/enums.dart';
 import '../../../../domain/models/order.dart';
 import '../../../../core/providers/repository_providers.dart';
 
@@ -27,60 +28,133 @@ class KartuBuktiPekerjaan extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final teks = Theme.of(context).textTheme;
-    final skema = Theme.of(context).colorScheme;
     final fotoUrl = order.fotoBuktiUrl;
+    final isMakanan = order.serviceType == ServiceType.jastipMakanan;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spasiSedang),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (order.selesaiPada != null)
-              Text(
-                'Diselesaikan ${formatTanggalJam(order.selesaiPada!)}',
-                style: teks.bodySmall?.copyWith(
-                  color: skema.onSurfaceVariant,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F8EA),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.verified_rounded,
+                    color: Color(0xFF00AA13),
+                    size: 19,
+                  ),
                 ),
               ),
-            if (fotoUrl != null) ...[
-              const SizedBox(height: AppTheme.spasiKecil),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: bisaDigambar(fotoUrl)
-                    ? Image.network(
-                        fotoUrl,
-                        // Foto bukti dijaga token sejak ia berhenti dilayani sebagai
-                        // berkas statis. Tanpa header ini permintaannya dijawab 401,
-                        // dan yang terlihat pengguna cuma kotak gagal muat tanpa sebab.
-                        headers: ref.watch(klienApiProvider).headerOtorisasi,
-                        height: 200,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, galat, jejak) =>
-                            const _FotoBelumBisaDilihat(
-                              pesan: 'Foto bukti gagal dimuat.',
-                            ),
-                      )
-                    : const _FotoBelumBisaDilihat(
-                        pesan:
-                            'Foto bukti sudah dikirim runner, tapi belum bisa '
-                            'ditampilkan, penyimpanan foto belum terpasang.',
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isMakanan
+                          ? 'Bukti Pengantaran / Struk Makanan'
+                          : 'Bukti Serah Terima Tugas',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF111827),
                       ),
+                    ),
+                    if (order.selesaiPada != null)
+                      Text(
+                        'Selesai pada ${formatTanggalJam(order.selesaiPada!)} WIB',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ],
-            if (order.catatanSerahTerima != null) ...[
-              const SizedBox(height: AppTheme.spasiSedang),
-              Text(
-                'Catatan runner',
-                style: teks.bodySmall?.copyWith(color: skema.onSurfaceVariant),
-              ),
-              const SizedBox(height: 2),
-              Text(order.catatanSerahTerima!, style: teks.bodyMedium),
-            ],
+          ),
+          if (fotoUrl != null) ...[
+            const SizedBox(height: 14),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: bisaDigambar(fotoUrl)
+                  ? Image.network(
+                      fotoUrl,
+                      // Foto bukti dijaga token sejak ia berhenti dilayani sebagai
+                      // berkas statis. Tanpa header ini permintaannya dijawab 401.
+                      headers: ref.watch(klienApiProvider).headerOtorisasi,
+                      height: 200,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, galat, jejak) =>
+                          const _FotoBelumBisaDilihat(
+                            pesan: 'Foto bukti gagal dimuat.',
+                          ),
+                    )
+                  : const _FotoBelumBisaDilihat(
+                      pesan:
+                          'Foto bukti sudah dikirim runner, tapi belum bisa '
+                          'ditampilkan, penyimpanan foto belum terpasang.',
+                    ),
+            ),
           ],
-        ),
+          if (order.catatanSerahTerima != null &&
+              order.catatanSerahTerima!.trim().isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9FAFB),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Catatan Runner:',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF4B5563),
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    order.catatanSerahTerima!,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF1F2937),
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

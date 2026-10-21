@@ -56,12 +56,14 @@ class _TahapAloha extends StatelessWidget {
   final bool garisHijau;
 
   (IconData ikon, String judul, String keterangan) _infoTahap() {
+    final isMakanan = order.serviceType == ServiceType.jastipMakanan;
+    final isAnjem = order.serviceType == ServiceType.anterJemput;
     final tujuanSingkat = order.alamatTujuan != null &&
             order.alamatTujuan!.isNotEmpty
         ? (order.alamatTujuan!.length > 30
             ? '${order.alamatTujuan!.substring(0, 30)}...'
             : order.alamatTujuan!)
-        : 'tujuan pengantaran';
+        : (isMakanan ? 'lokasimu' : 'tujuan pengantaran');
 
     return switch (status) {
       OrderStatus.permintaan => (
@@ -72,26 +74,36 @@ class _TahapAloha extends StatelessWidget {
       OrderStatus.menungguPembayaran => (
         Icons.payment_rounded,
         status.label,
-        'Konfirmasi pembayaran untuk mengirim order ke runner',
+        isMakanan
+            ? 'Bayar ongkos titip untuk mulai menyiarkan order ke runner'
+            : 'Konfirmasi pembayaran untuk mengirim order ke runner',
       ),
       OrderStatus.mencariRunner => (
         Icons.person_search_rounded,
         status.label,
-        'Runner mahasiswa terdekat di area kampus siap ditugaskan',
+        isMakanan
+            ? 'Runner mahasiswa terdekat di area kampus siap membelikan makananmu'
+            : 'Runner mahasiswa terdekat di area kampus siap ditugaskan',
       ),
       OrderStatus.dikerjakan => (
-        order.serviceType == ServiceType.anterJemput
+        isAnjem
             ? Icons.two_wheeler_rounded
-            : Icons.work_outline_rounded,
+            : (isMakanan
+                ? Icons.delivery_dining_rounded
+                : Icons.work_outline_rounded),
         status.label,
-        order.serviceType == ServiceType.anterJemput
+        isAnjem
             ? 'Perjalanan dimulai setelah kamu dijemput'
-            : 'Runner sedang menyelesaikan pekerjaan pesananmu',
+            : (isMakanan
+                ? 'Runner sedang membelikan makanan di warung & mengantar ke lokasimu'
+                : 'Runner sedang menyelesaikan pekerjaan pesananmu'),
       ),
       OrderStatus.selesai => (
         Icons.check_circle_outline_rounded,
         status.label,
-        'Tiba dengan selamat di $tujuanSingkat',
+        isMakanan
+            ? 'Makanan telah diterima dengan selamat di $tujuanSingkat'
+            : 'Tiba dengan selamat di $tujuanSingkat',
       ),
       OrderStatus.batal => (
         Icons.cancel_outlined,

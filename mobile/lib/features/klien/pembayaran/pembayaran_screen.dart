@@ -1029,9 +1029,14 @@ class _DetailPesananAlohaCardState extends State<_DetailPesananAlohaCard> {
   @override
   Widget build(BuildContext context) {
     final order = widget.order;
+    final isMakanan = order?.serviceType == ServiceType.jastipMakanan;
     final info = order?.serviceType != null ? serviceInfoOf(order!.serviceType) : null;
-    final namaLayanan = info?.nama ?? 'Anter Jemput Kampus';
-    final ikon = info?.icon ?? Icons.two_wheeler_rounded;
+    final namaLayanan = isMakanan
+        ? 'GoFood • Jastip Makanan'
+        : (info?.nama ?? 'Anter Jemput Kampus');
+    final ikon = isMakanan
+        ? Icons.restaurant_menu_rounded
+        : (info?.icon ?? Icons.two_wheeler_rounded);
 
     final jarakText = order?.jarakKm != null
         ? '${order!.jarakKm!.toStringAsFixed(1)} km'
@@ -1136,18 +1141,71 @@ class _DetailPesananAlohaCardState extends State<_DetailPesananAlohaCard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // JIKA JASTIP MAKANAN: KARTU PESANAN MAKANAN
+                  if (isMakanan &&
+                      order?.deskripsi != null &&
+                      order!.deskripsi!.isNotEmpty) ...[
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 14),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF7ED),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFFFEDD5)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(
+                                Icons.restaurant_menu_rounded,
+                                size: 15,
+                                color: Color(0xFFEA580C),
+                              ),
+                              SizedBox(width: 6),
+                              Text(
+                                'Pesanan Makanan / Minuman:',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFFEA580C),
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            order.deskripsi!,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1F2937),
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
                   // Rute Jemput & Antar
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Column(
+                      Column(
                         children: [
                           Icon(
-                            Icons.radio_button_checked_rounded,
+                            isMakanan
+                                ? Icons.storefront_rounded
+                                : Icons.radio_button_checked_rounded,
                             size: 16,
-                            color: Color(0xFF00AA13),
+                            color: isMakanan
+                                ? const Color(0xFFEA580C)
+                                : const Color(0xFF00AA13),
                           ),
-                          SizedBox(
+                          const SizedBox(
                             height: 24,
                             child: VerticalDivider(
                               color: Color(0xFFD1D5DB),
@@ -1157,7 +1215,9 @@ class _DetailPesananAlohaCardState extends State<_DetailPesananAlohaCard> {
                           Icon(
                             Icons.location_on_rounded,
                             size: 16,
-                            color: Color(0xFFEF4444),
+                            color: isMakanan
+                                ? const Color(0xFF00AA13)
+                                : const Color(0xFFEF4444),
                           ),
                         ],
                       ),
@@ -1167,8 +1227,10 @@ class _DetailPesananAlohaCardState extends State<_DetailPesananAlohaCard> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              order?.alamatJemput ??
-                                  'Halte Busway Kampus UPNVJ Pondok Labu',
+                              isMakanan
+                                  ? 'Warung: ${order?.alamatJemput ?? 'Warung Makan'}'
+                                  : (order?.alamatJemput ??
+                                      'Halte Busway Kampus UPNVJ Pondok Labu'),
                               style: const TextStyle(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w600,
@@ -1179,8 +1241,10 @@ class _DetailPesananAlohaCardState extends State<_DetailPesananAlohaCard> {
                             ),
                             const SizedBox(height: 18),
                             Text(
-                              order?.alamatTujuan ??
-                                  'Gedung FISIP, Kampus UPNVJ Pondok Labu',
+                              isMakanan
+                                  ? 'Antar: ${order?.alamatTujuan ?? 'Lokasi Antar'}'
+                                  : (order?.alamatTujuan ??
+                                      'Gedung FISIP, Kampus UPNVJ Pondok Labu'),
                               style: const TextStyle(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w600,
@@ -1201,7 +1265,9 @@ class _DetailPesananAlohaCardState extends State<_DetailPesananAlohaCard> {
 
                   // Rincian Biaya
                   _BarisBiaya(
-                    label: 'Tarif Dasar Layanan',
+                    label: isMakanan
+                        ? 'Tarif Dasar Jasa Titip'
+                        : 'Tarif Dasar Layanan',
                     nilai: formatRupiah(widget.jumlah + 2000),
                   ),
                   const SizedBox(height: 8),
@@ -1221,13 +1287,44 @@ class _DetailPesananAlohaCardState extends State<_DetailPesananAlohaCard> {
                   const Divider(color: Color(0xFFF3F4F6), height: 1),
                   const SizedBox(height: 12),
                   _BarisBiaya(
-                    label: 'Total Pembayaran',
+                    label: isMakanan ? 'Total Ongkos Titip' : 'Total Pembayaran',
                     nilai: formatRupiah(widget.jumlah),
                     tebalLabel: true,
                     tebalNilai: true,
                     ukuranNilai: 15,
                     warnaNilai: const Color(0xFF00880C),
                   ),
+                  if (isMakanan) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0FDF4),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFBBF7D0)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline_rounded,
+                            size: 14,
+                            color: Color(0xFF16A34A),
+                          ),
+                          SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Harga makanan dibayar terpisah saat pesanan diserahkan runner.',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                color: Color(0xFF15803D),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
