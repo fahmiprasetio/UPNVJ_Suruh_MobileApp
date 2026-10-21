@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -61,7 +61,8 @@ describe('HalamanKelolaTarif', () => {
     const ambil = vi.fn().mockResolvedValue(jawaban(200, tarif({ anjemTarifDasar: 5000 })));
     pasang(ambil);
 
-    const kolom = await screen.findByLabelText('Tarif dasar (Rp)');
+    const kelompokAnjem = await screen.findByRole('group', { name: 'Anter Jemput' });
+    const kolom = within(kelompokAnjem).getByLabelText('Tarif dasar (Rp)');
     expect(kolom).toHaveValue(5000);
   });
 
@@ -71,12 +72,12 @@ describe('HalamanKelolaTarif', () => {
 
     expect(
       await screen.findByText(
-        'Cuma Jalur A: anter jemput, jastip makanan, jastip barang. Harga Jalur B lewat tawar-menawar langsung antara klien dan runner, tidak diatur dari sini.',
+        'Enam layanan utama memakai tarif Jalur A. Hanya Permintaan Lain yang memakai tawar-menawar Jalur B dan tidak diatur dari sini.',
       ),
     ).toBeInTheDocument();
   });
 
-  it('mengirim persis tujuh angka di form, termasuk yang baru diketik', async () => {
+  it('mengirim seluruh empat belas angka di form, termasuk yang baru diketik', async () => {
     const permintaan: { url: string; init?: RequestInit }[] = [];
     const ambil = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
       permintaan.push({ url, init });
@@ -90,7 +91,8 @@ describe('HalamanKelolaTarif', () => {
 
     pasang(ambil);
 
-    const kolomDasar = await screen.findByLabelText('Tarif dasar (Rp)');
+    const kelompokAnjem = await screen.findByRole('group', { name: 'Anter Jemput' });
+    const kolomDasar = within(kelompokAnjem).getByLabelText('Tarif dasar (Rp)');
     fireEvent.change(kolomDasar, { target: { value: '7000' } });
     fireEvent.click(screen.getByRole('button', { name: 'Simpan tarif' }));
 
@@ -110,6 +112,13 @@ describe('HalamanKelolaTarif', () => {
       jastipMakananFee: 8000,
       jastipBarangFee: 10000,
       jastipBarangTarifPerKm: 2000,
+      pindahKosTarifDasar: 25000,
+      pindahKosTarifPerKm: 3000,
+      pindahKosTambahanRunner: 20000,
+      pindahKosTambahanMobil: 25000,
+      pindahKosTambahanPickup: 40000,
+      bersihKosFee: 30000,
+      bersihKamarMandiFee: 20000,
     });
     // `diubahPada` tidak ikut terkirim: itu bukan sesuatu yang admin tentukan, server yang
     // mengisinya sendiri saat menyimpan.
@@ -147,7 +156,8 @@ describe('HalamanKelolaTarif', () => {
 
     pasang(ambil);
 
-    const kolomDasar = await screen.findByLabelText('Tarif dasar (Rp)');
+    const kelompokAnjem = await screen.findByRole('group', { name: 'Anter Jemput' });
+    const kolomDasar = within(kelompokAnjem).getByLabelText('Tarif dasar (Rp)');
     fireEvent.change(kolomDasar, { target: { value: '9999' } });
     fireEvent.click(screen.getByRole('button', { name: 'Simpan tarif' }));
 
