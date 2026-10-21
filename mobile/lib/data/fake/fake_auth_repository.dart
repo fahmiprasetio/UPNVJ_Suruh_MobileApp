@@ -57,9 +57,26 @@ class FakeAuthRepository implements AuthRepository {
   AppUser? get userAktif => _userAktif;
 
   @override
-  Stream<AppUser?> watchUserAktif() async* {
-    yield _userAktif;
-    yield* _controller.stream;
+  Stream<AppUser?> watchUserAktif() {
+    late StreamController<AppUser?> kendali;
+    StreamSubscription<AppUser?>? langganan;
+
+    kendali = StreamController<AppUser?>(
+      onListen: () {
+        kendali.add(_userAktif);
+        langganan = _controller.stream.listen(
+          (user) {
+            if (!kendali.isClosed) kendali.add(user);
+          },
+          onError: (Object e, StackTrace s) {
+            if (!kendali.isClosed) kendali.addError(e, s);
+          },
+        );
+      },
+      onCancel: () => langganan?.cancel(),
+    );
+
+    return kendali.stream;
   }
 
   @override

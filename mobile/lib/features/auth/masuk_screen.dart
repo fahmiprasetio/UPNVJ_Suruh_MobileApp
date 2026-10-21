@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/api/tindakan_terkelola.dart';
 import '../../core/config/batas_masukan.dart';
 import '../../core/format/validasi_kontak.dart';
 import '../../core/providers/repository_providers.dart';
+import '../../core/router/app_router.dart';
 
 /// Langkah autentikasi yang sedang aktif.
 enum _Langkah { nomor, daftar, kode, password }
@@ -76,6 +78,10 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
           kode: _kodeController.text.trim(),
         );
     ref.read(sesiDitolakProvider.notifier).padamkan();
+    ref.invalidate(userAktifProvider);
+    if (mounted) {
+      context.go(Rute.beranda);
+    }
   });
 
   Future<void> _masukPassword() => jalankan(_formKey, () async {
@@ -87,6 +93,10 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
           password: _passwordController.text,
         );
     ref.read(sesiDitolakProvider.notifier).padamkan();
+    ref.invalidate(userAktifProvider);
+    if (mounted) {
+      context.go(Rute.beranda);
+    }
   });
 
   void _kembaliKeNomor() {

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:go_router/go_router.dart';
+
 import '../core/api/galat_api.dart';
+import '../core/router/app_router.dart';
 import '../domain/enums.dart';
 import '../core/providers/peran_providers.dart';
 import '../core/providers/repository_providers.dart';
@@ -26,12 +29,29 @@ class GerbangPermukaan extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(userAktifProvider);
+    final repo = ref.watch(authRepositoryProvider);
+    final userAktifAsync = ref.watch(userAktifProvider);
+    final user = userAktifAsync.value ?? repo.userAktif;
 
-    return user.when(
-      loading: () =>
-          const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (galat, _) => Scaffold(
+    if (user != null) {
+      final peran =
+          ref.watch(peranAktifProvider) ?? user.peranBawaan ?? UserRole.klien;
+      return switch (peran) {
+        UserRole.klien => const CangkangKlien(),
+        UserRole.runner => const BerandaRunnerScreen(),
+        _ => const _PermukaanKosong(
+          ikon: Icons.desktop_windows_outlined,
+          judul: 'Akun admin',
+          pesan:
+              'Pekerjaan admin dilakukan lewat dashboard web, bukan '
+              'aplikasi ini. Tidak ada yang bisa dikerjakan dari sini.',
+        ),
+      };
+    }
+
+    if (userAktifAsync.hasError) {
+      final galat = userAktifAsync.error;
+      return Scaffold(
         appBar: AppBar(
           title: const Text('UPNVJ Suruh'),
           actions: const [TombolProfil()],
@@ -45,41 +65,22 @@ class GerbangPermukaan extends ConsumerWidget {
           labelAksi: 'Coba lagi',
           onAksi: () => ref.invalidate(userAktifProvider),
         ),
-      ),
-      data: (user) {
-        // Layar kosong, bukan kalimat.
-        //
-        // Dulu di sini tertulis "Belum masuk. Layar login menyusul.", kalimat
-        // yang sudah salah sejak layar masuk dipasang. Sekarang keadaan ini
-        // hampir tidak pernah terlihat: `redirect` di router mengantar yang
-        // belum masuk ke `/masuk` sebelum layar ini sempat digambar. Yang
-        // pantas mengisi sepersekian detik itu bukan kalimat apa pun,
-        // melainkan tidak ada apa-apa, karena kalimat yang sempat terbaca
-        // sekejap lalu hilang lebih mengganggu daripada layar yang diam.
-        if (user == null) {
-          return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(color: Color(0xFF00AA13)),
-            ),
-          );
-        }
+      );
+    }
 
-        final peran =
-            ref.watch(peranAktifProvider) ?? user.peranBawaan ?? UserRole.klien;
-        return switch (peran) {
-          UserRole.klien => const CangkangKlien(),
-          UserRole.runner => const BerandaRunnerScreen(),
-          // Peran admin tidak punya permukaan mobile, dan akun yang cuma
-          // memegang admin tidak punya peran bawaan sama sekali.
-          _ => const _PermukaanKosong(
-            ikon: Icons.desktop_windows_outlined,
-            judul: 'Akun admin',
-            pesan:
-                'Pekerjaan admin dilakukan lewat dashboard web, bukan '
-                'aplikasi ini. Tidak ada yang bisa dikerjakan dari sini.',
-          ),
-        };
-      },
+    if (!ref.watch(sesiTokenProvider).adaSesi) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          context.go(Rute.masuk);
+        }
+      });
+      return const Scaffold();
+    }
+
+    return const Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(color: Color(0xFF00AA13)),
+      ),
     );
   }
 }
