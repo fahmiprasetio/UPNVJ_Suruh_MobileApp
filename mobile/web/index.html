@@ -18,12 +18,13 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="description" content="UPNVJ Suruh, layanan titip dan antar di sekitar kampus.">
   <meta name="theme-color" content="#FFFFFF">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="UPNVJ Suruh">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
@@ -34,29 +35,64 @@
   <link rel="manifest" href="manifest.json">
 
   <!--
-    Halaman ini putih polos sejak byte pertama, sebelum satu baris pun kode
-    Flutter dijalankan, karena layar pembuka di baliknya juga putih polos. Tanpa
-    ini, browser yang sedang bermode gelap menggambar halaman kosongnya hitam
-    lebih dulu, lalu berkedip jadi putih begitu bingkai pertama Flutter jadi.
-
-    Sengaja tidak ada logo di sini. Logo yang diam di tengah lalu tiba-tiba
-    diganti logo yang melompat masuk dari bawah terbaca sebagai kesalahan
-    gambar, bukan sebagai satu animasi. Yang perlu dihindari adalah kedipan
-    warna, dan itu sudah selesai dengan warna yang sama di kedua sisi.
+    Memastikan kanvas Flutter selalu memenuhi 100% viewport perangkat,
+    mencegah masalah penyusutan skala (shrinking) di simulator ponsel atau iframe.
   -->
   <style>
-    html, body { margin: 0; padding: 0; background-color: #FFFFFF; }
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      overflow: hidden !important;
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      background-color: #FFFFFF;
+      -webkit-text-size-adjust: 100%;
+      touch-action: manipulation;
+    }
+
+    flutter-view, flt-glass-pane, flt-scene-host {
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+    }
   </style>
+
+  <script>
+    // Memastikan kanvas Flutter selalu sinkron dengan ukuran simulator ponsel / iframe
+    (function() {
+      function syncFlutterBounds() {
+        window.dispatchEvent(new Event('resize'));
+        var views = document.querySelectorAll('flutter-view, flt-glass-pane');
+        views.forEach(function(el) {
+          el.style.width = '100%';
+          el.style.height = '100%';
+        });
+      }
+
+      window.addEventListener('resize', syncFlutterBounds);
+      window.addEventListener('orientationchange', function() {
+        setTimeout(syncFlutterBounds, 100);
+      });
+
+      if (window.ResizeObserver) {
+        var ro = new ResizeObserver(function() {
+          syncFlutterBounds();
+        });
+        ro.observe(document.documentElement);
+      }
+    })();
+  </script>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

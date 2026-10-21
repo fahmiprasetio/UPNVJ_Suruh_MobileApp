@@ -29,8 +29,50 @@ class UpnvjSuruhApp extends ConsumerWidget {
       routerConfig: ref.watch(routerProvider),
       // `builder` membungkus Navigator, jadi apa pun yang ditumpuk di sini
       // berada di atas seluruh rute sekaligus, termasuk dialog.
-      builder: (context, child) => _DenganPembuka(isi: child),
+      builder: (context, child) => _PengawasMetrik(
+        child: _DenganPembuka(isi: child),
+      ),
     );
+  }
+}
+
+/// Memastikan framework Flutter segera menjadwalkan ulang frame dan menghitung
+/// ulang seluruh batasan tata letak (constraints) saat terjadi perubahan metrik jendela,
+/// seperti beralih ke mobile simulator browser, rotasi layar, atau perubahan ukuran viewport.
+class _PengawasMetrik extends StatefulWidget {
+  const _PengawasMetrik({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_PengawasMetrik> createState() => _PengawasMetrikState();
+}
+
+class _PengawasMetrikState extends State<_PengawasMetrik>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
   }
 }
 
