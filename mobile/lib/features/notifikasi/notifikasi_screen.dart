@@ -4,22 +4,23 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/api/galat_api.dart';
-
+import '../../core/providers/order_providers.dart';
 import '../../core/router/app_router.dart';
-import '../../core/theme/app_theme.dart';
+import '../../core/widgets/pesan_kosong.dart';
 import '../../domain/enums.dart';
 import '../../domain/models/order.dart';
 import '../../domain/service_catalog.dart';
-import '../../core/providers/order_providers.dart';
-import '../../core/widgets/pesan_kosong.dart';
 
 /// Kategori filter untuk kotak masuk notifikasi.
 enum KategoriNotifikasi { semua, pesanan, info }
 
 /// Layar Kotak Masuk Notifikasi.
 ///
-/// Menggabungkan pembaruan status pesanan aktif pengguna secara real-time
-/// dengan pengumuman serta informasi penting seputar operasional UPNVJ Suruh.
+/// Menggunakan desain Aloha Gojek:
+/// - AppBar hijau Gojek (#00AA13) tegas dan rapi
+/// - Filter chips pill modern dengan aksen hijau
+/// - Kartu notifikasi putih bersih berbingkai halus dengan ikon pastel berkategori
+/// - Pengalaman visual interaktif, cepat, dan jelas
 class NotifikasiScreen extends ConsumerStatefulWidget {
   const NotifikasiScreen({super.key});
 
@@ -35,33 +36,66 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
     final stateOrder = ref.watch(orderKlienProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Notifikasi')),
+      backgroundColor: const Color(0xFFF7F9F7),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF00AA13),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
+        title: const Text(
+          'Notifikasi',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.2,
+          ),
+        ),
+        leading: Navigator.of(context).canPop()
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                onPressed: () => Navigator.of(context).maybePop(),
+              )
+            : null,
+      ),
       body: Column(
         children: [
-          // Filter Chips
+          // Filter Chips Container
           Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppTheme.spasiSedang,
-              vertical: AppTheme.spasiKecil,
-            ),
-            child: Row(
-              children: [
-                _chipFilter(KategoriNotifikasi.semua, 'Semua'),
-                const SizedBox(width: AppTheme.spasiKecil),
-                _chipFilter(KategoriNotifikasi.pesanan, 'Pesanan'),
-                const SizedBox(width: AppTheme.spasiKecil),
-                _chipFilter(KategoriNotifikasi.info, 'Info & Tips'),
-              ],
+            color: Colors.white,
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: Row(
+                children: [
+                  _chipFilter(KategoriNotifikasi.semua, 'Semua'),
+                  const SizedBox(width: 8),
+                  _chipFilter(KategoriNotifikasi.pesanan, 'Pesanan'),
+                  const SizedBox(width: 8),
+                  _chipFilter(KategoriNotifikasi.info, 'Info & Tips'),
+                ],
+              ),
             ),
           ),
-          const Divider(height: 1),
+          Container(
+            height: 1,
+            color: const Color(0xFFEDF2ED),
+          ),
 
           // Daftar Notifikasi
           Expanded(
             child: stateOrder.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFF00AA13),
+                  strokeWidth: 2.5,
+                ),
+              ),
               error: (galat, _) => PesanKosong(
-                ikon: Icons.wifi_off_outlined,
+                ikon: Icons.wifi_off_rounded,
                 judul: 'Notifikasi gagal dimuat',
                 keterangan: galat is GalatApi
                     ? galat.pesan
@@ -79,21 +113,34 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
 
   Widget _chipFilter(KategoriNotifikasi kategori, String label) {
     final terpilih = _filter == kategori;
-    final skema = Theme.of(context).colorScheme;
 
     return FilterChip(
       selected: terpilih,
-      label: Text(label),
+      showCheckmark: terpilih,
+      checkmarkColor: const Color(0xFF00880C),
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: terpilih ? FontWeight.w700 : FontWeight.w600,
+          color: terpilih ? const Color(0xFF00880C) : const Color(0xFF4B5563),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      backgroundColor: Colors.white,
+      selectedColor: const Color(0xFFE8F5E9),
+      side: BorderSide(
+        color: terpilih ? const Color(0xFF00AA13) : const Color(0xFFE5E7EB),
+        width: terpilih ? 1.4 : 1.0,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(999),
+      ),
       onSelected: (_) {
         setState(() {
           _filter = kategori;
         });
       },
-      selectedColor: skema.primaryContainer,
-      checkmarkColor: skema.onPrimaryContainer,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppTheme.radiusPil),
-      ),
     );
   }
 
@@ -118,24 +165,34 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
     }
 
     if (butirNotifikasi.isEmpty) {
-      return const Center(
-        child: PesanKosong(
-          judul: 'Belum Ada Notifikasi',
-          keterangan:
-              'Pemberitahuan aktivitas pesanan dan informasi terbaru akan muncul di sini.',
-          ikon: Icons.notifications_none_outlined,
+      return Center(
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: const PesanKosong(
+              judul: 'Belum Ada Notifikasi',
+              keterangan:
+                  'Pemberitahuan aktivitas pesanan dan informasi terbaru akan muncul di sini.',
+              ikon: Icons.notifications_none_rounded,
+            ),
+          ),
         ),
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(AppTheme.spasiSedang),
-      itemCount: butirNotifikasi.length,
-      separatorBuilder: (_, _) => const SizedBox(height: AppTheme.spasiKecil),
-      itemBuilder: (context, indeks) {
-        final notif = butirNotifikasi[indeks];
-        return _KartuNotifikasi(item: notif);
-      },
+    return RefreshIndicator(
+      color: const Color(0xFF00AA13),
+      onRefresh: () async => ref.invalidate(orderKlienProvider),
+      child: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+        itemCount: butirNotifikasi.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 12),
+        itemBuilder: (context, indeks) {
+          final notif = butirNotifikasi[indeks];
+          return _KartuNotifikasi(item: notif);
+        },
+      ),
     );
   }
 
@@ -148,8 +205,10 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
           judul: 'Permintaan Terkirim (${order.kodeOrder})',
           pesan: 'Menunggu penawaran dari runner untuk $namaLayanan.',
           waktu: order.dibuatPada,
-          ikon: Icons.handshake_outlined,
-          warnaAksen: AppTheme.hijauLencana,
+          ikon: Icons.handshake_rounded,
+          warnaAksen: const Color(0xFF0284C7),
+          warnaLatar: const Color(0xFFE0F2FE),
+          badgeKategori: 'Permintaan',
           onTap: (context) => context.push(Rute.detailOrder(order.id)),
         );
       case OrderStatus.menungguPersetujuanKlien:
@@ -158,8 +217,10 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
           pesan:
               'Runner telah mengajukan penawaran harga untuk $namaLayanan. Periksa dan setujui penawaran.',
           waktu: order.dibuatPada,
-          ikon: Icons.local_offer_outlined,
-          warnaAksen: AppTheme.hijauLencana,
+          ikon: Icons.local_offer_rounded,
+          warnaAksen: const Color(0xFFD97706),
+          warnaLatar: const Color(0xFFFEF3C7),
+          badgeKategori: 'Penawaran',
           onTap: (context) => context.push(Rute.detailOrder(order.id)),
         );
       case OrderStatus.menungguPembayaran:
@@ -168,8 +229,10 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
           pesan:
               'Tagihan untuk layanan $namaLayanan siap dibayar melalui Midtrans Snap.',
           waktu: order.dibuatPada,
-          ikon: Icons.payment_outlined,
-          warnaAksen: AppTheme.maroonMotor,
+          ikon: Icons.account_balance_wallet_rounded,
+          warnaAksen: const Color(0xFFDC2626),
+          warnaLatar: const Color(0xFFFEE2E2),
+          badgeKategori: 'Pembayaran',
           onTap: (context) => context.push(Rute.bayar(order.id)),
         );
       case OrderStatus.mencariRunner:
@@ -179,7 +242,9 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
               'Pembayaran $namaLayanan telah diverifikasi. Pesanan sedang disiarkan ke runner.',
           waktu: order.dibayarPada ?? order.dibuatPada,
           ikon: Icons.search_rounded,
-          warnaAksen: AppTheme.hijauLencana,
+          warnaAksen: const Color(0xFF00AA13),
+          warnaLatar: const Color(0xFFE8F5E9),
+          badgeKategori: 'Disiarkan',
           onTap: (context) => context.push(Rute.detailOrder(order.id)),
         );
       case OrderStatus.dikerjakan:
@@ -190,8 +255,10 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
           judul: 'Pesanan Dikerjakan (${order.kodeOrder})',
           pesan: '$namaRunner sedang menjalankan tugas $namaLayanan Anda.',
           waktu: order.dibuatPada,
-          ikon: Icons.directions_bike_rounded,
-          warnaAksen: AppTheme.hijauLencana,
+          ikon: Icons.two_wheeler_rounded,
+          warnaAksen: const Color(0xFF00880C),
+          warnaLatar: const Color(0xFFE8F5E9),
+          badgeKategori: 'Dikerjakan',
           onTap: (context) => context.push(Rute.detailOrder(order.id)),
         );
       case OrderStatus.selesai:
@@ -200,8 +267,10 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
           pesan:
               'Tugas $namaLayanan telah selesai. Foto bukti serah terima telah diunggah.',
           waktu: order.selesaiPada ?? order.dibuatPada,
-          ikon: Icons.check_circle_outline_rounded,
-          warnaAksen: AppTheme.hijauLencana,
+          ikon: Icons.check_circle_rounded,
+          warnaAksen: const Color(0xFF00AA13),
+          warnaLatar: const Color(0xFFE8F5E9),
+          badgeKategori: 'Selesai',
           onTap: (context) => context.push(Rute.detailOrder(order.id)),
         );
       case OrderStatus.batal:
@@ -209,8 +278,10 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
           judul: 'Pesanan Dibatalkan (${order.kodeOrder})',
           pesan: 'Pesanan $namaLayanan telah dibatalkan.',
           waktu: order.dibuatPada,
-          ikon: Icons.cancel_outlined,
-          warnaAksen: AppTheme.maroonMotor,
+          ikon: Icons.cancel_rounded,
+          warnaAksen: const Color(0xFFEF4444),
+          warnaLatar: const Color(0xFFFEE2E2),
+          badgeKategori: 'Batal',
           onTap: (context) => context.push(Rute.detailOrder(order.id)),
         );
     }
@@ -223,8 +294,10 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
         pesan:
             'Layanan jasa serabutan resmi mahasiswa UPN Veteran Jakarta di bawah naungan Bidang Ekonomi Kreatif.',
         waktu: DateTime(2026, 9, 1),
-        ikon: Icons.campaign_outlined,
-        warnaAksen: AppTheme.hijauLencana,
+        ikon: Icons.campaign_rounded,
+        warnaAksen: const Color(0xFF00AA13),
+        warnaLatar: const Color(0xFFE8F5E9),
+        badgeKategori: 'Pengumuman',
         onTap: (context) => _tampilkanDialogInfo(
           context,
           'Selamat Datang di UPNVJ Suruh!',
@@ -236,8 +309,10 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
         pesan:
             'Semua pembayaran dibuka pada halaman checkout Midtrans Snap tanpa konfirmasi manual.',
         waktu: DateTime(2026, 9, 5),
-        ikon: Icons.qr_code_scanner_rounded,
-        warnaAksen: AppTheme.hijauLencana,
+        ikon: Icons.verified_user_rounded,
+        warnaAksen: const Color(0xFF0284C7),
+        warnaLatar: const Color(0xFFE0F2FE),
+        badgeKategori: 'Sistem',
         onTap: (context) => _tampilkanDialogInfo(
           context,
           'Kemudahan Midtrans Snap',
@@ -249,8 +324,10 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
         pesan:
             'Titip pesanan makanan kantin atau warung favorit bersama rekan satu kos untuk menghemat waktu dan ongkos.',
         waktu: DateTime(2026, 9, 10),
-        ikon: Icons.lightbulb_outline_rounded,
-        warnaAksen: AppTheme.hijauLencana,
+        ikon: Icons.lightbulb_rounded,
+        warnaAksen: const Color(0xFFF59E0B),
+        warnaLatar: const Color(0xFFFEF3C7),
+        badgeKategori: 'Tips',
         onTap: (context) => _tampilkanDialogInfo(
           context,
           'Tips Jastip Mahasiswa',
@@ -264,12 +341,61 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(judul),
-        content: Text(pesan),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        backgroundColor: Colors.white,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(
+                color: Color(0xFFE8F5E9),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.campaign_rounded,
+                color: Color(0xFF00AA13),
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                judul,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1E2124),
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          pesan,
+          style: const TextStyle(
+            fontSize: 13.5,
+            color: Color(0xFF4B5563),
+            height: 1.5,
+          ),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         actions: [
-          TextButton(
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF00AA13),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(999),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+            ),
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Tutup'),
+            child: const Text(
+              'Tutup',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
           ),
         ],
       ),
@@ -284,6 +410,8 @@ class _ItemNotifikasi {
     required this.waktu,
     required this.ikon,
     required this.warnaAksen,
+    required this.warnaLatar,
+    this.badgeKategori,
     required this.onTap,
   });
 
@@ -292,6 +420,8 @@ class _ItemNotifikasi {
   final DateTime waktu;
   final IconData ikon;
   final Color warnaAksen;
+  final Color warnaLatar;
+  final String? badgeKategori;
   final void Function(BuildContext context) onTap;
 }
 
@@ -302,72 +432,135 @@ class _KartuNotifikasi extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final skema = Theme.of(context).colorScheme;
-    final teks = Theme.of(context).textTheme;
     final formatTgl = DateFormat('d MMM, HH:mm', 'id_ID');
 
-    return Card(
-      elevation: 0,
-      margin: EdgeInsets.zero,
-      color: skema.surfaceContainerHighest.withValues(alpha: 0.35),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppTheme.radiusKartu),
-        side: BorderSide(color: skema.outlineVariant.withValues(alpha: 0.4)),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFFEDF2ED),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.025),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppTheme.radiusKartu),
-        onTap: () => item.onTap(context),
-        child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spasiSedang),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: item.warnaAksen.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => item.onTap(context),
+          child: Padding(
+            padding: const EdgeInsets.all(15),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Ikon kategori / status dengan container bulat pastel
+                Container(
+                  height: 44,
+                  width: 44,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: item.warnaLatar,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(item.ikon, size: 22, color: item.warnaAksen),
                 ),
-                child: Icon(item.ikon, size: 22, color: item.warnaAksen),
-              ),
-              const SizedBox(width: AppTheme.spasiSedang),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            item.judul,
-                            style: teks.titleSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
+                const SizedBox(width: 14),
+                // Konten teks judul, pesan, dan waktu
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item.judul,
+                              style: const TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF1E2124),
+                                letterSpacing: -0.2,
+                                height: 1.25,
+                              ),
                             ),
                           ),
+                          const SizedBox(width: 8),
+                          Text(
+                            formatTgl.format(item.waktu),
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              color: Color(0xFF9CA3AF),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        item.pesan,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF4B5563),
+                          height: 1.45,
                         ),
-                        Text(
-                          formatTgl.format(item.waktu),
-                          style: teks.bodySmall?.copyWith(
-                            color: skema.onSurfaceVariant.withValues(
-                              alpha: 0.7,
+                      ),
+                      if (item.badgeKategori != null) ...[
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: item.warnaLatar,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                item.badgeKategori!,
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: item.warnaAksen,
+                                ),
+                              ),
                             ),
-                            fontSize: 11,
-                          ),
+                            const Row(
+                              children: [
+                                Text(
+                                  'Lihat',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF00AA13),
+                                  ),
+                                ),
+                                SizedBox(width: 2),
+                                Icon(
+                                  Icons.chevron_right_rounded,
+                                  size: 15,
+                                  color: Color(0xFF00AA13),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      item.pesan,
-                      style: teks.bodySmall?.copyWith(
-                        color: skema.onSurfaceVariant,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
