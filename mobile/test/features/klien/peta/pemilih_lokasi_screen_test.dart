@@ -94,9 +94,7 @@ void main() {
     },
   );
 
-  testWidgets('tidak ada hasil menampilkan pesan tidak ketemu', (
-    tester,
-  ) async {
+  testWidgets('tidak ada hasil menampilkan pesan tidak ketemu', (tester) async {
     await tester.pumpWidget(bungkus());
     await jalankan(
       () => cari(tester, 'alamat yang tidak ada di mana pun'),

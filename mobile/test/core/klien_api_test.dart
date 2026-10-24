@@ -28,11 +28,13 @@ void main() {
   }
 
   MockClient jawab(int status, {Object? isi, String? mentah}) {
-    return MockClient((_) async => http.Response(
-          mentah ?? (isi == null ? '' : jsonEncode(isi)),
-          status,
-          headers: {'content-type': 'application/json; charset=utf-8'},
-        ));
+    return MockClient(
+      (_) async => http.Response(
+        mentah ?? (isi == null ? '' : jsonEncode(isi)),
+        status,
+        headers: {'content-type': 'application/json; charset=utf-8'},
+      ),
+    );
   }
 
   group('header untuk pengambil berkas', () {
@@ -53,29 +55,34 @@ void main() {
       expect(klienDengan(jawab(200), token: () => '').headerOtorisasi, isEmpty);
     });
 
-    test('dipakai juga oleh permintaan biasa, bukan disusun dua kali', () async {
-      String? dibawa;
-      final klien = klienDengan(
-        MockClient((permintaan) async {
-          dibawa = permintaan.headers['Authorization'];
-          return http.Response('{}', 200);
-        }),
-        token: () => 'token-uji',
-      );
+    test(
+      'dipakai juga oleh permintaan biasa, bukan disusun dua kali',
+      () async {
+        String? dibawa;
+        final klien = klienDengan(
+          MockClient((permintaan) async {
+            dibawa = permintaan.headers['Authorization'];
+            return http.Response('{}', 200);
+          }),
+          token: () => 'token-uji',
+        );
 
-      await klien.get('/api/orders/saya');
+        await klien.get('/api/orders/saya');
 
-      expect(dibawa, 'Bearer token-uji');
-    });
+        expect(dibawa, 'Bearer token-uji');
+      },
+    );
   });
 
   group('permintaan', () {
     test('menyusun alamat dari base url dan jalur', () async {
       Uri? diminta;
-      final klien = klienDengan(MockClient((permintaan) async {
-        diminta = permintaan.url;
-        return http.Response('{}', 200);
-      }));
+      final klien = klienDengan(
+        MockClient((permintaan) async {
+          diminta = permintaan.url;
+          return http.Response('{}', 200);
+        }),
+      );
 
       await klien.get('/api/orders/saya');
 
@@ -84,10 +91,12 @@ void main() {
 
     test('menyertakan parameter kueri', () async {
       Uri? diminta;
-      final klien = klienDengan(MockClient((permintaan) async {
-        diminta = permintaan.url;
-        return http.Response('{}', 200);
-      }));
+      final klien = klienDengan(
+        MockClient((permintaan) async {
+          diminta = permintaan.url;
+          return http.Response('{}', 200);
+        }),
+      );
 
       await klien.get('/api/orders', kueri: {'status': 'aktif'});
 
@@ -109,63 +118,81 @@ void main() {
       expect(header, 'Bearer token-abc');
     });
 
-    test('tanpa token, header Authorization tidak dikirim sama sekali', () async {
-      // Bukan dikirim kosong. Header Authorization kosong tetap dibaca server
-      // sebagai percobaan masuk yang gagal, dan itu mengaburkan bedanya
-      // "belum masuk" dari "token salah" di log.
-      Map<String, String>? header;
-      final klien = klienDengan(MockClient((permintaan) async {
-        header = permintaan.headers;
-        return http.Response('{}', 200);
-      }));
+    test(
+      'tanpa token, header Authorization tidak dikirim sama sekali',
+      () async {
+        // Bukan dikirim kosong. Header Authorization kosong tetap dibaca server
+        // sebagai percobaan masuk yang gagal, dan itu mengaburkan bedanya
+        // "belum masuk" dari "token salah" di log.
+        Map<String, String>? header;
+        final klien = klienDengan(
+          MockClient((permintaan) async {
+            header = permintaan.headers;
+            return http.Response('{}', 200);
+          }),
+        );
 
-      await klien.get('/api/orders/saya');
+        await klien.get('/api/orders/saya');
 
-      expect(header!.containsKey('Authorization'), isFalse);
-    });
+        expect(header!.containsKey('Authorization'), isFalse);
+      },
+    );
 
-    test('token dibaca ulang setiap permintaan, bukan disimpan saat dibuat', () async {
-      // Pengguna bisa keluar lalu masuk sebagai akun lain tanpa aplikasi dimulai
-      // ulang. Klien yang menyimpan tokennya sekali akan terus memakai token lama.
-      var sekarang = 'token-lama';
-      final terkirim = <String?>[];
-      final klien = klienDengan(
-        MockClient((permintaan) async {
-          terkirim.add(permintaan.headers['Authorization']);
-          return http.Response('{}', 200);
-        }),
-        token: () => sekarang,
-      );
+    test(
+      'token dibaca ulang setiap permintaan, bukan disimpan saat dibuat',
+      () async {
+        // Pengguna bisa keluar lalu masuk sebagai akun lain tanpa aplikasi dimulai
+        // ulang. Klien yang menyimpan tokennya sekali akan terus memakai token lama.
+        var sekarang = 'token-lama';
+        final terkirim = <String?>[];
+        final klien = klienDengan(
+          MockClient((permintaan) async {
+            terkirim.add(permintaan.headers['Authorization']);
+            return http.Response('{}', 200);
+          }),
+          token: () => sekarang,
+        );
 
-      await klien.get('/a');
-      sekarang = 'token-baru';
-      await klien.get('/b');
+        await klien.get('/a');
+        sekarang = 'token-baru';
+        await klien.get('/b');
 
-      expect(terkirim, ['Bearer token-lama', 'Bearer token-baru']);
-    });
+        expect(terkirim, ['Bearer token-lama', 'Bearer token-baru']);
+      },
+    );
 
-    test('post mengirim badan sebagai JSON dengan Content-Type yang benar', () async {
-      String? badan;
-      String? tipe;
-      final klien = klienDengan(MockClient((permintaan) async {
-        badan = permintaan.body;
-        tipe = permintaan.headers['Content-Type'];
-        return http.Response('{}', 200);
-      }));
+    test(
+      'post mengirim badan sebagai JSON dengan Content-Type yang benar',
+      () async {
+        String? badan;
+        String? tipe;
+        final klien = klienDengan(
+          MockClient((permintaan) async {
+            badan = permintaan.body;
+            tipe = permintaan.headers['Content-Type'];
+            return http.Response('{}', 200);
+          }),
+        );
 
-      await klien.post('/api/auth/daftar', badan: {'nama': 'Dina'});
+        await klien.post('/api/auth/daftar', badan: {'nama': 'Dina'});
 
-      expect(jsonDecode(badan!), {'nama': 'Dina'});
-      expect(tipe, contains('application/json'));
-    });
+        expect(jsonDecode(badan!), {'nama': 'Dina'});
+        expect(tipe, contains('application/json'));
+      },
+    );
   });
 
   group('penerjemahan galat', () {
     test('400 jadi GalatPermintaan dengan pesan dari server', () async {
-      final klien = klienDengan(jawab(400, isi: {
-        'title': 'Order belum bisa dihitung',
-        'detail': 'AnterJemput butuh jarak untuk dihitung.',
-      }));
+      final klien = klienDengan(
+        jawab(
+          400,
+          isi: {
+            'title': 'Order belum bisa dihitung',
+            'detail': 'AnterJemput butuh jarak untuk dihitung.',
+          },
+        ),
+      );
 
       await expectLater(
         klien.post('/api/orders/jalur-a'),
@@ -180,12 +207,19 @@ void main() {
     });
 
     test('400 validasi ASP.NET Core mengambil pesan field pertama', () async {
-      final klien = klienDengan(jawab(400, isi: {
-        'title': 'One or more validation errors occurred.',
-        'errors': {
-          'NoHp': ['Nomor HP harus diawali 08 dan berisi 10 sampai 15 angka.'],
-        },
-      }));
+      final klien = klienDengan(
+        jawab(
+          400,
+          isi: {
+            'title': 'One or more validation errors occurred.',
+            'errors': {
+              'NoHp': [
+                'Nomor HP harus diawali 08 dan berisi 10 sampai 15 angka.',
+              ],
+            },
+          },
+        ),
+      );
 
       await expectLater(
         klien.post('/api/auth/daftar'),
@@ -221,48 +255,78 @@ void main() {
     });
 
     test('409 jadi GalatBentrok dengan pesan dari server', () async {
-      final klien = klienDengan(jawab(409, isi: {
-        'title': 'Nomor sudah terdaftar',
-        'detail': 'Nomor ini sudah punya akun. Masuk saja, tidak perlu mendaftar lagi.',
-      }));
+      final klien = klienDengan(
+        jawab(
+          409,
+          isi: {
+            'title': 'Nomor sudah terdaftar',
+            'detail':
+                'Nomor ini sudah punya akun. Masuk saja, tidak perlu mendaftar lagi.',
+          },
+        ),
+      );
 
       await expectLater(
         klien.post('/api/auth/daftar'),
-        throwsA(isA<GalatBentrok>().having((g) => g.pesan, 'pesan', contains('sudah punya akun'))),
-      );
-    });
-
-    test('429 jadi GalatTerlaluSering dengan pesan dari server', () async {
-      final klien = klienDengan(jawab(429, isi: {
-        'title': 'Terlalu sering meminta kode',
-        'detail': 'Kode masuk sudah dikirim beberapa kali ke nomor ini. '
-            'Tunggu sebentar sebelum meminta lagi.',
-      }));
-
-      await expectLater(
-        klien.post('/api/auth/minta-kode'),
         throwsA(
-          isA<GalatTerlaluSering>()
-              .having((g) => g.pesan, 'pesan', contains('Tunggu sebentar')),
+          isA<GalatBentrok>().having(
+            (g) => g.pesan,
+            'pesan',
+            contains('sudah punya akun'),
+          ),
         ),
       );
     });
 
-    test('429 tanpa badan tetap jadi GalatTerlaluSering, bukan GalatServer', () async {
-      // Bedanya bukan kosmetik: GalatServer menyuruh mencoba lagi sebentar lagi, dan
-      // mencoba lagi adalah persis hal yang membuatnya ditolak tadi.
+    test('429 jadi GalatTerlaluSering dengan pesan dari server', () async {
+      final klien = klienDengan(
+        jawab(
+          429,
+          isi: {
+            'title': 'Terlalu sering meminta kode',
+            'detail':
+                'Kode masuk sudah dikirim beberapa kali ke nomor ini. '
+                'Tunggu sebentar sebelum meminta lagi.',
+          },
+        ),
+      );
+
       await expectLater(
-        klienDengan(jawab(429)).post('/api/auth/masuk'),
-        throwsA(isA<GalatTerlaluSering>()),
+        klien.post('/api/auth/minta-kode'),
+        throwsA(
+          isA<GalatTerlaluSering>().having(
+            (g) => g.pesan,
+            'pesan',
+            contains('Tunggu sebentar'),
+          ),
+        ),
       );
     });
+
+    test(
+      '429 tanpa badan tetap jadi GalatTerlaluSering, bukan GalatServer',
+      () async {
+        // Bedanya bukan kosmetik: GalatServer menyuruh mencoba lagi sebentar lagi, dan
+        // mencoba lagi adalah persis hal yang membuatnya ditolak tadi.
+        await expectLater(
+          klienDengan(jawab(429)).post('/api/auth/masuk'),
+          throwsA(isA<GalatTerlaluSering>()),
+        );
+      },
+    );
 
     test('500 jadi GalatServer dan isinya tidak ikut ke pesan', () async {
       // Jejak galat backend yang sampai ke layar pengguna adalah bocoran gratis
       // tentang bentuk dalam sistem.
-      final klien = klienDengan(jawab(500, isi: {
-        'detail': 'Npgsql.PostgresException: relation "Orders" does not exist',
-      }));
+      final klien = klienDengan(
+        jawab(
+          500,
+          isi: {
+            'detail':
+                'Npgsql.PostgresException: relation "Orders" does not exist',
+          },
+        ),
+      );
 
       await expectLater(
         klien.get('/api/orders/saya'),
@@ -276,30 +340,40 @@ void main() {
       );
     });
 
-    test('galat dengan badan yang bukan JSON tetap diterjemahkan dari kode statusnya', () async {
-      // Reverse proxy sering menjawab HTML untuk 502 dan 504. Kalau penguraian
-      // gagal sampai melempar, layar akan menerima galat mentah alih-alih pesan.
-      final klien = klienDengan(jawab(403, mentah: '<html>Forbidden</html>'));
+    test(
+      'galat dengan badan yang bukan JSON tetap diterjemahkan dari kode statusnya',
+      () async {
+        // Reverse proxy sering menjawab HTML untuk 502 dan 504. Kalau penguraian
+        // gagal sampai melempar, layar akan menerima galat mentah alih-alih pesan.
+        final klien = klienDengan(jawab(403, mentah: '<html>Forbidden</html>'));
 
-      await expectLater(klien.get('/x'), throwsA(isA<GalatDilarang>()));
-    });
+        await expectLater(klien.get('/x'), throwsA(isA<GalatDilarang>()));
+      },
+    );
 
-    test('jawaban sukses yang bukan JSON jadi GalatServer, bukan galat mentah', () async {
-      final klien = klienDengan(jawab(200, mentah: '<html>Halo</html>'));
+    test(
+      'jawaban sukses yang bukan JSON jadi GalatServer, bukan galat mentah',
+      () async {
+        final klien = klienDengan(jawab(200, mentah: '<html>Halo</html>'));
 
-      await expectLater(klien.get('/x'), throwsA(isA<GalatServer>()));
-    });
+        await expectLater(klien.get('/x'), throwsA(isA<GalatServer>()));
+      },
+    );
   });
 
   group('jaringan', () {
     test('koneksi gagal jadi GalatJaringan', () async {
-      final klien = klienDengan(MockClient((_) async => throw const SocketException('gagal')));
+      final klien = klienDengan(
+        MockClient((_) async => throw const SocketException('gagal')),
+      );
 
       await expectLater(klien.get('/x'), throwsA(isA<GalatJaringan>()));
     });
 
     test('ClientException jadi GalatJaringan', () async {
-      final klien = klienDengan(MockClient((_) async => throw http.ClientException('putus')));
+      final klien = klienDengan(
+        MockClient((_) async => throw http.ClientException('putus')),
+      );
 
       await expectLater(klien.get('/x'), throwsA(isA<GalatJaringan>()));
     });
@@ -325,16 +399,23 @@ void main() {
 
     test('getDaftar menolak jawaban yang bukan daftar', () async {
       await expectLater(
-        klienDengan(jawab(200, isi: {'bukan': 'daftar'})).getDaftar('/api/orders/saya'),
+        klienDengan(
+          jawab(200, isi: {'bukan': 'daftar'}),
+        ).getDaftar('/api/orders/saya'),
         throwsA(isA<GalatServer>()),
       );
     });
 
     test('getDaftar mengembalikan daftar apa adanya', () async {
-      final hasil = await klienDengan(jawab(200, isi: [
-        {'id': 'a'},
-        {'id': 'b'},
-      ])).getDaftar('/api/orders/saya');
+      final hasil = await klienDengan(
+        jawab(
+          200,
+          isi: [
+            {'id': 'a'},
+            {'id': 'b'},
+          ],
+        ),
+      ).getDaftar('/api/orders/saya');
 
       expect(hasil, hasLength(2));
     });
@@ -405,7 +486,10 @@ void main() {
           token: () => 'token-sah',
           saatSesiDitolak: () => dilaporkan++,
         );
-        await expectLater(klien.get('/api/orders/saya'), throwsA(isA<GalatApi>()));
+        await expectLater(
+          klien.get('/api/orders/saya'),
+          throwsA(isA<GalatApi>()),
+        );
       }
 
       expect(dilaporkan, 0);

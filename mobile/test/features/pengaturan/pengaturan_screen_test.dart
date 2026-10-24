@@ -23,8 +23,7 @@ void main() {
   });
 
   setUp(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -33,8 +32,7 @@ void main() {
   });
 
   tearDown(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -66,18 +64,19 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('pintu yang belum dibuat menjawab menyusul, tidak membuka apa pun', (
-    tester,
-  ) async {
-    await bukaPengaturan(tester);
+  testWidgets(
+    'pintu yang belum dibuat menjawab menyusul, tidak membuka apa pun',
+    (tester) async {
+      await bukaPengaturan(tester);
 
-    await tester.tap(find.widgetWithText(ListTile, 'Bahasa'));
-    await tester.pump();
+      await tester.tap(find.widgetWithText(ListTile, 'Bahasa'));
+      await tester.pump();
 
-    expect(find.text('Bahasa belum dibuat, menyusul.'), findsOneWidget);
-    // Tetap di layar Pengaturan, bukan pindah ke layar lain.
-    expect(find.text('Pengaturan'), findsOneWidget);
-  });
+      expect(find.text('Bahasa belum dibuat, menyusul.'), findsOneWidget);
+      // Tetap di layar Pengaturan, bukan pindah ke layar lain.
+      expect(find.text('Pengaturan'), findsOneWidget);
+    },
+  );
 
   testWidgets('mengetuk Notifikasi membuka layar notifikasi', (tester) async {
     await bukaPengaturan(tester);
@@ -108,7 +107,9 @@ void main() {
     expect(find.text('Terang'), findsNothing);
   });
 
-  testWidgets('mengetuk Pusat Bantuan membuka layar pusat bantuan', (tester) async {
+  testWidgets('mengetuk Pusat Bantuan membuka layar pusat bantuan', (
+    tester,
+  ) async {
     await bukaPengaturan(tester);
 
     await tester.tap(find.widgetWithText(ListTile, 'Pusat Bantuan'));
@@ -118,7 +119,9 @@ void main() {
     expect(find.text('Pertanyaan yang Sering Diajukan'), findsOneWidget);
   });
 
-  testWidgets('mengetuk Syarat & Ketentuan membuka layar syarat ketentuan', (tester) async {
+  testWidgets('mengetuk Syarat & Ketentuan membuka layar syarat ketentuan', (
+    tester,
+  ) async {
     await bukaPengaturan(tester);
 
     await tester.tap(find.widgetWithText(ListTile, 'Syarat & Ketentuan'));
@@ -128,7 +131,9 @@ void main() {
     expect(find.text('1. Ketentuan umum'), findsOneWidget);
   });
 
-  testWidgets('mengetuk Kebijakan Privasi membuka layar kebijakan privasi', (tester) async {
+  testWidgets('mengetuk Kebijakan Privasi membuka layar kebijakan privasi', (
+    tester,
+  ) async {
     await bukaPengaturan(tester);
 
     await tester.tap(find.widgetWithText(ListTile, 'Kebijakan Privasi'));
@@ -137,7 +142,9 @@ void main() {
     expect(find.text('1. Data yang kami kumpulkan'), findsOneWidget);
   });
 
-  testWidgets('mengetuk Tentang Aplikasi membuka layar tentang aplikasi', (tester) async {
+  testWidgets('mengetuk Tentang Aplikasi membuka layar tentang aplikasi', (
+    tester,
+  ) async {
     await bukaPengaturan(tester);
 
     await tester.tap(find.widgetWithText(ListTile, 'Tentang Aplikasi'));

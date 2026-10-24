@@ -34,8 +34,16 @@ class GerbangPermukaan extends ConsumerWidget {
     final user = userAktifAsync.value ?? repo.userAktif;
 
     if (user != null) {
-      final peran =
-          ref.watch(peranAktifProvider) ?? user.peranBawaan ?? UserRole.klien;
+      final peran = ref.watch(peranAktifProvider) ?? user.peranBawaan;
+      if (peran == null) {
+        return const _PermukaanKosong(
+          ikon: Icons.desktop_windows_outlined,
+          judul: 'Akun admin',
+          pesan:
+              'Pekerjaan admin dilakukan lewat dashboard web, bukan '
+              'aplikasi ini. Tidak ada yang bisa dikerjakan dari sini.',
+        );
+      }
       return switch (peran) {
         UserRole.klien => const CangkangKlien(),
         UserRole.runner => const BerandaRunnerScreen(),
@@ -78,9 +86,7 @@ class GerbangPermukaan extends ConsumerWidget {
     }
 
     return const Scaffold(
-      body: Center(
-        child: CircularProgressIndicator(color: Color(0xFF00AA13)),
-      ),
+      body: Center(child: CircularProgressIndicator(color: Color(0xFF00AA13))),
     );
   }
 }

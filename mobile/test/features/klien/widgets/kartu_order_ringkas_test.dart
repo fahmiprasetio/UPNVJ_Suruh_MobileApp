@@ -27,7 +27,9 @@ void main() {
 
   Future<void> pump(WidgetTester tester, Order order) => tester.pumpWidget(
     MaterialApp(
-      home: Scaffold(body: KartuOrderRingkas(order: order, onTap: () {})),
+      home: Scaffold(
+        body: KartuOrderRingkas(order: order, onTap: () {}),
+      ),
     ),
   );
 

@@ -203,7 +203,9 @@ class _Formulir extends StatelessWidget {
               Expanded(
                 child: Text(
                   layanan.nama,
-                  style: teks.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                  style: teks.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -268,7 +270,10 @@ class _Formulir extends StatelessWidget {
           SegmentedButton<Duration>(
             segments: [
               for (final d in pilihanDurasi)
-                ButtonSegment<Duration>(value: d, label: Text('${d.inHours} jam')),
+                ButtonSegment<Duration>(
+                  value: d,
+                  label: Text('${d.inHours} jam'),
+                ),
             ],
             selected: {durasi},
             onSelectionChanged: sedangMengirim
@@ -350,6 +355,8 @@ class _Formulir extends StatelessWidget {
     );
     if (jam == null) return;
 
-    onUbah(DateTime(tanggal.year, tanggal.month, tanggal.day, jam.hour, jam.minute));
+    onUbah(
+      DateTime(tanggal.year, tanggal.month, tanggal.day, jam.hour, jam.minute),
+    );
   }
 }

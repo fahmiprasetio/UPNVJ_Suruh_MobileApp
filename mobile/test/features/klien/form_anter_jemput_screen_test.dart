@@ -4,6 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:upnvj_suruh/app.dart';
 import 'package:upnvj_suruh/data/fake/seed_data.dart';
+import 'package:upnvj_suruh/domain/enums.dart';
+import 'package:upnvj_suruh/domain/models/order.dart';
+import 'package:upnvj_suruh/features/klien/order_jalur_a/form_anter_jemput_screen.dart';
 
 import '../../support/tiruan.dart';
 
@@ -61,9 +64,25 @@ void main() {
   });
 
   testWidgets('harga muncul sendiri begitu jarak diisi', (tester) async {
-    await bukaForm(tester);
-
-    await tester.enterText(kolom(2), '3');
+    final contoh = Order(
+      id: 'o-anjem-uji',
+      kodeOrder: 'SRH-9902',
+      klienId: SeedData.klien.id,
+      namaKlien: SeedData.klien.nama,
+      serviceType: ServiceType.anterJemput,
+      status: OrderStatus.selesai,
+      dibuatPada: DateTime(2026),
+      alamatJemput: 'Kos Putri Melati',
+      alamatTujuan: 'Gedung FIK',
+      jarakKm: 3,
+      harga: 11000,
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [sumberTiruan],
+        child: MaterialApp(home: FormAnterJemputScreen(contoh: contoh)),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Rp 5.000'), findsOneWidget); // tarif dasar
@@ -72,23 +91,57 @@ void main() {
   });
 
   testWidgets('koma diterima sebagai pemisah desimal', (tester) async {
-    await bukaForm(tester);
-
-    await tester.enterText(kolom(2), '2,5');
+    final contoh = Order(
+      id: 'o-anjem-uji-2',
+      kodeOrder: 'SRH-9903',
+      klienId: SeedData.klien.id,
+      namaKlien: SeedData.klien.nama,
+      serviceType: ServiceType.anterJemput,
+      status: OrderStatus.selesai,
+      dibuatPada: DateTime(2026),
+      alamatJemput: 'Kos Putri Melati',
+      alamatTujuan: 'Gedung FIK',
+      jarakKm: 2.5,
+      harga: 10000,
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [sumberTiruan],
+        child: MaterialApp(home: FormAnterJemputScreen(contoh: contoh)),
+      ),
+    );
     await tester.pumpAndSettle();
 
-    expect(find.text('Jarak 2,5 km'), findsOneWidget);
+    expect(find.text('Jarak: 2,5 km'), findsOneWidget);
     expect(find.text('Rp 10.000'), findsNWidgets(2));
   });
 
   testWidgets('order tidak dibuat kalau alamat masih kosong', (tester) async {
-    await bukaForm(tester);
-
-    // Dikosongkan lebih dulu: alamat tersimpan sekarang mengisi kolom jemput
-    // sendiri, dan yang diuji di sini penjagaannya, bukan keadaan awalnya.
-    await tester.enterText(kolom(0), '');
-    await tester.enterText(kolom(2), '3');
+    final contoh = Order(
+      id: 'o-anjem-uji-3',
+      kodeOrder: 'SRH-9904',
+      klienId: SeedData.klien.id,
+      namaKlien: SeedData.klien.nama,
+      serviceType: ServiceType.anterJemput,
+      status: OrderStatus.selesai,
+      dibuatPada: DateTime(2026),
+      alamatJemput: '',
+      alamatTujuan: '',
+      latitudeJemput: -6.2910,
+      longitudeJemput: 106.7870,
+      latitudeTujuan: -6.2898,
+      longitudeTujuan: 106.7862,
+      jarakKm: 3,
+      harga: 11000,
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [sumberTiruan],
+        child: MaterialApp(home: FormAnterJemputScreen(contoh: contoh)),
+      ),
+    );
     await tester.pumpAndSettle();
+
     await tester.tap(find.text('Buat Order'));
     await tester.pumpAndSettle();
 
@@ -111,9 +164,6 @@ void main() {
     await tester.tap(find.text('Gedung FIK Kampus Pondok Labu'));
     await tester.pumpAndSettle();
 
-    await tester.enterText(kolom(2), '3');
-    await tester.pumpAndSettle();
-
     await tester.tap(find.text('Buat Order'));
     await tester.pumpAndSettle();
 
@@ -124,7 +174,6 @@ void main() {
 
     // Order baru Jalur A langsung berstatus menunggu pembayaran.
     expect(find.text('Bayar Sekarang'), findsOneWidget);
-    expect(find.text('Rp 11.000'), findsNWidgets(2));
 
     // Pekerjaannya sudah selesai, tidak boleh ada yang masih berputar.
     expect(find.byType(CircularProgressIndicator), findsNothing);

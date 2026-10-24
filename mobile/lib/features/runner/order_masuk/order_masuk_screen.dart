@@ -105,11 +105,7 @@ class _OrderMasukScreenState extends ConsumerState<OrderMasukScreen> {
             ),
           ],
         ),
-        actions: const [
-          TombolGantiMode(),
-          TombolProfil(),
-          SizedBox(width: 6),
-        ],
+        actions: const [TombolGantiMode(), TombolProfil(), SizedBox(width: 6)],
       ),
       body: SafeArea(
         child: tersiar.when(
@@ -131,8 +127,8 @@ class _OrderMasukScreenState extends ConsumerState<OrderMasukScreen> {
             final orders = _kategoriDipilih == null
                 ? semuaOrders
                 : semuaOrders
-                    .where((o) => o.serviceType == _kategoriDipilih)
-                    .toList();
+                      .where((o) => o.serviceType == _kategoriDipilih)
+                      .toList();
 
             return Column(
               children: [
@@ -147,7 +143,10 @@ class _OrderMasukScreenState extends ConsumerState<OrderMasukScreen> {
 
                 // 2. TICKER INFORMASI & REFRESH CEPAT
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   decoration: const BoxDecoration(
                     color: Colors.white,
                     border: Border(
@@ -221,12 +220,14 @@ class _OrderMasukScreenState extends ConsumerState<OrderMasukScreen> {
                           adaFilter: _kategoriDipilih != null,
                           onResetFilter: () =>
                               setState(() => _kategoriDipilih = null),
-                          onCobaLagi: () => ref.invalidate(orderTersiarProvider),
+                          onCobaLagi: () =>
+                              ref.invalidate(orderTersiarProvider),
                         )
                       : ListView.separated(
                           padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
                           itemCount: orders.length + 1,
-                          separatorBuilder: (_, _) => const SizedBox(height: 12),
+                          separatorBuilder: (_, _) =>
+                              const SizedBox(height: 12),
                           itemBuilder: (context, indeks) {
                             if (indeks == orders.length) {
                               return TombolMuatLagi(
@@ -238,7 +239,9 @@ class _OrderMasukScreenState extends ConsumerState<OrderMasukScreen> {
                             final order = orders[indeks];
                             return KartuOrderSiaran(
                               order: order,
-                              sedangDiproses: _sedangDiproses.contains(order.id),
+                              sedangDiproses: _sedangDiproses.contains(
+                                order.id,
+                              ),
                               onTerima: () => _terima(order),
                             );
                           },
@@ -576,10 +579,7 @@ class _PesanKosongAloha extends StatelessWidget {
                 icon: const Icon(Icons.refresh_rounded, size: 18),
                 label: const Text(
                   'Segarkan Radar',
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800),
                 ),
               ),
           ],
@@ -591,10 +591,7 @@ class _PesanKosongAloha extends StatelessWidget {
 
 /// Tampilan galat modern saat koneksi gagal
 class _PesanGalatAloha extends StatelessWidget {
-  const _PesanGalatAloha({
-    required this.pesan,
-    required this.onCobaLagi,
-  });
+  const _PesanGalatAloha({required this.pesan, required this.onCobaLagi});
 
   final String pesan;
   final VoidCallback onCobaLagi;
@@ -634,10 +631,7 @@ class _PesanGalatAloha extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               pesan,
-              style: const TextStyle(
-                fontSize: 13,
-                color: Color(0xFF6B7280),
-              ),
+              style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 18),
@@ -650,7 +644,10 @@ class _PesanGalatAloha extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(100),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 11),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 22,
+                  vertical: 11,
+                ),
               ),
               child: const Text(
                 'Coba Lagi',

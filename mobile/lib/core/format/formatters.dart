@@ -8,7 +8,10 @@ final NumberFormat _rupiah = NumberFormat.currency(
 
 final DateFormat _tanggalJam = DateFormat('d MMM yyyy, HH:mm', 'id_ID');
 final DateFormat _jam = DateFormat('HH:mm', 'id_ID');
-final DateFormat _jadwal = DateFormat("EEEE, d MMMM yyyy 'pukul' HH:mm", 'id_ID');
+final DateFormat _jadwal = DateFormat(
+  "EEEE, d MMMM yyyy 'pukul' HH:mm",
+  'id_ID',
+);
 
 /// `30000` -> `Rp 30.000`. Nilai `null` ditampilkan sebagai tanda hubung
 /// karena harga Jalur B memang belum ada sebelum penawaran disepakati.

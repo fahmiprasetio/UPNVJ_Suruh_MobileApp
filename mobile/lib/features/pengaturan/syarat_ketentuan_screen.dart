@@ -72,9 +72,7 @@ class SyaratKetentuanScreen extends StatelessWidget {
     final teks = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Syarat & Ketentuan'),
-      ),
+      appBar: AppBar(title: const Text('Syarat & Ketentuan')),
       body: ListView(
         padding: const EdgeInsets.all(AppTheme.spasiSedang),
         children: [
@@ -88,9 +86,7 @@ class SyaratKetentuanScreen extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             'Terakhir diperbarui: $diperbaruiPada',
-            style: teks.bodySmall?.copyWith(
-              color: skema.onSurfaceVariant,
-            ),
+            style: teks.bodySmall?.copyWith(color: skema.onSurfaceVariant),
           ),
           const SizedBox(height: AppTheme.spasiSedang),
           for (final (judul, isi) in _pasal) _bagianPasal(context, judul, isi),
@@ -109,9 +105,7 @@ class SyaratKetentuanScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: skema.surfaceContainerHighest.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(AppTheme.radiusKontrol),
-        border: Border.all(
-          color: skema.outlineVariant.withValues(alpha: 0.4),
-        ),
+        border: Border.all(color: skema.outlineVariant.withValues(alpha: 0.4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

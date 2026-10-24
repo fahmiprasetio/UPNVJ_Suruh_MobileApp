@@ -17,6 +17,8 @@ import '../support/tiruan.dart';
 /// pengguna yang belum masuk benar-benar diantar ke sini, dan apakah ia benar-benar
 /// pergi dari sini begitu sesinya ada.
 void main() {
+  const passwordUji = 'sandiAman123';
+
   setUpAll(() async {
     await initializeDateFormatting('id_ID');
   });
@@ -64,6 +66,15 @@ void main() {
     await tester.pump();
   }
 
+  Future<void> isiKode(WidgetTester tester, String nilai) async {
+    await tester.enterText(find.byType(TextField), nilai);
+    await tester.pump();
+    if (nilai.length == 6) {
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+    }
+  }
+
   /// Menekan tombol lewat tulisannya.
   ///
   /// Sengaja bukan `widgetWithText(ButtonStyleButton, ...)`: `byType` mencocokkan
@@ -72,6 +83,16 @@ void main() {
   Future<void> tekan(WidgetTester tester, String label) async {
     await tester.tap(find.text(label));
     await tester.pumpAndSettle();
+  }
+
+  Future<void> mulaiMasuk(
+    WidgetTester tester,
+    String noHp, {
+    String password = passwordUji,
+  }) async {
+    await isi(tester, 'Nomor WhatsApp / HP', noHp);
+    await isi(tester, 'Password', password);
+    await tekan(tester, 'Lanjut & Kirim OTP');
   }
 
   testWidgets('layar masuk memperkenalkan aplikasinya, bukan cuma memintanya', (
@@ -93,7 +114,7 @@ void main() {
 
   testWidgets('kolom nama tidak memajang penghitung hurufnya', (tester) async {
     await bukaBelumMasuk(tester);
-    await tekan(tester, 'Belum punya akun? Daftar');
+    await tekan(tester, 'Daftar Sekarang');
 
     // Batasnya tetap ditegakkan validator, cuma angkanya yang tidak dipajang.
     // "0/100" di bawah kolom nama mengabarkan batas yang tidak akan pernah
@@ -105,8 +126,12 @@ void main() {
     await bukaBelumMasuk(tester);
 
     expect(find.text('UPNVJ Suruh'), findsOneWidget);
-    expect(find.widgetWithText(TextFormField, 'Nomor HP'), findsOneWidget);
-    expect(find.text('Kirim kode'), findsOneWidget);
+    expect(
+      find.widgetWithText(TextFormField, 'Nomor WhatsApp / HP'),
+      findsOneWidget,
+    );
+    expect(find.widgetWithText(TextFormField, 'Password'), findsOneWidget);
+    expect(find.text('Lanjut & Kirim OTP'), findsOneWidget);
   });
 
   testWidgets('nomor yang bentuknya salah ditolak sebelum menyentuh server', (
@@ -114,19 +139,20 @@ void main() {
   ) async {
     final repo = await bukaBelumMasuk(tester);
 
-    await isi(tester, 'Nomor HP', '12345');
-    await tekan(tester, 'Kirim kode');
+    await isi(tester, 'Nomor WhatsApp / HP', '12345');
+    await isi(tester, 'Password', passwordUji);
+    await tekan(tester, 'Lanjut & Kirim OTP');
 
     expect(find.textContaining('diawali 08'), findsOneWidget);
     // Tidak ada kode yang diminta, jadi tidak ada permintaan yang terkirim.
     expect(repo.kodeUntuk('12345'), isNull);
-    expect(find.text('Kirim kode'), findsOneWidget);
+    expect(find.text('Lanjut & Kirim OTP'), findsOneWidget);
   });
 
   testWidgets('nomor kosong ditolak', (tester) async {
     await bukaBelumMasuk(tester);
 
-    await tekan(tester, 'Kirim kode');
+    await tekan(tester, 'Lanjut & Kirim OTP');
 
     expect(find.text('Nomor HP belum diisi'), findsOneWidget);
   });
@@ -134,10 +160,9 @@ void main() {
   testWidgets('nomor yang benar membawa ke langkah kode', (tester) async {
     final repo = await bukaBelumMasuk(tester);
 
-    await isi(tester, 'Nomor HP', SeedData.klien.noHp);
-    await tekan(tester, 'Kirim kode');
+    await mulaiMasuk(tester, SeedData.klien.noHp);
 
-    expect(find.widgetWithText(TextFormField, 'Kode'), findsOneWidget);
+    expect(find.byType(TextField), findsOneWidget);
     expect(find.textContaining(SeedData.klien.noHp), findsOneWidget);
     expect(repo.kodeUntuk(SeedData.klien.noHp), isNotNull);
   });
@@ -147,16 +172,14 @@ void main() {
     (tester) async {
       final repo = await bukaBelumMasuk(tester);
 
-      await isi(tester, 'Nomor HP', SeedData.klien.noHp);
-      await tekan(tester, 'Kirim kode');
-      await isi(tester, 'Kode', repo.kodeUntuk(SeedData.klien.noHp)!);
-      await tekan(tester, 'Masuk');
+      await mulaiMasuk(tester, SeedData.klien.noHp);
+      await isiKode(tester, repo.kodeUntuk(SeedData.klien.noHp)!);
 
       // Yang memindahkan layar adalah berubahnya sesi, bukan layar yang mendorong
       // dirinya sendiri.
-      expect(find.widgetWithText(TextFormField, 'Kode'), findsNothing);
-      expect(find.text('Kirim kode'), findsNothing);
-      expect(repo.userAktif, SeedData.klien);
+      expect(find.byType(TextField), findsNothing);
+      expect(find.text('Lanjut & Kirim OTP'), findsNothing);
+      expect(repo.userAktif?.id, SeedData.klien.id);
     },
   );
 
@@ -165,14 +188,12 @@ void main() {
   ) async {
     final repo = await bukaBelumMasuk(tester);
 
-    await isi(tester, 'Nomor HP', SeedData.klien.noHp);
-    await tekan(tester, 'Kirim kode');
+    await mulaiMasuk(tester, SeedData.klien.noHp);
     final benar = repo.kodeUntuk(SeedData.klien.noHp)!;
-    await isi(tester, 'Kode', benar == '000000' ? '111111' : '000000');
-    await tekan(tester, 'Masuk');
+    await isiKode(tester, benar == '000000' ? '111111' : '000000');
 
-    expect(find.text('Nomor atau kode tidak cocok'), findsOneWidget);
-    expect(find.widgetWithText(TextFormField, 'Kode'), findsOneWidget);
+    expect(find.text('Nomor, password, atau kode tidak cocok'), findsOneWidget);
+    expect(find.byType(TextField), findsOneWidget);
     expect(repo.userAktif, isNull);
   });
 
@@ -181,10 +202,9 @@ void main() {
   ) async {
     final repo = await bukaBelumMasuk(tester);
 
-    await isi(tester, 'Nomor HP', SeedData.klien.noHp);
-    await tekan(tester, 'Kirim kode');
-    await isi(tester, 'Kode', '123');
-    await tekan(tester, 'Masuk');
+    await mulaiMasuk(tester, SeedData.klien.noHp);
+    await isiKode(tester, '123');
+    await tekan(tester, 'Verifikasi & Masuk');
 
     expect(find.text('Kode terdiri dari 6 angka'), findsOneWidget);
     expect(repo.userAktif, isNull);
@@ -193,95 +213,36 @@ void main() {
   testWidgets('ganti nomor mengembalikan ke langkah nomor', (tester) async {
     await bukaBelumMasuk(tester);
 
-    await isi(tester, 'Nomor HP', SeedData.klien.noHp);
-    await tekan(tester, 'Kirim kode');
-    await tekan(tester, 'Ganti nomor');
+    await mulaiMasuk(tester, SeedData.klien.noHp);
+    await tekan(tester, 'Ubah Nomor');
 
-    expect(find.text('Kirim kode'), findsOneWidget);
-    expect(find.widgetWithText(TextFormField, 'Kode'), findsNothing);
+    expect(find.text('Lanjut & Kirim OTP'), findsOneWidget);
+    expect(find.text('Verifikasi & Masuk'), findsNothing);
   });
 
-  group('masuk pakai password', () {
-    /// Mengatur password langsung lewat repository, tanpa lewat UI: yang
-    /// diuji di sini alur masuknya, bukan alur mengaturnya (sudah diuji
-    /// sendiri di `atur_password_dialog_test.dart`).
-    ///
-    /// Dibungkus [WidgetTester.runAsync]. Tanpa itu, `Future.delayed`
-    /// sungguhan yang dipakai `FakeAuthRepository` untuk menirukan jeda
-    /// jaringan tidak pernah selesai: `testWidgets` berjalan di zona waktu
-    /// semu yang cuma maju lewat `tester.pump`, dan di sini belum ada satu
-    /// pun pump yang dipanggil untuk memajukannya.
-    Future<void> siapkanAkunDenganPassword(
-      WidgetTester tester,
-      FakeAuthRepository repo,
-      String password,
-    ) async {
-      await tester.runAsync(() async {
-        repo.pakaiAkunUji(SeedData.klien);
-        await repo.mintaKode(noHp: SeedData.klien.noHp);
-        await repo.aturPassword(
-          kode: repo.kodeUntuk(SeedData.klien.noHp)!,
-          password: password,
-        );
-        await repo.keluar();
-      });
-      await tester.pump();
-    }
+  testWidgets('password yang salah tidak mengirim OTP atau membuka sesi', (
+    tester,
+  ) async {
+    final repo = await bukaBelumMasuk(tester);
 
-    testWidgets('tautan dari langkah nomor membuka langkah password', (
-      tester,
-    ) async {
-      await bukaBelumMasuk(tester);
-
-      await tekan(tester, 'Sudah atur password? Masuk pakai itu');
-
-      expect(find.widgetWithText(TextFormField, 'Nomor HP'), findsOneWidget);
-      expect(find.widgetWithText(TextFormField, 'Password'), findsOneWidget);
+    await tester.runAsync(() async {
+      repo.pakaiAkunUji(SeedData.klien);
+      await repo.mintaKode(noHp: SeedData.klien.noHp);
+      await repo.aturPassword(
+        kode: repo.kodeUntuk(SeedData.klien.noHp)!,
+        password: passwordUji,
+      );
+      await repo.keluar();
     });
+    await tester.pump();
 
-    testWidgets(
-      'password yang benar memasukkan pengguna dan layar masuk ditinggalkan',
-      (tester) async {
-        final repo = await bukaBelumMasuk(tester);
-        await siapkanAkunDenganPassword(tester, repo, 'sandiAman123');
+    await mulaiMasuk(tester, SeedData.klien.noHp, password: 'salahTotal99');
 
-        await tekan(tester, 'Sudah atur password? Masuk pakai itu');
-        await isi(tester, 'Nomor HP', SeedData.klien.noHp);
-        await isi(tester, 'Password', 'sandiAman123');
-        await tekan(tester, 'Masuk');
-
-        expect(find.widgetWithText(TextFormField, 'Password'), findsNothing);
-        expect(repo.userAktif?.noHp, SeedData.klien.noHp);
-      },
-    );
-
-    testWidgets(
-      'password yang salah menampilkan galat dan tetap di langkah password',
-      (tester) async {
-        final repo = await bukaBelumMasuk(tester);
-        await siapkanAkunDenganPassword(tester, repo, 'sandiAman123');
-
-        await tekan(tester, 'Sudah atur password? Masuk pakai itu');
-        await isi(tester, 'Nomor HP', SeedData.klien.noHp);
-        await isi(tester, 'Password', 'salahTotal99');
-        await tekan(tester, 'Masuk');
-
-        expect(find.text('Nomor atau password tidak cocok'), findsOneWidget);
-        expect(repo.userAktif, isNull);
-      },
-    );
-
-    testWidgets('masuk pakai kode OTP saja kembali ke langkah nomor', (
-      tester,
-    ) async {
-      await bukaBelumMasuk(tester);
-
-      await tekan(tester, 'Sudah atur password? Masuk pakai itu');
-      await tekan(tester, 'Masuk pakai kode OTP saja');
-
-      expect(find.text('Kirim kode'), findsOneWidget);
-      expect(find.widgetWithText(TextFormField, 'Password'), findsNothing);
-    });
+    // Jawaban langkah pertama tetap generik agar keberadaan akun tidak bocor,
+    // tetapi tidak ada OTP yang dikirim dan sesi tetap kosong.
+    expect(find.text('Verifikasi Kode OTP'), findsOneWidget);
+    expect(repo.kodeUntuk(SeedData.klien.noHp), isNull);
+    expect(repo.userAktif, isNull);
   });
 
   testWidgets('langkah kode menawarkan jalan keluar bagi yang belum punya akun', (
@@ -292,11 +253,10 @@ void main() {
     // jalan keluar, kalau tidak ia terjebak menunggu kode yang tidak akan datang.
     await bukaBelumMasuk(tester);
 
-    await isi(tester, 'Nomor HP', '089999999999');
-    await tekan(tester, 'Kirim kode');
+    await mulaiMasuk(tester, '089999999999');
 
-    expect(find.widgetWithText(TextFormField, 'Kode'), findsOneWidget);
-    expect(find.text('Daftar akun baru'), findsOneWidget);
+    expect(find.text('Verifikasi & Masuk'), findsOneWidget);
+    expect(find.textContaining('Daftar Akun Baru'), findsOneWidget);
   });
 
   group('daftar', () {
@@ -305,14 +265,16 @@ void main() {
     ) async {
       final repo = await bukaBelumMasuk(tester);
 
-      await tester.tap(find.text('Belum punya akun? Daftar'));
+      await tester.tap(find.text('Daftar Sekarang'));
       await tester.pumpAndSettle();
-      await isi(tester, 'Nama', 'Sari Utami');
-      await isi(tester, 'Nomor HP', '081200000001');
-      await tekan(tester, 'Daftar');
+      await isi(tester, 'Nama Lengkap', 'Sari Utami');
+      await isi(tester, 'Nomor WhatsApp / HP', '081200000001');
+      await isi(tester, 'Buat Password', passwordUji);
+      await isi(tester, 'Ulangi Password', passwordUji);
+      await tekan(tester, 'Daftar & Kirim OTP');
 
       // Nomornya tidak perlu diketik ulang untuk minta kode.
-      expect(find.widgetWithText(TextFormField, 'Kode'), findsOneWidget);
+      expect(find.text('Verifikasi & Masuk'), findsOneWidget);
       expect(repo.kodeUntuk('081200000001'), isNotNull);
     });
 
@@ -321,13 +283,14 @@ void main() {
     ) async {
       final repo = await bukaBelumMasuk(tester);
 
-      await tester.tap(find.text('Belum punya akun? Daftar'));
+      await tester.tap(find.text('Daftar Sekarang'));
       await tester.pumpAndSettle();
-      await isi(tester, 'Nama', 'Sari Utami');
-      await isi(tester, 'Nomor HP', '081200000001');
-      await tekan(tester, 'Daftar');
-      await isi(tester, 'Kode', repo.kodeUntuk('081200000001')!);
-      await tekan(tester, 'Masuk');
+      await isi(tester, 'Nama Lengkap', 'Sari Utami');
+      await isi(tester, 'Nomor WhatsApp / HP', '081200000001');
+      await isi(tester, 'Buat Password', passwordUji);
+      await isi(tester, 'Ulangi Password', passwordUji);
+      await tekan(tester, 'Daftar & Kirim OTP');
+      await isiKode(tester, repo.kodeUntuk('081200000001')!);
 
       expect(repo.userAktif!.nama, 'Sari Utami');
       expect(repo.userAktif!.isRunner, isFalse);
@@ -337,12 +300,14 @@ void main() {
     testWidgets('nama kosong ditolak', (tester) async {
       await bukaBelumMasuk(tester);
 
-      await tester.tap(find.text('Belum punya akun? Daftar'));
+      await tester.tap(find.text('Daftar Sekarang'));
       await tester.pumpAndSettle();
-      await isi(tester, 'Nomor HP', '081200000001');
-      await tekan(tester, 'Daftar');
+      await isi(tester, 'Nomor WhatsApp / HP', '081200000001');
+      await isi(tester, 'Buat Password', passwordUji);
+      await isi(tester, 'Ulangi Password', passwordUji);
+      await tekan(tester, 'Daftar & Kirim OTP');
 
-      expect(find.text('Nama belum diisi'), findsOneWidget);
+      expect(find.text('Nama lengkap belum diisi'), findsOneWidget);
     });
 
     testWidgets('nomor yang sudah terdaftar tidak dibedakan di layar', (
@@ -354,14 +319,16 @@ void main() {
       // yaitu lanjut ke langkah kode, jadi tidak ada yang bisa disimpulkan dari sini.
       final repo = await bukaBelumMasuk(tester);
 
-      await tester.tap(find.text('Belum punya akun? Daftar'));
+      await tester.tap(find.text('Daftar Sekarang'));
       await tester.pumpAndSettle();
-      await isi(tester, 'Nama', 'Kembar');
-      await isi(tester, 'Nomor HP', SeedData.klien.noHp);
-      await tekan(tester, 'Daftar');
+      await isi(tester, 'Nama Lengkap', 'Kembar');
+      await isi(tester, 'Nomor WhatsApp / HP', SeedData.klien.noHp);
+      await isi(tester, 'Buat Password', passwordUji);
+      await isi(tester, 'Ulangi Password', passwordUji);
+      await tekan(tester, 'Daftar & Kirim OTP');
 
       expect(find.textContaining('sudah terdaftar'), findsNothing);
-      expect(find.widgetWithText(TextFormField, 'Kode'), findsOneWidget);
+      expect(find.byType(TextField), findsOneWidget);
       // Sampai di sini ia belum masuk: kodenya masih harus dibuktikan, dan kode itu
       // dikirim ke nomornya, bukan ke orang yang mengetiknya.
       expect(repo.userAktif, isNull);
@@ -375,14 +342,15 @@ void main() {
       // akunnya, dengan nama lamanya, bukan nama yang baru saja ia ketik.
       final repo = await bukaBelumMasuk(tester);
 
-      await tester.tap(find.text('Belum punya akun? Daftar'));
+      await tester.tap(find.text('Daftar Sekarang'));
       await tester.pumpAndSettle();
-      await isi(tester, 'Nama', 'Kembar');
-      await isi(tester, 'Nomor HP', SeedData.klien.noHp);
-      await tekan(tester, 'Daftar');
+      await isi(tester, 'Nama Lengkap', 'Kembar');
+      await isi(tester, 'Nomor WhatsApp / HP', SeedData.klien.noHp);
+      await isi(tester, 'Buat Password', passwordUji);
+      await isi(tester, 'Ulangi Password', passwordUji);
+      await tekan(tester, 'Daftar & Kirim OTP');
 
-      await isi(tester, 'Kode', repo.kodeUntuk(SeedData.klien.noHp)!);
-      await tekan(tester, 'Masuk');
+      await isiKode(tester, repo.kodeUntuk(SeedData.klien.noHp)!);
 
       expect(repo.userAktif?.nama, SeedData.klien.nama);
     });
@@ -392,13 +360,13 @@ void main() {
     ) async {
       await bukaBelumMasuk(tester);
 
-      await tester.tap(find.text('Belum punya akun? Daftar'));
+      await tester.tap(find.text('Daftar Sekarang'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Sudah punya akun? Masuk'));
+      await tester.tap(find.text('Masuk di sini'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Kirim kode'), findsOneWidget);
-      expect(find.widgetWithText(TextFormField, 'Nama'), findsNothing);
+      expect(find.text('Lanjut & Kirim OTP'), findsOneWidget);
+      expect(find.widgetWithText(TextFormField, 'Nama Lengkap'), findsNothing);
     });
   });
 
@@ -421,7 +389,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Kirim kode'), findsNothing);
+    expect(find.text('Lanjut & Kirim OTP'), findsNothing);
 
     // Tidak di-await di sini. Timer di dalamnya baru berjalan saat pengujinya
     // memompa frame, jadi menunggunya lebih dulu akan menggantung selamanya.
@@ -432,7 +400,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pumpAndSettle();
 
-    expect(find.text('Kirim kode'), findsOneWidget);
+    expect(find.text('Lanjut & Kirim OTP'), findsOneWidget);
   });
 
   /// Kalimat yang menjelaskan kenapa orangnya tiba-tiba ada di layar masuk.
@@ -461,16 +429,17 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Sesimu sudah berakhir'), findsOneWidget);
+    expect(find.textContaining('Sesimu telah berakhir'), findsOneWidget);
   });
 
-  testWidgets('tidak menuduh sesi berakhir sendiri saat orangnya keluar sendiri', (
-    tester,
-  ) async {
-    await bukaBelumMasuk(tester);
+  testWidgets(
+    'tidak menuduh sesi berakhir sendiri saat orangnya keluar sendiri',
+    (tester) async {
+      await bukaBelumMasuk(tester);
 
-    expect(find.textContaining('Sesimu sudah berakhir'), findsNothing);
-  });
+      expect(find.textContaining('Sesimu telah berakhir'), findsNothing);
+    },
+  );
 }
 
 /// Keadaan "sesi terakhir ditolak server", dipasang tes tanpa perlu server yang

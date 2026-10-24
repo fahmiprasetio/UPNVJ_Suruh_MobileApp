@@ -13,7 +13,7 @@ String? validasiNoHp(String? nilai) {
   return null;
 }
 
-/// Validator kolom kode OTP: enam angka, dikirim lewat SMS ke nomor yang sedang
+/// Validator kolom kode OTP: enam angka, dikirim via WhatsApp ke nomor yang sedang
 /// diverifikasi -- baik untuk masuk maupun untuk mengganti nomor.
 String? validasiKode(String? nilai) {
   final bersih = (nilai ?? '').trim();

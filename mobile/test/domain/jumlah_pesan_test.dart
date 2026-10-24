@@ -1,27 +1,47 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:upnvj_suruh/data/fake/seed_data.dart';
+import 'package:upnvj_suruh/domain/enums.dart';
 import 'package:upnvj_suruh/domain/models/order.dart';
+import 'package:upnvj_suruh/domain/models/order_message.dart';
 
 /// [Order.jumlahPesan] terpisah dari [Order.messages] karena daftar order tidak
 /// membawa isi percakapannya. Di data contoh keduanya ada sekaligus, jadi keduanya
 /// bisa berselisih, dan selisihnya cuma tampak sebagai angka yang salah di kartu
 /// order, bukan sebagai galat. Tes ini yang menangkapnya.
 void main() {
+  Order orderDenganPesan() {
+    final order = SeedData.orderAwal().first;
+    return order.copyWith(
+      messages: [
+        OrderMessage(
+          id: 'pesan-uji',
+          orderId: order.id,
+          pengirim: MessageSender.klien,
+          isi: 'Pesan uji',
+          dikirimPada: DateTime(2026),
+        ),
+      ],
+    );
+  }
+
   test('data contoh: jumlah pesan cocok dengan isi percakapannya', () {
     for (final order in SeedData.orderAwal()) {
       expect(
         order.jumlahPesan,
         order.messages.length,
-        reason: 'Order ${order.kodeOrder} menyebut ${order.jumlahPesan} pesan '
+        reason:
+            'Order ${order.kodeOrder} menyebut ${order.jumlahPesan} pesan '
             'tapi memuat ${order.messages.length}',
       );
     }
   });
 
   test('menambah pesan ikut menaikkan jumlahnya', () {
-    final order = SeedData.orderAwal().firstWhere((o) => o.messages.isNotEmpty);
+    final order = orderDenganPesan();
 
-    final sesudah = order.copyWith(messages: [...order.messages, order.messages.first]);
+    final sesudah = order.copyWith(
+      messages: [...order.messages, order.messages.first],
+    );
 
     expect(sesudah.jumlahPesan, order.messages.length + 1);
   });
@@ -29,7 +49,7 @@ void main() {
   test('mengubah hal lain tidak menyentuh jumlah pesannya', () {
     // Angka dari server harus bertahan lewat copyWith yang tidak menyangkut chat,
     // kalau tidak ia akan tereset jadi nol setiap kali status order berubah.
-    final order = SeedData.orderAwal().firstWhere((o) => o.messages.isNotEmpty);
+    final order = orderDenganPesan();
 
     final sesudah = order.copyWith(harga: 12345);
 
@@ -41,20 +61,25 @@ void main() {
     // [Order.messages] sama sekali, cuma dibawa apa adanya dari server, jadi
     // tidak ada jalan untuk keliru menganggapnya nol begitu daftar pesan
     // diganti.
-    final order = SeedData.orderAwal().first.copyWith(jumlahPesanBelumDibaca: 3);
+    final order = SeedData.orderAwal().first.copyWith(
+      jumlahPesanBelumDibaca: 3,
+    );
 
     final sesudah = order.copyWith(harga: 12345);
 
     expect(sesudah.jumlahPesanBelumDibaca, 3);
   });
 
-  test('mengganti daftar pesan tidak ikut menghapus jumlah yang belum dibaca', () {
-    final order = SeedData.orderAwal()
-        .firstWhere((o) => o.messages.isNotEmpty)
-        .copyWith(jumlahPesanBelumDibaca: 2);
+  test(
+    'mengganti daftar pesan tidak ikut menghapus jumlah yang belum dibaca',
+    () {
+      final order = orderDenganPesan().copyWith(jumlahPesanBelumDibaca: 2);
 
-    final sesudah = order.copyWith(messages: [...order.messages, order.messages.first]);
+      final sesudah = order.copyWith(
+        messages: [...order.messages, order.messages.first],
+      );
 
-    expect(sesudah.jumlahPesanBelumDibaca, 2);
-  });
+      expect(sesudah.jumlahPesanBelumDibaca, 2);
+    },
+  );
 }

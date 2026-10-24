@@ -18,7 +18,7 @@ import '../../core/providers/repository_providers.dart';
 /// saja. Nomor HP beda: ia identitas masuk, dan mengubahnya lewat satu kolom
 /// berarti siapa pun yang sempat memegang HP orang lain sebentar bisa
 /// memindahkan akunnya ke nomornya sendiri. Yang harus dibuktikan lebih dulu
-/// kepemilikan nomor barunya, dan pembuktian itu butuh jeda menunggu SMS --
+/// kepemilikan nomor barunya, dan pembuktian itu butuh jeda menunggu OTP WhatsApp --
 /// sesuatu yang tidak muat di satu baris kartu yang sama dengan isian lain.
 ///
 /// Dialog terpisah membuat jeda itu jelas: dua langkah, satu tujuan, dan
@@ -73,10 +73,12 @@ class _GantiNomorHpDialogState extends ConsumerState<GantiNomorHpDialog>
   });
 
   Future<void> _konfirmasi() => jalankan(_formKey, () async {
-    final user = await ref.read(authRepositoryProvider).konfirmasiGantiNomor(
-      noHpBaru: _noHpController.text.trim(),
-      kode: _kodeController.text.trim(),
-    );
+    final user = await ref
+        .read(authRepositoryProvider)
+        .konfirmasiGantiNomor(
+          noHpBaru: _noHpController.text.trim(),
+          kode: _kodeController.text.trim(),
+        );
     if (mounted) Navigator.of(context).pop(user);
   });
 

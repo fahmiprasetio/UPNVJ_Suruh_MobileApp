@@ -13,7 +13,7 @@ import '../../core/theme/app_theme.dart';
 /// Bentuknya meniru [AturPasswordDialog] (kode dulu, baru tindakan yang dilindunginya),
 /// dengan satu langkah tambahan di depan. Langkah periksa menanyakan ke server apakah
 /// akunnya boleh dihapus SEBELUM kode diminta: orang yang masih punya pesanan berjalan
-/// atau pengembalian dana yang belum selesai harus tahu itu sebelum menunggu SMS, bukan
+/// atau pengembalian dana yang belum selesai harus tahu itu sebelum menunggu OTP WhatsApp, bukan
 /// setelah kodenya terpakai. Server tetap memeriksa ulang di langkah terakhir, karena
 /// keadaannya bisa berubah di antara keduanya.
 ///
@@ -147,7 +147,9 @@ class _HapusAkunDialogState extends ConsumerState<HapusAkunDialog>
         ],
       ),
     ],
-    _Langkah.gagalMemeriksa => [Text(_galatPemeriksaan ?? 'Gagal memeriksa akunmu.')],
+    _Langkah.gagalMemeriksa => [
+      Text(_galatPemeriksaan ?? 'Gagal memeriksa akunmu.'),
+    ],
     _Langkah.ditolak => [
       const Text('Akunmu belum bisa dihapus saat ini:'),
       const SizedBox(height: AppTheme.spasiKecil),

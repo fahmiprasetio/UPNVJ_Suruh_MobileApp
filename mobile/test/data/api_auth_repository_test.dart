@@ -13,6 +13,8 @@ import 'package:upnvj_suruh/domain/enums.dart';
 /// `MasukResponse` di API. Kalau kontraknya berubah di sana, yang benar adalah
 /// memperbarui tes ini bersamaan, bukan melonggarkan pembacaannya supaya lolos.
 void main() {
+  const passwordUji = 'sandiAman123';
+  const tantanganUji = 'tantangan-uji';
   const jawabanUser = {
     'id': '11111111-1111-1111-1111-111111111111',
     'nama': 'Dina Rahmawati',
@@ -95,22 +97,24 @@ void main() {
     /// Server yang memutuskan bentuk akhirnya: ia memangkas spasi dan menyimpan
     /// alamat kosong sebagai null. Merakit user dari apa yang barusan dikirim
     /// berarti layar menampilkan sesuatu yang berbeda dari yang tersimpan.
-    test('user aktif diambil dari jawaban server, bukan dari yang dikirim',
-        () async {
-      final uji = buat((_) => {...jawabanUser, 'nama': 'Nama Dari Server'});
+    test(
+      'user aktif diambil dari jawaban server, bukan dari yang dikirim',
+      () async {
+        final uji = buat((_) => {...jawabanUser, 'nama': 'Nama Dari Server'});
 
-      final hasil = await uji.repo.perbaruiProfil(nama: 'Nama Dikirim');
+        final hasil = await uji.repo.perbaruiProfil(nama: 'Nama Dikirim');
 
-      expect(hasil.nama, 'Nama Dari Server');
-      expect(uji.repo.userAktif?.nama, 'Nama Dari Server');
-    });
+        expect(hasil.nama, 'Nama Dari Server');
+        expect(uji.repo.userAktif?.nama, 'Nama Dari Server');
+      },
+    );
 
     test('perubahan disiarkan ke penyimak user aktif', () async {
       final uji = buat((_) => {...jawabanUser, 'nama': 'Nama Baru'});
       final terlihat = <String?>[];
-      final langganan = uji.repo
-          .watchUserAktif()
-          .listen((user) => terlihat.add(user?.nama));
+      final langganan = uji.repo.watchUserAktif().listen(
+        (user) => terlihat.add(user?.nama),
+      );
       addTearDown(langganan.cancel);
 
       await uji.repo.perbaruiProfil(nama: 'Nama Baru');
@@ -127,12 +131,17 @@ void main() {
       // untuk diperiksa di sini cuma apa yang dikirim.
       final uji = buat((_) => jawabanUser, status: 202, badanMentah: '');
 
-      await uji.repo.daftar(nama: '  Dina Rahmawati ', noHp: ' 081234567890 ');
+      await uji.repo.daftar(
+        nama: '  Dina Rahmawati ',
+        noHp: ' 081234567890 ',
+        password: passwordUji,
+      );
 
       expect(uji.dikirim.single.url.path, '/api/auth/daftar');
       expect(jsonDecode(uji.dikirim.single.body), {
         'nama': 'Dina Rahmawati',
         'noHp': '081234567890',
+        'password': passwordUji,
       });
     });
 
@@ -142,7 +151,11 @@ void main() {
       final uji = buat((_) => jawabanUser, status: 202, badanMentah: '');
 
       await expectLater(
-        uji.repo.daftar(nama: 'Dina', noHp: '081234567890'),
+        uji.repo.daftar(
+          nama: 'Dina',
+          noHp: '081234567890',
+          password: passwordUji,
+        ),
         completes,
       );
     });
@@ -153,17 +166,25 @@ void main() {
       // seharusnya bisa.
       final uji = buat((_) => jawabanUser, status: 202, badanMentah: '');
 
-      await uji.repo.daftar(nama: 'Dina', noHp: '081234567890');
+      await uji.repo.daftar(
+        nama: 'Dina',
+        noHp: '081234567890',
+        password: passwordUji,
+      );
 
       final badan = jsonDecode(uji.dikirim.single.body) as Map<String, dynamic>;
-      expect(badan.keys, {'nama', 'noHp'});
+      expect(badan.keys, {'nama', 'noHp', 'password'});
     });
 
     test('mendaftar tidak sekalian membuat sesi', () async {
       // Masih ada verifikasi kode di antara mendaftar dan masuk.
       final uji = buat((_) => jawabanUser, status: 201);
 
-      await uji.repo.daftar(nama: 'Dina', noHp: '081234567890');
+      await uji.repo.daftar(
+        nama: 'Dina',
+        noHp: '081234567890',
+        password: passwordUji,
+      );
 
       expect(uji.sesi.adaSesi, isFalse);
       expect(uji.repo.userAktif, isNull);
@@ -171,12 +192,19 @@ void main() {
 
     test('nomor yang sudah terdaftar muncul sebagai GalatBentrok', () async {
       final uji = buat(
-        (_) => {'title': 'Nomor sudah terdaftar', 'detail': 'Nomor ini sudah punya akun.'},
+        (_) => {
+          'title': 'Nomor sudah terdaftar',
+          'detail': 'Nomor ini sudah punya akun.',
+        },
         status: 409,
       );
 
       await expectLater(
-        uji.repo.daftar(nama: 'Kembar', noHp: '081234567890'),
+        uji.repo.daftar(
+          nama: 'Kembar',
+          noHp: '081234567890',
+          password: passwordUji,
+        ),
         throwsA(isA<GalatBentrok>()),
       );
     });
@@ -202,16 +230,21 @@ void main() {
   });
 
   group('masuk', () {
-    Map<String, Object?> jawabanMasuk({List<String> roles = const ['Klien']}) => {
-      'token': 'token-abc',
-      'kedaluwarsaPada': '2026-08-28T12:00:00Z',
-      'user': {...jawabanUser, 'roles': roles},
-    };
+    Map<String, Object?> jawabanMasuk({List<String> roles = const ['Klien']}) =>
+        {
+          'token': 'token-abc',
+          'kedaluwarsaPada': '2026-08-28T12:00:00Z',
+          'user': {...jawabanUser, 'roles': roles},
+        };
 
     test('menyimpan token lalu mengumumkan usernya', () async {
       final uji = buat((_) => jawabanMasuk());
 
-      final user = await uji.repo.masuk(noHp: '081234567890', kode: '123456');
+      final user = await uji.repo.masuk(
+        noHp: '081234567890',
+        kode: '123456',
+        tantangan: tantanganUji,
+      );
 
       expect(uji.sesi.nilai, 'token-abc');
       expect(uji.repo.userAktif, user);
@@ -220,11 +253,22 @@ void main() {
     test('permintaan sesudah masuk sudah membawa token', () async {
       // Urutannya penting: layar yang bangun karena user berubah langsung menembak
       // permintaan berikutnya, dan permintaan itu harus sudah bertoken.
-      final uji = buat((permintaan) =>
-          permintaan.url.path == '/api/auth/masuk' ? jawabanMasuk() : jawabanUser);
+      final uji = buat(
+        (permintaan) => permintaan.url.path == '/api/auth/masuk'
+            ? jawabanMasuk()
+            : jawabanUser,
+      );
 
-      await uji.repo.masuk(noHp: '081234567890', kode: '123456');
-      await uji.repo.daftar(nama: 'x', noHp: '081200000009');
+      await uji.repo.masuk(
+        noHp: '081234567890',
+        kode: '123456',
+        tantangan: tantanganUji,
+      );
+      await uji.repo.daftar(
+        nama: 'x',
+        noHp: '081200000009',
+        password: passwordUji,
+      );
 
       expect(uji.dikirim.last.headers['Authorization'], 'Bearer token-abc');
     });
@@ -232,52 +276,83 @@ void main() {
     test('akun dua peran terbaca keduanya', () async {
       final uji = buat((_) => jawabanMasuk(roles: ['Klien', 'Runner']));
 
-      final user = await uji.repo.masuk(noHp: '081234567893', kode: '123456');
+      final user = await uji.repo.masuk(
+        noHp: '081234567893',
+        kode: '123456',
+        tantangan: tantanganUji,
+      );
 
       expect(user.roles, {UserRole.klien, UserRole.runner});
       expect(user.bisaGantiMode, isTrue);
     });
 
-    test('peran yang belum dikenal aplikasi diabaikan, bukan menggagalkan masuk', () async {
-      // Server yang lebih baru bisa menambah peran. Aplikasi yang menolak masuk
-      // gara-gara itu memaksa pengguna memperbarui sebelum bisa melakukan apa pun.
-      final uji = buat((_) => jawabanMasuk(roles: ['Klien', 'Supervisor']));
+    test(
+      'peran yang belum dikenal aplikasi diabaikan, bukan menggagalkan masuk',
+      () async {
+        // Server yang lebih baru bisa menambah peran. Aplikasi yang menolak masuk
+        // gara-gara itu memaksa pengguna memperbarui sebelum bisa melakukan apa pun.
+        final uji = buat((_) => jawabanMasuk(roles: ['Klien', 'Supervisor']));
 
-      final user = await uji.repo.masuk(noHp: '081234567890', kode: '123456');
+        final user = await uji.repo.masuk(
+          noHp: '081234567890',
+          kode: '123456',
+          tantangan: tantanganUji,
+        );
 
-      expect(user.roles, {UserRole.klien});
-    });
+        expect(user.roles, {UserRole.klien});
+      },
+    );
 
-    test('kode salah muncul sebagai GalatTidakBerwenang dan tidak membuat sesi', () async {
-      final uji = buat(
-        (_) => {'title': 'Nomor atau kode tidak cocok'},
-        status: 401,
-      );
+    test(
+      'kode salah muncul sebagai GalatTidakBerwenang dan tidak membuat sesi',
+      () async {
+        final uji = buat(
+          (_) => {'title': 'Nomor atau kode tidak cocok'},
+          status: 401,
+        );
 
-      await expectLater(
-        uji.repo.masuk(noHp: '081234567890', kode: '000000'),
-        throwsA(isA<GalatTidakBerwenang>()),
-      );
-      expect(uji.sesi.adaSesi, isFalse);
-      expect(uji.repo.userAktif, isNull);
-    });
+        await expectLater(
+          uji.repo.masuk(
+            noHp: '081234567890',
+            kode: '000000',
+            tantangan: tantanganUji,
+          ),
+          throwsA(isA<GalatTidakBerwenang>()),
+        );
+        expect(uji.sesi.adaSesi, isFalse);
+        expect(uji.repo.userAktif, isNull);
+      },
+    );
 
-    test('jawaban tanpa token ditolak, bukan diterima sebagai sesi kosong', () async {
-      final uji = buat((_) => {'user': jawabanUser});
+    test(
+      'jawaban tanpa token ditolak, bukan diterima sebagai sesi kosong',
+      () async {
+        final uji = buat((_) => {'user': jawabanUser});
 
-      await expectLater(
-        uji.repo.masuk(noHp: '081234567890', kode: '123456'),
-        throwsStateError,
-      );
-      expect(uji.sesi.adaSesi, isFalse);
-    });
+        await expectLater(
+          uji.repo.masuk(
+            noHp: '081234567890',
+            kode: '123456',
+            tantangan: tantanganUji,
+          ),
+          throwsStateError,
+        );
+        expect(uji.sesi.adaSesi, isFalse);
+      },
+    );
 
     test('perubahan user sampai ke pengamat', () async {
       final uji = buat((_) => jawabanMasuk());
       final terlihat = <String?>[];
-      final langganan = uji.repo.watchUserAktif().listen((u) => terlihat.add(u?.nama));
+      final langganan = uji.repo.watchUserAktif().listen(
+        (u) => terlihat.add(u?.nama),
+      );
 
-      await uji.repo.masuk(noHp: '081234567890', kode: '123456');
+      await uji.repo.masuk(
+        noHp: '081234567890',
+        kode: '123456',
+        tantangan: tantanganUji,
+      );
       await Future<void>.delayed(Duration.zero);
 
       expect(terlihat, [null, 'Dina Rahmawati']);
@@ -286,49 +361,49 @@ void main() {
   });
 
   group('masukPassword', () {
-    Map<String, Object?> jawabanMasuk({List<String> roles = const ['Klien']}) => {
-      'token': 'token-abc',
+    const jawabanTantangan = {
+      'tantangan': tantanganUji,
       'kedaluwarsaPada': '2026-08-28T12:00:00Z',
-      'user': {...jawabanUser, 'roles': roles, 'punyaPassword': true},
     };
 
-    test('mengirim POST dengan nomor dirapikan dan password apa adanya', () async {
-      final uji = buat((_) => jawabanMasuk());
+    test(
+      'mengirim POST dengan nomor dirapikan dan password apa adanya',
+      () async {
+        final uji = buat((_) => jawabanTantangan);
 
-      await uji.repo.masukPassword(noHp: ' 081234567890 ', password: 'sandiAman123');
+        await uji.repo.masukPassword(
+          noHp: ' 081234567890 ',
+          password: 'sandiAman123',
+        );
 
-      expect(uji.dikirim.single.method, 'POST');
-      expect(uji.dikirim.single.url.path, '/api/auth/masuk-password');
-      expect(jsonDecode(uji.dikirim.single.body), {
-        'noHp': '081234567890',
-        'password': 'sandiAman123',
-      });
-    });
+        expect(uji.dikirim.single.method, 'POST');
+        expect(uji.dikirim.single.url.path, '/api/auth/masuk-password');
+        expect(jsonDecode(uji.dikirim.single.body), {
+          'noHp': '081234567890',
+          'password': 'sandiAman123',
+        });
+      },
+    );
 
-    test('menyimpan token lalu mengumumkan usernya, sama seperti masuk lewat OTP',
-        () async {
-      final uji = buat((_) => jawabanMasuk());
+    test('mengembalikan tantangan tanpa membuat sesi sebelum OTP', () async {
+      final uji = buat((_) => jawabanTantangan);
 
-      final user = await uji.repo.masukPassword(
+      final tantangan = await uji.repo.masukPassword(
         noHp: '081234567890',
         password: 'sandiAman123',
       );
 
-      expect(uji.sesi.nilai, 'token-abc');
-      expect(uji.repo.userAktif, user);
-      expect(user.punyaPassword, isTrue);
+      expect(tantangan, tantanganUji);
+      expect(uji.sesi.adaSesi, isFalse);
+      expect(uji.repo.userAktif, isNull);
     });
 
-    test('password salah muncul sebagai GalatTidakBerwenang dan tidak membuat sesi',
-        () async {
-      final uji = buat(
-        (_) => {'title': 'Nomor atau password tidak cocok'},
-        status: 401,
-      );
+    test('jawaban tanpa tantangan ditolak', () async {
+      final uji = buat((_) => const {});
 
       await expectLater(
         uji.repo.masukPassword(noHp: '081234567890', password: 'salah'),
-        throwsA(isA<GalatTidakBerwenang>()),
+        throwsStateError,
       );
       expect(uji.sesi.adaSesi, isFalse);
       expect(uji.repo.userAktif, isNull);
@@ -336,34 +411,43 @@ void main() {
   });
 
   group('aturPassword', () {
-    test('mengirim POST dengan kode dirapikan dan password apa adanya', () async {
-      final uji = buat((_) => {...jawabanUser, 'punyaPassword': true});
+    test(
+      'mengirim POST dengan kode dirapikan dan password apa adanya',
+      () async {
+        final uji = buat((_) => {...jawabanUser, 'punyaPassword': true});
 
-      await uji.repo.aturPassword(kode: ' 123456 ', password: 'sandiAman123');
+        await uji.repo.aturPassword(kode: ' 123456 ', password: 'sandiAman123');
 
-      expect(uji.dikirim.single.method, 'POST');
-      expect(uji.dikirim.single.url.path, '/api/auth/saya/password');
-      expect(jsonDecode(uji.dikirim.single.body), {
-        'kode': '123456',
-        'password': 'sandiAman123',
-      });
-    });
+        expect(uji.dikirim.single.method, 'POST');
+        expect(uji.dikirim.single.url.path, '/api/auth/saya/password');
+        expect(jsonDecode(uji.dikirim.single.body), {
+          'kode': '123456',
+          'password': 'sandiAman123',
+        });
+      },
+    );
 
-    test('user aktif diambil dari jawaban server, membawa PunyaPassword benar',
-        () async {
-      final uji = buat((_) => {...jawabanUser, 'punyaPassword': true});
+    test(
+      'user aktif diambil dari jawaban server, membawa PunyaPassword benar',
+      () async {
+        final uji = buat((_) => {...jawabanUser, 'punyaPassword': true});
 
-      final hasil = await uji.repo.aturPassword(kode: '123456', password: 'sandiAman123');
+        final hasil = await uji.repo.aturPassword(
+          kode: '123456',
+          password: 'sandiAman123',
+        );
 
-      expect(hasil.punyaPassword, isTrue);
-      expect(uji.repo.userAktif?.punyaPassword, isTrue);
-    });
+        expect(hasil.punyaPassword, isTrue);
+        expect(uji.repo.userAktif?.punyaPassword, isTrue);
+      },
+    );
 
     test('kode yang salah muncul sebagai GalatPermintaan', () async {
       final uji = buat(
         (_) => {
           'title': 'Kode salah atau sudah kedaluwarsa',
-          'detail': 'Minta kode baru lewat /minta-kode kalau sudah lewat lima menit sejak dikirim.',
+          'detail':
+              'Minta kode baru lewat /minta-kode kalau sudah lewat lima menit sejak dikirim.',
         },
         status: 400,
       );
@@ -442,35 +526,34 @@ void main() {
       );
 
       expect(uji.dikirim.single.method, 'POST');
-      expect(
-        uji.dikirim.single.url.path,
-        '/api/auth/saya/nomor-hp/konfirmasi',
-      );
+      expect(uji.dikirim.single.url.path, '/api/auth/saya/nomor-hp/konfirmasi');
       expect(jsonDecode(uji.dikirim.single.body), {
         'noHpBaru': '081399998888',
         'kode': '123456',
       });
     });
 
-    test('user aktif diambil dari jawaban server, membawa nomor barunya',
-        () async {
-      final uji = buat((_) => {...jawabanUser, 'noHp': '081399998888'});
+    test(
+      'user aktif diambil dari jawaban server, membawa nomor barunya',
+      () async {
+        final uji = buat((_) => {...jawabanUser, 'noHp': '081399998888'});
 
-      final hasil = await uji.repo.konfirmasiGantiNomor(
-        noHpBaru: '081399998888',
-        kode: '123456',
-      );
+        final hasil = await uji.repo.konfirmasiGantiNomor(
+          noHpBaru: '081399998888',
+          kode: '123456',
+        );
 
-      expect(hasil.noHp, '081399998888');
-      expect(uji.repo.userAktif?.noHp, '081399998888');
-    });
+        expect(hasil.noHp, '081399998888');
+        expect(uji.repo.userAktif?.noHp, '081399998888');
+      },
+    );
 
     test('perubahan disiarkan ke penyimak user aktif', () async {
       final uji = buat((_) => {...jawabanUser, 'noHp': '081399998888'});
       final terlihat = <String?>[];
-      final langganan = uji.repo
-          .watchUserAktif()
-          .listen((user) => terlihat.add(user?.noHp));
+      final langganan = uji.repo.watchUserAktif().listen(
+        (user) => terlihat.add(user?.noHp),
+      );
       addTearDown(langganan.cancel);
 
       await uji.repo.konfirmasiGantiNomor(
@@ -486,7 +569,8 @@ void main() {
       final uji = buat(
         (_) => {
           'title': 'Kode salah atau sudah kedaluwarsa',
-          'detail': 'Minta kode baru kalau sudah lewat lima menit sejak dikirim.',
+          'detail':
+              'Minta kode baru kalau sudah lewat lima menit sejak dikirim.',
         },
         status: 400,
       );
@@ -503,12 +587,18 @@ void main() {
 
   group('keluar', () {
     test('membuang token dan user aktif', () async {
-      final uji = buat((_) => {
-        'token': 'token-abc',
-        'kedaluwarsaPada': '2026-08-28T12:00:00Z',
-        'user': jawabanUser,
-      });
-      await uji.repo.masuk(noHp: '081234567890', kode: '123456');
+      final uji = buat(
+        (_) => {
+          'token': 'token-abc',
+          'kedaluwarsaPada': '2026-08-28T12:00:00Z',
+          'user': jawabanUser,
+        },
+      );
+      await uji.repo.masuk(
+        noHp: '081234567890',
+        kode: '123456',
+        tantangan: tantanganUji,
+      );
 
       await uji.repo.keluar();
 
@@ -519,18 +609,27 @@ void main() {
     test('permintaan sesudah keluar tidak lagi membawa token', () async {
       // Kalau tokennya dibuang belakangan, layar yang bereaksi pada user yang jadi
       // null sempat mengirim permintaan terakhir atas nama orang yang baru keluar.
-      final uji = buat((permintaan) =>
-          permintaan.url.path == '/api/auth/masuk'
-              ? {
-                  'token': 'token-abc',
-                  'kedaluwarsaPada': '2026-08-28T12:00:00Z',
-                  'user': jawabanUser,
-                }
-              : jawabanUser);
-      await uji.repo.masuk(noHp: '081234567890', kode: '123456');
+      final uji = buat(
+        (permintaan) => permintaan.url.path == '/api/auth/masuk'
+            ? {
+                'token': 'token-abc',
+                'kedaluwarsaPada': '2026-08-28T12:00:00Z',
+                'user': jawabanUser,
+              }
+            : jawabanUser,
+      );
+      await uji.repo.masuk(
+        noHp: '081234567890',
+        kode: '123456',
+        tantangan: tantanganUji,
+      );
 
       await uji.repo.keluar();
-      await uji.repo.daftar(nama: 'x', noHp: '081200000009');
+      await uji.repo.daftar(
+        nama: 'x',
+        noHp: '081200000009',
+        password: passwordUji,
+      );
 
       expect(uji.dikirim.last.headers.containsKey('Authorization'), isFalse);
     });

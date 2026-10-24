@@ -116,11 +116,11 @@ public class KalkulatorTarifTests
     }
 
     [Theory]
-    [InlineData(ServiceType.BersihKos, 30_000)]
-    [InlineData(ServiceType.BersihKamarMandi, 20_000)]
-    public void LayananKebersihanMemakaiTarifTetap(ServiceType layanan, decimal harga)
+    [InlineData(ServiceType.BersihKos)]
+    [InlineData(ServiceType.BersihKamarMandi)]
+    public void LayananKebersihanJalurBTidakDihitungOtomatis(ServiceType layanan)
     {
-        Assert.Equal(harga, _kalkulator.Hitung(layanan, null, Bawaan()).Total);
+        Assert.Throws<ArgumentException>(() => _kalkulator.Hitung(layanan, null, Bawaan()));
     }
 
     [Fact]

@@ -53,7 +53,11 @@ abstract interface class AuthRepository {
   /// pendaftarannya berhasil. Yang nomornya ternyata sudah terdaftar tidak dibuatkan
   /// akun kedua dan tidak diubah apa-apa; ia menerima kode ke nomor itu juga, lalu
   /// masuk ke akun yang memang miliknya.
-  Future<void> daftar({required String nama, required String noHp});
+  Future<void> daftar({
+    required String nama,
+    required String noHp,
+    required String password,
+  });
 
   /// Meminta kode sekali pakai dikirim ke nomor tersebut.
   ///
@@ -68,17 +72,21 @@ abstract interface class AuthRepository {
   /// Kodenya sekali pakai dan berbatas waktu. Nomor yang tidak terdaftar dan kode
   /// yang salah gagal dengan cara yang sama persis, supaya tebakan yang meleset
   /// tidak memberi tahu bahwa setengah jawabannya sudah benar.
-  Future<AppUser> masuk({required String noHp, required String kode});
+  Future<AppUser> masuk({
+    required String noHp,
+    required String kode,
+    required String tantangan,
+  });
 
-  /// Masuk pakai nomor HP dan password, jalur kedua di samping [masuk].
+  /// Memverifikasi password dan mengirim OTP untuk langkah kedua [masuk].
   ///
-  /// OTP tetap jalur utama dan selalu tersedia -- order di aplikasi ini kadang
-  /// mendesak dan tidak boleh menunggu pengguna mengingat password. Ini cuma
-  /// alternatif bagi yang sudah mengatur password lewat [aturPassword] dan
-  /// tidak mau menunggu kode setiap kali. Nomor yang belum mengatur password
-  /// dan password yang salah gagal dengan cara yang sama persis, sama seperti
-  /// [masuk] menyamakan "nomor tidak terdaftar" dengan "kode salah".
-  Future<AppUser> masukPassword({required String noHp, required String password});
+  /// Jawabannya adalah tantangan sekali pakai yang harus dikirim bersama OTP ke
+  /// [masuk]. Tidak ada sesi yang diterbitkan pada langkah ini. Untuk akun lama
+  /// tanpa password, nilai yang dimasukkan baru disimpan setelah OTP terbukti.
+  Future<String> masukPassword({
+    required String noHp,
+    required String password,
+  });
 
   /// Mengatur atau mengganti password sendiri, dibuktikan lewat kode OTP ke
   /// nomor akun yang sedang masuk -- diminta lewat [mintaKode] yang sama,
@@ -87,7 +95,10 @@ abstract interface class AuthRepository {
   /// Menuntut kode, bukan cuma sesi yang sedang berjalan: sesi yang dicuri
   /// sesaat berlaku cuma sampai kedaluwarsa, sedangkan password yang diatur
   /// lewatnya bertahan jauh lebih lama. Sama seperti [konfirmasiGantiNomor].
-  Future<AppUser> aturPassword({required String kode, required String password});
+  Future<AppUser> aturPassword({
+    required String kode,
+    required String password,
+  });
 
   /// Menyunting profil sendiri: nama, dan alamat bawaan.
   ///
@@ -133,7 +144,7 @@ abstract interface class AuthRepository {
   ///
   /// Dipanggil SEBELUM meminta kode, supaya orang yang akunnya masih punya pesanan
   /// berjalan atau pengembalian dana yang belum selesai tahu itu sebelum menunggu
-  /// SMS, bukan sesudahnya. Kalimatnya sudah ditulis server untuk dibaca pemiliknya
+  /// OTP WhatsApp, bukan sesudahnya. Kalimatnya sudah ditulis server untuk dibaca pemiliknya
   /// apa adanya; layar menampilkannya tanpa mengubah.
   Future<List<String>> penghalangPenghapusanAkun();
 

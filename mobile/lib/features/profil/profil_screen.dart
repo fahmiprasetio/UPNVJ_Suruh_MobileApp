@@ -249,10 +249,9 @@ class _KartuPengaturan extends StatelessWidget {
 
 /// Keluar, dengan satu pertanyaan sebelum benar-benar keluar.
 ///
-/// Konfirmasinya bukan basa-basi. Masuk kembali menuntut menunggu SMS dan
-/// mengetik enam angka, jadi salah tekan di sini bukan gangguan sedetik
-/// melainkan beberapa menit, dan bisa jadi tidak mungkin sama sekali kalau
-/// sinyalnya sedang buruk. Tombol dengan biaya sebesar itu pantas bertanya.
+/// Konfirmasinya bukan basa-basi. Masuk kembali menuntut verifikasi password dan OTP WhatsApp,
+/// jadi salah tekan di sini bukan gangguan sedetik melainkan beberapa menit, dan bisa jadi
+/// tidak mungkin sama sekali kalau sinyalnya sedang buruk. Tombol dengan biaya sebesar itu pantas bertanya.
 class _TombolKeluar extends ConsumerStatefulWidget {
   const _TombolKeluar({required this.nama});
 
@@ -312,7 +311,15 @@ class _TombolKeluarState extends ConsumerState<_TombolKeluar> {
       setState(() => _sedangKeluar = false);
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(galat is GalatApi ? galat.pesan : 'Gagal keluar. Terjadi kendala sambungan atau server.')));
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              galat is GalatApi
+                  ? galat.pesan
+                  : 'Gagal keluar. Terjadi kendala sambungan atau server.',
+            ),
+          ),
+        );
       return;
     }
 
@@ -419,7 +426,7 @@ class _KartuSuntingState extends ConsumerState<_KartuSunting> {
               // yang belum ditutup: nomor itu identitas masuk, jadi
               // menggantinya menuntut pembuktian kepemilikan nomor barunya,
               // bukan sekadar isian yang dipercaya begitu saja seperti nama
-              // dan alamat. Pembuktian itu perlu jeda menunggu SMS, dan
+              // dan alamat. Pembuktian itu perlu jeda menunggu OTP WhatsApp, dan
               // karena itu jalannya sendiri lewat dialog, bukan lewat kolom
               // yang sama dengan tombol Simpan di atas.
               Row(
@@ -460,7 +467,9 @@ class _KartuSuntingState extends ConsumerState<_KartuSunting> {
 
     setState(() => _sedangSimpan = true);
     try {
-      await ref.read(authRepositoryProvider).perbaruiProfil(
+      await ref
+          .read(authRepositoryProvider)
+          .perbaruiProfil(
             nama: _namaController.text,
             alamat: _alamatController.text,
           );
@@ -472,7 +481,15 @@ class _KartuSuntingState extends ConsumerState<_KartuSunting> {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(galat is GalatApi ? galat.pesan : 'Gagal menyimpan. Terjadi kendala sambungan atau server.')));
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              galat is GalatApi
+                  ? galat.pesan
+                  : 'Gagal menyimpan. Terjadi kendala sambungan atau server.',
+            ),
+          ),
+        );
     } finally {
       // Isian tidak diisi ulang dari jawaban server di sini. Kartu ini dibangun
       // ulang dengan user yang baru, dan `_adaPerubahan` yang membandingkannya
@@ -497,6 +514,8 @@ class _KartuSuntingState extends ConsumerState<_KartuSunting> {
     if (hasil == null || !mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('Nomor HP diganti ke ${hasil.noHp}.')));
+      ..showSnackBar(
+        SnackBar(content: Text('Nomor HP diganti ke ${hasil.noHp}.')),
+      );
   }
 }

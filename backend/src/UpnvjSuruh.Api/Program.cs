@@ -177,20 +177,48 @@ builder.Services.AddSingleton<PembuatKodeOtp>();
 // bisa digeser tes, dan aturan yang tidak pernah diuji baru ketahuan rusaknya saat dipakai.
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<PembatasOtpMemori>();
+builder.Services.AddSingleton<PenyimpanTantanganMasuk>();
 
 var twilioAccountSid = builder.Configuration["Whatsapp:Twilio:AccountSid"];
+var twilioAuthToken = builder.Configuration["Whatsapp:Twilio:AuthToken"];
+var twilioNomorPengirim = builder.Configuration["Whatsapp:Twilio:NomorPengirim"];
+var twilioContentSid = builder.Configuration["Whatsapp:Twilio:SandboxContentSid"];
 var tokenWhatsapp = builder.Configuration["Whatsapp:AccessToken"];
-if (!string.IsNullOrWhiteSpace(twilioAccountSid))
+var twilioDikonfigurasi = new[]
 {
-    // Dicek lebih dulu daripada Meta: sandbox Twilio tidak butuh template yang disetujui
-    // lebih dulu, jadi ini jalur yang lebih cepat dicoba begitu kredensialnya sudah ada.
-    var authTokenTwilio = builder.Configuration["Whatsapp:Twilio:AuthToken"] ?? "";
+    twilioAccountSid,
+    twilioAuthToken,
+    twilioNomorPengirim,
+    twilioContentSid,
+}.Any(nilai => !string.IsNullOrWhiteSpace(nilai));
+
+if (twilioDikonfigurasi)
+{
+    var twilioKurang = new Dictionary<string, string?>
+    {
+        ["Whatsapp:Twilio:AccountSid"] = twilioAccountSid,
+        ["Whatsapp:Twilio:AuthToken"] = twilioAuthToken,
+        ["Whatsapp:Twilio:NomorPengirim"] = twilioNomorPengirim,
+        ["Whatsapp:Twilio:SandboxContentSid"] = twilioContentSid,
+    }
+        .Where(pasangan => string.IsNullOrWhiteSpace(pasangan.Value))
+        .Select(pasangan => pasangan.Key)
+        .ToArray();
+
+    if (twilioKurang.Length > 0)
+    {
+        throw new InvalidOperationException(
+            "Konfigurasi Twilio belum lengkap. Isi: " + string.Join(", ", twilioKurang));
+    }
+
+    // Dicek lebih dulu daripada Meta. Content SID sandbox diwajibkan agar OTP tetap dapat
+    // dikirim di luar jendela percakapan 24 jam, termasuk saat demo dimulai ulang.
     builder.Services.AddHttpClient<IPengirimOtp, PengirimOtpWhatsappTwilio>(client =>
     {
         client.BaseAddress = new Uri("https://api.twilio.com");
         client.DefaultRequestHeaders.Authorization = PengirimOtpWhatsappTwilio.BuatHeaderOtorisasi(
-            twilioAccountSid,
-            authTokenTwilio
+            twilioAccountSid!,
+            twilioAuthToken!
         );
     });
 }

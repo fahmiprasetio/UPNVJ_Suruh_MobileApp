@@ -74,45 +74,45 @@ void main() {
     expect(order.penawaranPending.single.runnerId, runnerSatu);
   });
 
-  test('dua runner berbeda boleh menawar bersamaan untuk order yang sama', () async {
-    // Inti dari desain tawar-menawar ini: dua orang berbeda menawar order
-    // yang sama pada saat yang sama bukan tabrakan.
-    final repo = FakeOrderRepository(orderAwal: [permintaan()]);
-    addTearDown(repo.dispose);
+  test(
+    'dua runner berbeda boleh menawar bersamaan untuk order yang sama',
+    () async {
+      // Inti dari desain tawar-menawar ini: dua orang berbeda menawar order
+      // yang sama pada saat yang sama bukan tabrakan.
+      final repo = FakeOrderRepository(orderAwal: [permintaan()]);
+      addTearDown(repo.dispose);
 
-    await penawaranDari(repo, runnerSatu, harga: 150000);
-    final order = await penawaranDari(repo, runnerDua, harga: 120000);
+      await penawaranDari(repo, runnerSatu, harga: 150000);
+      final order = await penawaranDari(repo, runnerDua, harga: 120000);
 
-    expect(order.penawaranPending, hasLength(2));
-    expect(
-      order.penawaranMilikRunner(runnerSatu)?.harga,
-      150000,
-    );
-    expect(order.penawaranMilikRunner(runnerDua)?.harga, 120000);
-  });
+      expect(order.penawaranPending, hasLength(2));
+      expect(order.penawaranMilikRunner(runnerSatu)?.harga, 150000);
+      expect(order.penawaranMilikRunner(runnerDua)?.harga, 120000);
+    },
+  );
 
-  test('runner yang sama tidak bisa menawar dua kali selagi yang pertama menunggu', () async {
-    // Beda dari dua runner berbeda menawar bersamaan (itu sah). Ini satu
-    // runner mencoba menawar dua kali untuk order yang sama.
-    final repo = FakeOrderRepository(orderAwal: [permintaan()]);
-    addTearDown(repo.dispose);
+  test(
+    'runner yang sama tidak bisa menawar dua kali selagi yang pertama menunggu',
+    () async {
+      // Beda dari dua runner berbeda menawar bersamaan (itu sah). Ini satu
+      // runner mencoba menawar dua kali untuk order yang sama.
+      final repo = FakeOrderRepository(orderAwal: [permintaan()]);
+      addTearDown(repo.dispose);
 
-    await penawaranDari(repo, runnerSatu, harga: 150000);
+      await penawaranDari(repo, runnerSatu, harga: 150000);
 
-    expect(
-      () => penawaranDari(repo, runnerSatu, harga: 90000),
-      throwsStateError,
-    );
-  });
+      expect(
+        () => penawaranDari(repo, runnerSatu, harga: 90000),
+        throwsStateError,
+      );
+    },
+  );
 
   test('klien tidak bisa menawar ordernya sendiri', () async {
     final repo = FakeOrderRepository(orderAwal: [permintaan()]);
     addTearDown(repo.dispose);
 
-    expect(
-      () => penawaranDari(repo, 'u-klien-1', harga: 1),
-      throwsStateError,
-    );
+    expect(() => penawaranDari(repo, 'u-klien-1', harga: 1), throwsStateError);
   });
 
   test('setuju memindahkan harga dan jadwal penawaran ke ordernya', () async {
@@ -146,28 +146,31 @@ void main() {
     expect(order.penawaranPending, isEmpty);
   });
 
-  test('menyetujui satu tawaran otomatis menutup tawaran runner lain', () async {
-    final repo = FakeOrderRepository(orderAwal: [permintaan()]);
-    addTearDown(repo.dispose);
+  test(
+    'menyetujui satu tawaran otomatis menutup tawaran runner lain',
+    () async {
+      final repo = FakeOrderRepository(orderAwal: [permintaan()]);
+      addTearDown(repo.dispose);
 
-    final ditawarSatu = await penawaranDari(repo, runnerSatu, harga: 150000);
-    final penawaranSatu = ditawarSatu.penawaranPending.single.id;
-    await penawaranDari(repo, runnerDua, harga: 120000);
+      final ditawarSatu = await penawaranDari(repo, runnerSatu, harga: 150000);
+      final penawaranSatu = ditawarSatu.penawaranPending.single.id;
+      await penawaranDari(repo, runnerDua, harga: 120000);
 
-    final order = await repo.setujuiPenawaran(
-      orderId: 'o-uji',
-      penawaranId: penawaranSatu,
-    );
+      final order = await repo.setujuiPenawaran(
+        orderId: 'o-uji',
+        penawaranId: penawaranSatu,
+      );
 
-    expect(
-      order.offers.singleWhere((o) => o.id == penawaranSatu).status,
-      OfferStatus.disetujui,
-    );
-    expect(
-      order.offers.singleWhere((o) => o.id != penawaranSatu).status,
-      OfferStatus.ditutup,
-    );
-  });
+      expect(
+        order.offers.singleWhere((o) => o.id == penawaranSatu).status,
+        OfferStatus.disetujui,
+      );
+      expect(
+        order.offers.singleWhere((o) => o.id != penawaranSatu).status,
+        OfferStatus.ditutup,
+      );
+    },
+  );
 
   test('menolak satu tawaran tidak mengakhiri ordernya', () async {
     // Beda dari alur admin lama: menolak satu tawaran tidak lagi

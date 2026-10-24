@@ -208,14 +208,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: Rute.formLayananKosPola,
         builder: (context, state) {
           final nama = state.pathParameters['layanan'];
-          final layanan = [
-            ServiceType.bantuPindahKos,
-            ServiceType.bersihKos,
-            ServiceType.bersihKamarMandi,
-          ].firstWhere(
-            (layanan) => layanan.name == nama,
-            orElse: () => ServiceType.bersihKos,
-          );
+          final layanan =
+              [
+                ServiceType.bantuPindahKos,
+                ServiceType.bersihKos,
+                ServiceType.bersihKamarMandi,
+              ].firstWhere(
+                (layanan) => layanan.name == nama,
+                orElse: () => ServiceType.bersihKos,
+              );
           return FormLayananKosScreen(
             serviceType: layanan,
             contoh: state.extra as Order?,

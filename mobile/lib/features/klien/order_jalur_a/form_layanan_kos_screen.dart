@@ -41,8 +41,7 @@ class FormLayananKosScreen extends ConsumerStatefulWidget {
       _FormLayananKosScreenState();
 }
 
-class _FormLayananKosScreenState
-    extends ConsumerState<FormLayananKosScreen> {
+class _FormLayananKosScreenState extends ConsumerState<FormLayananKosScreen> {
   final _formKey = GlobalKey<FormState>();
   late final String _idempotencyKey = buatIdempotencyKey();
   final _catatanController = TextEditingController();
@@ -77,16 +76,10 @@ class _FormLayananKosScreenState
       _jumlahRunner = contoh.jumlahRunnerDibutuhkan;
       _jenisKendaraan = contoh.jenisKendaraan ?? MovingVehicleType.pickup;
       if (contoh.latitudeJemput != null && contoh.longitudeJemput != null) {
-        _posisiAsal = LatLng(
-          contoh.latitudeJemput!,
-          contoh.longitudeJemput!,
-        );
+        _posisiAsal = LatLng(contoh.latitudeJemput!, contoh.longitudeJemput!);
       }
       if (contoh.latitudeTujuan != null && contoh.longitudeTujuan != null) {
-        _posisiTujuan = LatLng(
-          contoh.latitudeTujuan!,
-          contoh.longitudeTujuan!,
-        );
+        _posisiTujuan = LatLng(contoh.latitudeTujuan!, contoh.longitudeTujuan!);
       }
     } else {
       final alamat = ref.read(authRepositoryProvider).userAktif?.alamat;
@@ -146,10 +139,10 @@ class _FormLayananKosScreenState
         data: (tarif) {
           final hasil = _hasilTarif(tarif);
           final jarak = bacaJarak(_jarakController.text);
-          final melebihiBatas = _pindahan &&
-              jarak != null &&
-              jarak > tarif.anjemJarakMaksimalKm;
-          final bool bolehKirim = !_sedangMengirim &&
+          final melebihiBatas =
+              _pindahan && jarak != null && jarak > tarif.anjemJarakMaksimalKm;
+          final bool bolehKirim =
+              !_sedangMengirim &&
               (!_pindahan || (hasil != null && !melebihiBatas));
 
           return _BilahBawahGojekKos(
@@ -236,9 +229,8 @@ class _FormLayananKosScreenState
     final user = ref.watch(authRepositoryProvider).userAktif;
     final namaPanggilan = user?.nama.split(' ').first ?? 'Kak';
     final jarak = bacaJarak(_jarakController.text);
-    final melebihiBatas = _pindahan &&
-        jarak != null &&
-        jarak > tarif.anjemJarakMaksimalKm;
+    final melebihiBatas =
+        _pindahan && jarak != null && jarak > tarif.anjemJarakMaksimalKm;
 
     return Form(
       key: _formKey,
@@ -428,11 +420,8 @@ class _FormLayananKosScreenState
               ),
               const SizedBox(width: 14),
               InkWell(
-                onTap: () => _pilihLokasi(
-                  _asalController,
-                  'Lokasi asal pindahan',
-                  true,
-                ),
+                onTap: () =>
+                    _pilihLokasi(_asalController, 'Lokasi asal pindahan', true),
                 borderRadius: BorderRadius.circular(10),
                 child: Container(
                   width: 36,
@@ -683,7 +672,10 @@ class _FormLayananKosScreenState
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFE8F5E9),
                   borderRadius: BorderRadius.circular(8),
@@ -799,11 +791,17 @@ class _FormLayananKosScreenState
             initialValue: _jenisKendaraan,
             decoration: const InputDecoration(
               isDense: true,
-              contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
             ),
             items: [
               for (final kendaraan in MovingVehicleType.values)
-                DropdownMenuItem(value: kendaraan, child: Text(kendaraan.label)),
+                DropdownMenuItem(
+                  value: kendaraan,
+                  child: Text(kendaraan.label),
+                ),
             ],
             onChanged: _sedangMengirim
                 ? null
@@ -896,10 +894,10 @@ class _FormLayananKosScreenState
                 onTap: _sedangMengirim
                     ? null
                     : () => _pilihLokasi(
-                          _alamatController,
-                          'Lokasi kos/kontrakan',
-                          true,
-                        ),
+                        _alamatController,
+                        'Lokasi kos/kontrakan',
+                        true,
+                      ),
                 borderRadius: BorderRadius.circular(10),
                 child: Container(
                   width: 36,
@@ -1072,12 +1070,19 @@ class _FormLayananKosScreenState
           if (_foto != null) ...[
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Image.memory(_foto!, height: 180, width: double.infinity, fit: BoxFit.cover),
+              child: Image.memory(
+                _foto!,
+                height: 180,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
             ),
             const SizedBox(height: 10),
           ],
           OutlinedButton.icon(
-            onPressed: _sedangMemilihFoto || _sedangMengirim ? null : _pilihFoto,
+            onPressed: _sedangMemilihFoto || _sedangMengirim
+                ? null
+                : _pilihFoto,
             icon: const Icon(Icons.add_a_photo_outlined),
             label: Text(_foto == null ? 'Pilih Foto Kondisi' : 'Ganti Foto'),
           ),
@@ -1086,7 +1091,10 @@ class _FormLayananKosScreenState
               padding: const EdgeInsets.only(top: 6),
               child: Text(
                 'Foto kondisi belum dipilih.',
-                style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.error,
+                  fontSize: 12,
+                ),
               ),
             ),
         ],
@@ -1138,9 +1146,15 @@ class _FormLayananKosScreenState
     } catch (_) {}
 
     if (jarakFinal == null) {
-      final meter = const Distance().as(LengthUnit.Meter, _posisiAsal!, _posisiTujuan!);
+      final meter = const Distance().as(
+        LengthUnit.Meter,
+        _posisiAsal!,
+        _posisiTujuan!,
+      );
       final perkiraanKm = (meter / 1000.0) * 1.25;
-      jarakFinal = double.parse(((perkiraanKm < 0.3) ? 0.5 : perkiraanKm).toStringAsFixed(1));
+      jarakFinal = double.parse(
+        ((perkiraanKm < 0.3) ? 0.5 : perkiraanKm).toStringAsFixed(1),
+      );
     }
 
     if (!mounted) return;
@@ -1188,38 +1202,44 @@ class _FormLayananKosScreenState
     final jarak = _pindahan ? bacaJarak(_jarakController.text) : null;
     if (_pindahan && jarak == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pilih lokasi asal dan tujuan pindahan pada peta.')),
+        const SnackBar(
+          content: Text('Pilih lokasi asal dan tujuan pindahan pada peta.'),
+        ),
       );
       return;
     }
 
     setState(() => _sedangMengirim = true);
     try {
-      final order = await ref.read(orderRepositoryProvider).buatOrderJalurA(
-        serviceType: widget.serviceType,
-        jarakKm: jarak,
-        deskripsi: _catatanController.text.trim().isEmpty
-            ? null
-            : _catatanController.text.trim(),
-        alamatJemput: _pindahan ? _asalController.text.trim() : null,
-        alamatTujuan: _pindahan
-            ? _tujuanController.text.trim()
-            : _alamatController.text.trim(),
-        latitudeJemput: _posisiAsal?.latitude,
-        longitudeJemput: _posisiAsal?.longitude,
-        latitudeTujuan: _posisiTujuan?.latitude,
-        longitudeTujuan: _posisiTujuan?.longitude,
-        jumlahRunnerDibutuhkan: _pindahan ? _jumlahRunner : 1,
-        jenisKendaraan: _pindahan ? _jenisKendaraan : null,
-        idempotencyKey: _idempotencyKey,
-      );
+      final order = await ref
+          .read(orderRepositoryProvider)
+          .buatOrderJalurA(
+            serviceType: widget.serviceType,
+            jarakKm: jarak,
+            deskripsi: _catatanController.text.trim().isEmpty
+                ? null
+                : _catatanController.text.trim(),
+            alamatJemput: _pindahan ? _asalController.text.trim() : null,
+            alamatTujuan: _pindahan
+                ? _tujuanController.text.trim()
+                : _alamatController.text.trim(),
+            latitudeJemput: _posisiAsal?.latitude,
+            longitudeJemput: _posisiAsal?.longitude,
+            latitudeTujuan: _posisiTujuan?.latitude,
+            longitudeTujuan: _posisiTujuan?.longitude,
+            jumlahRunnerDibutuhkan: _pindahan ? _jumlahRunner : 1,
+            jenisKendaraan: _pindahan ? _jenisKendaraan : null,
+            idempotencyKey: _idempotencyKey,
+          );
 
       if (_kebersihan) {
-        await ref.read(fotoBuktiRepositoryProvider).unggahFotoEstimasi(
-          orderId: order.id,
-          namaBerkas: _namaFoto!,
-          isi: _foto!,
-        );
+        await ref
+            .read(fotoBuktiRepositoryProvider)
+            .unggahFotoEstimasi(
+              orderId: order.id,
+              namaBerkas: _namaFoto!,
+              isi: _foto!,
+            );
       }
 
       if (!mounted) return;
@@ -1238,7 +1258,6 @@ class _FormLayananKosScreenState
       );
     }
   }
-
 }
 
 /// Bilah bawah tombol aksi pemesanan layanan kos ala Gojek
@@ -1363,4 +1382,3 @@ class _BilahBawahGojekKos extends StatelessWidget {
     );
   }
 }
-

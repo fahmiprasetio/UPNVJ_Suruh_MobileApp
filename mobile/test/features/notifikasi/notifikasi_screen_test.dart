@@ -17,8 +17,7 @@ void main() {
   });
 
   setUp(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -27,8 +26,7 @@ void main() {
   });
 
   tearDown(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -70,33 +68,37 @@ void main() {
     expect(find.text('Info & Tips'), findsOneWidget);
   });
 
-  testWidgets('filter Info & Tips menampilkan pengumuman kampus dan membuka dialog info saat diketuk', (
-    tester,
-  ) async {
-    await bangunAplikasi(tester);
+  testWidgets(
+    'filter Info & Tips menampilkan pengumuman kampus dan membuka dialog info saat diketuk',
+    (tester) async {
+      await bangunAplikasi(tester);
 
-    await tester.tap(find.byType(TombolNotifikasi));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byType(TombolNotifikasi));
+      await tester.pumpAndSettle();
 
-    // Pilih tab Info & Tips
-    await tester.tap(find.text('Info & Tips'));
-    await tester.pumpAndSettle();
+      // Pilih tab Info & Tips
+      await tester.tap(find.text('Info & Tips'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Selamat Datang di UPNVJ Suruh!'), findsOneWidget);
-    expect(find.text('Pembayaran Aman melalui Midtrans Snap'), findsOneWidget);
+      expect(find.text('Selamat Datang di UPNVJ Suruh!'), findsOneWidget);
+      expect(
+        find.text('Pembayaran Aman melalui Midtrans Snap'),
+        findsOneWidget,
+      );
 
-    // Ketuk salah satu pengumuman untuk membuka modal detail
-    await tester.tap(find.text('Selamat Datang di UPNVJ Suruh!'));
-    await tester.pumpAndSettle();
+      // Ketuk salah satu pengumuman untuk membuka modal detail
+      await tester.tap(find.text('Selamat Datang di UPNVJ Suruh!'));
+      await tester.pumpAndSettle();
 
-    expect(find.byType(AlertDialog), findsOneWidget);
-    expect(find.text('Tutup'), findsOneWidget);
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.text('Tutup'), findsOneWidget);
 
-    await tester.tap(find.text('Tutup'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Tutup'));
+      await tester.pumpAndSettle();
 
-    expect(find.byType(AlertDialog), findsNothing);
-  });
+      expect(find.byType(AlertDialog), findsNothing);
+    },
+  );
 
   testWidgets('filter Pesanan menyaring pembaruan pesanan milik klien', (
     tester,

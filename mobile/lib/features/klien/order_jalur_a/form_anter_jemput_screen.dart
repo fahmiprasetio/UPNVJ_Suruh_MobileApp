@@ -209,6 +209,12 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
       _tujuanController.text = contoh.alamatTujuan ?? '';
       _jarakController.text = tulisJarak(contoh.jarakKm);
       _catatanController.text = contoh.deskripsi ?? '';
+      if (contoh.latitudeJemput != null && contoh.longitudeJemput != null) {
+        _posisiJemput = LatLng(contoh.latitudeJemput!, contoh.longitudeJemput!);
+      }
+      if (contoh.latitudeTujuan != null && contoh.longitudeTujuan != null) {
+        _posisiTujuan = LatLng(contoh.latitudeTujuan!, contoh.longitudeTujuan!);
+      }
       return;
     }
 
@@ -1028,7 +1034,6 @@ class _FormAnterJemputScreenState extends ConsumerState<FormAnterJemputScreen> {
       ),
     );
   }
-
 
   /// Kartu Catatan untuk Driver / Runner (Ringkas 1 baris bersih)
   Widget _buildCardCatatanDriver() {

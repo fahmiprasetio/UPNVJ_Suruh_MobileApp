@@ -16,8 +16,7 @@ void main() {
   });
 
   setUp(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -26,8 +25,7 @@ void main() {
   });
 
   tearDown(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -66,34 +64,37 @@ void main() {
     String alamat = 'Kos Anggrek, Jl. RS Fatmawati',
     String harga = '150000',
   }) async {
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Ceritakan kebutuhanmu'),
-      kebutuhan,
+    final alamatField = find.widgetWithText(
+      TextFormField,
+      'Alamat tempat pengerjaan',
     );
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Harga yang kamu sanggupi'),
-      harga,
+    await tester.ensureVisible(alamatField);
+    await tester.enterText(alamatField, alamat);
+
+    final kebutuhanField = find.widgetWithText(
+      TextFormField,
+      'Jelaskan bantuan yang kamu butuhkan...',
     );
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Alamat'),
-      alamat,
-    );
+    await tester.ensureVisible(kebutuhanField);
+    await tester.enterText(kebutuhanField, kebutuhan);
+
+    final hargaField = find.widgetWithText(TextFormField, 'Harga tawaran kamu');
+    await tester.ensureVisible(hargaField);
+    await tester.enterText(hargaField, harga);
     await tester.pumpAndSettle();
   }
 
   testWidgets('pintu Permintaan Lain sekarang membuka formnya', (tester) async {
     await bukaForm(tester, namaLayanan: 'Permintaan Lain');
 
-    expect(find.widgetWithText(AppBar, 'Permintaan Lain'), findsOneWidget);
+    expect(find.text('Permintaan Lain'), findsOneWidget);
     expect(find.text('Kirim Permintaan'), findsOneWidget);
   });
 
-  testWidgets('hanya Permintaan Lain memakai form Jalur B', (
-    tester,
-  ) async {
+  testWidgets('hanya Permintaan Lain memakai form Jalur B', (tester) async {
     await bukaForm(tester, namaLayanan: 'Permintaan Lain');
 
-    expect(find.widgetWithText(AppBar, 'Permintaan Lain'), findsOneWidget);
+    expect(find.text('Permintaan Lain'), findsOneWidget);
   });
 
   testWidgets('form Jalur B tidak menjanjikan harga apa pun', (tester) async {
@@ -103,7 +104,7 @@ void main() {
     // klien menyetujui salah satu tawaran runner.
     expect(find.textContaining('Total'), findsNothing);
     expect(
-      find.textContaining('runner yang tersedia bisa menyanggupinya'),
+      find.textContaining('runner yang tersedia dapat langsung menyetujui'),
       findsOneWidget,
     );
   });
@@ -115,10 +116,7 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Kirim Permintaan'));
     await tester.pumpAndSettle();
 
-    expect(
-      find.textContaining('Ceritakan lebih lengkap'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('Ceritakan lebih lengkap'), findsOneWidget);
   });
 
   testWidgets('permintaan terkirim jadi order berstatus Permintaan', (
@@ -147,7 +145,7 @@ void main() {
     final repo = await bukaForm(tester, namaLayanan: 'Permintaan Lain');
     await isiForm(tester);
 
-    await tester.tap(find.text('3 orang'));
+    await tester.tap(find.text('3 Orang'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.widgetWithText(FilledButton, 'Kirim Permintaan'));
@@ -168,7 +166,9 @@ void main() {
 
     expect(
       tester
-          .widget<TextFormField>(find.widgetWithText(TextFormField, 'Alamat'))
+          .widget<TextFormField>(
+            find.widgetWithText(TextFormField, 'Alamat tempat pengerjaan'),
+          )
           .controller
           ?.text,
       SeedData.klien.alamat,

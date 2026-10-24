@@ -20,8 +20,7 @@ void main() {
   });
 
   setUp(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -30,8 +29,7 @@ void main() {
   });
 
   tearDown(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -125,10 +123,7 @@ void main() {
   ) async {
     await bukaDetail(tester, 'SRH-9003', orderAwal: [orderSelesai()]);
 
-    expect(
-      find.textContaining('belum bisa ditampilkan'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('belum bisa ditampilkan'), findsOneWidget);
     expect(find.byType(Image), findsNothing);
   });
 
@@ -179,11 +174,8 @@ void main() {
       ],
     );
 
-    expect(find.text('Catatan runner'), findsOneWidget);
-    expect(
-      find.text('Barang ditaruh di meja resepsionis'),
-      findsOneWidget,
-    );
+    expect(find.text('Catatan Runner:'), findsOneWidget);
+    expect(find.text('Barang ditaruh di meja resepsionis'), findsOneWidget);
   });
 
   test('hanya tautan http yang dianggap bisa digambar', () {
@@ -191,7 +183,10 @@ void main() {
       KartuBuktiPekerjaan.bisaDigambar('https://contoh.test/a.jpg'),
       isTrue,
     );
-    expect(KartuBuktiPekerjaan.bisaDigambar('http://contoh.test/a.jpg'), isTrue);
+    expect(
+      KartuBuktiPekerjaan.bisaDigambar('http://contoh.test/a.jpg'),
+      isTrue,
+    );
     expect(KartuBuktiPekerjaan.bisaDigambar('fake://bukti/a.jpg'), isFalse);
   });
 }

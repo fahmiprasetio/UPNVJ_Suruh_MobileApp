@@ -264,6 +264,10 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: skema.surfaceContainer,
+        hintStyle: TextStyle(
+          color: skema.onSurfaceVariant.withValues(alpha: 0.5),
+          fontWeight: FontWeight.w400,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusKontrol),
           borderSide: BorderSide(color: skema.outlineVariant),

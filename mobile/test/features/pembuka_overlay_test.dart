@@ -138,7 +138,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(PembukaOverlay), findsNothing);
-    expect(find.widgetWithText(TextFormField, 'Nomor HP'), findsOneWidget);
+    expect(
+      find.widgetWithText(TextFormField, 'Nomor WhatsApp / HP'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('yang sudah masuk melihat berandanya, bukan layar masuk', (
@@ -174,7 +177,10 @@ void main() {
     }
 
     expect(find.byType(PembukaOverlay), findsNothing);
-    expect(find.widgetWithText(TextFormField, 'Nomor HP'), findsOneWidget);
+    expect(
+      find.widgetWithText(TextFormField, 'Nomor WhatsApp / HP'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('lencana tetap utuh menunggu sesi, tidak diangkat lebih awal', (
@@ -237,7 +243,10 @@ void main() {
     }
 
     expect(find.byType(PembukaOverlay), findsNothing);
-    expect(find.widgetWithText(TextFormField, 'Nomor HP'), findsOneWidget);
+    expect(
+      find.widgetWithText(TextFormField, 'Nomor WhatsApp / HP'),
+      findsOneWidget,
+    );
   });
 
   test('penanda pembuka sekali jalan, tidak bisa dibalik', () {

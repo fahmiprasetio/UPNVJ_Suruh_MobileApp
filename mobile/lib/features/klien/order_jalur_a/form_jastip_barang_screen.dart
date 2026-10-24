@@ -133,7 +133,7 @@ class _FormJastipBarangScreenState
           return _BilahBuatOrder(
             total: melebihiBatas ? null : hasil?.total,
             sedangMengirim: _sedangMengirim,
-            onTekan: (hasil == null || melebihiBatas) ? null : _buatOrder,
+            onTekan: melebihiBatas ? null : _buatOrder,
             melebihiBatas: melebihiBatas,
             batasMaksimalKm: tarif.anjemJarakMaksimalKm.round(),
           );
@@ -571,8 +571,7 @@ class _FormJastipBarangScreenState
 
   Widget _buildForm(BuildContext context, Tarif tarif) {
     final jarak = bacaJarak(_jarakController.text);
-    final melebihiBatas =
-        jarak != null && jarak > tarif.anjemJarakMaksimalKm;
+    final melebihiBatas = jarak != null && jarak > tarif.anjemJarakMaksimalKm;
     final hasil = melebihiBatas ? null : _hasilTarif(tarif);
     final user = ref.watch(authRepositoryProvider).userAktif;
     final namaPanggilan = user?.nama.split(' ').first ?? 'Kak';
@@ -903,7 +902,9 @@ class _BilahBuatOrder extends StatelessWidget {
                             Text(
                               total != null
                                   ? formatRupiah(total)
-                                  : (melebihiBatas ? 'Di Luar Batas' : 'Pilih Rute'),
+                                  : (melebihiBatas
+                                        ? 'Di Luar Batas'
+                                        : 'Pilih Rute'),
                               style: TextStyle(
                                 fontSize: melebihiBatas ? 13.5 : 16,
                                 fontWeight: FontWeight.w900,

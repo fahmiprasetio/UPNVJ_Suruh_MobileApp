@@ -175,11 +175,15 @@ class KartuOrderSiaran extends StatelessWidget {
               ),
 
               // 2. DESKRIPSI / CATATAN PESANAN (Jika Ada)
-              if (order.deskripsi != null && order.deskripsi!.trim().isNotEmpty) ...[
+              if (order.deskripsi != null &&
+                  order.deskripsi!.trim().isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF9FAFB),
                     borderRadius: BorderRadius.circular(10),
@@ -268,9 +272,7 @@ class KartuOrderSiaran extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           formatRupiah(
-                            _menungguTawaran
-                                ? order.hargaUsulan
-                                : order.harga,
+                            _menungguTawaran ? order.hargaUsulan : order.harga,
                           ),
                           style: const TextStyle(
                             fontSize: 19,
@@ -300,7 +302,8 @@ class KartuOrderSiaran extends StatelessWidget {
   }
 
   bool get _menungguTawaran =>
-      order.track == OrderTrack.jalurB && order.status == OrderStatus.permintaan;
+      order.track == OrderTrack.jalurB &&
+      order.status == OrderStatus.permintaan;
 
   static ({Color latar, Color aksen}) _warnaLayanan(ServiceType type) {
     switch (type) {
@@ -342,11 +345,7 @@ class KartuOrderSiaran extends StatelessWidget {
 
 /// Visual Rute Jemput-Tujuan gaya Gojek Aloha dengan konektor titik dan jarak
 class _BlokRuteAloha extends StatelessWidget {
-  const _BlokRuteAloha({
-    this.jemput,
-    this.tujuan,
-    this.jarakKm,
-  });
+  const _BlokRuteAloha({this.jemput, this.tujuan, this.jarakKm});
 
   final String? jemput;
   final String? tujuan;
@@ -376,7 +375,10 @@ class _BlokRuteAloha extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: const Color(0xFF00AA13),
                     shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFFC6F6D5), width: 2),
+                    border: Border.all(
+                      color: const Color(0xFFC6F6D5),
+                      width: 2,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -409,7 +411,10 @@ class _BlokRuteAloha extends StatelessWidget {
                 ),
                 if (jarakKm != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFE8F8EA),
                       borderRadius: BorderRadius.circular(100),
@@ -448,7 +453,10 @@ class _BlokRuteAloha extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: const Color(0xFFEA580C),
                     shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFFFFEDD5), width: 2),
+                    border: Border.all(
+                      color: const Color(0xFFFFEDD5),
+                      width: 2,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),

@@ -153,7 +153,6 @@ void main() {
     await tester.tap(find.text(SeedData.klien.nama));
     await tester.pumpAndSettle();
 
-
     // Beranda klien tidak lagi punya judul bilah atas (bagian 83); kolom cari
     // yang jadi anak pertamanya adalah penanda yang sama-sama uniknya.
     expect(find.text('Cari layanan'), findsOneWidget);

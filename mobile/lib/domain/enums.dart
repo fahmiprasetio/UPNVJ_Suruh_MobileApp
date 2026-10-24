@@ -78,8 +78,7 @@ enum OrderStatus {
     OrderStatus.batal => 'Batal',
   };
 
-  bool get isAktif =>
-      this != OrderStatus.selesai && this != OrderStatus.batal;
+  bool get isAktif => this != OrderStatus.selesai && this != OrderStatus.batal;
 }
 
 enum OfferStatus {

@@ -50,7 +50,8 @@ void main() {
     List<Order> orders, {
     FakeOrderRepository? repository,
   }) async {
-    final repo = repository ??
+    final repo =
+        repository ??
         FakeOrderRepository(
           pemanggil: () => SeedData.klien.id,
           orderAwal: orders,
@@ -80,6 +81,21 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  Order permintaanJalurB() => Order(
+    id: 'o-permintaan-uji',
+    kodeOrder: 'SRH-9902',
+    klienId: SeedData.klien.id,
+    namaKlien: SeedData.klien.nama,
+    serviceType: ServiceType.permintaanLain,
+    status: OrderStatus.permintaan,
+    dibuatPada: DateTime.now(),
+    deskripsi: 'Bantu merapikan gudang kos.',
+    alamatTujuan: SeedData.klien.alamat,
+    hargaUsulan: 150000,
+    jadwalMulai: DateTime.now().add(const Duration(days: 2)),
+    jumlahRunnerDibutuhkan: 3,
+  );
+
   testWidgets('memisahkan order berjalan dari yang sudah selesai', (
     tester,
   ) async {
@@ -93,10 +109,7 @@ void main() {
     testWidgets('kode order menyaring ke satu hasil saja', (tester) async {
       await bukaRiwayat(tester);
 
-      await tester.enterText(
-        find.byType(TextField),
-        '0398',
-      );
+      await tester.enterText(find.byType(TextField), '0398');
       await tester.pumpAndSettle();
 
       expect(find.textContaining('SRH-0398'), findsOneWidget);
@@ -111,10 +124,7 @@ void main() {
 
       // SRH-0410 (Jastip Makanan) dan SRH-0398 (Jastip Barang) sama-sama
       // berawalan "Jastip".
-      await tester.enterText(
-        find.byType(TextField),
-        'jastip',
-      );
+      await tester.enterText(find.byType(TextField), 'jastip');
       await tester.pumpAndSettle();
 
       expect(find.textContaining('SRH-0410'), findsOneWidget);
@@ -134,19 +144,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(
-        find.textContaining('Tidak ada order yang cocok'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('Tidak ada order yang cocok'), findsOneWidget);
     });
 
     testWidgets('tombol hapus mengosongkan pencarian lagi', (tester) async {
       await bukaRiwayat(tester);
 
-      await tester.enterText(
-        find.byType(TextField),
-        '0398',
-      );
+      await tester.enterText(find.byType(TextField), '0398');
       await tester.pumpAndSettle();
       expect(find.textContaining('SRH-0411'), findsNothing);
 
@@ -179,7 +183,7 @@ void main() {
   testWidgets('order Jalur B tanpa harga ditandai menunggu penawaran', (
     tester,
   ) async {
-    await bukaRiwayat(tester);
+    await bukaRiwayatDengan(tester, [permintaanJalurB()]);
 
     expect(find.text('Harga menunggu penawaran'), findsOneWidget);
   });
@@ -203,9 +207,9 @@ void main() {
   testWidgets(
     'detail order Jalur B menampilkan kuota runner dan harga kosong',
     (tester) async {
-      await bukaRiwayat(tester);
+      await bukaRiwayatDengan(tester, [permintaanJalurB()]);
 
-      await tester.tap(find.textContaining('SRH-0409'));
+      await tester.tap(find.textContaining('SRH-9902'));
       await tester.pumpAndSettle();
 
       expect(find.text('0 dari 3 orang'), findsOneWidget);
@@ -402,7 +406,9 @@ void main() {
     expect(find.widgetWithText(FilledButton, 'Bayar Sekarang'), findsNothing);
   });
 
-  testWidgets('order yang belum lama tetap memakai kalimat biasanya', (tester) async {
+  testWidgets('order yang belum lama tetap memakai kalimat biasanya', (
+    tester,
+  ) async {
     await bukaRiwayat(tester);
     await tester.tap(find.textContaining('SRH-0411'));
     await tester.pumpAndSettle();
@@ -411,7 +417,10 @@ void main() {
       find.text('Ordermu sedang disiarkan ke runner yang tersedia.'),
       findsOneWidget,
     );
-    expect(find.textContaining('Belum ada runner yang mengambil'), findsNothing);
+    expect(
+      find.textContaining('Belum ada runner yang mengambil'),
+      findsNothing,
+    );
   });
 
   /// Order yang menganggur terlalu lama sekarang mengatakannya.
@@ -419,25 +428,31 @@ void main() {
   /// Benderanya datang dari server, jadi tes ini memasangnya langsung. Yang diuji bukan
   /// perhitungannya (itu milik backend, dan diuji di sana), melainkan bahwa layar ini
   /// benar-benar mengganti kalimatnya dan menyebutkan jalan keluarnya.
-  testWidgets('order yang lama tanpa runner mengatakannya, bukan bilang sedang disiarkan', (
-    tester,
-  ) async {
-    final macet = SeedData.orderAwal().first.copyWith(macet: true);
-    await bukaRiwayatDengan(tester, [macet]);
+  testWidgets(
+    'order yang lama tanpa runner mengatakannya, bukan bilang sedang disiarkan',
+    (tester) async {
+      final macet = SeedData.orderAwal().first.copyWith(macet: true);
+      await bukaRiwayatDengan(tester, [macet]);
 
-    await tester.tap(find.textContaining(macet.kodeOrder));
-    await tester.pumpAndSettle();
+      await tester.tap(find.textContaining(macet.kodeOrder));
+      await tester.pumpAndSettle();
 
-    expect(find.textContaining('Belum ada runner yang mengambil'), findsOneWidget);
-    expect(
-      find.text('Ordermu sedang disiarkan ke runner yang tersedia.'),
-      findsNothing,
-    );
-  });
+      expect(
+        find.textContaining('Belum ada runner yang mengambil'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Ordermu sedang disiarkan ke runner yang tersedia.'),
+        findsNothing,
+      );
+    },
+  );
 
   /// Dan jalan keluarnya memang ada di layar yang sama, beberapa sentimeter di bawahnya.
   /// Kalimat yang menyebut sesuatu yang tidak ada di layar lebih buruk daripada diam.
-  testWidgets('kalimat macet menyebut jalan keluar yang benar-benar ada', (tester) async {
+  testWidgets('kalimat macet menyebut jalan keluar yang benar-benar ada', (
+    tester,
+  ) async {
     final macet = SeedData.orderAwal().first.copyWith(macet: true);
     await bukaRiwayatDengan(tester, [macet]);
 

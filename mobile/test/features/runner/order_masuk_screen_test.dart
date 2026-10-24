@@ -19,8 +19,7 @@ void main() {
   });
 
   setUp(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -29,8 +28,7 @@ void main() {
   });
 
   tearDown(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -45,7 +43,8 @@ void main() {
     List<Order>? orderAwal,
     FakeOrderRepository? repository,
   }) async {
-    final orderRepo = repository ??
+    final orderRepo =
+        repository ??
         FakeOrderRepository(
           pemanggil: () => SeedData.runner.id,
           orderAwal: orderAwal,
@@ -82,7 +81,7 @@ void main() {
 
     expect(
       find.descendant(
-        of: find.byType(FilledButton),
+        of: find.byType(ElevatedButton),
         matching: find.byType(CircularProgressIndicator),
       ),
       findsOneWidget,
@@ -106,20 +105,25 @@ void main() {
     String kodeOrder = 'SRH-9001',
     int jumlahRunnerDibutuhkan = 1,
     List<String> runnerIds = const [],
+    ServiceType serviceType = ServiceType.anterJemput,
+    OrderStatus status = OrderStatus.mencariRunner,
   }) {
     return Order(
       id: id,
       kodeOrder: kodeOrder,
       klienId: SeedData.klien.id,
       namaKlien: SeedData.klien.nama,
-      serviceType: ServiceType.anterJemput,
-      status: OrderStatus.mencariRunner,
+      serviceType: serviceType,
+      status: status,
       dibuatPada: DateTime.now(),
       alamatJemput: 'Kos Melati',
       alamatTujuan: 'Gedung FIK UPNVJ',
-      harga: 11000,
+      harga: status == OrderStatus.permintaan ? null : 11000,
+      hargaUsulan: status == OrderStatus.permintaan ? 150000 : null,
       jumlahRunnerDibutuhkan: jumlahRunnerDibutuhkan,
-      runners: [for (final id in runnerIds) RunnerRingkas(id: id, nama: 'Runner')],
+      runners: [
+        for (final id in runnerIds) RunnerRingkas(id: id, nama: 'Runner'),
+      ],
     );
   }
 
@@ -137,7 +141,18 @@ void main() {
   testWidgets(
     'order yang sudah dibayar dan Jalur B yang masih menunggu tawaran disiarkan',
     (tester) async {
-      await bukaSebagaiRunner(tester);
+      await bukaSebagaiRunner(
+        tester,
+        orderAwal: [
+          orderSiaran(id: 'jalur-a', kodeOrder: 'SRH-0411'),
+          orderSiaran(
+            id: 'jalur-b',
+            kodeOrder: 'SRH-0409',
+            serviceType: ServiceType.permintaanLain,
+            status: OrderStatus.permintaan,
+          ),
+        ],
+      );
 
       // Dari data contoh: SRH-0411 sudah dibayar dan mencari runner (Jalur A).
       // SRH-0409 adalah permintaan Jalur B yang belum ditawari siapa pun, jadi
@@ -149,31 +164,32 @@ void main() {
     },
   );
 
-  testWidgets('permintaan Jalur B yang masih menunggu tawaran memakai tombol ajukan tawaran', (
-    tester,
-  ) async {
-    await bukaSebagaiRunner(tester);
+  testWidgets(
+    'permintaan Jalur B yang masih menunggu tawaran memakai tombol ajukan tawaran',
+    (tester) async {
+      await bukaSebagaiRunner(
+        tester,
+        orderAwal: [
+          orderSiaran(
+            id: 'jalur-b',
+            kodeOrder: 'SRH-0409',
+            serviceType: ServiceType.permintaanLain,
+            status: OrderStatus.permintaan,
+          ),
+        ],
+      );
 
-    final kartuSrh0409 = find.ancestor(
-      of: find.textContaining('SRH-0409'),
-      matching: find.byType(Card),
-    );
-    expect(
-      find.descendant(of: kartuSrh0409, matching: find.text('AJUKAN TAWARAN')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: kartuSrh0409, matching: find.text('TERIMA')),
-      findsNothing,
-    );
-  });
+      expect(find.text('TAWAR'), findsOneWidget);
+      expect(find.text('TERIMA'), findsNothing);
+    },
+  );
 
   testWidgets('daftar kosong menjelaskan keadaannya, bukan diam', (
     tester,
   ) async {
     await bukaSebagaiRunner(tester, orderAwal: const []);
 
-    expect(find.text('Belum ada order masuk'), findsOneWidget);
+    expect(find.text('Belum Ada Order Masuk'), findsOneWidget);
   });
 
   testWidgets('menerima order membuatnya berhenti disiarkan', (tester) async {
@@ -182,10 +198,10 @@ void main() {
     await tekanTerima(tester);
 
     expect(
-      find.text('Order SRH-9001 jadi milikmu. Segera kerjakan, ya.'),
+      find.text('🎉 Order SRH-9001 berhasil kamu ambil! Segera kerjakan.'),
       findsOneWidget,
     );
-    expect(find.text('Belum ada order masuk'), findsOneWidget);
+    expect(find.text('Belum Ada Order Masuk'), findsOneWidget);
 
     final order = await bacaOrder(repo, 'o-uji');
     expect(order.runnerIds, [SeedData.runner.id]);
@@ -207,43 +223,37 @@ void main() {
 
     expect(await pesaing, isTrue);
     expect(
-      find.text('Order SRH-9001 keburu diambil runner lain.'),
+      find.text('⚠️ Order SRH-9001 keburu diambil oleh runner lain.'),
       findsOneWidget,
     );
-    expect(
-      (await bacaOrder(repo, 'o-uji')).runnerIds,
-      [SeedData.adminRunner.id],
-    );
+    expect((await bacaOrder(repo, 'o-uji')).runnerIds, [
+      SeedData.adminRunner.id,
+    ]);
   });
 
   testWidgets('order multi-runner menampilkan sisa kuotanya', (tester) async {
     await bukaSebagaiRunner(
       tester,
       orderAwal: [
-        orderSiaran(
-          jumlahRunnerDibutuhkan: 3,
-          runnerIds: const ['u-runner-9'],
-        ),
+        orderSiaran(jumlahRunnerDibutuhkan: 3, runnerIds: const ['u-runner-9']),
       ],
     );
 
-    expect(find.text('Butuh 3 orang · 1 sudah gabung'), findsOneWidget);
+    expect(find.textContaining('Butuh 3 orang'), findsOneWidget);
+    expect(find.textContaining('1 bergabung'), findsOneWidget);
   });
 
   testWidgets('order yang sudah kuambil tidak ditawarkan lagi', (tester) async {
     await bukaSebagaiRunner(
       tester,
       orderAwal: [
-        orderSiaran(
-          jumlahRunnerDibutuhkan: 3,
-          runnerIds: [SeedData.runner.id],
-        ),
+        orderSiaran(jumlahRunnerDibutuhkan: 3, runnerIds: [SeedData.runner.id]),
       ],
     );
 
     // Kuotanya masih terbuka, tapi bukan untuk runner ini.
     expect(find.text('TERIMA'), findsNothing);
-    expect(find.text('Belum ada order masuk'), findsOneWidget);
+    expect(find.text('Belum Ada Order Masuk'), findsOneWidget);
     // Pekerjaan yang belum kelar ditandai lencana di tab Order Saya.
     expect(
       find.descendant(of: find.byType(NavigationBar), matching: find.text('1')),
@@ -285,7 +295,7 @@ void main() {
 
 class _RepoGagalTerima extends FakeOrderRepository {
   _RepoGagalTerima({required super.orderAwal})
-      : super(pemanggil: () => SeedData.runner.id);
+    : super(pemanggil: () => SeedData.runner.id);
 
   @override
   Future<bool> terimaOrder({
@@ -299,7 +309,7 @@ class _RepoGagalTerima extends FakeOrderRepository {
 
 class _RepoGagalTerimaApi extends FakeOrderRepository {
   _RepoGagalTerimaApi({required super.orderAwal})
-      : super(pemanggil: () => SeedData.runner.id);
+    : super(pemanggil: () => SeedData.runner.id);
 
   @override
   Future<bool> terimaOrder({
@@ -310,4 +320,3 @@ class _RepoGagalTerimaApi extends FakeOrderRepository {
     throw const GalatDilarang('Akunmu belum diverifikasi.');
   }
 }
-

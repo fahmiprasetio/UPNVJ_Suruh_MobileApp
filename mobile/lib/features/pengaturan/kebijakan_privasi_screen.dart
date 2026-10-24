@@ -30,9 +30,7 @@ class KebijakanPrivasiScreen extends StatelessWidget {
     final teks = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Kebijakan Privasi'),
-      ),
+      appBar: AppBar(title: const Text('Kebijakan Privasi')),
       body: ListView(
         padding: const EdgeInsets.all(AppTheme.spasiSedang),
         children: [
@@ -46,9 +44,7 @@ class KebijakanPrivasiScreen extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             'Terakhir diperbarui: $diperbaruiPada',
-            style: teks.bodySmall?.copyWith(
-              color: skema.onSurfaceVariant,
-            ),
+            style: teks.bodySmall?.copyWith(color: skema.onSurfaceVariant),
           ),
           const SizedBox(height: AppTheme.spasiSedang),
           Text(
@@ -79,9 +75,7 @@ class KebijakanPrivasiScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: skema.surfaceContainerHighest.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(AppTheme.radiusKontrol),
-        border: Border.all(
-          color: skema.outlineVariant.withValues(alpha: 0.4),
-        ),
+        border: Border.all(color: skema.outlineVariant.withValues(alpha: 0.4)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -92,11 +86,7 @@ class KebijakanPrivasiScreen extends StatelessWidget {
               color: skema.primaryContainer,
               borderRadius: BorderRadius.circular(AppTheme.radiusKontrol),
             ),
-            child: Icon(
-              bagian.ikon,
-              size: 20,
-              color: skema.onPrimaryContainer,
-            ),
+            child: Icon(bagian.ikon, size: 20, color: skema.onPrimaryContainer),
           ),
           const SizedBox(width: AppTheme.spasiSedang),
           Expanded(
@@ -169,7 +159,7 @@ const String _pembuka =
 const List<_Bagian> _bagian = [
   _Bagian(Icons.dataset_outlined, '1. Data yang kami kumpulkan', [
     _Paragraf(
-      'nama, nomor HP, alamat bawaan (opsional), dan password (opsional; yang disimpan hanya '
+      'nama, nomor HP, alamat bawaan (opsional), dan password (yang disimpan hanya '
       'sidik hash-nya, bukan passwordnya).',
       tebal: 'Akun:',
       butir: true,

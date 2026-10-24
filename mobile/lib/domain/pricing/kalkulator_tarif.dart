@@ -115,7 +115,10 @@ class KalkulatorTarif {
   /// keputusan memakai alamat teks bebas, bukan pin peta (rencana capstone
   /// bagian 14.8), tanpa peta, sistem tidak punya cara menghitung jarak
   /// sendiri. Selisih kecil diselesaikan runner dan klien di lapangan.
-  static HasilTarif anterJemput({required double jarakKm, required Tarif tarif}) {
+  static HasilTarif anterJemput({
+    required double jarakKm,
+    required Tarif tarif,
+  }) {
     final jarakDipakai = jarakKm.clamp(
       tarif.anjemJarakMinimalKm,
       tarif.anjemJarakMaksimalKm,
@@ -144,7 +147,10 @@ class KalkulatorTarif {
   ///
   /// Batas jarak untuk sementara memakai batas anter jemput, karena mitra
   /// belum memberi angka sendiri untuk jastip.
-  static HasilTarif jastipBarang({required double jarakKm, required Tarif tarif}) {
+  static HasilTarif jastipBarang({
+    required double jarakKm,
+    required Tarif tarif,
+  }) {
     final jarakDipakai = jarakKm.clamp(
       tarif.anjemJarakMinimalKm,
       tarif.anjemJarakMaksimalKm,
@@ -153,7 +159,10 @@ class KalkulatorTarif {
 
     return HasilTarif(
       rincian: [
-        RincianTarif(label: 'Ongkos jasa titip', nominal: tarif.jastipBarangFee),
+        RincianTarif(
+          label: 'Ongkos jasa titip',
+          nominal: tarif.jastipBarangFee,
+        ),
         RincianTarif(
           label: 'Jarak ${_formatJarak(jarakDipakai)} km',
           nominal: ongkosJarak,
@@ -181,15 +190,17 @@ class KalkulatorTarif {
       tarif.anjemJarakMaksimalKm,
     );
     final ongkosJarak = (jarakDipakai * tarif.pindahKosTarifPerKm).round();
-    final tambahanRunner =
-        (jumlahRunner - 1) * tarif.pindahKosTambahanRunner;
+    final tambahanRunner = (jumlahRunner - 1) * tarif.pindahKosTambahanRunner;
     final tambahanKendaraan = switch (jenisKendaraan) {
       MovingVehicleType.motor => 0,
       MovingVehicleType.mobil => tarif.pindahKosTambahanMobil,
       MovingVehicleType.pickup => tarif.pindahKosTambahanPickup,
     };
     final rincian = <RincianTarif>[
-      RincianTarif(label: 'Jasa pindah kos', nominal: tarif.pindahKosTarifDasar),
+      RincianTarif(
+        label: 'Jasa pindah kos',
+        nominal: tarif.pindahKosTarifDasar,
+      ),
       RincianTarif(
         label: 'Jarak ${_formatJarak(jarakDipakai)} km',
         nominal: ongkosJarak,
@@ -216,8 +227,7 @@ class KalkulatorTarif {
     total: nominal,
   );
 
-  static String _formatJarak(double jarak) =>
-      jarak == jarak.roundToDouble()
+  static String _formatJarak(double jarak) => jarak == jarak.roundToDouble()
       ? jarak.toStringAsFixed(0)
       : jarak.toStringAsFixed(1).replaceAll('.', ',');
 }

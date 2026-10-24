@@ -49,8 +49,9 @@ class BerandaKlienScreen extends ConsumerWidget {
     final gelap = Theme.of(context).brightness == Brightness.dark;
     final user = ref.watch(userAktifProvider).value;
 
-    final warnaKepala =
-        gelap ? skema.primaryContainer : const Color(0xFF00AA13);
+    final warnaKepala = gelap
+        ? skema.primaryContainer
+        : const Color(0xFF00AA13);
     final teksKepala = gelap ? skema.onPrimaryContainer : Colors.white;
 
     // Enam layanan berkatalog, tanpa pintu permintaan bebas yang punya

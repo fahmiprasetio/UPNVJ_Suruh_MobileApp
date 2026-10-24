@@ -8,29 +8,79 @@ import '../../buka_form_order.dart';
 /// Kata kunci tambahan untuk mempermudah pencarian layanan mahasiswa.
 const Map<ServiceType, List<String>> _kataKunciLayanan = {
   ServiceType.anterJemput: [
-    'motor', 'ojek', 'kampus', 'jemput', 'antar', 'stasiun',
-    'pondok labu', 'limo', 'helm', 'bonceng',
+    'motor',
+    'ojek',
+    'kampus',
+    'jemput',
+    'antar',
+    'stasiun',
+    'pondok labu',
+    'limo',
+    'helm',
+    'bonceng',
   ],
   ServiceType.jastipMakanan: [
-    'makan', 'minum', 'kantin', 'kopi', 'warteg', 'gacoan',
-    'snack', 'nasi', 'lapar', 'kuliner', 'ayam', 'mie',
+    'makan',
+    'minum',
+    'kantin',
+    'kopi',
+    'warteg',
+    'gacoan',
+    'snack',
+    'nasi',
+    'lapar',
+    'kuliner',
+    'ayam',
+    'mie',
   ],
   ServiceType.jastipBarang: [
-    'barang', 'titip', 'belanja', 'paket', 'fotokopi', 'print',
-    'toko', 'obat', 'apotek', 'atk',
+    'barang',
+    'titip',
+    'belanja',
+    'paket',
+    'fotokopi',
+    'print',
+    'toko',
+    'obat',
+    'apotek',
+    'atk',
   ],
   ServiceType.bersihKos: [
-    'kos', 'kamar', 'sapu', 'pel', 'beres', 'debu', 'rapi',
+    'kos',
+    'kamar',
+    'sapu',
+    'pel',
+    'beres',
+    'debu',
+    'rapi',
   ],
   ServiceType.bersihKamarMandi: [
-    'kamar mandi', 'wc', 'toilet', 'sikat', 'kuras', 'bak', 'kerak',
+    'kamar mandi',
+    'wc',
+    'toilet',
+    'sikat',
+    'kuras',
+    'bak',
+    'kerak',
   ],
   ServiceType.bantuPindahKos: [
-    'pindah', 'angkut', 'lemari', 'kasur', 'kardus', 'motor',
-    'pick up', 'bawa', 'barang',
+    'pindah',
+    'angkut',
+    'lemari',
+    'kasur',
+    'kardus',
+    'motor',
+    'pick up',
+    'bawa',
+    'barang',
   ],
   ServiceType.permintaanLain: [
-    'lain', 'bebas', 'bantuan', 'khusus', 'serabutan', 'apapun',
+    'lain',
+    'bebas',
+    'bantuan',
+    'khusus',
+    'serabutan',
+    'apapun',
   ],
 };
 
@@ -43,7 +93,9 @@ List<ServiceInfo> saringKatalogLayanan(String kueri) {
     final cocokNama = layanan.nama.toLowerCase().contains(bersih);
     final cocokDeskripsi = layanan.deskripsi.toLowerCase().contains(bersih);
     final kataKunci = _kataKunciLayanan[layanan.type] ?? const [];
-    final cocokKataKunci = kataKunci.any((k) => k.contains(bersih) || bersih.contains(k));
+    final cocokKataKunci = kataKunci.any(
+      (k) => k.contains(bersih) || bersih.contains(k),
+    );
 
     return cocokNama || cocokDeskripsi || cocokKataKunci;
   }).toList();
@@ -98,9 +150,7 @@ class _LembarCariLayananState extends State<LembarCariLayanan> {
     return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: tinggiMaksimal),
       child: Padding(
-        padding: EdgeInsets.only(
-          bottom: mediaQuery.viewInsets.bottom,
-        ),
+        padding: EdgeInsets.only(bottom: mediaQuery.viewInsets.bottom),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -120,7 +170,9 @@ class _LembarCariLayananState extends State<LembarCariLayanan> {
 
             // Bilah pencarian
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppTheme.spasiSedang),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppTheme.spasiSedang,
+              ),
               child: TextField(
                 controller: _kontrolCari,
                 autofocus: true,
@@ -137,7 +189,9 @@ class _LembarCariLayananState extends State<LembarCariLayanan> {
                         )
                       : null,
                   filled: true,
-                  fillColor: skema.surfaceContainerHighest.withValues(alpha: 0.5),
+                  fillColor: skema.surfaceContainerHighest.withValues(
+                    alpha: 0.5,
+                  ),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: AppTheme.spasiSedang,
                     vertical: 12,
@@ -157,7 +211,9 @@ class _LembarCariLayananState extends State<LembarCariLayanan> {
             // Saran Pencarian Cepat (ketika kueri masih kosong)
             if (_kueri.isEmpty)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppTheme.spasiSedang),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.spasiSedang,
+                ),
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
@@ -182,7 +238,8 @@ class _LembarCariLayananState extends State<LembarCariLayanan> {
                   : ListView.separated(
                       padding: const EdgeInsets.all(AppTheme.spasiSedang),
                       itemCount: hasil.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: AppTheme.spasiKecil),
+                      separatorBuilder: (_, _) =>
+                          const SizedBox(height: AppTheme.spasiKecil),
                       itemBuilder: (context, indeks) {
                         final layanan = hasil[indeks];
                         return _KartuHasilLayanan(
@@ -232,17 +289,13 @@ class _LembarCariLayananState extends State<LembarCariLayanan> {
             const SizedBox(height: AppTheme.spasiSedang),
             Text(
               'Layanan tidak ditemukan',
-              style: teks.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: teks.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
             Text(
               'Tidak ada layanan yang cocok dengan "$_kueri". Anda dapat menggunakan Permintaan Lain untuk kebutuhan khusus.',
               textAlign: TextAlign.center,
-              style: teks.bodySmall?.copyWith(
-                color: skema.onSurfaceVariant,
-              ),
+              style: teks.bodySmall?.copyWith(color: skema.onSurfaceVariant),
             ),
             const SizedBox(height: AppTheme.spasiSedang),
             FilledButton.icon(
@@ -258,10 +311,7 @@ class _LembarCariLayananState extends State<LembarCariLayanan> {
 }
 
 class _KartuHasilLayanan extends StatelessWidget {
-  const _KartuHasilLayanan({
-    required this.layanan,
-    required this.onTap,
-  });
+  const _KartuHasilLayanan({required this.layanan, required this.onTap});
 
   final ServiceInfo layanan;
   final VoidCallback onTap;
@@ -278,9 +328,7 @@ class _KartuHasilLayanan extends StatelessWidget {
       color: skema.surfaceContainerHighest.withValues(alpha: 0.4),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.radiusKartu),
-        side: BorderSide(
-          color: skema.outlineVariant.withValues(alpha: 0.4),
-        ),
+        side: BorderSide(color: skema.outlineVariant.withValues(alpha: 0.4)),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppTheme.radiusKartu),
@@ -326,7 +374,9 @@ class _KartuHasilLayanan extends StatelessWidget {
                             color: adalahJalurA
                                 ? AppTheme.hijauLencana.withValues(alpha: 0.12)
                                 : AppTheme.maroonMotor.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(AppTheme.radiusPil),
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusPil,
+                            ),
                           ),
                           child: Text(
                             adalahJalurA ? 'Tarif Pasti' : 'Tawar Harga',

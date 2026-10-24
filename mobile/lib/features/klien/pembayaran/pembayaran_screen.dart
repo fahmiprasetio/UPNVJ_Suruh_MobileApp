@@ -142,13 +142,17 @@ class PembayaranScreen extends ConsumerWidget {
               actions: [
                 Container(
                   margin: const EdgeInsets.symmetric(vertical: 13),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFE8F8EA),
                     borderRadius: BorderRadius.circular(100),
-                    border:
-                        Border.all(color: const Color(0xFFB7EBC1), width: 1),
+                    border: Border.all(
+                      color: const Color(0xFFB7EBC1),
+                      width: 1,
+                    ),
                   ),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
@@ -231,8 +235,10 @@ class PembayaranScreen extends ConsumerWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(100),
                 ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
               ),
               onPressed: () => ref.invalidate(transaksiOrderProvider(orderId)),
               child: const Text('Buat Ulang Transaksi'),
@@ -245,10 +251,7 @@ class PembayaranScreen extends ConsumerWidget {
 }
 
 class _MenungguBayarAloha extends ConsumerWidget {
-  const _MenungguBayarAloha({
-    required this.transaksi,
-    required this.orderId,
-  });
+  const _MenungguBayarAloha({required this.transaksi, required this.orderId});
 
   final TransaksiPembayaran transaksi;
   final String orderId;
@@ -287,8 +290,12 @@ class _MenungguBayarAloha extends ConsumerWidget {
             height: 1.4,
           ),
         ),
-        actionsPadding:
-            const EdgeInsets.only(left: 16, right: 16, bottom: 16, top: 8),
+        actionsPadding: const EdgeInsets.only(
+          left: 16,
+          right: 16,
+          bottom: 16,
+          top: 8,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -352,7 +359,8 @@ class _MenungguBayarAloha extends ConsumerWidget {
     final namaLayanan = order?.serviceType != null
         ? serviceInfoOf(order!.serviceType).nama
         : 'Anter Jemput';
-    final kodeOrderTampil = order?.kodeOrder ??
+    final kodeOrderTampil =
+        order?.kodeOrder ??
         (orderId.length > 8 ? orderId.substring(0, 8).toUpperCase() : orderId);
 
     return ListView(
@@ -378,8 +386,10 @@ class _MenungguBayarAloha extends ConsumerWidget {
             children: [
               // Pill Status Pesanan
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFF7ED),
                   borderRadius: BorderRadius.circular(100),
@@ -430,8 +440,10 @@ class _MenungguBayarAloha extends ConsumerWidget {
               const SizedBox(height: 12),
               // Bebas Biaya Platform Mahasiswa Badge
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFE8F8EA),
                   borderRadius: BorderRadius.circular(100),
@@ -780,11 +792,7 @@ class _MenungguBayarAloha extends ConsumerWidget {
 }
 
 class _MetodePill extends StatelessWidget {
-  const _MetodePill({
-    required this.label,
-    this.accentColor,
-    this.iconData,
-  });
+  const _MetodePill({required this.label, this.accentColor, this.iconData});
 
   final String label;
   final Color? accentColor;
@@ -803,7 +811,11 @@ class _MetodePill extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (iconData != null) ...[
-            Icon(iconData, size: 14, color: accentColor ?? const Color(0xFF4B5563)),
+            Icon(
+              iconData,
+              size: 14,
+              color: accentColor ?? const Color(0xFF4B5563),
+            ),
             const SizedBox(width: 5),
           ] else if (accentColor != null) ...[
             Container(
@@ -874,8 +886,9 @@ class _HitungMundurAlohaState extends State<_HitungMundurAloha> {
 
     // Asumsi durasi jendela standar 30 menit (1800 detik) untuk progress bar
     const totalDetik = 1800;
-    final rasioProgress =
-        (_sisa.inSeconds / totalDetik).clamp(0.0, 1.0).toDouble();
+    final rasioProgress = (_sisa.inSeconds / totalDetik)
+        .clamp(0.0, 1.0)
+        .toDouble();
 
     return Container(
       width: double.infinity,
@@ -945,17 +958,16 @@ class _HitungMundurAlohaState extends State<_HitungMundurAloha> {
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: habis
                       ? const Color(0xFFFEE2E2)
                       : const Color(0xFFFEF2F2),
                   borderRadius: BorderRadius.circular(100),
-                  border: Border.all(
-                    color: const Color(0xFFFCA5A5),
-                    width: 1,
-                  ),
+                  border: Border.all(color: const Color(0xFFFCA5A5), width: 1),
                 ),
                 child: Text(
                   habis ? '00:00' : '$menit:$detik',
@@ -1011,16 +1023,14 @@ class _HitungMundurAlohaState extends State<_HitungMundurAloha> {
 }
 
 class _DetailPesananAlohaCard extends StatefulWidget {
-  const _DetailPesananAlohaCard({
-    required this.order,
-    required this.jumlah,
-  });
+  const _DetailPesananAlohaCard({required this.order, required this.jumlah});
 
   final Order? order;
   final int jumlah;
 
   @override
-  State<_DetailPesananAlohaCard> createState() => _DetailPesananAlohaCardState();
+  State<_DetailPesananAlohaCard> createState() =>
+      _DetailPesananAlohaCardState();
 }
 
 class _DetailPesananAlohaCardState extends State<_DetailPesananAlohaCard> {
@@ -1030,7 +1040,9 @@ class _DetailPesananAlohaCardState extends State<_DetailPesananAlohaCard> {
   Widget build(BuildContext context) {
     final order = widget.order;
     final isMakanan = order?.serviceType == ServiceType.jastipMakanan;
-    final info = order?.serviceType != null ? serviceInfoOf(order!.serviceType) : null;
+    final info = order?.serviceType != null
+        ? serviceInfoOf(order!.serviceType)
+        : null;
     final namaLayanan = isMakanan
         ? 'GoFood • Jastip Makanan'
         : (info?.nama ?? 'Anter Jemput Kampus');
@@ -1230,7 +1242,7 @@ class _DetailPesananAlohaCardState extends State<_DetailPesananAlohaCard> {
                               isMakanan
                                   ? 'Warung: ${order?.alamatJemput ?? 'Warung Makan'}'
                                   : (order?.alamatJemput ??
-                                      'Halte Busway Kampus UPNVJ Pondok Labu'),
+                                        'Halte Busway Kampus UPNVJ Pondok Labu'),
                               style: const TextStyle(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w600,
@@ -1244,7 +1256,7 @@ class _DetailPesananAlohaCardState extends State<_DetailPesananAlohaCard> {
                               isMakanan
                                   ? 'Antar: ${order?.alamatTujuan ?? 'Lokasi Antar'}'
                                   : (order?.alamatTujuan ??
-                                      'Gedung FISIP, Kampus UPNVJ Pondok Labu'),
+                                        'Gedung FISIP, Kampus UPNVJ Pondok Labu'),
                               style: const TextStyle(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w600,
@@ -1287,7 +1299,9 @@ class _DetailPesananAlohaCardState extends State<_DetailPesananAlohaCard> {
                   const Divider(color: Color(0xFFF3F4F6), height: 1),
                   const SizedBox(height: 12),
                   _BarisBiaya(
-                    label: isMakanan ? 'Total Ongkos Titip' : 'Total Pembayaran',
+                    label: isMakanan
+                        ? 'Total Ongkos Titip'
+                        : 'Total Pembayaran',
                     nilai: formatRupiah(widget.jumlah),
                     tebalLabel: true,
                     tebalNilai: true,
@@ -1363,7 +1377,9 @@ class _BarisBiaya extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 12.5,
-            color: tebalLabel ? const Color(0xFF111827) : const Color(0xFF6B7280),
+            color: tebalLabel
+                ? const Color(0xFF111827)
+                : const Color(0xFF6B7280),
             fontWeight: tebalLabel ? FontWeight.w700 : FontWeight.w400,
           ),
         ),
@@ -1407,7 +1423,8 @@ class _BerhasilAloha extends ConsumerWidget {
         ? '${order!.jarakKm!.toStringAsFixed(1)} km'
         : '3.5 km';
 
-    final kodeOrderTampil = order?.kodeOrder ??
+    final kodeOrderTampil =
+        order?.kodeOrder ??
         (orderId.length > 8 ? orderId.substring(0, 8).toUpperCase() : orderId);
     final kodeRef =
         'TRX-${transaksi.id.replaceAll('-', '').substring(0, 8).toUpperCase()}-$kodeOrderTampil';
@@ -1423,8 +1440,7 @@ class _BerhasilAloha extends ConsumerWidget {
     final namaTujuan = alamatTujuanStr != null && alamatTujuanStr.contains(',')
         ? alamatTujuanStr.split(',').first.trim()
         : (alamatTujuanStr ?? 'UPN Veteran Jakarta - Kampus Limo');
-    final detailTujuan =
-        alamatTujuanStr ?? 'Lobby Gedung Wahidin Sudirohusodo';
+    final detailTujuan = alamatTujuanStr ?? 'Lobby Gedung Wahidin Sudirohusodo';
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
@@ -1618,8 +1634,10 @@ class _BerhasilAloha extends ConsumerWidget {
                     ),
                   ),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFF00AA13),
                       borderRadius: BorderRadius.circular(100),
@@ -1722,8 +1740,10 @@ class _BerhasilAloha extends ConsumerWidget {
                     ),
                   ),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFE8F8EA),
                       borderRadius: BorderRadius.circular(100),
@@ -2003,8 +2023,9 @@ class _BerhasilAloha extends ConsumerWidget {
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content:
-                      Text('Bukti pembayaran resmi disiapkan untuk diunduh.'),
+                  content: Text(
+                    'Bukti pembayaran resmi disiapkan untuk diunduh.',
+                  ),
                 ),
               );
             },
@@ -2061,10 +2082,7 @@ class _BerhasilAloha extends ConsumerWidget {
               children: [
                 Text(
                   'Pantau Runner & Pesanan',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                 ),
                 SizedBox(width: 8),
                 Icon(Icons.arrow_forward_rounded, size: 18),
@@ -2128,9 +2146,7 @@ class _PesanAloha extends StatelessWidget {
                 color: warnaIkon.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Center(
-                child: Icon(ikon, size: 36, color: warnaIkon),
-              ),
+              child: Center(child: Icon(ikon, size: 36, color: warnaIkon)),
             ),
             const SizedBox(height: AppTheme.spasiSedang),
             Text(

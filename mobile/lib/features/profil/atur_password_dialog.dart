@@ -22,7 +22,11 @@ import '../../core/providers/repository_providers.dart';
 /// Mengembalikan [AppUser] yang baru kalau berhasil, atau `null` kalau
 /// dibatalkan di langkah mana pun.
 class AturPasswordDialog extends ConsumerStatefulWidget {
-  const AturPasswordDialog({super.key, required this.noHp, required this.sudahPunyaPassword});
+  const AturPasswordDialog({
+    super.key,
+    required this.noHp,
+    required this.sudahPunyaPassword,
+  });
 
   final String noHp;
   final bool sudahPunyaPassword;
@@ -77,7 +81,9 @@ class _AturPasswordDialogState extends ConsumerState<AturPasswordDialog>
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.sudahPunyaPassword ? 'Ganti password' : 'Atur password'),
+      title: Text(
+        widget.sudahPunyaPassword ? 'Ganti password' : 'Atur password',
+      ),
       content: Form(
         key: _formKey,
         child: Column(
@@ -103,7 +109,9 @@ class _AturPasswordDialogState extends ConsumerState<AturPasswordDialog>
           child: const Text('Batal'),
         ),
         FilledButton(
-          onPressed: sedangMengirim ? null : (_langkah == _Langkah.mulai ? _kirimKode : _simpan),
+          onPressed: sedangMengirim
+              ? null
+              : (_langkah == _Langkah.mulai ? _kirimKode : _simpan),
           child: sedangMengirim
               ? const SizedBox(
                   height: 18,

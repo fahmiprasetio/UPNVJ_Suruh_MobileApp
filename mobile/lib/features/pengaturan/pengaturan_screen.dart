@@ -51,8 +51,8 @@ class PengaturanScreen extends ConsumerWidget {
           title: const Text('Password'),
           subtitle: Text(
             user.punyaPassword
-                ? 'Sudah diatur, jalur masuk kedua di samping OTP'
-                : 'Belum diatur, masuk masih lewat OTP',
+                ? 'Wajib bersama OTP setiap kali masuk'
+                : 'Atur sekarang agar login berikutnya memakai dua langkah',
           ),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => _aturPassword(context, ref, user),
@@ -140,7 +140,11 @@ class PengaturanScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _aturPassword(BuildContext context, WidgetRef ref, AppUser user) async {
+  Future<void> _aturPassword(
+    BuildContext context,
+    WidgetRef ref,
+    AppUser user,
+  ) async {
     await showDialog<AppUser>(
       context: context,
       builder: (context) => AturPasswordDialog(

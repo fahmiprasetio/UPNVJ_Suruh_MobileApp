@@ -20,11 +20,11 @@
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="description" content="UPNVJ Suruh, layanan titip dan antar di sekitar kampus.">
-  <meta name="theme-color" content="#FFFFFF">
+  <meta name="theme-color" content="#000000">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="UPNVJ Suruh">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
@@ -35,63 +35,149 @@
   <link rel="manifest" href="manifest.json">
 
   <!--
-    Memastikan kanvas Flutter selalu memenuhi 100% viewport perangkat,
-    mencegah masalah penyusutan skala (shrinking) di simulator ponsel atau iframe.
+    Tata letak bersih dan responsif:
+    Memastikan kanvas Flutter dan kontainer induk selalu mengisi 100% viewport perangkat
+    tanpa penguncian posisi tetap yang merusak kalkulasi visualViewport di mobile simulator/iframe.
   -->
   <style>
+    :root:not(#_never_match_),
+    html:root:not(#_never_match_),
     html, body {
       margin: 0 !important;
       padding: 0 !important;
       width: 100% !important;
       height: 100% !important;
+      height: 100dvh !important;
       overflow: hidden !important;
-      position: fixed !important;
-      top: 0 !important;
-      left: 0 !important;
-      right: 0 !important;
-      bottom: 0 !important;
-      background-color: #FFFFFF;
-      -webkit-text-size-adjust: 100%;
-      touch-action: manipulation;
+      overflow-x: hidden !important;
+      background-color: #000000 !important;
+      -webkit-text-size-adjust: 100% !important;
+      touch-action: manipulation !important;
+      zoom: 1 !important;
+      transform: none !important;
+      contain: layout size !important;
+      box-sizing: border-box !important;
     }
 
-    flutter-view, flt-glass-pane, flt-scene-host {
+    flutter-view {
+      display: block !important;
+      width: 100% !important;
+      height: 100% !important;
       position: absolute !important;
       top: 0 !important;
       left: 0 !important;
       right: 0 !important;
       bottom: 0 !important;
-      width: 100% !important;
-      height: 100% !important;
+      inset: 0 !important;
     }
   </style>
 
   <script>
-    // Memastikan kanvas Flutter selalu sinkron dengan ukuran simulator ponsel / iframe
+    // Memastikan kanvas WebGL / CanvasKit selalu mengisi 100% dan kebal terhadap penyusutan akibat ekstensi peramban
     (function() {
-      function syncFlutterBounds() {
-        window.dispatchEvent(new Event('resize'));
-        var views = document.querySelectorAll('flutter-view, flt-glass-pane');
-        views.forEach(function(el) {
-          el.style.width = '100%';
-          el.style.height = '100%';
+      // 1. Kunci scrollWidth pada html agar spoofer.js ekstensi selalu menghitung rasio 1.0 (zoom 100%)
+      try {
+        Object.defineProperty(document.documentElement, 'scrollWidth', {
+          get: function() {
+            return window.innerWidth || document.documentElement.clientWidth || 393;
+          },
+          configurable: true
         });
+      } catch (e) {}
+
+      // 2. Intersep insertAdjacentElement pada html agar tag auto-zoom ekstensi tidak pernah masuk ke DOM
+      try {
+        var origInsert = document.documentElement.insertAdjacentElement;
+        document.documentElement.insertAdjacentElement = function(position, element) {
+          if (element && (element.id === 'mobile-simulator' || (element.dataset && element.dataset.extensionId === 'auto-viewport-zoom') || (element.textContent && element.textContent.indexOf('zoom') !== -1))) {
+            return element;
+          }
+          return origInsert.apply(this, arguments);
+        };
+      } catch (e) {}
+
+      // 3. MutationObserver dan pembersih aktif tag auto-zoom ekstensi
+      function neutralizeBadZoom() {
+        var badStyles = document.querySelectorAll('style[data-extension-id="auto-viewport-zoom"], style#mobile-simulator');
+        var removed = false;
+        for (var i = 0; i < badStyles.length; i++) {
+          if (badStyles[i].textContent && badStyles[i].textContent.indexOf('zoom') !== -1) {
+            badStyles[i].remove();
+            removed = true;
+          }
+        }
+        if (document.documentElement.style.zoom && document.documentElement.style.zoom !== '1') {
+          document.documentElement.style.removeProperty('zoom');
+          document.documentElement.style.setProperty('zoom', '1', 'important');
+          removed = true;
+        }
+        if (removed) {
+          window.dispatchEvent(new Event('resize'));
+        }
       }
 
-      window.addEventListener('resize', syncFlutterBounds);
-      window.addEventListener('orientationchange', function() {
-        setTimeout(syncFlutterBounds, 100);
+      function applyShadowFix(view) {
+        if (!view || !view.shadowRoot) return;
+        var root = view.shadowRoot;
+        if (!root.querySelector('#flt-mobile-simulator-fix')) {
+          var style = document.createElement('style');
+          style.id = 'flt-mobile-simulator-fix';
+          style.textContent = [
+            'flt-scene-host, flt-glass-pane, flt-scene {',
+            '  width: 100% !important;',
+            '  height: 100% !important;',
+            '  min-width: 100% !important;',
+            '  min-height: 100% !important;',
+            '  max-width: 100% !important;',
+            '  max-height: 100% !important;',
+            '  position: absolute !important;',
+            '  inset: 0 !important;',
+            '}',
+            'canvas {',
+            '  width: 100% !important;',
+            '  height: 100% !important;',
+            '  position: absolute !important;',
+            '  inset: 0 !important;',
+            '}'
+          ].join('\n');
+          root.appendChild(style);
+        }
+      }
+
+      function checkViews() {
+        neutralizeBadZoom();
+        var views = document.querySelectorAll('flutter-view');
+        for (var i = 0; i < views.length; i++) {
+          applyShadowFix(views[i]);
+        }
+      }
+
+      var observer = new MutationObserver(function() {
+        checkViews();
+      });
+      observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['style', 'class']
       });
 
-      if (window.ResizeObserver) {
-        var ro = new ResizeObserver(function() {
-          syncFlutterBounds();
-        });
-        ro.observe(document.documentElement);
+      var interval = setInterval(checkViews, 100);
+      setTimeout(function() { clearInterval(interval); }, 15000);
+
+      var resizeTimer = null;
+      function onResize() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(checkViews, 30);
+      }
+      window.addEventListener('resize', onResize);
+      window.addEventListener('orientationchange', onResize);
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', onResize);
       }
     })();
 
-    // Pastikan browser TIDAK menahan cache lama: unregister service worker & bersihkan cache
+    // Bersihkan cache Service Worker lama agar rilis terbaru selalu aktif
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function(registrations) {
         for (var i = 0; i < registrations.length; i++) {
@@ -109,6 +195,11 @@
   </script>
 </head>
 <body>
-  <script src="flutter_bootstrap.js" async></script>
+  <script>
+    var script = document.createElement('script');
+    script.src = 'flutter_bootstrap.js?v=' + new Date().getTime();
+    script.async = true;
+    document.body.appendChild(script);
+  </script>
 </body>
 </html>

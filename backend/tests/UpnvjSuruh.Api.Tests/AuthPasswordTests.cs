@@ -10,43 +10,53 @@ using UpnvjSuruh.Api.Domain;
 
 namespace UpnvjSuruh.Api.Tests;
 
-/// <summary>
-/// Password sebagai jalur kedua di samping OTP, bukan penggantinya.
-///
-/// OTP tetap satu-satunya cara membuktikan kepemilikan nomor -- itulah kenapa mengatur
-/// password menuntut kode OTP, bukan cuma token yang sedang dipegang, persis seperti
-/// mengganti nomor HP. Sekali diatur, password jadi jalur masuk kedua yang setara: tidak
-/// menunggu SMS, tapi juga tidak boleh jadi jalan pintas menebak-nebak, jadi dibatasi
-/// lajunya sendiri, terpisah dari anggaran OTP.
-/// </summary>
+/// <summary>Password dan OTP wajib berurutan sebelum token sesi diterbitkan.</summary>
 public class AuthPasswordTests(DatabaseApiFactory pabrik) : IClassFixture<DatabaseApiFactory>
 {
+    private const string PasswordUji = "sandiAman123";
+
     private static string NomorBaru() => "08" + Random.Shared.NextInt64(100000000, 999999999);
+
+    private async Task<TantanganMasukResponse> MulaiMasukAsync(
+        HttpClient klien,
+        string noHp,
+        string password = PasswordUji)
+    {
+        var jawaban = await klien.PostAsJsonAsync(
+            "/api/auth/masuk-password",
+            new { NoHp = noHp, Password = password });
+        jawaban.EnsureSuccessStatusCode();
+        return (await jawaban.Content.ReadFromJsonAsync<TantanganMasukResponse>())!;
+    }
+
+    private async Task<MasukResponse> SelesaikanMasukAsync(
+        HttpClient klien,
+        string noHp,
+        TantanganMasukResponse tantangan)
+    {
+        var kode = pabrik.Otp.KodeUntuk(noHp);
+        Assert.NotNull(kode);
+        var jawaban = await klien.PostAsJsonAsync(
+            "/api/auth/masuk",
+            new { NoHp = noHp, Kode = kode, tantangan.Tantangan });
+        jawaban.EnsureSuccessStatusCode();
+        return (await jawaban.Content.ReadFromJsonAsync<MasukResponse>())!;
+    }
 
     private async Task<HttpClient> DaftarDanMasukAsync(string noHp)
     {
         var klien = pabrik.CreateClient();
-        (await klien.PostAsJsonAsync("/api/auth/daftar", new { Nama = "Dina Rahmawati", NoHp = noHp }))
+        (await klien.PostAsJsonAsync(
+            "/api/auth/daftar",
+            new { Nama = "Dina Rahmawati", NoHp = noHp, Password = PasswordUji }))
             .EnsureSuccessStatusCode();
 
-        await klien.PostAsJsonAsync("/api/auth/minta-kode", new { NoHp = noHp });
-        var kode = pabrik.Otp.KodeUntuk(noHp);
-        var masuk = await klien.PostAsJsonAsync("/api/auth/masuk", new { NoHp = noHp, Kode = kode });
-        masuk.EnsureSuccessStatusCode();
-
-        var jawaban = (await masuk.Content.ReadFromJsonAsync<MasukResponse>())!;
-        klien.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jawaban.Token);
+        var tantangan = await MulaiMasukAsync(klien, noHp);
+        var masuk = await SelesaikanMasukAsync(klien, noHp, tantangan);
+        klien.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", masuk.Token);
         return klien;
     }
 
-    /// <summary>
-    /// Menanam kode langsung lewat penyimpan OTP, bukan lewat endpoint <c>minta-kode</c>
-    /// sungguhan. <see cref="DaftarDanMasukAsync"/> sudah memakai jatah OTP nomor ini untuk
-    /// masuk; memanggil <c>minta-kode</c> lagi di sini akan kena jeda satu menit antar
-    /// permintaan untuk nomor yang sama dan gagal duluan sebelum sempat menguji apa pun.
-    /// Yang diuji berkas ini alur pengaturan password, bukan alur pengiriman kodenya --
-    /// itu sudah diuji sendiri di <c>AuthEndpointTests</c> dan <c>PembatasOtpTests</c>.
-    /// </summary>
     private string TanamKodeOtp(string noHp)
     {
         const string kode = "246810";
@@ -54,47 +64,37 @@ public class AuthPasswordTests(DatabaseApiFactory pabrik) : IClassFixture<Databa
         return kode;
     }
 
-    private async Task<HttpResponseMessage> AturPasswordAsync(HttpClient klien, string noHp, string password) =>
+    private async Task<HttpResponseMessage> AturPasswordAsync(
+        HttpClient klien,
+        string noHp,
+        string password) =>
         await klien.PostAsJsonAsync(
-            "/api/auth/saya/password", new { Kode = TanamKodeOtp(noHp), Password = password });
+            "/api/auth/saya/password",
+            new { Kode = TanamKodeOtp(noHp), Password = password });
 
-    /// <summary>Akun dengan password yang sudah diatur, dibuat langsung di basis data.</summary>
-    /// <remarks>
-    /// Tidak lewat pendaftaran dan masuk sungguhan: jatah OTP nomor ini sengaja dibiarkan
-    /// tidak tersentuh sama sekali, supaya tes yang membuktikan anggaran percobaan password
-    /// terpisah dari anggaran OTP (<see
-    /// cref="AnggaranPercobaanPasswordTerpisahDariAnggaranOtp"/>) benar-benar mulai dari
-    /// jatah OTP yang masih penuh, bukan yang sudah terpakai sebagian oleh persiapan tesnya
-    /// sendiri.
-    /// </remarks>
-    private async Task<string> AkunDenganPasswordAsync(string noHp, string password)
+    private async Task<User> BuatAkunAsync(string noHp, string? password)
     {
         using var lingkup = pabrik.Services.CreateScope();
         var db = lingkup.ServiceProvider.GetRequiredService<AppDbContext>();
         var hasher = lingkup.ServiceProvider
             .GetRequiredService<Microsoft.AspNetCore.Identity.IPasswordHasher<User>>();
-
         var user = new User { Name = "Dina Rahmawati", Phone = noHp };
-        user.PasswordHash = hasher.HashPassword(user, password);
+        if (password is not null) user.PasswordHash = hasher.HashPassword(user, password);
         db.Users.Add(user);
         await db.SaveChangesAsync();
-
-        return noHp;
+        return user;
     }
 
-    // --- Mengatur password ---
-
     [Fact]
-    public async Task PasswordBisaDiaturLewatKodeOtpKeNomorSendiri()
+    public async Task PasswordBisaDigantiLewatKodeOtpKeNomorSendiri()
     {
         var noHp = NomorBaru();
         var klien = await DaftarDanMasukAsync(noHp);
 
-        var jawaban = await AturPasswordAsync(klien, noHp, "sandiAman123");
+        var jawaban = await AturPasswordAsync(klien, noHp, "sandiAmanBaru123");
 
         jawaban.EnsureSuccessStatusCode();
-        var sesudah = (await jawaban.Content.ReadFromJsonAsync<UserResponse>())!;
-        Assert.True(sesudah.PunyaPassword);
+        Assert.True((await jawaban.Content.ReadFromJsonAsync<UserResponse>())!.PunyaPassword);
     }
 
     [Fact]
@@ -105,19 +105,8 @@ public class AuthPasswordTests(DatabaseApiFactory pabrik) : IClassFixture<Databa
         TanamKodeOtp(noHp);
 
         var jawaban = await klien.PostAsJsonAsync(
-            "/api/auth/saya/password", new { Kode = "000000", Password = "sandiAman123" });
-
-        Assert.Equal(HttpStatusCode.BadRequest, jawaban.StatusCode);
-    }
-
-    [Fact]
-    public async Task MengaturPasswordTanpaKodeYangPernahDitanamDitolak()
-    {
-        var noHp = NomorBaru();
-        var klien = await DaftarDanMasukAsync(noHp);
-
-        var jawaban = await klien.PostAsJsonAsync(
-            "/api/auth/saya/password", new { Kode = "123456", Password = "sandiAman123" });
+            "/api/auth/saya/password",
+            new { Kode = "000000", Password = "sandiAmanBaru123" });
 
         Assert.Equal(HttpStatusCode.BadRequest, jawaban.StatusCode);
     }
@@ -127,9 +116,7 @@ public class AuthPasswordTests(DatabaseApiFactory pabrik) : IClassFixture<Databa
     {
         var noHp = NomorBaru();
         var klien = await DaftarDanMasukAsync(noHp);
-
         var jawaban = await AturPasswordAsync(klien, noHp, "pendek1");
-
         Assert.Equal(HttpStatusCode.BadRequest, jawaban.StatusCode);
     }
 
@@ -137,142 +124,157 @@ public class AuthPasswordTests(DatabaseApiFactory pabrik) : IClassFixture<Databa
     public async Task MengaturPasswordTanpaTokenDitolak()
     {
         var jawaban = await pabrik.CreateClient().PostAsJsonAsync(
-            "/api/auth/saya/password", new { Kode = "123456", Password = "sandiAman123" });
-
+            "/api/auth/saya/password",
+            new { Kode = "123456", Password = PasswordUji });
         Assert.Equal(HttpStatusCode.Unauthorized, jawaban.StatusCode);
     }
 
     [Fact]
-    public async Task PasswordTersimpanSebagaiSidikBukanTeksPolos()
+    public async Task PendaftaranMenyimpanSidikBukanPasswordTeksPolos()
     {
         var noHp = NomorBaru();
-        var klien = await DaftarDanMasukAsync(noHp);
-        await AturPasswordAsync(klien, noHp, "sandiAman123");
+        await DaftarDanMasukAsync(noHp);
 
         using var lingkup = pabrik.Services.CreateScope();
         var db = lingkup.ServiceProvider.GetRequiredService<AppDbContext>();
         var tersimpan = await db.Users.SingleAsync(u => u.Phone == noHp);
-
         Assert.NotNull(tersimpan.PasswordHash);
-        Assert.DoesNotContain("sandiAman123", tersimpan.PasswordHash);
-    }
-
-    // --- Masuk pakai password ---
-
-    [Fact]
-    public async Task MasukPakaiPasswordYangBenarBerhasil()
-    {
-        var noHp = await AkunDenganPasswordAsync(NomorBaru(), "sandiAman123");
-
-        var jawaban = await pabrik.CreateClient().PostAsJsonAsync(
-            "/api/auth/masuk-password", new { NoHp = noHp, Password = "sandiAman123" });
-
-        jawaban.EnsureSuccessStatusCode();
-        var hasil = (await jawaban.Content.ReadFromJsonAsync<MasukResponse>())!;
-        Assert.Equal(noHp, hasil.User.NoHp);
+        Assert.DoesNotContain(PasswordUji, tersimpan.PasswordHash);
     }
 
     [Fact]
-    public async Task TokenDariMasukPasswordDipercayaSepertiTokenOtp()
+    public async Task PasswordBenarBelumMenerbitkanTokenSebelumOtp()
     {
-        var noHp = await AkunDenganPasswordAsync(NomorBaru(), "sandiAman123");
+        var noHp = NomorBaru();
+        await BuatAkunAsync(noHp, PasswordUji);
 
-        var masuk = await pabrik.CreateClient().PostAsJsonAsync(
-            "/api/auth/masuk-password", new { NoHp = noHp, Password = "sandiAman123" });
-        var hasil = (await masuk.Content.ReadFromJsonAsync<MasukResponse>())!;
+        var tantangan = await MulaiMasukAsync(pabrik.CreateClient(), noHp);
+
+        Assert.NotEmpty(tantangan.Tantangan);
+        Assert.NotNull(pabrik.Otp.KodeUntuk(noHp));
+    }
+
+    [Fact]
+    public async Task PasswordDanOtpYangBenarMenerbitkanToken()
+    {
+        var noHp = NomorBaru();
+        await BuatAkunAsync(noHp, PasswordUji);
+        var klien = pabrik.CreateClient();
+
+        var hasil = await SelesaikanMasukAsync(klien, noHp, await MulaiMasukAsync(klien, noHp));
 
         var lagi = pabrik.CreateClient();
         lagi.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", hasil.Token);
-        var saya = await lagi.GetAsync("/api/auth/saya");
-
-        Assert.Equal(HttpStatusCode.OK, saya.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await lagi.GetAsync("/api/auth/saya")).StatusCode);
     }
 
     [Fact]
-    public async Task MasukPakaiPasswordYangSalahDitolak()
+    public async Task OtpTanpaTantanganPasswordDitolak()
     {
-        var noHp = await AkunDenganPasswordAsync(NomorBaru(), "sandiAman123");
-
-        var jawaban = await pabrik.CreateClient().PostAsJsonAsync(
-            "/api/auth/masuk-password", new { NoHp = noHp, Password = "salahTotal99" });
-
-        Assert.Equal(HttpStatusCode.Unauthorized, jawaban.StatusCode);
-    }
-
-    [Fact]
-    public async Task AkunYangBelumMengaturPasswordDitolakSamaSepertiPasswordSalah()
-    {
-        // Bukan cuma ditolak: jawabannya juga harus berbentuk sama dengan password salah,
-        // supaya endpoint ini tidak bisa dipakai memeriksa siapa saja yang sudah mengatur
-        // password.
         var noHp = NomorBaru();
-        await DaftarDanMasukAsync(noHp);
+        await BuatAkunAsync(noHp, PasswordUji);
+        var klien = pabrik.CreateClient();
+        await MulaiMasukAsync(klien, noHp);
 
-        var jawaban = await pabrik.CreateClient().PostAsJsonAsync(
-            "/api/auth/masuk-password", new { NoHp = noHp, Password = "apaSajaPasti99" });
-
-        Assert.Equal(HttpStatusCode.Unauthorized, jawaban.StatusCode);
-    }
-
-    [Fact]
-    public async Task NomorYangTidakTerdaftarDitolak()
-    {
-        var jawaban = await pabrik.CreateClient().PostAsJsonAsync(
-            "/api/auth/masuk-password", new { NoHp = NomorBaru(), Password = "apaSajaPasti99" });
+        var jawaban = await klien.PostAsJsonAsync(
+            "/api/auth/masuk",
+            new { NoHp = noHp, Kode = pabrik.Otp.KodeUntuk(noHp), Tantangan = "palsu" });
 
         Assert.Equal(HttpStatusCode.Unauthorized, jawaban.StatusCode);
     }
 
     [Fact]
-    public async Task PercobaanMasukPasswordBeruntunUntukNomorYangSamaDibatasi()
+    public async Task PasswordSalahTidakMengirimOtpDanTidakMembocorkanAkun()
     {
-        // Anggaran yang sama bentuknya dengan minta-kode (lima per jam, berjeda satu
-        // menit), tapi dihitung terpisah -- lihat PembatasOtpMemori.Catat. Ancamannya beda
-        // dari membanjiri SMS, tapi penjagaannya sama: batas percobaan per nomor.
-        var noHp = await AkunDenganPasswordAsync(NomorBaru(), "sandiAman123");
+        var noHp = NomorBaru();
+        await BuatAkunAsync(noHp, PasswordUji);
 
-        var pertama = await pabrik.CreateClient().PostAsJsonAsync(
+        var jawaban = await MulaiMasukAsync(pabrik.CreateClient(), noHp, "salahTotal99");
+
+        Assert.NotEmpty(jawaban.Tantangan);
+        Assert.Null(pabrik.Otp.KodeUntuk(noHp));
+    }
+
+    [Fact]
+    public async Task AkunLamaMenetapkanPasswordBaruHanyaSetelahOtpBenar()
+    {
+        var noHp = NomorBaru();
+        await BuatAkunAsync(noHp, null);
+        var klien = pabrik.CreateClient();
+
+        var tantangan = await MulaiMasukAsync(klien, noHp, "passwordPertama99");
+
+        using (var sebelum = pabrik.Services.CreateScope())
+        {
+            Assert.Null((await sebelum.ServiceProvider.GetRequiredService<AppDbContext>()
+                .Users.SingleAsync(u => u.Phone == noHp)).PasswordHash);
+        }
+
+        await SelesaikanMasukAsync(klien, noHp, tantangan);
+
+        using var sesudah = pabrik.Services.CreateScope();
+        Assert.NotNull((await sesudah.ServiceProvider.GetRequiredService<AppDbContext>()
+            .Users.SingleAsync(u => u.Phone == noHp)).PasswordHash);
+    }
+
+    [Fact]
+    public async Task NomorTidakTerdaftarTidakMengirimOtp()
+    {
+        var noHp = NomorBaru();
+        var jawaban = await MulaiMasukAsync(pabrik.CreateClient(), noHp);
+        Assert.NotEmpty(jawaban.Tantangan);
+        Assert.Null(pabrik.Otp.KodeUntuk(noHp));
+    }
+
+    [Fact]
+    public async Task PercobaanPasswordBeruntunUntukNomorYangSamaDibatasi()
+    {
+        var noHp = NomorBaru();
+        await BuatAkunAsync(noHp, PasswordUji);
+        var klien = pabrik.CreateClient();
+
+        var pertama = await klien.PostAsJsonAsync(
             "/api/auth/masuk-password", new { NoHp = noHp, Password = "salahDulu99" });
-        var kedua = await pabrik.CreateClient().PostAsJsonAsync(
-            "/api/auth/masuk-password", new { NoHp = noHp, Password = "sandiAman123" });
+        var kedua = await klien.PostAsJsonAsync(
+            "/api/auth/masuk-password", new { NoHp = noHp, Password = PasswordUji });
 
-        Assert.Equal(HttpStatusCode.Unauthorized, pertama.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, pertama.StatusCode);
         Assert.Equal(HttpStatusCode.TooManyRequests, kedua.StatusCode);
     }
 
     [Fact]
-    public async Task AnggaranPercobaanPasswordTerpisahDariAnggaranOtp()
+    public async Task AnggaranPasswordTerpisahDariAnggaranPengirimanOtp()
     {
-        // Orang yang mencoba menebak password korban tidak ikut membakar jatah kode masuk
-        // OTP korbannya, dan sebaliknya -- kalau tidak, korban yang sedang dibanjiri
-        // percobaan password juga kehabisan jatah minta kode OTP-nya sendiri.
-        var noHp = await AkunDenganPasswordAsync(NomorBaru(), "sandiAman123");
-
-        await pabrik.CreateClient().PostAsJsonAsync(
+        var noHp = NomorBaru();
+        await BuatAkunAsync(noHp, PasswordUji);
+        var klien = pabrik.CreateClient();
+        await klien.PostAsJsonAsync(
             "/api/auth/masuk-password", new { NoHp = noHp, Password = "salahDulu99" });
 
-        var mintaKode = await pabrik.CreateClient().PostAsJsonAsync(
-            "/api/auth/minta-kode", new { NoHp = noHp });
+        var mintaKode = await klien.PostAsJsonAsync("/api/auth/minta-kode", new { NoHp = noHp });
 
         Assert.Equal(HttpStatusCode.Accepted, mintaKode.StatusCode);
     }
 
     [Fact]
-    public async Task AkunYangDitangguhkanTidakBisaMasukPakaiPassword()
+    public async Task AkunDitangguhkanDitolakSetelahDuaFaktorBenar()
     {
-        var noHp = await AkunDenganPasswordAsync(NomorBaru(), "sandiAman123");
-
+        var noHp = NomorBaru();
+        var user = await BuatAkunAsync(noHp, PasswordUji);
         using (var lingkup = pabrik.Services.CreateScope())
         {
             var db = lingkup.ServiceProvider.GetRequiredService<AppDbContext>();
-            var user = await db.Users.SingleAsync(u => u.Phone == noHp);
-            user.SuspendedAt = DateTime.UtcNow;
-            user.SuspendedReason = "Diuji.";
+            var tersimpan = await db.Users.SingleAsync(u => u.Id == user.Id);
+            tersimpan.SuspendedAt = DateTime.UtcNow;
+            tersimpan.SuspendedReason = "Diuji.";
             await db.SaveChangesAsync();
         }
 
-        var jawaban = await pabrik.CreateClient().PostAsJsonAsync(
-            "/api/auth/masuk-password", new { NoHp = noHp, Password = "sandiAman123" });
+        var klien = pabrik.CreateClient();
+        var tantangan = await MulaiMasukAsync(klien, noHp);
+        var jawaban = await klien.PostAsJsonAsync(
+            "/api/auth/masuk",
+            new { NoHp = noHp, Kode = pabrik.Otp.KodeUntuk(noHp), tantangan.Tantangan });
 
         Assert.Equal(HttpStatusCode.Forbidden, jawaban.StatusCode);
     }

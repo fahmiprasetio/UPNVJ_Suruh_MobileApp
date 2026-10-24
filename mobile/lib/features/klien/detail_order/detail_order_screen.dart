@@ -576,7 +576,8 @@ class _LiveTrackingAlohaViewState
                           width: 38,
                           height: 38,
                           decoration: BoxDecoration(
-                            color: order.serviceType == ServiceType.jastipMakanan
+                            color:
+                                order.serviceType == ServiceType.jastipMakanan
                                 ? const Color(0xFFEA580C)
                                 : const Color(0xFF00AA13),
                             shape: BoxShape.circle,
@@ -644,7 +645,8 @@ class _LiveTrackingAlohaViewState
                           width: 34,
                           height: 34,
                           decoration: BoxDecoration(
-                            color: order.serviceType == ServiceType.jastipMakanan
+                            color:
+                                order.serviceType == ServiceType.jastipMakanan
                                 ? const Color(0xFF00AA13)
                                 : const Color(0xFFEA580C),
                             shape: BoxShape.circle,
@@ -895,13 +897,14 @@ class _LiveTrackingAlohaViewState
                             Text(
                               order.serviceType == ServiceType.jastipMakanan
                                   ? (order.status == OrderStatus.dikerjakan
-                                      ? 'Makanan Sedang Dibelikan & Diantar'
-                                      : 'Mencari Runner Kampus')
+                                        ? 'Makanan Sedang Dibelikan & Diantar'
+                                        : 'Mencari Runner Kampus')
                                   : (order.status == OrderStatus.dikerjakan
-                                      ? 'Perjalanan sedang berlangsung'
-                                      : (order.status == OrderStatus.mencariRunner
-                                          ? 'Mencari Runner Kampus'
-                                          : 'Perjalanan ke Tujuan')),
+                                        ? 'Perjalanan sedang berlangsung'
+                                        : (order.status ==
+                                                  OrderStatus.mencariRunner
+                                              ? 'Mencari Runner Kampus'
+                                              : 'Perjalanan ke Tujuan')),
                               style: const TextStyle(
                                 fontSize: 16.5,
                                 fontWeight: FontWeight.w800,
@@ -1367,8 +1370,8 @@ class _IsiAloha extends ConsumerWidget {
     final namaLayananTampil = order.serviceType == ServiceType.anterJemput
         ? 'Campu • Anter Jemput'
         : (order.serviceType == ServiceType.jastipMakanan
-            ? 'GoFood • Jastip Makanan'
-            : layanan.nama);
+              ? 'GoFood • Jastip Makanan'
+              : layanan.nama);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
@@ -1773,7 +1776,8 @@ class _TotalPembayaranCardState extends State<_TotalPembayaranCard> {
   Widget build(BuildContext context) {
     final order = widget.order;
     final isMakanan = order.serviceType == ServiceType.jastipMakanan;
-    final nominal = order.harga ?? order.hargaUsulan ?? (isMakanan ? 8000 : 12000);
+    final nominal =
+        order.harga ?? order.hargaUsulan ?? (isMakanan ? 8000 : 12000);
 
     return Container(
       width: double.infinity,
@@ -1922,7 +1926,9 @@ class _TotalPembayaranCardState extends State<_TotalPembayaranCard> {
             const Divider(color: Color(0xFFF3F4F6), height: 1),
             const SizedBox(height: 10),
             _BarisRincianHarga(
-              label: isMakanan ? 'Tarif Dasar Jasa Titip' : 'Tarif Dasar Layanan',
+              label: isMakanan
+                  ? 'Tarif Dasar Jasa Titip'
+                  : 'Tarif Dasar Layanan',
               nilai: formatRupiah(nominal + 2000),
             ),
             const SizedBox(height: 6),
@@ -2035,14 +2041,28 @@ class _RincianPerjalananCard extends StatelessWidget {
     final namaJemput =
         order.alamatJemput != null && order.alamatJemput!.contains(',')
         ? order.alamatJemput!.split(',').first.trim()
-        : (order.alamatJemput ?? (isMakanan ? 'Lokasi warung belum tersedia' : 'Titik jemput belum tersedia'));
-    final detailJemput = order.alamatJemput ?? (isMakanan ? 'Lokasi warung belum tersedia' : 'Alamat jemput belum tersedia');
+        : (order.alamatJemput ??
+              (isMakanan
+                  ? 'Lokasi warung belum tersedia'
+                  : 'Titik jemput belum tersedia'));
+    final detailJemput =
+        order.alamatJemput ??
+        (isMakanan
+            ? 'Lokasi warung belum tersedia'
+            : 'Alamat jemput belum tersedia');
 
     final namaTujuan =
         order.alamatTujuan != null && order.alamatTujuan!.contains(',')
         ? order.alamatTujuan!.split(',').first.trim()
-        : (order.alamatTujuan ?? (isMakanan ? 'Lokasi antar belum tersedia' : 'Titik tujuan belum tersedia'));
-    final detailTujuan = order.alamatTujuan ?? (isMakanan ? 'Lokasi antar belum tersedia' : 'Alamat tujuan belum tersedia');
+        : (order.alamatTujuan ??
+              (isMakanan
+                  ? 'Lokasi antar belum tersedia'
+                  : 'Titik tujuan belum tersedia'));
+    final detailTujuan =
+        order.alamatTujuan ??
+        (isMakanan
+            ? 'Lokasi antar belum tersedia'
+            : 'Alamat tujuan belum tersedia');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2228,7 +2248,9 @@ class _RincianPerjalananCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          isMakanan ? 'Lokasi Pengantaran Mahasiswa' : 'Tujuan Antar',
+                          isMakanan
+                              ? 'Lokasi Pengantaran Mahasiswa'
+                              : 'Tujuan Antar',
                           style: const TextStyle(
                             fontSize: 11,
                             color: Color(0xFF6B7280),

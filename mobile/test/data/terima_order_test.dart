@@ -28,7 +28,9 @@ void main() {
       dibuatPada: DateTime.now(),
       harga: 11000,
       jumlahRunnerDibutuhkan: jumlahRunnerDibutuhkan,
-      runners: [for (final id in runnerIds) RunnerRingkas(id: id, nama: 'Runner')],
+      runners: [
+        for (final id in runnerIds) RunnerRingkas(id: id, nama: 'Runner'),
+      ],
     );
   }
 
@@ -48,19 +50,22 @@ void main() {
     expect(order.status, OrderStatus.dikerjakan);
   });
 
-  test('runner yang kalah cepat tidak menggeser runner yang sudah dapat', () async {
-    final repo = FakeOrderRepository(orderAwal: [orderSiaran()]);
-    addTearDown(repo.dispose);
+  test(
+    'runner yang kalah cepat tidak menggeser runner yang sudah dapat',
+    () async {
+      final repo = FakeOrderRepository(orderAwal: [orderSiaran()]);
+      addTearDown(repo.dispose);
 
-    await repo.terimaOrderSebagai(orderId: 'o-uji', runnerId: 'u-runner-1');
-    final dapat = await repo.terimaOrderSebagai(
-      orderId: 'o-uji',
-      runnerId: 'u-runner-2',
-    );
+      await repo.terimaOrderSebagai(orderId: 'o-uji', runnerId: 'u-runner-1');
+      final dapat = await repo.terimaOrderSebagai(
+        orderId: 'o-uji',
+        runnerId: 'u-runner-2',
+      );
 
-    expect(dapat, isFalse);
-    expect((await repo.getOrder('o-uji'))!.runnerIds, ['u-runner-1']);
-  });
+      expect(dapat, isFalse);
+      expect((await repo.getOrder('o-uji'))!.runnerIds, ['u-runner-1']);
+    },
+  );
 
   test('order multi-runner tetap tersiar sampai kuotanya penuh', () async {
     final repo = FakeOrderRepository(
@@ -99,21 +104,24 @@ void main() {
     );
   });
 
-  test('runner yang sama tidak bisa mengambil dua slot di order yang sama', () async {
-    final repo = FakeOrderRepository(
-      orderAwal: [orderSiaran(jumlahRunnerDibutuhkan: 3)],
-    );
-    addTearDown(repo.dispose);
+  test(
+    'runner yang sama tidak bisa mengambil dua slot di order yang sama',
+    () async {
+      final repo = FakeOrderRepository(
+        orderAwal: [orderSiaran(jumlahRunnerDibutuhkan: 3)],
+      );
+      addTearDown(repo.dispose);
 
-    await repo.terimaOrderSebagai(orderId: 'o-uji', runnerId: 'u-runner-1');
-    final lagi = await repo.terimaOrderSebagai(
-      orderId: 'o-uji',
-      runnerId: 'u-runner-1',
-    );
+      await repo.terimaOrderSebagai(orderId: 'o-uji', runnerId: 'u-runner-1');
+      final lagi = await repo.terimaOrderSebagai(
+        orderId: 'o-uji',
+        runnerId: 'u-runner-1',
+      );
 
-    expect(lagi, isFalse);
-    expect((await repo.getOrder('o-uji'))!.runnerIds, ['u-runner-1']);
-  });
+      expect(lagi, isFalse);
+      expect((await repo.getOrder('o-uji'))!.runnerIds, ['u-runner-1']);
+    },
+  );
 
   test('order yang belum dibayar tidak boleh diambil runner', () async {
     // Aturan bayar di depan (bagian 7): order baru disiarkan setelah uangnya
@@ -142,8 +150,14 @@ void main() {
 
     await repo.terimaOrderSebagai(orderId: 'o-uji', runnerId: 'u-runner-1');
 
-    expect((await repo.watchOrderTersiarUntuk('u-runner-1').first).isi, isEmpty);
-    expect((await repo.watchOrderRunnerUntuk('u-runner-1').first).isi, hasLength(1));
+    expect(
+      (await repo.watchOrderTersiarUntuk('u-runner-1').first).isi,
+      isEmpty,
+    );
+    expect(
+      (await repo.watchOrderRunnerUntuk('u-runner-1').first).isi,
+      hasLength(1),
+    );
   });
 
   test('klien tidak bisa menerima ordernya sendiri', () async {
@@ -172,6 +186,9 @@ void main() {
     addTearDown(repo.dispose);
 
     expect((await repo.watchOrderTersiarUntuk('u-klien-1').first).isi, isEmpty);
-    expect((await repo.watchOrderTersiarUntuk('u-runner-1').first).isi, hasLength(1));
+    expect(
+      (await repo.watchOrderTersiarUntuk('u-runner-1').first).isi,
+      hasLength(1),
+    );
   });
 }

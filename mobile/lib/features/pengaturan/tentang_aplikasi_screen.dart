@@ -15,9 +15,7 @@ class TentangAplikasiScreen extends StatelessWidget {
     final teks = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tentang Aplikasi'),
-      ),
+      appBar: AppBar(title: const Text('Tentang Aplikasi')),
       body: ListView(
         padding: const EdgeInsets.symmetric(
           horizontal: AppTheme.spasiSedang,
@@ -130,9 +128,7 @@ class TentangAplikasiScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: skema.surfaceContainerHighest.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(AppTheme.radiusKartu),
-        border: Border.all(
-          color: skema.outlineVariant.withValues(alpha: 0.4),
-        ),
+        border: Border.all(color: skema.outlineVariant.withValues(alpha: 0.4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -29,15 +29,17 @@ void main() {
       expect(hasil, isNull);
     });
 
-    test('kode bukan Ok (tidak ada jalan antara dua titik) menjawab null', () async {
-      final hasil = await http.runWithClient(
-        () => JarakRuteOsrm.kilometer(dari, ke),
-        () => MockClient(
-          (_) async => http.Response('{"code":"NoRoute"}', 200),
-        ),
-      );
-      expect(hasil, isNull);
-    });
+    test(
+      'kode bukan Ok (tidak ada jalan antara dua titik) menjawab null',
+      () async {
+        final hasil = await http.runWithClient(
+          () => JarakRuteOsrm.kilometer(dari, ke),
+          () =>
+              MockClient((_) async => http.Response('{"code":"NoRoute"}', 200)),
+        );
+        expect(hasil, isNull);
+      },
+    );
 
     test('jawaban sukses menjawab jarak dalam kilometer', () async {
       final hasil = await http.runWithClient(

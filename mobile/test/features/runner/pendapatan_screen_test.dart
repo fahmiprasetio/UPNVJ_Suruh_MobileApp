@@ -153,7 +153,9 @@ void main() {
     );
 
     expect(
-      find.textContaining('3 order sudah selesai tapi bayarannya belum dihitung'),
+      find.textContaining(
+        '3 order sudah selesai tapi bayarannya belum dihitung',
+      ),
       findsOneWidget,
     );
   });

@@ -70,10 +70,10 @@ void main() {
   /// `hintText`, dan hint dibangun sebagai `Text` yang berbunyi sama walaupun
   /// kolomnya kosong. `find.text` tidak bisa membedakan keduanya, jadi ia bisa
   /// lulus untuk form yang sama sekali tidak terisi.
-  String isiKolom(WidgetTester tester, String label) =>
-      tester.widget<TextField>(find.widgetWithText(TextField, label))
-          .controller!
-          .text;
+  String isiKolom(WidgetTester tester, String label) => tester
+      .widget<TextField>(find.widgetWithText(TextField, label))
+      .controller!
+      .text;
 
   testWidgets('cuma order yang sudah kelar yang bisa dipesan lagi', (
     tester,
@@ -116,13 +116,10 @@ void main() {
     await tester.pumpAndSettle();
 
     final lama = seed('SRH-0398');
-    expect(
-      isiKolom(tester, 'Barang apa yang dititip?'),
-      lama.deskripsi,
-    );
-    expect(isiKolom(tester, 'Diambil di mana?'), lama.alamatJemput);
-    expect(isiKolom(tester, 'Diantar ke mana?'), lama.alamatTujuan);
-    expect(isiKolom(tester, 'Perkiraan jarak'), '1');
+    expect(isiKolom(tester, 'Nama barang yang dititipkan'), lama.deskripsi);
+    expect(isiKolom(tester, 'Titik pengambilan barang'), lama.alamatJemput);
+    expect(isiKolom(tester, 'Titik tujuan pengantaran'), lama.alamatTujuan);
+    expect(find.text('Jarak: 1 km'), findsOneWidget);
 
     // Jarak ikut terisi, jadi harganya langsung terhitung ulang tanpa satu pun
     // ketukan tambahan: ongkos jasa 10.000 + 1 km x 2.000.
@@ -137,12 +134,18 @@ void main() {
     await tester.tap(find.text('Pesan lagi'));
     await tester.pumpAndSettle();
 
-    // Form jastip barang yang dibuka dari nol mengisi kolom "Diantar ke mana?"
+    // Form jastip barang yang dibuka dari nol mengisi kolom "Titik tujuan pengantaran"
     // dengan alamat profil. Yang menekan "Pesan lagi" sedang meminta "yang
     // seperti kemarin", jadi alamat kemarinlah yang benar, walaupun alamat di
     // profilnya berbeda.
-    expect(isiKolom(tester, 'Diantar ke mana?'), isNot(SeedData.klien.alamat));
-    expect(isiKolom(tester, 'Diantar ke mana?'), seed('SRH-0398').alamatTujuan);
+    expect(
+      isiKolom(tester, 'Titik tujuan pengantaran'),
+      isNot(SeedData.klien.alamat),
+    );
+    expect(
+      isiKolom(tester, 'Titik tujuan pengantaran'),
+      seed('SRH-0398').alamatTujuan,
+    );
   });
 
   testWidgets('pesan lagi Jalur B menyalin isian, tapi tidak jadwal lamanya', (
@@ -154,29 +157,36 @@ void main() {
     await tester.tap(find.text('Pesan lagi'));
     await tester.pumpAndSettle();
 
-    expect(isiKolom(tester, 'Ceritakan kebutuhanmu'), lama.deskripsi);
-    expect(isiKolom(tester, 'Alamat'), lama.alamatTujuan);
+    expect(
+      isiKolom(tester, 'Jelaskan bantuan yang kamu butuhkan...'),
+      lama.deskripsi,
+    );
+    expect(isiKolom(tester, 'Alamat tempat pengerjaan'), lama.alamatTujuan);
 
     // Jadwal order lama sudah lewat, jadi menawarkannya kembali berarti
     // menawarkan satu-satunya nilai yang pasti salah.
     expect(find.text(formatJadwal(lama.jadwalMulai!)), findsNothing);
   });
 
-  testWidgets('layar detail order yang sudah kelar juga menawarkan pesan lagi', (
-    tester,
-  ) async {
-    await bukaRiwayat(tester);
+  testWidgets(
+    'layar detail order yang sudah kelar juga menawarkan pesan lagi',
+    (tester) async {
+      await bukaRiwayat(tester);
 
-    await tester.tap(find.textContaining('SRH-0398'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.textContaining('SRH-0398'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Pesan Lagi'), findsOneWidget);
+      expect(find.text('Pesan Lagi'), findsOneWidget);
 
-    await tester.tap(find.text('Pesan Lagi'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Pesan Lagi'));
+      await tester.pumpAndSettle();
 
-    expect(isiKolom(tester, 'Diambil di mana?'), seed('SRH-0398').alamatJemput);
-  });
+      expect(
+        isiKolom(tester, 'Titik pengambilan barang'),
+        seed('SRH-0398').alamatJemput,
+      );
+    },
+  );
 
   testWidgets('layar detail order yang masih berjalan tidak menawarkannya', (
     tester,

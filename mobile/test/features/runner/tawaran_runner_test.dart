@@ -240,38 +240,39 @@ void main() {
     await bukaLayarAjukanTawaran(tester, orderRepo: repo, orderId: order.id);
 
     expect(find.text('Ajukan Tawaran'), findsOneWidget);
-    expect(find.text('Bersih-Bersih Kos'), findsOneWidget);
+    expect(find.text('Permintaan Lain'), findsOneWidget);
     expect(find.text('Kos dua kamar.'), findsOneWidget);
     expect(find.text('150000'), findsOneWidget);
     expect(find.text('Kirim Tawaran'), findsOneWidget);
   });
 
-  testWidgets('menampilkan pesan kosong dan tombol coba lagi saat pemuatan gagal', (
-    tester,
-  ) async {
-    final order = permintaanDitawar();
-    final repo = _RepoGagalSekaliTawar(
-      pemanggil: () => SeedData.runner.id,
-      orderAwal: [order],
-    );
-    addTearDown(repo.dispose);
+  testWidgets(
+    'menampilkan pesan kosong dan tombol coba lagi saat pemuatan gagal',
+    (tester) async {
+      final order = permintaanDitawar();
+      final repo = _RepoGagalSekaliTawar(
+        pemanggil: () => SeedData.runner.id,
+        orderAwal: [order],
+      );
+      addTearDown(repo.dispose);
 
-    await bukaLayarAjukanTawaran(tester, orderRepo: repo, orderId: order.id);
+      await bukaLayarAjukanTawaran(tester, orderRepo: repo, orderId: order.id);
 
-    expect(find.text('Order gagal dimuat'), findsOneWidget);
-    expect(
-      find.text('Tidak bisa menghubungi server. Periksa koneksimu.'),
-      findsOneWidget,
-    );
-    expect(find.text('Coba lagi'), findsOneWidget);
+      expect(find.text('Order gagal dimuat'), findsOneWidget);
+      expect(
+        find.text('Tidak bisa menghubungi server. Periksa koneksimu.'),
+        findsOneWidget,
+      );
+      expect(find.text('Coba lagi'), findsOneWidget);
 
-    repo.gagal = false;
-    await tester.tap(find.text('Coba lagi'));
-    await tester.pumpAndSettle();
+      repo.gagal = false;
+      await tester.tap(find.text('Coba lagi'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Bersih-Bersih Kos'), findsOneWidget);
-    expect(find.text('Kirim Tawaran'), findsOneWidget);
-  });
+      expect(find.text('Permintaan Lain'), findsOneWidget);
+      expect(find.text('Kirim Tawaran'), findsOneWidget);
+    },
+  );
 
   testWidgets('menampilkan pesan fallback ketika error bukan GalatApi', (
     tester,
@@ -334,10 +335,7 @@ void main() {
 }
 
 class _RepoGagalSekaliTawar extends FakeOrderRepository {
-  _RepoGagalSekaliTawar({
-    required super.pemanggil,
-    required super.orderAwal,
-  });
+  _RepoGagalSekaliTawar({required super.pemanggil, required super.orderAwal});
 
   bool gagal = true;
 
@@ -354,10 +352,7 @@ class _RepoGagalSekaliTawar extends FakeOrderRepository {
 }
 
 class _RepoGagalNonApiTawar extends FakeOrderRepository {
-  _RepoGagalNonApiTawar({
-    required super.pemanggil,
-    required super.orderAwal,
-  });
+  _RepoGagalNonApiTawar({required super.pemanggil, required super.orderAwal});
 
   @override
   Stream<Order?> watchOrder(
@@ -369,10 +364,7 @@ class _RepoGagalNonApiTawar extends FakeOrderRepository {
 }
 
 class _RepoGagalKirimTawar extends FakeOrderRepository {
-  _RepoGagalKirimTawar({
-    required super.pemanggil,
-    required super.orderAwal,
-  });
+  _RepoGagalKirimTawar({required super.pemanggil, required super.orderAwal});
 
   @override
   Future<Order> buatPenawaran({
@@ -386,4 +378,3 @@ class _RepoGagalKirimTawar extends FakeOrderRepository {
     throw Exception('RAHASIA_INTERNAL_DATABASE_TIMEOUT');
   }
 }
-

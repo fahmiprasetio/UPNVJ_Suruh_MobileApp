@@ -118,9 +118,12 @@ public class PenangguhanAkunTests(DatabaseApiFactory pabrik) : IClassFixture<Dat
         // karena penangguhan, bukan alur kodenya, dan kode yang salah dijawab 401 yang
         // sama untuk semua sebab sehingga tidak bisa membedakan apa pun.
         pabrik.Services.GetRequiredService<PenyimpanOtpMemori>().Simpan(noHp, "123456");
+        var tantangan = pabrik.Services
+            .GetRequiredService<PenyimpanTantanganMasuk>()
+            .Simpan(noHp, "sidik-password-uji").Nilai;
 
         var masuk = await tamu.PostAsJsonAsync(
-            "/api/auth/masuk", new { NoHp = noHp, Kode = "123456" });
+            "/api/auth/masuk", new { NoHp = noHp, Kode = "123456", Tantangan = tantangan });
 
         Assert.Equal(HttpStatusCode.Forbidden, masuk.StatusCode);
     }
@@ -139,9 +142,12 @@ public class PenangguhanAkunTests(DatabaseApiFactory pabrik) : IClassFixture<Dat
         (await TangguhkanAsync(admin, korbanId, "Nomor palsu.")).EnsureSuccessStatusCode();
 
         pabrik.Services.GetRequiredService<PenyimpanOtpMemori>().Simpan(noHp, "123456");
+        var tantangan = pabrik.Services
+            .GetRequiredService<PenyimpanTantanganMasuk>()
+            .Simpan(noHp, "sidik-password-uji").Nilai;
 
         var masuk = await pabrik.CreateClient().PostAsJsonAsync(
-            "/api/auth/masuk", new { NoHp = noHp, Kode = "123456" });
+            "/api/auth/masuk", new { NoHp = noHp, Kode = "123456", Tantangan = tantangan });
 
         var isi = await masuk.Content.ReadAsStringAsync();
         Assert.Contains("Nomor palsu.", isi, StringComparison.Ordinal);

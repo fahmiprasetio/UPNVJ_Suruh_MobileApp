@@ -43,7 +43,7 @@ const List<ItemBannerPromo> daftarPromoBawaan = [
     deskripsi: 'Pakai kode VJHEMAT untuk pesanan pertamamu di UPNVJ Suruh!',
     ikon: Icons.confirmation_number_outlined,
     warnaTag: Color(0xFFFFD54F),
-    warnaLatarAwal: Color(0xFF00AA13),
+    warnaLatarAwal: Color(0xFF007E0F),
     warnaLatarAkhir: Color(0xFF007E0F),
     detailJudul: 'Voucher Pengguna Baru: VJHEMAT',
     detailIsi:
@@ -54,7 +54,8 @@ const List<ItemBannerPromo> daftarPromoBawaan = [
   ItemBannerPromo(
     tag: 'TIPS HEMAT KAMPUS',
     judul: 'Titip Makan Bareng Teman',
-    deskripsi: '1 runner bisa bawa hingga 3 porsi pesanan sekaligus tanpa ongkir dobel.',
+    deskripsi:
+        '1 runner bisa bawa hingga 3 porsi pesanan sekaligus tanpa ongkir dobel.',
     ikon: Icons.restaurant_rounded,
     warnaTag: Color(0xFFFF8A80),
     warnaLatarAwal: Color(0xFF6B1B26),
@@ -68,7 +69,8 @@ const List<ItemBannerPromo> daftarPromoBawaan = [
   ItemBannerPromo(
     tag: 'LAYANAN KAMPUS',
     judul: 'Pindahan Kos Lebih Ringan',
-    deskripsi: 'Runner mahasiswa siap bantu angkat kardus buku, koper, dan perabot.',
+    deskripsi:
+        'Runner mahasiswa siap bantu angkat kardus buku, koper, dan perabot.',
     ikon: Icons.inventory_2_outlined,
     warnaTag: Color(0xFF80CBC4),
     warnaLatarAwal: Color(0xFF1E302E),
@@ -86,10 +88,7 @@ const List<ItemBannerPromo> daftarPromoBawaan = [
 /// Menyediakan slide promo mahasiswa, tips hemat, dan informasi layanan dengan
 /// animasi pergantian halus, indikator halaman, serta pop-up detail interaktif.
 class BannerPromoCarousel extends StatefulWidget {
-  const BannerPromoCarousel({
-    super.key,
-    this.daftarPromo = daftarPromoBawaan,
-  });
+  const BannerPromoCarousel({super.key, this.daftarPromo = daftarPromoBawaan});
 
   final List<ItemBannerPromo> daftarPromo;
 
@@ -171,14 +170,17 @@ class _BannerPromoCarouselState extends State<BannerPromoCarousel> {
             Text(
               item.detailIsi,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: skema.onSurfaceVariant,
-                    height: 1.45,
-                  ),
+                color: skema.onSurfaceVariant,
+                height: 1.45,
+              ),
             ),
             if (item.kodeVoucher != null) ...[
               const SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: skema.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(AppTheme.radiusKontrol),
@@ -211,7 +213,9 @@ class _BannerPromoCarouselState extends State<BannerPromoCarousel> {
                     ),
                     OutlinedButton.icon(
                       onPressed: () {
-                        Clipboard.setData(ClipboardData(text: item.kodeVoucher!));
+                        Clipboard.setData(
+                          ClipboardData(text: item.kodeVoucher!),
+                        );
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
@@ -273,6 +277,9 @@ class _BannerPromoCarouselState extends State<BannerPromoCarousel> {
           children: [
             PageView.builder(
               controller: _pageController,
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
+              ),
               itemCount: widget.daftarPromo.length,
               onPageChanged: (indeks) {
                 setState(() => _halamanAktif = indeks);
@@ -315,8 +322,9 @@ class _BannerPromoCarouselState extends State<BannerPromoCarousel> {
                               color: i == _halamanAktif
                                   ? Colors.white
                                   : Colors.white.withValues(alpha: 0.4),
-                              borderRadius:
-                                  BorderRadius.circular(AppTheme.radiusPil),
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusPil,
+                              ),
                             ),
                           ),
                         ),
@@ -332,10 +340,7 @@ class _BannerPromoCarouselState extends State<BannerPromoCarousel> {
 }
 
 class _KartuBannerItem extends StatelessWidget {
-  const _KartuBannerItem({
-    required this.item,
-    required this.onTap,
-  });
+  const _KartuBannerItem({required this.item, required this.onTap});
 
   final ItemBannerPromo item;
   final VoidCallback onTap;
@@ -348,11 +353,16 @@ class _KartuBannerItem extends StatelessWidget {
         onTap: onTap,
         child: Ink(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [item.warnaLatarAwal, item.warnaLatarAkhir],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            color: item.warnaLatarAwal == item.warnaLatarAkhir
+                ? item.warnaLatarAwal
+                : null,
+            gradient: item.warnaLatarAwal != item.warnaLatarAkhir
+                ? LinearGradient(
+                    colors: [item.warnaLatarAwal, item.warnaLatarAkhir],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : null,
           ),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -363,27 +373,31 @@ class _KartuBannerItem extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2.5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: item.warnaTag.withValues(alpha: 0.22),
-                          borderRadius:
-                              BorderRadius.circular(AppTheme.radiusPil),
-                          border: Border.all(
-                            color: item.warnaTag.withValues(alpha: 0.5),
-                            width: 0.8,
+                      Transform.translate(
+                        offset: const Offset(0, -4),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2.5,
                           ),
-                        ),
-                        child: Text(
-                          item.tag,
-                          style: TextStyle(
-                            color: item.warnaTag,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
+                          decoration: BoxDecoration(
+                            color: item.warnaTag.withValues(alpha: 0.22),
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusPil,
+                            ),
+                            border: Border.all(
+                              color: item.warnaTag.withValues(alpha: 0.5),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Text(
+                            item.tag,
+                            style: TextStyle(
+                              color: item.warnaTag,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                            ),
                           ),
                         ),
                       ),
@@ -399,7 +413,7 @@ class _KartuBannerItem extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 6),
                       Text(
                         item.deskripsi,
                         style: TextStyle(
@@ -425,11 +439,7 @@ class _KartuBannerItem extends StatelessWidget {
                       width: 1.2,
                     ),
                   ),
-                  child: Icon(
-                    item.ikon,
-                    color: item.warnaTag,
-                    size: 28,
-                  ),
+                  child: Icon(item.ikon, color: item.warnaTag, size: 28),
                 ),
               ],
             ),

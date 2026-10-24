@@ -88,6 +88,12 @@ class AppUser {
       other.punyaPassword == punyaPassword;
 
   @override
-  int get hashCode =>
-      Object.hash(id, nama, noHp, Object.hashAllUnordered(roles), alamat, punyaPassword);
+  int get hashCode => Object.hash(
+    id,
+    nama,
+    noHp,
+    Object.hashAllUnordered(roles),
+    alamat,
+    punyaPassword,
+  );
 }

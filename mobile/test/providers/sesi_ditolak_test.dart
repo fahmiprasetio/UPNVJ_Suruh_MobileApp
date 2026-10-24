@@ -78,7 +78,9 @@ void main() {
   }
 
   test('401 di tengah pemakaian mengeluarkan pengguna', () async {
-    final container = await wadahYangSudahMasuk(serverYang(menjawabSisanya: 401));
+    final container = await wadahYangSudahMasuk(
+      serverYang(menjawabSisanya: 401),
+    );
 
     await expectLater(
       container.read(klienApiProvider).get('/api/orders/saya'),
@@ -90,7 +92,9 @@ void main() {
   });
 
   test('tokennya ikut dibuang, bukan cuma sesi di memori', () async {
-    final container = await wadahYangSudahMasuk(serverYang(menjawabSisanya: 401));
+    final container = await wadahYangSudahMasuk(
+      serverYang(menjawabSisanya: 401),
+    );
 
     await expectLater(
       container.read(klienApiProvider).get('/api/orders/saya'),
@@ -105,7 +109,9 @@ void main() {
   });
 
   test('keterangan untuk layar masuk ikut menyala', () async {
-    final container = await wadahYangSudahMasuk(serverYang(menjawabSisanya: 401));
+    final container = await wadahYangSudahMasuk(
+      serverYang(menjawabSisanya: 401),
+    );
     expect(container.read(sesiDitolakProvider), isFalse);
 
     await expectLater(
@@ -122,7 +128,9 @@ void main() {
   /// itu saja — dan akun yang memegang dua peran sekaligus (bagian 14.2) menyentuh
   /// endpoint yang bukan haknya cukup sering.
   test('403 tidak mengeluarkan siapa pun', () async {
-    final container = await wadahYangSudahMasuk(serverYang(menjawabSisanya: 403));
+    final container = await wadahYangSudahMasuk(
+      serverYang(menjawabSisanya: 403),
+    );
 
     await expectLater(
       container.read(klienApiProvider).get('/api/admin/orders'),
@@ -135,9 +143,11 @@ void main() {
   });
 
   /// Server mati atau jaringan putus bukan alasan menghapus token. Kalau dihapus,
-  /// orangnya harus meminta kode SMS baru cuma karena backend sempat dimulai ulang.
+  /// orangnya harus meminta kode OTP baru cuma karena backend sempat dimulai ulang.
   test('server yang sedang bermasalah tidak mengeluarkan siapa pun', () async {
-    final container = await wadahYangSudahMasuk(serverYang(menjawabSisanya: 500));
+    final container = await wadahYangSudahMasuk(
+      serverYang(menjawabSisanya: 500),
+    );
 
     await expectLater(
       container.read(klienApiProvider).get('/api/orders/saya'),

@@ -41,7 +41,9 @@ void main() {
   };
 
   test('membaca kedua total beserta rinciannya', () {
-    final hasil = PemetaPendapatan.pendapatan(jawaban(belum: 12000, sudah: 40000));
+    final hasil = PemetaPendapatan.pendapatan(
+      jawaban(belum: 12000, sudah: 40000),
+    );
 
     expect(hasil.totalBelumDibayar, 12000);
     expect(hasil.totalSudahDibayar, 40000);

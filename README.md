@@ -163,6 +163,30 @@ A production server that runs with the logging sender looks entirely healthy whi
 sending a single notification, which is exactly the silent failure the feature exists to
 prevent.
 
+#### Twilio WhatsApp Sandbox (OTP Verification)
+
+For two-step login verification via WhatsApp OTP in demo and development environments,
+the API supports Twilio WhatsApp Sandbox. Configure the four keys via `dotnet user-secrets`
+using placeholders rather than real credentials in source code or commits:
+
+```bash
+cd backend/src/UpnvjSuruh.Api
+dotnet user-secrets set "Whatsapp:Twilio:AccountSid" "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+dotnet user-secrets set "Whatsapp:Twilio:AuthToken" "<your_twilio_auth_token>"
+dotnet user-secrets set "Whatsapp:Twilio:NomorPengirim" "whatsapp:+14155238886"
+dotnet user-secrets set "Whatsapp:Twilio:SandboxContentSid" "HXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+> [!NOTE]
+> If any of the four Twilio keys is set, all four must be provided or startup will fail fast.
+> When unset, the backend falls back to logging OTP codes in development logs.
+> Live message dispatch can only be verified once the developer supplies valid Twilio secrets locally.
+
+**Twilio Sandbox demo checklist:**
+1. Each demo recipient phone number must join the Twilio WhatsApp Sandbox (send `join <code-sandbox>` to `+1 415 523 8886` or scan the Twilio Console QR code).
+2. Twilio Sandbox membership expires every 3 days; make sure demo numbers rejoin before presentations.
+3. Set `SandboxContentSid` to the Content SID of Twilio's approved "Verification Codes" template.
+
 #### Production host and reverse proxy
 
 Production must set `AllowedHosts` to the public API host names explicitly. Use a semicolon

@@ -24,8 +24,7 @@ void main() {
   });
 
   setUp(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -34,8 +33,7 @@ void main() {
   });
 
   tearDown(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -149,10 +147,7 @@ void main() {
     // Ditolak validator lokal: tidak ada jeda jaringan yang harus ditunggu
     // pump, dan pesannya bicara soal nomor yang sekarang, bukan soal kode
     // yang salah.
-    expect(
-      find.textContaining('nomor yang sekarang'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('nomor yang sekarang'), findsOneWidget);
   });
 
   testWidgets('nomor yang sudah dipakai akun lain ditolak', (tester) async {
@@ -170,9 +165,7 @@ void main() {
     expect(authRepo.userAktif?.noHp, SeedData.klien.noHp);
   });
 
-  testWidgets('batal di langkah nomor tidak mengubah apa pun', (
-    tester,
-  ) async {
+  testWidgets('batal di langkah nomor tidak mengubah apa pun', (tester) async {
     final authRepo = await bukaDialog(tester);
 
     await tester.tap(find.widgetWithText(TextButton, 'Batal'));

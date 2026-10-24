@@ -105,22 +105,23 @@ void main() {
     expect(find.text('Hapus Akun'), findsNothing);
   });
 
-  testWidgets('akun yang punya penghalang ditolak dengan alasannya, tanpa kode', (
-    tester,
-  ) async {
-    await bukaDialog(
-      tester,
-      penghalang: ['Masih ada 2 pesanan yang sedang berjalan.'],
-    );
+  testWidgets(
+    'akun yang punya penghalang ditolak dengan alasannya, tanpa kode',
+    (tester) async {
+      await bukaDialog(
+        tester,
+        penghalang: ['Masih ada 2 pesanan yang sedang berjalan.'],
+      );
 
-    expect(find.text('Akunmu belum bisa dihapus saat ini:'), findsOneWidget);
-    expect(find.textContaining('Masih ada 2 pesanan'), findsOneWidget);
+      expect(find.text('Akunmu belum bisa dihapus saat ini:'), findsOneWidget);
+      expect(find.textContaining('Masih ada 2 pesanan'), findsOneWidget);
 
-    // Tidak ada jalan untuk meminta kode atau menghapus dari keadaan ini.
-    expect(tombolKirim(), findsNothing);
-    expect(tombolHapus(), findsNothing);
-    expect(find.text('Tutup'), findsOneWidget);
-  });
+      // Tidak ada jalan untuk meminta kode atau menghapus dari keadaan ini.
+      expect(tombolKirim(), findsNothing);
+      expect(tombolHapus(), findsNothing);
+      expect(find.text('Tutup'), findsOneWidget);
+    },
+  );
 
   testWidgets('kirim kode mati sampai persetujuan dicentang', (tester) async {
     await bukaDialog(tester);
@@ -157,7 +158,9 @@ void main() {
     expect(find.text('Akunmu sudah dihapus.'), findsOneWidget);
   });
 
-  testWidgets('kode salah menampilkan galat dan akun tetap ada', (tester) async {
+  testWidgets('kode salah menampilkan galat dan akun tetap ada', (
+    tester,
+  ) async {
     final authRepo = await bukaDialog(tester);
 
     await tester.tap(find.byType(CheckboxListTile));
@@ -188,7 +191,9 @@ void main() {
       await tester.pumpAndSettle();
 
       // Di antara pemeriksaan awal dan penghapusan, ada pesanan baru yang berjalan.
-      authRepo.penghalangPenghapusan = ['Masih ada 1 pesanan yang sedang berjalan.'];
+      authRepo.penghalangPenghapusan = [
+        'Masih ada 1 pesanan yang sedang berjalan.',
+      ];
 
       await tester.enterText(
         find.byType(TextFormField),
@@ -202,7 +207,9 @@ void main() {
     },
   );
 
-  testWidgets('batal di langkah pertama tidak mengubah apa pun', (tester) async {
+  testWidgets('batal di langkah pertama tidak mengubah apa pun', (
+    tester,
+  ) async {
     final authRepo = await bukaDialog(tester);
 
     await tester.tap(find.text('Batal'));

@@ -9,11 +9,9 @@ namespace UpnvjSuruh.Api.Auth;
 /// <see cref="PengirimOtpWhatsapp"/> (Meta Cloud API), dipilih di Program.cs kalau
 /// "Whatsapp:Twilio:AccountSid" yang terisi.
 ///
-/// Bedanya dengan Meta: sandbox Twilio menerima pesan teks bebas tanpa perlu template yang
-/// disetujui lebih dulu, cocok untuk mencoba jalurnya sungguhan sebelum mengurus akun bisnis.
-/// Syaratnya nomor tujuan harus lebih dulu mengirim "join &lt;kode-sandbox&gt;" ke nomor
-/// sandbox dari WhatsApp-nya sendiri -- sekali per 72 jam, dan Twilio yang menentukan
-/// kodenya, bukan aplikasi ini.
+/// Sandbox Twilio menyediakan template Verification Codes untuk pesan yang dimulai aplikasi.
+/// Nomor tujuan harus lebih dulu mengirim "join &lt;kode-sandbox&gt;" ke nomor sandbox dari
+/// WhatsApp-nya sendiri. Keanggotaan sandbox berakhir setelah tiga hari.
 /// </summary>
 public class PengirimOtpWhatsappTwilio(
     HttpClient http,

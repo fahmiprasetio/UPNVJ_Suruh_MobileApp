@@ -24,14 +24,16 @@ class LinimasaStatus extends StatelessWidget {
           _TahapAloha(
             status: tahapan[i],
             order: order,
-            sudahLewat: order.sudahLewat(tahapan[i]) ||
+            sudahLewat:
+                order.sudahLewat(tahapan[i]) ||
                 (order.status == OrderStatus.selesai &&
                     order.sedangDi(tahapan[i])),
-            sedangDi: order.sedangDi(tahapan[i]) &&
+            sedangDi:
+                order.sedangDi(tahapan[i]) &&
                 order.status != OrderStatus.selesai,
             tahapTerakhir: i == tahapan.length - 1,
-            garisHijau: order.sudahLewat(tahapan[i]) ||
-                order.sedangDi(tahapan[i]),
+            garisHijau:
+                order.sudahLewat(tahapan[i]) || order.sedangDi(tahapan[i]),
           ),
       ],
     );
@@ -58,11 +60,11 @@ class _TahapAloha extends StatelessWidget {
   (IconData ikon, String judul, String keterangan) _infoTahap() {
     final isMakanan = order.serviceType == ServiceType.jastipMakanan;
     final isAnjem = order.serviceType == ServiceType.anterJemput;
-    final tujuanSingkat = order.alamatTujuan != null &&
-            order.alamatTujuan!.isNotEmpty
+    final tujuanSingkat =
+        order.alamatTujuan != null && order.alamatTujuan!.isNotEmpty
         ? (order.alamatTujuan!.length > 30
-            ? '${order.alamatTujuan!.substring(0, 30)}...'
-            : order.alamatTujuan!)
+              ? '${order.alamatTujuan!.substring(0, 30)}...'
+              : order.alamatTujuan!)
         : (isMakanan ? 'lokasimu' : 'tujuan pengantaran');
 
     return switch (status) {
@@ -89,14 +91,14 @@ class _TahapAloha extends StatelessWidget {
         isAnjem
             ? Icons.two_wheeler_rounded
             : (isMakanan
-                ? Icons.delivery_dining_rounded
-                : Icons.work_outline_rounded),
+                  ? Icons.delivery_dining_rounded
+                  : Icons.work_outline_rounded),
         status.label,
         isAnjem
             ? 'Perjalanan dimulai setelah kamu dijemput'
             : (isMakanan
-                ? 'Runner sedang membelikan makanan di warung & mengantar ke lokasimu'
-                : 'Runner sedang menyelesaikan pekerjaan pesananmu'),
+                  ? 'Runner sedang membelikan makanan di warung & mengantar ke lokasimu'
+                  : 'Runner sedang menyelesaikan pekerjaan pesananmu'),
       ),
       OrderStatus.selesai => (
         Icons.check_circle_outline_rounded,
@@ -135,8 +137,8 @@ class _TahapAloha extends StatelessWidget {
                 color: sedangDi
                     ? const Color(0xFF00880C)
                     : (sudahLewat
-                        ? const Color(0xFF00AA13)
-                        : const Color(0xFFF3F4F6)),
+                          ? const Color(0xFF00AA13)
+                          : const Color(0xFFF3F4F6)),
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: sedangDi || sudahLewat
@@ -170,10 +172,7 @@ class _TahapAloha extends StatelessWidget {
         // Kolom Deskripsi Teks
         Expanded(
           child: Padding(
-            padding: EdgeInsets.only(
-              bottom: tahapTerakhir ? 0 : 16,
-              top: 4,
-            ),
+            padding: EdgeInsets.only(bottom: tahapTerakhir ? 0 : 16, top: 4),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -189,8 +188,8 @@ class _TahapAloha extends StatelessWidget {
                         color: sedangDi
                             ? const Color(0xFF111827)
                             : (sudahLewat
-                                ? const Color(0xFF1F2937)
-                                : const Color(0xFF4B5563)),
+                                  ? const Color(0xFF1F2937)
+                                  : const Color(0xFF4B5563)),
                       ),
                     ),
                     if (sedangDi) ...[
@@ -215,8 +214,8 @@ class _TahapAloha extends StatelessWidget {
                     color: sedangDi
                         ? const Color(0xFF00880C)
                         : (sudahLewat
-                            ? const Color(0xFF4B5563)
-                            : const Color(0xFF6B7280)),
+                              ? const Color(0xFF4B5563)
+                              : const Color(0xFF6B7280)),
                   ),
                 ),
               ],
@@ -259,10 +258,7 @@ class _OrderDibatalkan extends StatelessWidget {
                 SizedBox(height: 2),
                 Text(
                   'Pesanan ini sudah tidak aktif atau dibatalkan oleh klien/admin.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFFB91C1C),
-                  ),
+                  style: TextStyle(fontSize: 12, color: Color(0xFFB91C1C)),
                 ),
               ],
             ),

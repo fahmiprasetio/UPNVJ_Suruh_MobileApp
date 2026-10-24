@@ -23,7 +23,11 @@ import '../../../../core/providers/repository_providers.dart';
 /// selalu tentang satu penawaran tertentu, bukan tentang ordernya secara
 /// umum.
 class KartuPenawaran extends ConsumerStatefulWidget {
-  const KartuPenawaran({super.key, required this.order, required this.penawaran});
+  const KartuPenawaran({
+    super.key,
+    required this.order,
+    required this.penawaran,
+  });
 
   final Order order;
   final OrderOffer penawaran;
@@ -256,7 +260,9 @@ class _KartuPenawaranState extends ConsumerState<KartuPenawaran> {
         ..showSnackBar(
           SnackBar(
             content: Text(
-              galat is GalatApi ? galat.pesan : 'Gagal memproses. Terjadi kendala sambungan atau server.',
+              galat is GalatApi
+                  ? galat.pesan
+                  : 'Gagal memproses. Terjadi kendala sambungan atau server.',
             ),
           ),
         );
@@ -425,10 +431,7 @@ class _BarisPenawaran extends StatelessWidget {
           const SizedBox(width: AppTheme.spasiKecil),
           SizedBox(
             width: 100,
-            child: Text(
-              label,
-              style: teks.bodySmall?.copyWith(color: warna),
-            ),
+            child: Text(label, style: teks.bodySmall?.copyWith(color: warna)),
           ),
           Expanded(
             child: Text(

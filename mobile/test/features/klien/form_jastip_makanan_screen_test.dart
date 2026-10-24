@@ -16,8 +16,7 @@ void main() {
   });
 
   setUp(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -26,8 +25,7 @@ void main() {
   });
 
   tearDown(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -36,10 +34,9 @@ void main() {
   });
 
   Future<void> bukaForm(WidgetTester tester) async {
-    await tester.pumpWidget(ProviderScope(
-        overrides: [sumberTiruan],
-        child: const UpnvjSuruhApp(),
-      ));
+    await tester.pumpWidget(
+      ProviderScope(overrides: [sumberTiruan], child: const UpnvjSuruhApp()),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Jastip Makanan'));
     await tester.pumpAndSettle();
@@ -51,18 +48,24 @@ void main() {
     String beli = 'Warung Bu Yati',
     String tujuan = 'Kos Melati kamar 7',
   }) async {
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Makanan/minuman apa yang mau dititip?'),
-      makanan,
+    final makananField = find.widgetWithText(
+      TextFormField,
+      'Tulis pesanan makanan & minuman...',
     );
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Beli di mana?'),
-      beli,
+    await tester.ensureVisible(makananField);
+    await tester.enterText(makananField, makanan);
+    final beliField = find.widgetWithText(
+      TextFormField,
+      'Nama warung atau kantin',
     );
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Diantar ke mana?'),
-      tujuan,
+    await tester.ensureVisible(beliField);
+    await tester.enterText(beliField, beli);
+    final tujuanField = find.widgetWithText(
+      TextFormField,
+      'Tempat antar / kos / kampus',
     );
+    await tester.ensureVisible(tujuanField);
+    await tester.enterText(tujuanField, tujuan);
     await tester.pumpAndSettle();
   }
 
@@ -83,7 +86,7 @@ void main() {
     // jarak atau isian apa pun untuk bisa dihitung.
     await bukaForm(tester);
 
-    expect(find.text('Ongkos jasa titip'), findsOneWidget);
+    expect(find.text('Ongkos Jasa Titip (Delivery)'), findsOneWidget);
     expect(find.text('Rp 8.000'), findsWidgets);
   });
 
@@ -91,7 +94,7 @@ void main() {
     await bukaForm(tester);
 
     expect(
-      find.textContaining('Harga makanannya belum termasuk'),
+      find.text('Harga Makanan Dibayar Saat Serah Terima'),
       findsOneWidget,
     );
   });
@@ -108,11 +111,13 @@ void main() {
     await bukaForm(tester);
     await isiForm(tester, makanan: 'ayam');
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Buat Order'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Pesan Jastip'));
     await tester.pumpAndSettle();
 
     expect(
-      find.text('Tulis lebih jelas, runner tidak bisa menebak pesanannya'),
+      find.text(
+        'Tulis lebih jelas, runner butuh nama makanan/minuman yang pasti',
+      ),
       findsOneWidget,
     );
   });
@@ -123,7 +128,7 @@ void main() {
     await bukaForm(tester);
     await isiForm(tester);
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Buat Order'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Pesan Jastip'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pumpAndSettle();
@@ -139,9 +144,12 @@ void main() {
   testWidgets('alamat tersimpan mengisi sendiri kolom tujuan', (tester) async {
     await bukaForm(tester);
 
-    final tujuan = tester.widget<TextFormField>(
-      find.widgetWithText(TextFormField, 'Diantar ke mana?'),
+    final tujuanField = find.widgetWithText(
+      TextFormField,
+      'Tempat antar / kos / kampus',
     );
+    await tester.ensureVisible(tujuanField);
+    final tujuan = tester.widget<TextFormField>(tujuanField);
     expect(tujuan.controller?.text, SeedData.klien.alamat);
   });
 }

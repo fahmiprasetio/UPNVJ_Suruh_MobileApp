@@ -79,7 +79,9 @@ class _PemilihLokasiScreenState extends State<PemilihLokasiScreen> {
   Widget build(BuildContext context) {
     final skema = Theme.of(context).colorScheme;
     final isTujuan = (widget.judul ?? '').toLowerCase().contains('tujuan');
-    final warnaPin = isTujuan ? const Color(0xFFE53935) : const Color(0xFF00AA13);
+    final warnaPin = isTujuan
+        ? const Color(0xFFE53935)
+        : const Color(0xFF00AA13);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7FBF7),
@@ -181,10 +183,7 @@ class _PemilihLokasiScreenState extends State<PemilihLokasiScreen> {
                   itemBuilder: (context, index) {
                     final kandidat = _kandidat[index];
                     return ListTile(
-                      leading: Icon(
-                        Icons.place_outlined,
-                        color: skema.primary,
-                      ),
+                      leading: Icon(Icons.place_outlined, color: skema.primary),
                       title: Text(
                         kandidat.alamat,
                         maxLines: 2,
@@ -250,9 +249,7 @@ class _PemilihLokasiScreenState extends State<PemilihLokasiScreen> {
                       ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.95),
-                        borderRadius: BorderRadius.circular(
-                          AppTheme.radiusPil,
-                        ),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusPil),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.1),
@@ -309,7 +306,9 @@ class _PemilihLokasiScreenState extends State<PemilihLokasiScreen> {
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.08),
@@ -362,7 +361,7 @@ class _PemilihLokasiScreenState extends State<PemilihLokasiScreen> {
                             _sedangMenerjemahkan
                                 ? 'Membaca alamat dari peta...'
                                 : (_alamat ??
-                                    'Ketuk pada peta untuk memilih titik lokasi.'),
+                                      'Ketuk pada peta untuk memilih titik lokasi.'),
                             maxLines: 3,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
@@ -462,7 +461,8 @@ class _PemilihLokasiScreenState extends State<PemilihLokasiScreen> {
     if (!mounted) return;
     setState(() {
       _sedangMenerjemahkan = false;
-      _alamat = alamat ??
+      _alamat =
+          alamat ??
           '${titik.latitude.toStringAsFixed(5)}, '
               '${titik.longitude.toStringAsFixed(5)}';
     });
@@ -515,8 +515,8 @@ class _PemilihLokasiScreenState extends State<PemilihLokasiScreen> {
   }
 
   void _pakaiLokasi() {
-    Navigator.of(context).pop(
-      HasilPilihLokasi(alamat: _alamat!, posisi: _posisi!),
-    );
+    Navigator.of(
+      context,
+    ).pop(HasilPilihLokasi(alamat: _alamat!, posisi: _posisi!));
   }
 }

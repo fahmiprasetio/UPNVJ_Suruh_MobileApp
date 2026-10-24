@@ -15,8 +15,7 @@ void main() {
   });
 
   setUp(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -25,8 +24,7 @@ void main() {
   });
 
   tearDown(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -80,8 +78,10 @@ void main() {
     await tester.tap(find.byTooltip('Pesanan'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Mau disuruh apa hari ini?', skipOffstage: false),
-        findsOneWidget);
+    expect(
+      find.text('Mau disuruh apa hari ini?', skipOffstage: false),
+      findsOneWidget,
+    );
   });
 
   testWidgets('order yang masih berjalan terhitung di tab Pesanan', (

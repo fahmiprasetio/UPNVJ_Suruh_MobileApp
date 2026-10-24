@@ -217,7 +217,9 @@ class KlienApi {
     return switch (jawaban.statusCode) {
       400 || 422 => GalatPermintaan(pesan ?? 'Ada isian yang belum benar.'),
       401 =>
-        pesan == null ? const GalatTidakBerwenang() : GalatTidakBerwenang(pesan),
+        pesan == null
+            ? const GalatTidakBerwenang()
+            : GalatTidakBerwenang(pesan),
       403 => const GalatDilarang(),
       404 => const GalatTidakDitemukan(),
       409 => GalatBentrok(pesan ?? 'Data ini bentrok dengan yang sudah ada.'),

@@ -139,7 +139,8 @@ class GeocodingOsm {
         final data = jsonDecode(jawaban.body) as Map<String, dynamic>;
         final features = data['features'] as List<dynamic>? ?? [];
         if (features.isNotEmpty) {
-          final props = features.first['properties'] as Map<String, dynamic>? ?? {};
+          final props =
+              features.first['properties'] as Map<String, dynamic>? ?? {};
           final nama = props['name'] as String? ?? '';
           final jalan = props['street'] as String?;
           final kota = props['city'] as String? ?? props['district'] as String?;

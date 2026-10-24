@@ -82,6 +82,29 @@ public class PembayaranEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<
         return klien.PostAsync($"/api/orders/{orderId}/foto-estimasi", isi);
     }
 
+    private async Task<Order> BuatOrderKebersihanSiapBayarAsync(
+        Guid clientId,
+        ServiceType layanan)
+    {
+        var order = new Order
+        {
+            ClientId = clientId,
+            ServiceType = layanan,
+            Status = OrderStatus.MenungguPembayaran,
+            Description = "Membersihkan kamar kos.",
+            DestinationAddress = "Kos Melati, Pondok Labu",
+            ScheduledStart = DateTime.UtcNow.AddDays(1),
+            SuggestedPrice = 30_000m,
+            Price = 30_000m,
+        };
+
+        using var lingkup = pabrik.Services.CreateScope();
+        var db = lingkup.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.Orders.Add(order);
+        await db.SaveChangesAsync();
+        return order;
+    }
+
     [Fact]
     public async Task JumlahnyaDiambilDariHargaOrderBukanDariPermintaan()
     {
@@ -102,14 +125,10 @@ public class PembayaranEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<
     [Fact]
     public async Task KebersihanWajibPunyaFotoKondisiSebelumDibayar()
     {
-        var (klien, _) = await AkunAsync(UserRole.Klien);
-        var dibuat = await klien.PostAsJsonAsync("/api/orders/jalur-a", new
-        {
-            ServiceType = nameof(ServiceType.BersihKos),
-            AlamatTujuan = "Kos Melati, Pondok Labu",
-        });
-        dibuat.EnsureSuccessStatusCode();
-        var order = (await dibuat.Content.ReadFromJsonAsync<BuatOrderResponse>())!.Order;
+        var (klien, klienId) = await AkunAsync(UserRole.Klien);
+        var order = await BuatOrderKebersihanSiapBayarAsync(
+            klienId,
+            ServiceType.BersihKos);
 
         Assert.Equal(
             HttpStatusCode.BadRequest,
@@ -125,15 +144,11 @@ public class PembayaranEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<
     [Fact]
     public async Task KlienLainTidakBisaMengunggahFotoEstimasi()
     {
-        var (pemilik, _) = await AkunAsync(UserRole.Klien);
+        var (pemilik, pemilikId) = await AkunAsync(UserRole.Klien);
         var (orangLain, _) = await AkunAsync(UserRole.Klien);
-        var dibuat = await pemilik.PostAsJsonAsync("/api/orders/jalur-a", new
-        {
-            ServiceType = nameof(ServiceType.BersihKamarMandi),
-            AlamatTujuan = "Kos Melati, Pondok Labu",
-        });
-        dibuat.EnsureSuccessStatusCode();
-        var order = (await dibuat.Content.ReadFromJsonAsync<BuatOrderResponse>())!.Order;
+        var order = await BuatOrderKebersihanSiapBayarAsync(
+            pemilikId,
+            ServiceType.BersihKamarMandi);
 
         Assert.Equal(
             HttpStatusCode.NotFound,

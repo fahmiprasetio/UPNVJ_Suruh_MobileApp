@@ -19,8 +19,7 @@ void main() {
   });
 
   setUp(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -29,8 +28,7 @@ void main() {
   });
 
   tearDown(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -98,30 +96,31 @@ void main() {
       expect(find.byType(ActionChip), findsWidgets);
     });
 
-    testWidgets('mengetik kata kunci menyaring layanan dan membukanya saat diketuk', (
-      tester,
-    ) async {
-      await bangunAplikasi(tester);
+    testWidgets(
+      'mengetik kata kunci menyaring layanan dan membukanya saat diketuk',
+      (tester) async {
+        await bangunAplikasi(tester);
 
-      await tester.tap(find.text('Cari layanan'));
-      await tester.pumpAndSettle();
+        await tester.tap(find.text('Cari layanan'));
+        await tester.pumpAndSettle();
 
-      await tester.enterText(find.byType(TextField), 'kamar mandi');
-      await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField), 'kamar mandi');
+        await tester.pumpAndSettle();
 
-      final hasilKamarMandi = find.descendant(
-        of: find.byType(LembarCariLayanan),
-        matching: find.text('Bersih Kamar Mandi'),
-      );
-      expect(hasilKamarMandi, findsOneWidget);
+        final hasilKamarMandi = find.descendant(
+          of: find.byType(LembarCariLayanan),
+          matching: find.text('Bersih Kamar Mandi'),
+        );
+        expect(hasilKamarMandi, findsOneWidget);
 
-      await tester.tap(hasilKamarMandi);
-      await tester.pumpAndSettle();
+        await tester.tap(hasilKamarMandi);
+        await tester.pumpAndSettle();
 
-      // Form Jalur B untuk Bersih Kamar Mandi terbuka
-      expect(find.byType(LembarCariLayanan), findsNothing);
-      expect(find.byType(FormPermintaanScreen), findsOneWidget);
-    });
+        // Form Jalur B untuk Bersih Kamar Mandi terbuka
+        expect(find.byType(LembarCariLayanan), findsNothing);
+        expect(find.byType(FormPermintaanScreen), findsOneWidget);
+      },
+    );
 
     testWidgets('pencarian tanpa hasil menampilkan opsi Permintaan Lain', (
       tester,

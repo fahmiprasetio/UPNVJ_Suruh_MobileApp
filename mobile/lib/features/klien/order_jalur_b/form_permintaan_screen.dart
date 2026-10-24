@@ -375,6 +375,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
             ),
             decoration: const InputDecoration(
               counterText: '',
+              labelText: 'Jelaskan bantuan yang kamu butuhkan...',
               hintText: 'Jelaskan bantuan yang kamu butuhkan...',
             ),
             validator: _validasiKebutuhan,
@@ -389,8 +390,8 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
     final judulFoto = widget.serviceType == ServiceType.bersihKamarMandi
         ? 'FOTO KONDISI KAMAR MANDI'
         : widget.serviceType == ServiceType.bersihKos
-            ? 'FOTO KONDISI KOS'
-            : 'FOTO PENDUKUNG (OPSIONAL)';
+        ? 'FOTO KONDISI KOS'
+        : 'FOTO PENDUKUNG (OPSIONAL)';
 
     return Container(
       decoration: BoxDecoration(
@@ -474,7 +475,9 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: _sedangMemilihFoto || _sedangMengirim ? null : _pilihFoto,
+                  onPressed: _sedangMemilihFoto || _sedangMengirim
+                      ? null
+                      : _pilihFoto,
                   icon: Icon(
                     _foto == null
                         ? Icons.add_a_photo_outlined
@@ -487,7 +490,10 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
                   ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFF00AA13),
-                    side: const BorderSide(color: Color(0xFF00AA13), width: 1.2),
+                    side: const BorderSide(
+                      color: Color(0xFF00AA13),
+                      width: 1.2,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -501,10 +507,13 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
                   onPressed: _sedangMemilihFoto || _sedangMengirim
                       ? null
                       : () => setState(() {
-                            _foto = null;
-                            _namaFoto = null;
-                          }),
-                  icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                          _foto = null;
+                          _namaFoto = null;
+                        }),
+                  icon: const Icon(
+                    Icons.delete_outline_rounded,
+                    color: Colors.red,
+                  ),
                   tooltip: 'Hapus Foto',
                 ),
               ],
@@ -715,6 +724,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
                   ),
                   decoration: const InputDecoration(
                     counterText: '',
+                    labelText: 'Alamat tempat pengerjaan',
                     hintText: 'Alamat tempat pengerjaan',
                   ),
                   validator: _validasiAlamat,
@@ -924,11 +934,13 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
           );
 
       if (_foto != null && _namaFoto != null) {
-        await ref.read(fotoBuktiRepositoryProvider).unggahFotoEstimasi(
-          orderId: order.id,
-          namaBerkas: _namaFoto!,
-          isi: _foto!,
-        );
+        await ref
+            .read(fotoBuktiRepositoryProvider)
+            .unggahFotoEstimasi(
+              orderId: order.id,
+              namaBerkas: _namaFoto!,
+              isi: _foto!,
+            );
       }
     } catch (galat) {
       if (!mounted) return;
@@ -1016,9 +1028,6 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
     if (bersih.length < 5) return 'Tulis alamat lebih jelas';
     return null;
   }
-
-
-
 }
 
 /// Pemilih tanggal dan jam pekerjaan.

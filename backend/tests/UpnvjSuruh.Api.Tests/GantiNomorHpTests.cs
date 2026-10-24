@@ -126,9 +126,13 @@ public class GantiNomorHpTests(DatabaseApiFactory pabrik) : IClassFixture<Databa
         // JatahTerbagiDenganPermintaanKodeMasukUntukNomorYangSama).
         var tamu = pabrik.CreateClient();
         pabrik.Services.GetRequiredService<PenyimpanOtpMemori>().Simpan(noHpBaru, "123456");
+        var tantangan = pabrik.Services
+            .GetRequiredService<PenyimpanTantanganMasuk>()
+            .Simpan(noHpBaru, "sidik-password-uji").Nilai;
 
         var masuk = await tamu.PostAsJsonAsync(
-            "/api/auth/masuk", new { NoHp = noHpBaru, Kode = "123456" });
+            "/api/auth/masuk",
+            new { NoHp = noHpBaru, Kode = "123456", Tantangan = tantangan });
 
         masuk.EnsureSuccessStatusCode();
         var hasil = await masuk.Content.ReadFromJsonAsync<MasukResponse>();

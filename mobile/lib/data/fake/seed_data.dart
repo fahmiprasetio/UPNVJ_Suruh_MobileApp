@@ -91,7 +91,8 @@ class SeedData {
         serviceType: ServiceType.bantuPindahKos,
         status: OrderStatus.menungguPembayaran,
         dibuatPada: sekarang.subtract(const Duration(hours: 3)),
-        deskripsi: 'Mohon datang Sabtu pagi dan hubungi saya sebelum berangkat.',
+        deskripsi:
+            'Mohon datang Sabtu pagi dan hubungi saya sebelum berangkat.',
         alamatJemput: 'Kos Melati, Jl. Pondok Labu Raya',
         alamatTujuan: 'Kos Anggrek, Jl. RS Fatmawati',
         jarakKm: 2,
@@ -117,9 +118,7 @@ class SeedData {
           RunnerRingkas(id: runner.id, nama: runner.nama, noHp: runner.noHp),
         ],
         dibayarPada: sekarang.subtract(const Duration(days: 2)),
-        selesaiPada: sekarang.subtract(
-          const Duration(days: 2, hours: -1),
-        ),
+        selesaiPada: sekarang.subtract(const Duration(days: 2, hours: -1)),
         fotoBuktiUrl: 'fake://bukti/o-4.jpg',
         catatanSerahTerima: 'Paket dititipkan ke penjaga kos, sudah difoto.',
       ),

@@ -87,7 +87,6 @@ class _FormJastipMakananScreenState
     super.dispose();
   }
 
-
   @override
   Widget build(BuildContext context) {
     final tarifAsync = ref.watch(tarifProvider);
@@ -109,7 +108,8 @@ class _FormJastipMakananScreenState
             onAksi: () => ref.invalidate(tarifProvider),
           ),
         ),
-        data: (tarif) => _buildBody(context, KalkulatorTarif.jastipMakanan(tarif: tarif)),
+        data: (tarif) =>
+            _buildBody(context, KalkulatorTarif.jastipMakanan(tarif: tarif)),
       ),
       bottomNavigationBar: tarifAsync.maybeWhen(
         data: (tarif) => _BilahBawahGojekMakanan(
@@ -535,6 +535,7 @@ class _FormJastipMakananScreenState
                         isDense: true,
                         contentPadding: EdgeInsets.symmetric(vertical: 4),
                         border: InputBorder.none,
+                        labelText: 'Tempat antar / kos / kampus',
                         hintText: 'Tempat antar / kos / kampus',
                         hintStyle: TextStyle(
                           color: Color(0xFF9EA8A0),

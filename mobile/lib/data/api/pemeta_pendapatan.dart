@@ -15,7 +15,9 @@ class PemetaPendapatan {
   static Pendapatan pendapatan(Map<String, dynamic> isi) {
     final rincian = isi['rincian'];
     if (rincian is! Map<String, dynamic>) {
-      throw const GalatServer('Jawaban server tidak memuat rincian pendapatan.');
+      throw const GalatServer(
+        'Jawaban server tidak memuat rincian pendapatan.',
+      );
     }
 
     return Pendapatan(

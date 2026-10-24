@@ -14,7 +14,8 @@ import 'seed_data.dart';
 /// Itu kemudahan, bukan keharusan: layar masuknya sudah ada, dan
 /// [FakeAuthRepository.belumMasuk] memulai dari sana.
 class FakeAuthRepository implements AuthRepository {
-  FakeAuthRepository({AppUser? userAwal}) : _userAktif = userAwal ?? SeedData.klien;
+  FakeAuthRepository({AppUser? userAwal})
+    : _userAktif = userAwal ?? SeedData.klien;
 
   /// Mulai dalam keadaan belum masuk, sehingga aplikasi terbuka di layar masuk.
   FakeAuthRepository.belumMasuk() : _userAktif = null;
@@ -40,6 +41,8 @@ class FakeAuthRepository implements AuthRepository {
   /// jalur sungguhan -- server sungguhan yang menyidiknya, lihat
   /// `ApiAuthRepository`.
   final Map<String, String> _password = {};
+  final Map<String, String> _passwordTertunda = {};
+  final Map<String, String> _tantanganMasuk = {};
 
   /// Alasan penghapusan akun ditolak, diisi tes atau pengembang untuk melihat layar
   /// dalam keadaan "belum bisa dihapus". Kosong berarti boleh.
@@ -80,7 +83,11 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<void> daftar({required String nama, required String noHp}) async {
+  Future<void> daftar({
+    required String nama,
+    required String noHp,
+    required String password,
+  }) async {
     await Future<void>.delayed(_jedaJaringan);
 
     final bersihNama = nama.trim();
@@ -98,17 +105,17 @@ class FakeAuthRepository implements AuthRepository {
     // dibangun dengan asumsi yang tidak berlaku di server.
     if (_users.any((u) => u.noHp == bersihNoHp)) return;
 
-    _users.add(
-      AppUser(
-        id: 'u-${DateTime.now().microsecondsSinceEpoch}',
-        nama: bersihNama,
-        noHp: bersihNoHp,
-        // Ditulis di sini, tidak pernah diterima dari pemanggil. Lihat aturan
-        // pemberian peran di kontrak: runner adalah pegawai mitra, dan tidak ada
-        // yang boleh mengangkat dirinya sendiri jadi pegawai.
-        roles: const {UserRole.klien},
-      ),
+    final user = AppUser(
+      id: 'u-${DateTime.now().microsecondsSinceEpoch}',
+      nama: bersihNama,
+      noHp: bersihNoHp,
+      // Ditulis di sini, tidak pernah diterima dari pemanggil. Lihat aturan
+      // pemberian peran di kontrak: runner adalah pegawai mitra, dan tidak ada
+      // yang boleh mengangkat dirinya sendiri jadi pegawai.
+      roles: const {UserRole.klien},
+      punyaPassword: false,
     );
+    _users.add(user);
   }
 
   @override
@@ -132,7 +139,11 @@ class FakeAuthRepository implements AuthRepository {
   String? kodeUntuk(String noHp) => _kode[noHp.trim()];
 
   @override
-  Future<AppUser> masuk({required String noHp, required String kode}) async {
+  Future<AppUser> masuk({
+    required String noHp,
+    required String kode,
+    required String tantangan,
+  }) async {
     await Future<void>.delayed(_jedaJaringan);
 
     final bersihNoHp = noHp.trim();
@@ -142,20 +153,33 @@ class FakeAuthRepository implements AuthRepository {
     // Satu galat untuk semua sebab, sama seperti server. Membedakan "nomor tidak
     // terdaftar" dari "kode salah" memberi tahu penebak bahwa setengah jawabannya
     // sudah benar.
-    if (tersimpan == null || tersimpan != kode.trim() || user == null) {
-      throw StateError('Nomor atau kode tidak cocok');
+    if (tersimpan == null ||
+        tersimpan != kode.trim() ||
+        user == null ||
+        _tantanganMasuk[bersihNoHp] != tantangan) {
+      throw StateError('Nomor, password, atau kode tidak cocok');
     }
 
     // Sekali pakai.
     _kode.remove(bersihNoHp);
+    _tantanganMasuk.remove(bersihNoHp);
 
-    _userAktif = user;
-    _controller.add(user);
-    return user;
+    var hasil = user;
+    final passwordBaru = _passwordTertunda.remove(bersihNoHp);
+    if (passwordBaru != null) {
+      _password[bersihNoHp] = passwordBaru;
+      hasil = user.copyWith(punyaPassword: true);
+      final indeks = _users.indexWhere((u) => u.id == user.id);
+      if (indeks >= 0) _users[indeks] = hasil;
+    }
+
+    _userAktif = hasil;
+    _controller.add(hasil);
+    return hasil;
   }
 
   @override
-  Future<AppUser> masukPassword({
+  Future<String> masukPassword({
     required String noHp,
     required String password,
   }) async {
@@ -165,16 +189,15 @@ class FakeAuthRepository implements AuthRepository {
     final tersimpan = _password[bersihNoHp];
     final user = _users.where((u) => u.noHp == bersihNoHp).firstOrNull;
 
-    // Satu galat untuk semua sebab, sama seperti [masuk]: nomor tidak
-    // terdaftar, belum mengatur password, dan password salah tidak boleh
-    // dibedakan penebaknya.
-    if (tersimpan == null || tersimpan != password || user == null) {
-      throw StateError('Nomor atau password tidak cocok');
+    final tantangan = 'tantangan-${DateTime.now().microsecondsSinceEpoch}';
+    if (user == null || (tersimpan != null && tersimpan != password)) {
+      return tantangan;
     }
 
-    _userAktif = user;
-    _controller.add(user);
-    return user;
+    if (tersimpan == null) _passwordTertunda[bersihNoHp] = password;
+    _tantanganMasuk[bersihNoHp] = tantangan;
+    _kode[bersihNoHp] = (_acak.nextInt(1000000)).toString().padLeft(6, '0');
+    return tantangan;
   }
 
   @override
@@ -231,7 +254,9 @@ class FakeAuthRepository implements AuthRepository {
       nama: bersihNama,
       noHp: sekarang.noHp,
       roles: sekarang.roles,
-      alamat: bersihAlamat == null || bersihAlamat.isEmpty ? null : bersihAlamat,
+      alamat: bersihAlamat == null || bersihAlamat.isEmpty
+          ? null
+          : bersihAlamat,
     );
 
     // Ikut diperbarui di daftar akun contoh, supaya keluar lalu masuk lagi tidak

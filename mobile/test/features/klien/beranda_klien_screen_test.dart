@@ -19,8 +19,7 @@ void main() {
     // bawah petak layanan. Pada layar tes bawaan yang cuma 600 piksel, pintu itu
     // ada di pohon widget tapi belum pernah dipasang, jadi tesnya akan gagal
     // untuk alasan yang tidak ada hubungannya dengan yang sedang diuji.
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -29,8 +28,7 @@ void main() {
   });
 
   tearDown(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -39,10 +37,9 @@ void main() {
   });
 
   Future<void> bukaBeranda(WidgetTester tester) async {
-    await tester.pumpWidget(ProviderScope(
-        overrides: [sumberTiruan],
-        child: const UpnvjSuruhApp(),
-      ));
+    await tester.pumpWidget(
+      ProviderScope(overrides: [sumberTiruan], child: const UpnvjSuruhApp()),
+    );
     await tester.pumpAndSettle();
   }
 
@@ -102,17 +99,18 @@ void main() {
     expect(find.text(permintaanLain.deskripsi), findsOneWidget);
   });
 
-  testWidgets('seluruh layanan berkatalog sudah punya layarnya, tidak ada yang ditandai segera', (
-    tester,
-  ) async {
-    // Petak yang menjanjikan sesuatu lalu menjawab "menyusul" setelah ditekan
-    // membuat pengguna menanggung penemuan yang seharusnya ditanggung layar.
-    // Jastip Makanan adalah yang terakhir menyusul (rencana capstone bagian
-    // 70); sesudahnya lencana ini seharusnya tidak muncul untuk siapa pun.
-    await bukaBeranda(tester);
+  testWidgets(
+    'seluruh layanan berkatalog sudah punya layarnya, tidak ada yang ditandai segera',
+    (tester) async {
+      // Petak yang menjanjikan sesuatu lalu menjawab "menyusul" setelah ditekan
+      // membuat pengguna menanggung penemuan yang seharusnya ditanggung layar.
+      // Jastip Makanan adalah yang terakhir menyusul (rencana capstone bagian
+      // 70); sesudahnya lencana ini seharusnya tidak muncul untuk siapa pun.
+      await bukaBeranda(tester);
 
-    expect(find.text('Segera'), findsNothing);
-  });
+      expect(find.text('Segera'), findsNothing);
+    },
+  );
 
   testWidgets('jastip makanan membuka form yang cuma menagih ongkos jasanya', (
     tester,
@@ -122,7 +120,7 @@ void main() {
     await tester.tap(find.text('Jastip Makanan'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Makanan/minuman apa yang mau dititip?'), findsOneWidget);
-    expect(find.text('Beli di mana?'), findsOneWidget);
+    expect(find.text('Tulis pesanan makanan & minuman...'), findsOneWidget);
+    expect(find.text('Nama warung atau kantin'), findsOneWidget);
   });
 }

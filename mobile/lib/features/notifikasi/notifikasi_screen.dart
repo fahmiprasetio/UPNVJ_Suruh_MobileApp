@@ -165,7 +165,8 @@ class _NotifikasiScreenState extends ConsumerState<NotifikasiScreen> {
       case OrderStatus.menungguPembayaran:
         return _ItemNotifikasi(
           judul: 'Selesaikan Pembayaran ${order.kodeOrder}',
-          pesan: 'Tagihan untuk layanan $namaLayanan siap dibayar melalui Midtrans Snap.',
+          pesan:
+              'Tagihan untuk layanan $namaLayanan siap dibayar melalui Midtrans Snap.',
           waktu: order.dibuatPada,
           ikon: Icons.payment_outlined,
           warnaAksen: AppTheme.maroonMotor,

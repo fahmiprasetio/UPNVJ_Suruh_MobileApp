@@ -19,12 +19,15 @@ void main() {
     expect(wadah.read(notifikasiPushProvider), isNull);
   });
 
-  test('tidak dibuat di jalur data tiruan, yang tidak punya server untuk didaftari', () {
-    final wadah = ProviderContainer(
-      overrides: [sumberDataProvider.overrideWithValue(SumberData.tiruan)],
-    );
-    addTearDown(wadah.dispose);
+  test(
+    'tidak dibuat di jalur data tiruan, yang tidak punya server untuk didaftari',
+    () {
+      final wadah = ProviderContainer(
+        overrides: [sumberDataProvider.overrideWithValue(SumberData.tiruan)],
+      );
+      addTearDown(wadah.dispose);
 
-    expect(wadah.read(notifikasiPushProvider), isNull);
-  });
+      expect(wadah.read(notifikasiPushProvider), isNull);
+    },
+  );
 }

@@ -13,8 +13,7 @@ void main() {
   });
 
   setUp(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -23,8 +22,7 @@ void main() {
   });
 
   tearDown(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -34,20 +32,14 @@ void main() {
 
   Widget bungkusWidget(Widget child) {
     return MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: child,
-        ),
-      ),
+      home: Scaffold(body: Center(child: child)),
     );
   }
 
   testWidgets('menampilkan item banner promo pertama secara bawaan', (
     tester,
   ) async {
-    await tester.pumpWidget(
-      bungkusWidget(const BannerPromoCarousel()),
-    );
+    await tester.pumpWidget(bungkusWidget(const BannerPromoCarousel()));
     await tester.pumpAndSettle();
 
     expect(find.text('PROMO SPESIAL'), findsOneWidget);
@@ -59,86 +51,84 @@ void main() {
     expect(find.byIcon(Icons.confirmation_number_outlined), findsOneWidget);
   });
 
-  testWidgets('dapat berpindah ke slide promo kedua melalui ketukan indikator atau geser', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      bungkusWidget(const BannerPromoCarousel()),
-    );
-    await tester.pumpAndSettle();
+  testWidgets(
+    'dapat berpindah ke slide promo kedua melalui ketukan indikator atau geser',
+    (tester) async {
+      await tester.pumpWidget(bungkusWidget(const BannerPromoCarousel()));
+      await tester.pumpAndSettle();
 
-    // Ketuk indikator kedua untuk berpindah ke slide kedua
-    await tester.tap(find.byKey(const ValueKey('indikator_promo_1')));
-    await tester.pumpAndSettle();
+      // Ketuk indikator kedua untuk berpindah ke slide kedua
+      await tester.tap(find.byKey(const ValueKey('indikator_promo_1')));
+      await tester.pumpAndSettle();
 
-    expect(find.text('TIPS HEMAT KAMPUS'), findsOneWidget);
-    expect(find.text('Titip Makan Bareng Teman'), findsOneWidget);
-    expect(
-      find.text('1 runner bisa bawa hingga 3 porsi pesanan sekaligus tanpa ongkir dobel.'),
-      findsOneWidget,
-    );
-    expect(find.byIcon(Icons.restaurant_rounded), findsOneWidget);
-  });
+      expect(find.text('TIPS HEMAT KAMPUS'), findsOneWidget);
+      expect(find.text('Titip Makan Bareng Teman'), findsOneWidget);
+      expect(
+        find.text(
+          '1 runner bisa bawa hingga 3 porsi pesanan sekaligus tanpa ongkir dobel.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.byIcon(Icons.restaurant_rounded), findsOneWidget);
+    },
+  );
 
-  testWidgets('mengetuk slide pertama membuka dialog rincian voucher dan kode kupon', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      bungkusWidget(const BannerPromoCarousel()),
-    );
-    await tester.pumpAndSettle();
+  testWidgets(
+    'mengetuk slide pertama membuka dialog rincian voucher dan kode kupon',
+    (tester) async {
+      await tester.pumpWidget(bungkusWidget(const BannerPromoCarousel()));
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Diskon Ongkir Rp 5.000'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Diskon Ongkir Rp 5.000'));
+      await tester.pumpAndSettle();
 
-    expect(find.byType(AlertDialog), findsOneWidget);
-    expect(find.text('Voucher Pengguna Baru: VJHEMAT'), findsOneWidget);
-    expect(find.text('VJHEMAT'), findsOneWidget);
-    expect(find.text('Salin'), findsOneWidget);
-    expect(find.text('Tutup'), findsOneWidget);
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.text('Voucher Pengguna Baru: VJHEMAT'), findsOneWidget);
+      expect(find.text('VJHEMAT'), findsOneWidget);
+      expect(find.text('Salin'), findsOneWidget);
+      expect(find.text('Tutup'), findsOneWidget);
 
-    // Tekan salin kode kupon
-    await tester.tap(find.text('Salin'));
-    await tester.pumpAndSettle();
+      // Tekan salin kode kupon
+      await tester.tap(find.text('Salin'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Kode kupon VJHEMAT berhasil disalin!'), findsOneWidget);
+      expect(find.text('Kode kupon VJHEMAT berhasil disalin!'), findsOneWidget);
 
-    // Tekan tutup dialog
-    await tester.tap(find.text('Tutup'));
-    await tester.pumpAndSettle();
+      // Tekan tutup dialog
+      await tester.tap(find.text('Tutup'));
+      await tester.pumpAndSettle();
 
-    expect(find.byType(AlertDialog), findsNothing);
-  });
+      expect(find.byType(AlertDialog), findsNothing);
+    },
+  );
 
-  testWidgets('slide tips memiliki tombol aksi yang mengarahkan ke form layanan di beranda penuh', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [sumberTiruan],
-        child: const UpnvjSuruhApp(),
-      ),
-    );
-    await tester.pumpAndSettle();
+  testWidgets(
+    'slide tips memiliki tombol aksi yang mengarahkan ke form layanan di beranda penuh',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(overrides: [sumberTiruan], child: const UpnvjSuruhApp()),
+      );
+      await tester.pumpAndSettle();
 
-    // Berpindah ke slide kedua (jastip makanan) via indikator
-    await tester.tap(find.byKey(const ValueKey('indikator_promo_1')));
-    await tester.pumpAndSettle();
+      // Berpindah ke slide kedua (jastip makanan) via indikator
+      await tester.tap(find.byKey(const ValueKey('indikator_promo_1')));
+      await tester.pumpAndSettle();
 
-    // Ketuk slide kedua
-    await tester.tap(find.text('Titip Makan Bareng Teman'));
-    await tester.pumpAndSettle();
+      // Ketuk slide kedua
+      await tester.tap(find.text('Titip Makan Bareng Teman'));
+      await tester.pumpAndSettle();
 
-    expect(find.byType(AlertDialog), findsOneWidget);
-    expect(find.text('Pesan Jastip Makanan'), findsOneWidget);
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.text('Pesan Jastip Makanan'), findsOneWidget);
 
-    // Ketuk tombol aksi pada dialog
-    await tester.tap(find.text('Pesan Jastip Makanan'));
-    await tester.pumpAndSettle();
+      // Ketuk tombol aksi pada dialog
+      await tester.tap(find.text('Pesan Jastip Makanan'));
+      await tester.pumpAndSettle();
 
-    // Membuka form jastip makanan
-    expect(find.text('Makanan/minuman apa yang mau dititip?'), findsOneWidget);
-  });
+      // Membuka form jastip makanan
+      expect(find.text('Jastip Makanan Kampus'), findsOneWidget);
+    },
+  );
 
   testWidgets('menangani daftar promo kosong dengan aman', (tester) async {
     await tester.pumpWidget(

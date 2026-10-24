@@ -7,13 +7,19 @@ import 'package:upnvj_suruh/domain/pricing/kalkulator_tarif.dart';
 void main() {
   group('KalkulatorTarif.anterJemput', () {
     test('menjumlahkan tarif dasar dengan ongkos jarak', () {
-      final hasil = KalkulatorTarif.anterJemput(jarakKm: 3, tarif: Tarif.bawaan);
+      final hasil = KalkulatorTarif.anterJemput(
+        jarakKm: 3,
+        tarif: Tarif.bawaan,
+      );
 
       expect(hasil.total, 11000); // 5.000 + (3 x 2.000)
     });
 
     test('menguraikan harga jadi tarif dasar dan ongkos jarak', () {
-      final hasil = KalkulatorTarif.anterJemput(jarakKm: 3, tarif: Tarif.bawaan);
+      final hasil = KalkulatorTarif.anterJemput(
+        jarakKm: 3,
+        tarif: Tarif.bawaan,
+      );
 
       expect(hasil.rincian, hasLength(2));
       expect(hasil.rincian.first.label, 'Tarif dasar');
@@ -22,21 +28,30 @@ void main() {
     });
 
     test('jarak pecahan dibulatkan ke rupiah penuh', () {
-      final hasil = KalkulatorTarif.anterJemput(jarakKm: 2.5, tarif: Tarif.bawaan);
+      final hasil = KalkulatorTarif.anterJemput(
+        jarakKm: 2.5,
+        tarif: Tarif.bawaan,
+      );
 
       expect(hasil.total, 10000); // 5.000 + (2,5 x 2.000)
       expect(hasil.rincian.last.label, 'Jarak 2,5 km');
     });
 
     test('jarak di bawah minimal ditagih sebagai jarak minimal', () {
-      final hasil = KalkulatorTarif.anterJemput(jarakKm: 0.1, tarif: Tarif.bawaan);
+      final hasil = KalkulatorTarif.anterJemput(
+        jarakKm: 0.1,
+        tarif: Tarif.bawaan,
+      );
 
       expect(hasil.total, 6000); // 5.000 + (0,5 x 2.000)
       expect(hasil.rincian.last.label, 'Jarak 0,5 km');
     });
 
     test('jarak di atas maksimal ditahan di batas maksimal', () {
-      final hasil = KalkulatorTarif.anterJemput(jarakKm: 100, tarif: Tarif.bawaan);
+      final hasil = KalkulatorTarif.anterJemput(
+        jarakKm: 100,
+        tarif: Tarif.bawaan,
+      );
 
       expect(hasil.total, 35000); // 5.000 + (15 x 2.000)
       expect(hasil.rincian.last.label, 'Jarak 15 km');
@@ -44,7 +59,10 @@ void main() {
 
     test('total selalu sama dengan jumlah rinciannya', () {
       for (final jarak in [0.5, 1.0, 2.3, 7.7, 15.0]) {
-        final hasil = KalkulatorTarif.anterJemput(jarakKm: jarak, tarif: Tarif.bawaan);
+        final hasil = KalkulatorTarif.anterJemput(
+          jarakKm: jarak,
+          tarif: Tarif.bawaan,
+        );
         final jumlahRincian = hasil.rincian.fold<int>(
           0,
           (total, baris) => total + baris.nominal,
@@ -59,7 +77,7 @@ void main() {
     });
   });
 
-  group('layanan kos Jalur A', () {
+  group('layanan kos', () {
     test('pindah kos menghitung jarak, runner, dan pickup', () {
       final hasil = KalkulatorTarif.pindahKos(
         jarakKm: 2,
@@ -71,22 +89,18 @@ void main() {
       expect(hasil.total, 91000);
     });
 
-    test('layanan kebersihan memakai tarif tetap', () {
+    test('layanan kebersihan Jalur B tidak dihitung otomatis', () {
       expect(
-        KalkulatorTarif.hitung(
-          ServiceType.bersihKos,
-          null,
-          Tarif.bawaan,
-        ).total,
-        TarifConfig.bersihKosFee,
+        () => KalkulatorTarif.hitung(ServiceType.bersihKos, null, Tarif.bawaan),
+        throwsArgumentError,
       );
       expect(
-        KalkulatorTarif.hitung(
+        () => KalkulatorTarif.hitung(
           ServiceType.bersihKamarMandi,
           null,
           Tarif.bawaan,
-        ).total,
-        TarifConfig.bersihKamarMandiFee,
+        ),
+        throwsArgumentError,
       );
     });
   });

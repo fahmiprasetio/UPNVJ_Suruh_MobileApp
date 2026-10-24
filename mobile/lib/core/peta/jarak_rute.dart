@@ -29,9 +29,7 @@ class JarakRuteOsrm {
     );
 
     try {
-      final jawaban = await http
-          .get(uri)
-          .timeout(const Duration(seconds: 10));
+      final jawaban = await http.get(uri).timeout(const Duration(seconds: 10));
       if (jawaban.statusCode != 200) return null;
 
       final isi = jsonDecode(jawaban.body) as Map<String, dynamic>;

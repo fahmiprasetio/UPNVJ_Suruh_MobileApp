@@ -93,3 +93,43 @@ const List<ServiceInfo> serviceCatalog = [
 
 ServiceInfo serviceInfoOf(ServiceType type) =>
     serviceCatalog.firstWhere((s) => s.type == type);
+
+/// Palet warna dan ikon visual modern Gojek Aloha untuk setiap kategori layanan.
+extension ServiceTypeAloha on ServiceType {
+  ({Color latar, Color aksen}) get warnaAloha {
+    switch (this) {
+      case ServiceType.anterJemput:
+        return (latar: const Color(0xFFE8F8EA), aksen: const Color(0xFF00AA13));
+      case ServiceType.jastipMakanan:
+        return (latar: const Color(0xFFFFF7ED), aksen: const Color(0xFFEA580C));
+      case ServiceType.jastipBarang:
+        return (latar: const Color(0xFFEFF6FF), aksen: const Color(0xFF2563EB));
+      case ServiceType.bersihKamarMandi:
+      case ServiceType.bersihKos:
+        return (latar: const Color(0xFFF0FDF4), aksen: const Color(0xFF059669));
+      case ServiceType.bantuPindahKos:
+        return (latar: const Color(0xFFFAF5FF), aksen: const Color(0xFF9333EA));
+      case ServiceType.permintaanLain:
+        return (latar: const Color(0xFFF1F5F9), aksen: const Color(0xFF475569));
+    }
+  }
+
+  IconData get ikonAloha {
+    switch (this) {
+      case ServiceType.anterJemput:
+        return Icons.two_wheeler_rounded;
+      case ServiceType.jastipMakanan:
+        return Icons.lunch_dining_rounded;
+      case ServiceType.jastipBarang:
+        return Icons.shopping_bag_outlined;
+      case ServiceType.bersihKamarMandi:
+        return Icons.bathtub_outlined;
+      case ServiceType.bersihKos:
+        return Icons.cleaning_services_rounded;
+      case ServiceType.bantuPindahKos:
+        return Icons.local_shipping_outlined;
+      case ServiceType.permintaanLain:
+        return Icons.more_horiz_rounded;
+    }
+  }
+}

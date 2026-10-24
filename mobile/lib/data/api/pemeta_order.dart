@@ -37,7 +37,8 @@ class PemetaOrder {
       hargaUsulan: _rupiah(isi['hargaUsulan']),
       estimasiDurasi: _menit(isi['estimasiDurasiMenit']),
       jadwalMulai: _waktu(isi, 'jadwalMulai'),
-      jumlahRunnerDibutuhkan: (isi['jumlahRunnerDibutuhkan'] as num?)?.toInt() ?? 1,
+      jumlahRunnerDibutuhkan:
+          (isi['jumlahRunnerDibutuhkan'] as num?)?.toInt() ?? 1,
       jenisKendaraan: isi['jenisKendaraan'] == null
           ? null
           : _enum(
@@ -67,7 +68,8 @@ class PemetaOrder {
       // datang terpisah dari server.
       messages: pesan ?? const [],
       jumlahPesan: (isi['jumlahPesan'] as num?)?.toInt() ?? 0,
-      jumlahPesanBelumDibaca: (isi['jumlahPesanBelumDibaca'] as num?)?.toInt() ?? 0,
+      jumlahPesanBelumDibaca:
+          (isi['jumlahPesanBelumDibaca'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -95,7 +97,11 @@ class PemetaOrder {
     id: _teks(isi, 'id'),
     orderId: _teks(isi, 'orderId'),
     runnerId: isi['runnerId'] as String?,
-    pengirim: _enum(MessageSender.values, isi['peranPengirim'], 'peran pengirim'),
+    pengirim: _enum(
+      MessageSender.values,
+      isi['peranPengirim'],
+      'peran pengirim',
+    ),
     isi: (isi['isi'] as String?) ?? '',
     dikirimPada: _waktu(isi, 'dikirimPada')!,
   );

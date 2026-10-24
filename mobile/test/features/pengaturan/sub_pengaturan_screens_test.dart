@@ -8,8 +8,7 @@ import 'package:upnvj_suruh/features/pengaturan/tentang_aplikasi_screen.dart';
 
 void main() {
   setUp(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -18,8 +17,7 @@ void main() {
   });
 
   tearDown(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -28,35 +26,38 @@ void main() {
   });
 
   Widget bungkus(Widget child) {
-    return MaterialApp(
-      theme: AppTheme.terang(),
-      home: child,
-    );
+    return MaterialApp(theme: AppTheme.terang(), home: child);
   }
 
   group('PusatBantuanScreen', () {
-    testWidgets('menampilkan header bantuan dan butir FAQ yang bisa diperluas', (
-      tester,
-    ) async {
-      await tester.pumpWidget(bungkus(const PusatBantuanScreen()));
-      await tester.pumpAndSettle();
+    testWidgets(
+      'menampilkan header bantuan dan butir FAQ yang bisa diperluas',
+      (tester) async {
+        await tester.pumpWidget(bungkus(const PusatBantuanScreen()));
+        await tester.pumpAndSettle();
 
-      expect(find.text('Pusat Bantuan'), findsOneWidget);
-      expect(find.text('Butuh Bantuan Mendesak?'), findsOneWidget);
-      expect(find.text('Hubungi Admin via WhatsApp'), findsOneWidget);
+        expect(find.text('Pusat Bantuan'), findsOneWidget);
+        expect(find.text('Butuh Bantuan Mendesak?'), findsOneWidget);
+        expect(find.text('Hubungi Admin via WhatsApp'), findsOneWidget);
 
-      final faqTitle = find.text('Apa perbedaan Jalur A dan Jalur B?');
-      expect(faqTitle, findsOneWidget);
+        final faqTitle = find.text('Apa perbedaan Jalur A dan Jalur B?');
+        expect(faqTitle, findsOneWidget);
 
-      await tester.tap(faqTitle);
-      await tester.pumpAndSettle();
+        await tester.tap(faqTitle);
+        await tester.pumpAndSettle();
 
-      expect(find.textContaining('Jalur A (Anter Jemput'), findsOneWidget);
-    });
+        expect(
+          find.textContaining('Jalur A mencakup Anter Jemput'),
+          findsOneWidget,
+        );
+      },
+    );
   });
 
   group('SyaratKetentuanScreen', () {
-    testWidgets('menampilkan seluruh pasal syarat dan ketentuan', (tester) async {
+    testWidgets('menampilkan seluruh pasal syarat dan ketentuan', (
+      tester,
+    ) async {
       await tester.pumpWidget(bungkus(const SyaratKetentuanScreen()));
       await tester.pumpAndSettle();
 

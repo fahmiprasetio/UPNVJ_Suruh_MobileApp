@@ -17,8 +17,7 @@ void main() {
   });
 
   setUp(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -27,8 +26,7 @@ void main() {
   });
 
   tearDown(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -108,17 +106,18 @@ void main() {
     expect(order!.messages.single.pengirim, MessageSender.runner);
   });
 
-  testWidgets('chat order yang sudah selesai tetap bisa dibaca, tidak dibalas', (
-    tester,
-  ) async {
-    await bukaChatRunner(tester, 'SRH-0398');
+  testWidgets(
+    'chat order yang sudah selesai tetap bisa dibaca, tidak dibalas',
+    (tester) async {
+      await bukaChatRunner(tester, 'SRH-0398');
 
-    expect(
-      find.text('Order ini sudah ditutup, jadi chatnya ikut ditutup.'),
-      findsOneWidget,
-    );
-    expect(find.byType(TextField), findsNothing);
-  });
+      expect(
+        find.text('Order ini sudah ditutup, jadi chatnya ikut ditutup.'),
+        findsOneWidget,
+      );
+      expect(find.byType(TextField), findsNothing);
+    },
+  );
 
   testWidgets('jumlah pesan terbaca dari kartu order runner', (tester) async {
     // Pesannya ditanam lewat data awal, bukan lewat kirimPesan: jeda jaringan
@@ -148,7 +147,8 @@ void main() {
 
     final repo = FakeOrderRepository(
       pemanggil: () => SeedData.runner.id,
-      orderAwal: orders);
+      orderAwal: orders,
+    );
     addTearDown(repo.dispose);
 
     await tester.pumpWidget(

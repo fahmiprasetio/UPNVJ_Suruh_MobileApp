@@ -21,7 +21,9 @@ sealed class GalatApi implements Exception {
 /// yang pantas ditawari tombol "coba lagi", sebab mencoba ulang memang bisa berhasil
 /// tanpa ada yang berubah.
 class GalatJaringan extends GalatApi {
-  const GalatJaringan([super.pesan = 'Tidak bisa menghubungi server. Periksa koneksimu.']);
+  const GalatJaringan([
+    super.pesan = 'Tidak bisa menghubungi server. Periksa koneksimu.',
+  ]);
 }
 
 /// Permintaan ditolak karena isinya, misal nomor HP yang bentuknya salah.
@@ -34,12 +36,16 @@ class GalatPermintaan extends GalatApi {
 /// Untuk permintaan yang membawa token, ini berarti tokennya sudah kedaluwarsa atau
 /// dicabut, dan pengguna harus masuk ulang.
 class GalatTidakBerwenang extends GalatApi {
-  const GalatTidakBerwenang([super.pesan = 'Sesi kamu sudah berakhir. Masuk lagi, ya.']);
+  const GalatTidakBerwenang([
+    super.pesan = 'Sesi kamu sudah berakhir. Masuk lagi, ya.',
+  ]);
 }
 
 /// Sudah masuk, tapi memang tidak berhak melakukannya.
 class GalatDilarang extends GalatApi {
-  const GalatDilarang([super.pesan = 'Kamu tidak punya akses untuk melakukan ini.']);
+  const GalatDilarang([
+    super.pesan = 'Kamu tidak punya akses untuk melakukan ini.',
+  ]);
 }
 
 /// Yang dicari tidak ada, atau ada tapi bukan milik pemanggil.
@@ -77,5 +83,7 @@ class GalatTerlaluSering extends GalatApi {
 /// sampai ke layar pengguna adalah bocoran gratis tentang bentuk dalam sistem,
 /// dan tidak menolong siapa pun yang sedang memesan ojek.
 class GalatServer extends GalatApi {
-  const GalatServer([super.pesan = 'Server sedang bermasalah. Coba lagi sebentar lagi.']);
+  const GalatServer([
+    super.pesan = 'Server sedang bermasalah. Coba lagi sebentar lagi.',
+  ]);
 }

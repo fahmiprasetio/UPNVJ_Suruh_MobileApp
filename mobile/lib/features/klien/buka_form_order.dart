@@ -39,11 +39,7 @@ bool adaFormOrder(ServiceType layanan) =>
 /// atau sesudah aplikasi dimatikan sistem. Yang terjadi kalau begitu cuma form
 /// kembali kosong, bukan galat, dan itu memang jawaban yang benar untuk "pesan
 /// lagi" yang kehilangan order yang mau diulangnya.
-void bukaFormOrder(
-  BuildContext context,
-  ServiceType layanan, {
-  Order? contoh,
-}) {
+void bukaFormOrder(BuildContext context, ServiceType layanan, {Order? contoh}) {
   if (layanan.track == OrderTrack.jalurB) {
     context.push(Rute.formPermintaan(layanan), extra: contoh);
     return;
@@ -67,5 +63,7 @@ void bukaFormOrder(
 void belumTersedia(BuildContext context, String namaLayar) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text('$namaLayar belum dibuat, menyusul.')));
+    ..showSnackBar(
+      SnackBar(content: Text('$namaLayar belum dibuat, menyusul.')),
+    );
 }

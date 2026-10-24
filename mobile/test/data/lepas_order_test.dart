@@ -33,7 +33,9 @@ void main() {
       dibuatPada: DateTime.now(),
       harga: 11000,
       jumlahRunnerDibutuhkan: jumlahRunnerDibutuhkan,
-      runners: [for (final id in runnerIds) RunnerRingkas(id: id, nama: 'Runner')],
+      runners: [
+        for (final id in runnerIds) RunnerRingkas(id: id, nama: 'Runner'),
+      ],
     );
   }
 

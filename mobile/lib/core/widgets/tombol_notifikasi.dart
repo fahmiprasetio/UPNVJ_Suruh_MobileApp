@@ -19,10 +19,14 @@ class TombolNotifikasi extends ConsumerWidget {
     final orderAsync = ref.watch(orderKlienProvider);
 
     final jumlahPerhatian = orderAsync.maybeWhen(
-      data: (halaman) => halaman.isi.where((o) =>
-          o.status == OrderStatus.menungguPembayaran ||
-          o.status == OrderStatus.menungguPersetujuanKlien ||
-          o.jumlahPesanBelumDibaca > 0).length,
+      data: (halaman) => halaman.isi
+          .where(
+            (o) =>
+                o.status == OrderStatus.menungguPembayaran ||
+                o.status == OrderStatus.menungguPersetujuanKlien ||
+                o.jumlahPesanBelumDibaca > 0,
+          )
+          .length,
       orElse: () => 0,
     );
 
@@ -32,10 +36,7 @@ class TombolNotifikasi extends ConsumerWidget {
       onPressed: () => context.push(Rute.notifikasi),
       tooltip: 'Notifikasi',
       icon: jumlahPerhatian > 0
-          ? Badge.count(
-              count: jumlahPerhatian,
-              child: ikon,
-            )
+          ? Badge.count(count: jumlahPerhatian, child: ikon)
           : ikon,
     );
   }

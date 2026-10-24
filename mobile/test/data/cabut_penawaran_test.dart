@@ -90,7 +90,10 @@ void main() {
 
     await repo.cabutPenawaran(orderId: 'o-uji', penawaranId: 'f-1');
 
-    expect((await repo.getOrder('o-uji'))!.offers.single.status, OfferStatus.dicabut);
+    expect(
+      (await repo.getOrder('o-uji'))!.offers.single.status,
+      OfferStatus.dicabut,
+    );
   });
 
   /// Harga ordernya sudah ditetapkan dari tawaran ini dan klien mungkin sedang
@@ -120,25 +123,28 @@ void main() {
 
   /// Inti kenapa endpoint ini ada. Selama tawaran lama masih menunggu, penggantinya
   /// ditolak; menariknya lebih dulu yang membuka jalan mengirim angka yang benar.
-  test('sesudah ditarik, order itu muncul lagi di daftar order masuk runner', () async {
-    final repo = repoDengan(permintaan());
-    expect(
-      (await repo.watchOrderTersiarUntuk(runnerId).first).isi,
-      isEmpty,
-    );
+  test(
+    'sesudah ditarik, order itu muncul lagi di daftar order masuk runner',
+    () async {
+      final repo = repoDengan(permintaan());
+      expect((await repo.watchOrderTersiarUntuk(runnerId).first).isi, isEmpty);
 
-    await repo.cabutPenawaran(orderId: 'o-uji', penawaranId: 'f-1');
+      await repo.cabutPenawaran(orderId: 'o-uji', penawaranId: 'f-1');
 
-    expect(
-      (await repo.watchOrderTersiarUntuk(runnerId).first).isi.single.id,
-      'o-uji',
-    );
-  });
+      expect(
+        (await repo.watchOrderTersiarUntuk(runnerId).first).isi.single.id,
+        'o-uji',
+      );
+    },
+  );
 
   test('tawaran yang masih hidup muncul di daftar tawaran runner', () async {
     final repo = repoDengan(permintaan());
 
-    expect((await repo.watchTawaranUntuk(runnerId).first).isi.single.id, 'o-uji');
+    expect(
+      (await repo.watchTawaranUntuk(runnerId).first).isi.single.id,
+      'o-uji',
+    );
 
     await repo.cabutPenawaran(orderId: 'o-uji', penawaranId: 'f-1');
 

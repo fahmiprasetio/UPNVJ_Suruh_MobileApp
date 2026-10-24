@@ -91,7 +91,11 @@ class ApiAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<void> daftar({required String nama, required String noHp}) async {
+  Future<void> daftar({
+    required String nama,
+    required String noHp,
+    required String password,
+  }) async {
     // Jawabannya sengaja tidak dibaca: server menjawab 202 tanpa badan, sama untuk
     // nomor yang terdaftar maupun belum. Lihat alasannya di kontrak.
     await _klien.post(
@@ -100,7 +104,7 @@ class ApiAuthRepository implements AuthRepository {
       // karena DTO di server memang tidak punya tempatnya, tapi mengirimnya tetap
       // salah: kode yang meminta sesuatu yang tidak boleh diberikan akan dibaca
       // orang berikutnya sebagai sesuatu yang seharusnya bisa.
-      badan: {'nama': nama.trim(), 'noHp': noHp.trim()},
+      badan: {'nama': nama.trim(), 'noHp': noHp.trim(), 'password': password},
     );
   }
 
@@ -110,10 +114,14 @@ class ApiAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<AppUser> masuk({required String noHp, required String kode}) async {
+  Future<AppUser> masuk({
+    required String noHp,
+    required String kode,
+    required String tantangan,
+  }) async {
     final jawaban = await _klien.post(
       '/api/auth/masuk',
-      badan: {'noHp': noHp.trim(), 'kode': kode.trim()},
+      badan: {'noHp': noHp.trim(), 'kode': kode.trim(), 'tantangan': tantangan},
     );
 
     final token = jawaban['token'];
@@ -134,7 +142,7 @@ class ApiAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<AppUser> masukPassword({
+  Future<String> masukPassword({
     required String noHp,
     required String password,
   }) async {
@@ -143,19 +151,11 @@ class ApiAuthRepository implements AuthRepository {
       badan: {'noHp': noHp.trim(), 'password': password},
     );
 
-    final token = jawaban['token'];
-    if (token is! String || token.isEmpty) {
-      throw StateError('Jawaban masuk tidak membawa token.');
+    final tantangan = jawaban['tantangan'];
+    if (tantangan is! String || tantangan.isEmpty) {
+      throw StateError('Jawaban verifikasi password tidak membawa tantangan.');
     }
-
-    final user = _bacaUser(jawaban['user']);
-
-    // Urutan yang sama dengan [masuk]: token dipasang lebih dulu.
-    await _sesi.isi(token);
-    _userAktif = user;
-    _controller.add(user);
-
-    return user;
+    return tantangan;
   }
 
   @override

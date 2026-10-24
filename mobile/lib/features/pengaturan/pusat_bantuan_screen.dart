@@ -16,7 +16,8 @@ class PusatBantuanScreen extends StatelessWidget {
 
   final KontakBantuan? kontak;
 
-  KontakBantuan get _kontak => kontak ?? KontakBantuan.baca(modeDebug: kDebugMode);
+  KontakBantuan get _kontak =>
+      kontak ?? KontakBantuan.baca(modeDebug: kDebugMode);
 
   Future<void> _bukaWhatsApp(BuildContext context) async {
     final uri = Uri(
@@ -24,12 +25,16 @@ class PusatBantuanScreen extends StatelessWidget {
       host: 'wa.me',
       path: _kontak.noHpWhatsapp,
       queryParameters: {
-        'text': 'Halo Admin UPNVJ Suruh, saya ingin bertanya seputar layanan aplikasi.',
+        'text':
+            'Halo Admin UPNVJ Suruh, saya ingin bertanya seputar layanan aplikasi.',
       },
     );
 
     try {
-      final berhasil = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      final berhasil = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
       if (!berhasil && context.mounted) {
         _tampilkanPeringatanGagal(context);
       }
@@ -45,7 +50,9 @@ class PusatBantuanScreen extends StatelessWidget {
       ..hideCurrentSnackBar()
       ..showSnackBar(
         const SnackBar(
-          content: Text('Tidak dapat membuka WhatsApp. Silakan hubungi nomor admin langsung.'),
+          content: Text(
+            'Tidak dapat membuka WhatsApp. Silakan hubungi nomor admin langsung.',
+          ),
         ),
       );
   }
@@ -66,9 +73,7 @@ class PusatBantuanScreen extends StatelessWidget {
     final teks = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Pusat Bantuan'),
-      ),
+      appBar: AppBar(title: const Text('Pusat Bantuan')),
       body: ListView(
         padding: const EdgeInsets.all(AppTheme.spasiSedang),
         children: [
@@ -123,7 +128,9 @@ class PusatBantuanScreen extends StatelessWidget {
                         backgroundColor: skema.primary,
                         foregroundColor: skema.onPrimary,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppTheme.radiusKontrol),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusKontrol,
+                          ),
                         ),
                       ),
                     ),
@@ -135,15 +142,13 @@ class PusatBantuanScreen extends StatelessWidget {
           const SizedBox(height: AppTheme.spasiBesar / 2),
           Text(
             'Pertanyaan yang Sering Diajukan',
-            style: teks.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: teks.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: AppTheme.spasiKecil),
           _butirFaq(
             context,
             'Apa perbedaan Jalur A dan Jalur B?',
-            'Jalur A mencakup enam layanan utama: Anter Jemput, Jastip Makanan, Jastip Barang, Bantu Pindah Kos, Bersih-Bersih Kos, dan Bersih Kamar Mandi. Tarifnya dihitung otomatis oleh sistem dari isian layanan. Setelah pembayaran lunas, pesanan disiarkan ke runner yang tersedia.\n\nJalur B hanya untuk Permintaan Lain. Anda menjelaskan kebutuhan dan mengusulkan biaya, lalu runner dapat menyanggupi atau menawar harga.',
+            'Jalur A mencakup Anter Jemput, Jastip Makanan, Jastip Barang, dan Bantu Pindah Kos. Tarifnya dihitung otomatis oleh sistem dari isian layanan. Setelah pembayaran lunas, pesanan disiarkan ke runner yang tersedia.\n\nJalur B dipakai untuk Bersih-Bersih Kos, Bersih Kamar Mandi, dan Permintaan Lain. Anda menjelaskan kebutuhan, menentukan jadwal, dan mengusulkan biaya, lalu runner dapat menyanggupi atau menawar harga.',
           ),
           _butirFaq(
             context,
@@ -199,9 +204,7 @@ class PusatBantuanScreen extends StatelessWidget {
         ),
         title: Text(
           pertanyaan,
-          style: teks.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+          style: teks.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
         ),
         children: [
           Text(

@@ -63,11 +63,7 @@ class RangkaDaftarOrder extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      children: [
-                        balok(120, 14),
-                        const Spacer(),
-                        balok(72, 18),
-                      ],
+                      children: [balok(120, 14), const Spacer(), balok(72, 18)],
                     ),
                     const SizedBox(height: AppTheme.spasiKecil),
                     balok(160, 12),

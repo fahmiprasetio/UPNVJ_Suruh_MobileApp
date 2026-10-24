@@ -234,9 +234,9 @@ public class OrderEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
     }
 
     [Theory]
-    [InlineData(ServiceType.BersihKos, 30_000)]
-    [InlineData(ServiceType.BersihKamarMandi, 20_000)]
-    public async Task LayananKebersihanDibuatSebagaiJalurA(ServiceType layanan, decimal harga)
+    [InlineData(ServiceType.BersihKos)]
+    [InlineData(ServiceType.BersihKamarMandi)]
+    public async Task LayananKebersihanDitolakDiEndpointJalurA(ServiceType layanan)
     {
         var (klien, _) = await AkunAsync(UserRole.Klien);
 
@@ -246,10 +246,7 @@ public class OrderEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Datab
             AlamatTujuan = "Kos Melati, Pondok Labu",
         });
 
-        jawaban.EnsureSuccessStatusCode();
-        var hasil = await jawaban.Content.ReadFromJsonAsync<BuatOrderResponse>();
-        Assert.Equal(nameof(OrderTrack.JalurA), hasil!.Order.Track);
-        Assert.Equal(harga, hasil.Order.Harga);
+        Assert.Equal(HttpStatusCode.BadRequest, jawaban.StatusCode);
     }
 
     [Fact]

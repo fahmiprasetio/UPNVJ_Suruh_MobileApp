@@ -31,7 +31,8 @@ void main() {
     view.resetDevicePixelRatio();
   });
 
-  Widget bungkus(Widget child) => MaterialApp(theme: AppTheme.terang(), home: child);
+  Widget bungkus(Widget child) =>
+      MaterialApp(theme: AppTheme.terang(), home: child);
 
   /// Seluruh teks yang tampil di layar, dalam satu string.
   String semuaTeks(WidgetTester tester) => tester
@@ -54,14 +55,20 @@ void main() {
         'token notifikasi',
         'exif',
       ]) {
-        expect(teks, contains(kata), reason: 'kebijakan harus menyebut "$kata"');
+        expect(
+          teks,
+          contains(kata),
+          reason: 'kebijakan harus menyebut "$kata"',
+        );
       }
     });
 
     /// Aplikasi belum bisa merekam atau melampirkan pesan suara, dan klien belum bisa
     /// melampirkan foto ke pesanan atau chat. Kebijakan tidak boleh menyebut data yang
     /// tidak pernah dikumpulkan.
-    testWidgets('tidak mengklaim data yang belum dikumpulkan aplikasi', (tester) async {
+    testWidgets('tidak mengklaim data yang belum dikumpulkan aplikasi', (
+      tester,
+    ) async {
       await tester.pumpWidget(bungkus(const KebijakanPrivasiScreen()));
       final teks = semuaTeks(tester).toLowerCase();
 
@@ -73,14 +80,26 @@ void main() {
       await tester.pumpWidget(bungkus(const KebijakanPrivasiScreen()));
       final teks = semuaTeks(tester).toLowerCase();
 
-      for (final pihak in ['midtrans', 'firebase', 'openstreetmap', 'runner', 'admin']) {
-        expect(teks, contains(pihak), reason: 'kebijakan harus menyebut "$pihak"');
+      for (final pihak in [
+        'midtrans',
+        'firebase',
+        'openstreetmap',
+        'runner',
+        'admin',
+      ]) {
+        expect(
+          teks,
+          contains(pihak),
+          reason: 'kebijakan harus menyebut "$pihak"',
+        );
       }
     });
 
     /// Penyedia pengirim OTP belum diputuskan mitra dan belum aktif. Menyebut namanya
     /// adalah klaim yang belum benar.
-    testWidgets('tidak mengklaim penyedia OTP yang belum aktif', (tester) async {
+    testWidgets('tidak mengklaim penyedia OTP yang belum aktif', (
+      tester,
+    ) async {
       await tester.pumpWidget(bungkus(const KebijakanPrivasiScreen()));
       final teks = semuaTeks(tester);
 
@@ -89,7 +108,9 @@ void main() {
       expect(teks, isNot(contains('Meta ')));
     });
 
-    testWidgets('menjelaskan apa yang dihapus dan apa yang dipertahankan', (tester) async {
+    testWidgets('menjelaskan apa yang dihapus dan apa yang dipertahankan', (
+      tester,
+    ) async {
       await tester.pumpWidget(bungkus(const KebijakanPrivasiScreen()));
 
       expect(find.text('5. Menghapus akun dan data'), findsOneWidget);
@@ -104,18 +125,24 @@ void main() {
       expect(RegExp(r'\d+\s*(tahun|bulan)').hasMatch(teks), isFalse);
     });
 
-    testWidgets('memuat tanggal pembaruan yang sama dengan halaman publik', (tester) async {
+    testWidgets('memuat tanggal pembaruan yang sama dengan halaman publik', (
+      tester,
+    ) async {
       await tester.pumpWidget(bungkus(const KebijakanPrivasiScreen()));
 
       expect(
-        find.textContaining('Terakhir diperbarui: ${KebijakanPrivasiScreen.diperbaruiPada}'),
+        find.textContaining(
+          'Terakhir diperbarui: ${KebijakanPrivasiScreen.diperbaruiPada}',
+        ),
         findsOneWidget,
       );
     });
 
     /// Daftar yang sama dengan `HalamanPublikTests.KebijakanPrivasiMemuatBagianYangSamaDenganAplikasi`
     /// di backend. Kalau salah satu daftar diubah, ubah keduanya.
-    testWidgets('judul bagian sama dengan halaman publik, urutannya juga', (tester) async {
+    testWidgets('judul bagian sama dengan halaman publik, urutannya juga', (
+      tester,
+    ) async {
       const judulDiWeb = [
         '1. Data yang kami kumpulkan',
         '2. Untuk apa data dipakai',
@@ -130,7 +157,11 @@ void main() {
 
       await tester.pumpWidget(bungkus(const KebijakanPrivasiScreen()));
       for (final judul in judulDiWeb) {
-        expect(find.text(judul), findsOneWidget, reason: 'bagian "$judul" harus tampil');
+        expect(
+          find.text(judul),
+          findsOneWidget,
+          reason: 'bagian "$judul" harus tampil',
+        );
       }
     });
   });
@@ -145,7 +176,9 @@ void main() {
 
     /// Daftar yang sama dengan `HalamanPublikTests.SyaratMemuatPasalYangSamaDenganAplikasi`
     /// di backend. Kalau salah satu daftar diubah, ubah keduanya.
-    testWidgets('judul pasal sama dengan halaman publik, urutannya juga', (tester) async {
+    testWidgets('judul pasal sama dengan halaman publik, urutannya juga', (
+      tester,
+    ) async {
       const judulDiWeb = [
         '1. Ketentuan umum',
         '2. Pemesanan dan pembayaran',
@@ -159,37 +192,58 @@ void main() {
 
       await tester.pumpWidget(bungkus(const SyaratKetentuanScreen()));
       for (final judul in judulDiWeb) {
-        expect(find.text(judul), findsOneWidget, reason: 'pasal "$judul" harus tampil');
+        expect(
+          find.text(judul),
+          findsOneWidget,
+          reason: 'pasal "$judul" harus tampil',
+        );
       }
     });
 
-    testWidgets('memuat tanggal pembaruan yang sama dengan halaman publik', (tester) async {
+    testWidgets('memuat tanggal pembaruan yang sama dengan halaman publik', (
+      tester,
+    ) async {
       await tester.pumpWidget(bungkus(const SyaratKetentuanScreen()));
 
       expect(
-        find.textContaining('Terakhir diperbarui: ${SyaratKetentuanScreen.diperbaruiPada}'),
+        find.textContaining(
+          'Terakhir diperbarui: ${SyaratKetentuanScreen.diperbaruiPada}',
+        ),
         findsOneWidget,
       );
-      expect(SyaratKetentuanScreen.diperbaruiPada, KebijakanPrivasiScreen.diperbaruiPada);
+      expect(
+        SyaratKetentuanScreen.diperbaruiPada,
+        KebijakanPrivasiScreen.diperbaruiPada,
+      );
     });
   });
 
   group('KontakBantuan', () {
-    test('rilis tanpa nomor menyatakan kanal tidak tersedia, tidak mengarang nilai', () {
-      final kontak = KontakBantuan.baca(modeDebug: false, noHp: '', jam: '');
+    test(
+      'rilis tanpa nomor menyatakan kanal tidak tersedia, tidak mengarang nilai',
+      () {
+        final kontak = KontakBantuan.baca(modeDebug: false, noHp: '', jam: '');
 
-      expect(kontak.tersedia, isFalse);
-      expect(kontak.noHpWhatsapp, isEmpty);
-      expect(kontak.punyaJamLayanan, isFalse);
-    });
+        expect(kontak.tersedia, isFalse);
+        expect(kontak.noHpWhatsapp, isEmpty);
+        expect(kontak.punyaJamLayanan, isFalse);
+      },
+    );
 
-    test('rilis dengan nomor memakai nomor itu dan tidak mengarang jam layanan', () {
-      final kontak = KontakBantuan.baca(modeDebug: false, noHp: ' 6281200000000 ', jam: '');
+    test(
+      'rilis dengan nomor memakai nomor itu dan tidak mengarang jam layanan',
+      () {
+        final kontak = KontakBantuan.baca(
+          modeDebug: false,
+          noHp: ' 6281200000000 ',
+          jam: '',
+        );
 
-      expect(kontak.tersedia, isTrue);
-      expect(kontak.noHpWhatsapp, '6281200000000');
-      expect(kontak.punyaJamLayanan, isFalse);
-    });
+        expect(kontak.tersedia, isTrue);
+        expect(kontak.noHpWhatsapp, '6281200000000');
+        expect(kontak.punyaJamLayanan, isFalse);
+      },
+    );
 
     test('nomor dan jam dari konfigurasi menang atas nilai pengembangan', () {
       final kontak = KontakBantuan.baca(
@@ -211,16 +265,26 @@ void main() {
   });
 
   group('PusatBantuanScreen', () {
-    testWidgets('tanpa kontak: tidak ada tombol WhatsApp dan layar menyatakannya', (tester) async {
-      await tester.pumpWidget(
-        bungkus(const PusatBantuanScreen(kontak: KontakBantuan.tidakTersedia)),
-      );
+    testWidgets(
+      'tanpa kontak: tidak ada tombol WhatsApp dan layar menyatakannya',
+      (tester) async {
+        await tester.pumpWidget(
+          bungkus(
+            const PusatBantuanScreen(kontak: KontakBantuan.tidakTersedia),
+          ),
+        );
 
-      expect(find.text('Hubungi Admin via WhatsApp'), findsNothing);
-      expect(find.textContaining('Kontak admin belum tersedia'), findsOneWidget);
-    });
+        expect(find.text('Hubungi Admin via WhatsApp'), findsNothing);
+        expect(
+          find.textContaining('Kontak admin belum tersedia'),
+          findsOneWidget,
+        );
+      },
+    );
 
-    testWidgets('kontak dengan jam layanan menampilkan jam dari konfigurasi', (tester) async {
+    testWidgets('kontak dengan jam layanan menampilkan jam dari konfigurasi', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         bungkus(
           const PusatBantuanScreen(
@@ -233,14 +297,21 @@ void main() {
       );
 
       expect(find.text('Hubungi Admin via WhatsApp'), findsOneWidget);
-      expect(find.textContaining('Senin-Jumat pukul 09.00 - 17.00 WIB'), findsOneWidget);
+      expect(
+        find.textContaining('Senin-Jumat pukul 09.00 - 17.00 WIB'),
+        findsOneWidget,
+      );
       // Jam yang dulu tertanam tidak boleh ikut tampil.
       expect(find.textContaining('08.00 - 20.00'), findsNothing);
     });
 
     testWidgets('kontak tanpa jam layanan tidak mengarang jam', (tester) async {
       await tester.pumpWidget(
-        bungkus(const PusatBantuanScreen(kontak: KontakBantuan(noHpWhatsapp: '6281211112222'))),
+        bungkus(
+          const PusatBantuanScreen(
+            kontak: KontakBantuan(noHpWhatsapp: '6281211112222'),
+          ),
+        ),
       );
 
       expect(find.text('Hubungi Admin via WhatsApp'), findsOneWidget);
@@ -258,7 +329,10 @@ void main() {
 
       await tester.tap(tanya);
       await tester.pumpAndSettle();
-      expect(find.textContaining('Pengaturan lalu pilih Hapus Akun'), findsOneWidget);
+      expect(
+        find.textContaining('Pengaturan lalu pilih Hapus Akun'),
+        findsOneWidget,
+      );
     });
   });
 }

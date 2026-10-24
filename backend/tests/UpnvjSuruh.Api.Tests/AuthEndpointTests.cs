@@ -12,6 +12,8 @@ namespace UpnvjSuruh.Api.Tests;
 
 public class AuthEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<DatabaseApiFactory>
 {
+    private const string PasswordUji = "sandiAman123";
+
     private HttpClient Klien() => pabrik.CreateClient();
 
     private static string NomorBaru() => "08" + Random.Shared.NextInt64(100000000, 999999999);
@@ -20,18 +22,24 @@ public class AuthEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Databa
 
     private async Task<string> DaftarAsync(HttpClient klien, string noHp, string nama = "Dina Rahmawati")
     {
-        var jawaban = await klien.PostAsJsonAsync("/api/auth/daftar", new { Nama = nama, NoHp = noHp });
+        var jawaban = await klien.PostAsJsonAsync(
+            "/api/auth/daftar", new { Nama = nama, NoHp = noHp, Password = PasswordUji });
         jawaban.EnsureSuccessStatusCode();
         return noHp;
     }
 
     private async Task<MasukResponse> MasukAsync(HttpClient klien, string noHp)
     {
-        await klien.PostAsJsonAsync("/api/auth/minta-kode", new { NoHp = noHp });
+        var mulai = await klien.PostAsJsonAsync(
+            "/api/auth/masuk-password", new { NoHp = noHp, Password = PasswordUji });
+        mulai.EnsureSuccessStatusCode();
+        var tantangan = (await mulai.Content.ReadFromJsonAsync<TantanganMasukResponse>())!;
         var kode = pabrik.Otp.KodeUntuk(noHp);
         Assert.NotNull(kode);
 
-        var jawaban = await klien.PostAsJsonAsync("/api/auth/masuk", new { NoHp = noHp, Kode = kode });
+        var jawaban = await klien.PostAsJsonAsync(
+            "/api/auth/masuk",
+            new { NoHp = noHp, Kode = kode, tantangan.Tantangan });
         jawaban.EnsureSuccessStatusCode();
         return (await jawaban.Content.ReadFromJsonAsync<MasukResponse>())!;
     }
@@ -45,7 +53,9 @@ public class AuthEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Databa
         var klien = Klien();
         var noHp = NomorBaru();
 
-        var jawaban = await klien.PostAsJsonAsync("/api/auth/daftar", new { Nama = "Sari Utami", NoHp = noHp });
+        var jawaban = await klien.PostAsJsonAsync(
+            "/api/auth/daftar",
+            new { Nama = "Sari Utami", NoHp = noHp, Password = PasswordUji });
 
         Assert.Equal(HttpStatusCode.Accepted, jawaban.StatusCode);
 
@@ -68,6 +78,7 @@ public class AuthEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Databa
             {
                 Nama = "Penyusup",
                 NoHp = noHp,
+                Password = PasswordUji,
                 Roles = new[] { "Runner", "Admin" },
                 Role = "Admin",
             }),
@@ -106,8 +117,12 @@ public class AuthEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Databa
         var terdaftar = await DaftarAsync(klien, NomorBaru());
         var asing = NomorBaru();
 
-        var lagi = await klien.PostAsJsonAsync("/api/auth/daftar", new { Nama = "Kembar", NoHp = terdaftar });
-        var baru = await klien.PostAsJsonAsync("/api/auth/daftar", new { Nama = "Sari", NoHp = asing });
+        var lagi = await klien.PostAsJsonAsync(
+            "/api/auth/daftar",
+            new { Nama = "Kembar", NoHp = terdaftar, Password = PasswordUji });
+        var baru = await klien.PostAsJsonAsync(
+            "/api/auth/daftar",
+            new { Nama = "Sari", NoHp = asing, Password = PasswordUji });
 
         Assert.Equal(HttpStatusCode.Accepted, lagi.StatusCode);
         Assert.Equal(lagi.StatusCode, baru.StatusCode);
@@ -125,7 +140,9 @@ public class AuthEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Databa
         var klien = Klien();
         var noHp = await DaftarAsync(klien, NomorBaru(), nama: "Dina Rahmawati");
 
-        await klien.PostAsJsonAsync("/api/auth/daftar", new { Nama = "Penyusup", NoHp = noHp });
+        await klien.PostAsJsonAsync(
+            "/api/auth/daftar",
+            new { Nama = "Penyusup", NoHp = noHp, Password = "passwordLain99" });
 
         using var lingkup = pabrik.Services.CreateScope();
         var db = lingkup.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -139,7 +156,9 @@ public class AuthEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Databa
         var klien = Klien();
         var noHp = await DaftarAsync(klien, NomorBaru());
 
-        await klien.PostAsJsonAsync("/api/auth/daftar", new { Nama = "Kembar", NoHp = noHp });
+        await klien.PostAsJsonAsync(
+            "/api/auth/daftar",
+            new { Nama = "Kembar", NoHp = noHp, Password = "passwordLain99" });
 
         using var lingkup = pabrik.Services.CreateScope();
         var db = lingkup.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -154,7 +173,9 @@ public class AuthEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Databa
     [InlineData("0812345678901234567890")]
     public async Task NomorYangBentuknyaSalahDitolak(string noHp)
     {
-        var jawaban = await Klien().PostAsJsonAsync("/api/auth/daftar", new { Nama = "Dina", NoHp = noHp });
+        var jawaban = await Klien().PostAsJsonAsync(
+            "/api/auth/daftar",
+            new { Nama = "Dina", NoHp = noHp, Password = PasswordUji });
 
         Assert.Equal(HttpStatusCode.BadRequest, jawaban.StatusCode);
     }
@@ -164,7 +185,12 @@ public class AuthEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Databa
     {
         var jawaban = await Klien().PostAsJsonAsync(
             "/api/auth/daftar",
-            new { Nama = Panjang(BatasMasukan.Nama + 1), NoHp = NomorBaru() });
+            new
+            {
+                Nama = Panjang(BatasMasukan.Nama + 1),
+                NoHp = NomorBaru(),
+                Password = PasswordUji,
+            });
 
         Assert.Equal(HttpStatusCode.BadRequest, jawaban.StatusCode);
     }
@@ -191,9 +217,13 @@ public class AuthEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Databa
     {
         var klien = Klien();
         var noHp = await DaftarAsync(klien, NomorBaru());
-        await klien.PostAsJsonAsync("/api/auth/minta-kode", new { NoHp = noHp });
+        var mulai = await klien.PostAsJsonAsync(
+            "/api/auth/masuk-password", new { NoHp = noHp, Password = PasswordUji });
+        var tantangan = (await mulai.Content.ReadFromJsonAsync<TantanganMasukResponse>())!;
 
-        var jawaban = await klien.PostAsJsonAsync("/api/auth/masuk", new { NoHp = noHp, Kode = "000000" });
+        var jawaban = await klien.PostAsJsonAsync(
+            "/api/auth/masuk",
+            new { NoHp = noHp, Kode = "000000", tantangan.Tantangan });
 
         Assert.Equal(HttpStatusCode.Unauthorized, jawaban.StatusCode);
     }
@@ -203,11 +233,15 @@ public class AuthEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Databa
     {
         var klien = Klien();
         var noHp = await DaftarAsync(klien, NomorBaru());
-        await klien.PostAsJsonAsync("/api/auth/minta-kode", new { NoHp = noHp });
+        var mulai = await klien.PostAsJsonAsync(
+            "/api/auth/masuk-password", new { NoHp = noHp, Password = PasswordUji });
+        var tantangan = (await mulai.Content.ReadFromJsonAsync<TantanganMasukResponse>())!;
         var kode = pabrik.Otp.KodeUntuk(noHp);
 
-        var pertama = await klien.PostAsJsonAsync("/api/auth/masuk", new { NoHp = noHp, Kode = kode });
-        var kedua = await klien.PostAsJsonAsync("/api/auth/masuk", new { NoHp = noHp, Kode = kode });
+        var pertama = await klien.PostAsJsonAsync(
+            "/api/auth/masuk", new { NoHp = noHp, Kode = kode, tantangan.Tantangan });
+        var kedua = await klien.PostAsJsonAsync(
+            "/api/auth/masuk", new { NoHp = noHp, Kode = kode, tantangan.Tantangan });
 
         Assert.Equal(HttpStatusCode.OK, pertama.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, kedua.StatusCode);
@@ -218,17 +252,22 @@ public class AuthEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Databa
     {
         var klien = Klien();
         var noHp = await DaftarAsync(klien, NomorBaru());
-        await klien.PostAsJsonAsync("/api/auth/minta-kode", new { NoHp = noHp });
+        var mulai = await klien.PostAsJsonAsync(
+            "/api/auth/masuk-password", new { NoHp = noHp, Password = PasswordUji });
+        var tantangan = (await mulai.Content.ReadFromJsonAsync<TantanganMasukResponse>())!;
         var kode = pabrik.Otp.KodeUntuk(noHp);
 
         for (var i = 0; i < 5; i++)
         {
-            await klien.PostAsJsonAsync("/api/auth/masuk", new { NoHp = noHp, Kode = "000000" });
+            await klien.PostAsJsonAsync(
+                "/api/auth/masuk",
+                new { NoHp = noHp, Kode = "000000", tantangan.Tantangan });
         }
 
         // Kode yang benar pun tidak berlaku lagi. Enam angka cuma sejuta kemungkinan, jadi
         // tanpa batas percobaan ia bisa ditebak habis-habisan.
-        var denganKodeBenar = await klien.PostAsJsonAsync("/api/auth/masuk", new { NoHp = noHp, Kode = kode });
+        var denganKodeBenar = await klien.PostAsJsonAsync(
+            "/api/auth/masuk", new { NoHp = noHp, Kode = kode, tantangan.Tantangan });
 
         Assert.Equal(HttpStatusCode.Unauthorized, denganKodeBenar.StatusCode);
     }
@@ -239,7 +278,9 @@ public class AuthEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<Databa
         var klien = Klien();
         var noHp = await DaftarAsync(klien, NomorBaru());
 
-        var jawaban = await klien.PostAsJsonAsync("/api/auth/masuk", new { NoHp = noHp, Kode = "123456" });
+        var jawaban = await klien.PostAsJsonAsync(
+            "/api/auth/masuk",
+            new { NoHp = noHp, Kode = "123456", Tantangan = "tidak-ada" });
 
         Assert.Equal(HttpStatusCode.Unauthorized, jawaban.StatusCode);
     }

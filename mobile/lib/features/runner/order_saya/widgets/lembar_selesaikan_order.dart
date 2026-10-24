@@ -178,8 +178,9 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
           .ambilDanUnggah(orderId: widget.order.id);
     } catch (galat) {
       if (!mounted) return;
-      final pesan =
-          galat is GalatApi ? galat.pesan : 'Foto gagal diunggah. Coba lagi, ya.';
+      final pesan = galat is GalatApi
+          ? galat.pesan
+          : 'Foto gagal diunggah. Coba lagi, ya.';
       setState(() {
         _sedangAmbilFoto = false;
         _pesanGalatFoto = pesan;

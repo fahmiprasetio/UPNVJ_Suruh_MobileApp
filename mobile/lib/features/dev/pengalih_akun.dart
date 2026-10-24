@@ -83,9 +83,7 @@ class KartuGantiAkun extends ConsumerWidget {
                       : Icons.radio_button_unchecked,
                 ),
                 title: Text(akun.nama),
-                subtitle: Text(
-                  akun.roles.map((r) => r.label).join(' + '),
-                ),
+                subtitle: Text(akun.roles.map((r) => r.label).join(' + ')),
                 onTap: () => Navigator.of(context).pop(akun),
               ),
             const SizedBox(height: AppTheme.spasiKecil),

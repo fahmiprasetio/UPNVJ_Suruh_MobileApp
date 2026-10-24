@@ -21,8 +21,7 @@ void main() {
   });
 
   setUp(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -31,8 +30,7 @@ void main() {
   });
 
   tearDown(() {
-    final view = TestWidgetsFlutterBinding
-        .ensureInitialized()
+    final view = TestWidgetsFlutterBinding.ensureInitialized()
         .platformDispatcher
         .views
         .first;
@@ -113,7 +111,7 @@ void main() {
     await tester.tap(find.text('Batal'));
     await tester.pumpAndSettle();
 
-    // Masuk kembali menuntut menunggu SMS dan mengetik enam angka, jadi salah
+    // Masuk kembali menuntut verifikasi password dan OTP WhatsApp, jadi salah
     // tekan di sini berbiaya menit, bukan detik.
     expect(authRepo.userAktif, isNotNull);
     expect(find.widgetWithText(AppBar, 'Profil'), findsOneWidget);
@@ -135,7 +133,7 @@ void main() {
     // menavigasi sendiri, layar profil akan tertinggal di tumpukan belakang
     // layar masuk dan tombol kembali membawa pengguna ke profil akun yang
     // sudah tidak ada.
-    expect(find.text('Belum punya akun? Daftar'), findsOneWidget);
+    expect(find.text('Daftar Sekarang'), findsOneWidget);
     expect(find.byType(BackButton), findsNothing);
   });
 

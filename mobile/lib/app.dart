@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,6 +20,7 @@ class UpnvjSuruhApp extends ConsumerWidget {
       theme: AppTheme.terang(),
       darkTheme: AppTheme.gelap(),
       themeMode: ref.watch(modeTemaProvider),
+      scrollBehavior: const AppScrollBehavior(),
       locale: const Locale('id', 'ID'),
       supportedLocales: const [Locale('id', 'ID')],
       localizationsDelegates: const [
@@ -30,10 +32,27 @@ class UpnvjSuruhApp extends ConsumerWidget {
       // `builder` membungkus Navigator, jadi apa pun yang ditumpuk di sini
       // berada di atas seluruh rute sekaligus, termasuk dialog.
       builder: (context, child) => _PengawasMetrik(
-        child: _DenganPembuka(isi: child),
+        child: _DenganPembuka(
+          isi: child != null ? SizedBox.expand(child: child) : null,
+        ),
       ),
     );
   }
+}
+
+/// Perilaku gulir responsif yang mengizinkan interaksi seret (drag) menggunakan
+/// sentuhan, mouse, trackpad, maupun stylus pada seluruh antarmuka web dan mobile.
+class AppScrollBehavior extends MaterialScrollBehavior {
+  const AppScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.trackpad,
+    PointerDeviceKind.stylus,
+    PointerDeviceKind.unknown,
+  };
 }
 
 /// Memastikan framework Flutter segera menjadwalkan ulang frame dan menghitung

@@ -34,13 +34,17 @@ void main() {
     }
   });
 
-  test('enam layanan utama Jalur A dan hanya permintaan lain Jalur B', () {
+  test('layanan terjadwal memakai Jalur B', () {
     final jalurB = serviceCatalog
         .where((layanan) => layanan.type.track == OrderTrack.jalurB)
         .map((layanan) => layanan.type)
         .toList();
 
-    expect(jalurB, [ServiceType.permintaanLain]);
+    expect(jalurB, [
+      ServiceType.bersihKamarMandi,
+      ServiceType.bersihKos,
+      ServiceType.permintaanLain,
+    ]);
   });
 
   test(
@@ -54,14 +58,17 @@ void main() {
     },
   );
 
-  test('skalaIkon cuma dibesarkan untuk Jastip Makanan dan Bantu Pindah Kos', () {
-    final dibesarkan = serviceCatalog
-        .where((l) => l.skalaIkon != 1)
-        .map((l) => l.type)
-        .toSet();
-    expect(dibesarkan, {
-      ServiceType.jastipMakanan,
-      ServiceType.bantuPindahKos,
-    });
-  });
+  test(
+    'skalaIkon cuma dibesarkan untuk Jastip Makanan dan Bantu Pindah Kos',
+    () {
+      final dibesarkan = serviceCatalog
+          .where((l) => l.skalaIkon != 1)
+          .map((l) => l.type)
+          .toSet();
+      expect(dibesarkan, {
+        ServiceType.jastipMakanan,
+        ServiceType.bantuPindahKos,
+      });
+    },
+  );
 }

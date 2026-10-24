@@ -9,6 +9,8 @@ import 'package:upnvj_suruh/domain/models/app_user.dart';
 /// Runner adalah pegawai mitra, klien adalah mahasiswa atau pelanggan. Yang dijaga
 /// di sini: tidak ada jalan dari mendaftar sendiri menuju peran runner.
 void main() {
+  const passwordUji = 'sandiAman123';
+
   /// Mendaftar lalu masuk, mengembalikan akun yang sungguhan tersimpan.
   ///
   /// Perannya diperiksa lewat sini, bukan lewat nilai balik [AuthRepository.daftar],
@@ -21,26 +23,36 @@ void main() {
     required String nama,
     required String noHp,
   }) async {
-    await repo.daftar(nama: nama, noHp: noHp);
-    await repo.mintaKode(noHp: noHp);
-    return repo.masuk(noHp: noHp, kode: repo.kodeUntuk(noHp)!);
+    await repo.daftar(nama: nama, noHp: noHp, password: passwordUji);
+    final tantangan = await repo.masukPassword(
+      noHp: noHp,
+      password: passwordUji,
+    );
+    return repo.masuk(
+      noHp: noHp,
+      kode: repo.kodeUntuk(noHp)!,
+      tantangan: tantangan,
+    );
   }
 
   group('pemberian peran', () {
-    test('akun yang mendaftar sendiri selalu lahir sebagai klien saja', () async {
-      final repo = FakeAuthRepository();
-      addTearDown(repo.dispose);
+    test(
+      'akun yang mendaftar sendiri selalu lahir sebagai klien saja',
+      () async {
+        final repo = FakeAuthRepository();
+        addTearDown(repo.dispose);
 
-      final user = await daftarLaluMasuk(
-        repo,
-        nama: 'Sari Utami',
-        noHp: '081200000001',
-      );
+        final user = await daftarLaluMasuk(
+          repo,
+          nama: 'Sari Utami',
+          noHp: '081200000001',
+        );
 
-      expect(user.roles, {UserRole.klien});
-      expect(user.isRunner, isFalse);
-      expect(user.isAdmin, isFalse);
-    });
+        expect(user.roles, {UserRole.klien});
+        expect(user.isRunner, isFalse);
+        expect(user.isAdmin, isFalse);
+      },
+    );
 
     test('akun baru tidak punya permukaan runner untuk ditukar', () async {
       // Tombol ganti mode hanya muncul untuk akun yang memang memegang dua
@@ -70,12 +82,20 @@ void main() {
       final repo = FakeAuthRepository();
       addTearDown(repo.dispose);
 
-      await repo.daftar(nama: 'Penyusup', noHp: SeedData.klien.noHp);
+      await repo.daftar(
+        nama: 'Penyusup',
+        noHp: SeedData.klien.noHp,
+        password: passwordUji,
+      );
 
-      await repo.mintaKode(noHp: SeedData.klien.noHp);
+      final tantangan = await repo.masukPassword(
+        noHp: SeedData.klien.noHp,
+        password: passwordUji,
+      );
       final user = await repo.masuk(
         noHp: SeedData.klien.noHp,
         kode: repo.kodeUntuk(SeedData.klien.noHp)!,
+        tantangan: tantangan,
       );
 
       expect(user.nama, SeedData.klien.nama);
@@ -89,22 +109,34 @@ void main() {
 
       final repo = FakeAuthRepository();
       addTearDown(repo.dispose);
-      await repo.daftar(nama: 'Sari Utami', noHp: '081200000001');
+      await repo.daftar(
+        nama: 'Sari Utami',
+        noHp: '081200000001',
+        password: passwordUji,
+      );
 
       expect(SeedData.semuaUser, hasLength(jumlahAwal));
     });
   });
 
-  group('masuk dengan kode sekali pakai', () {
+  group('masuk dua langkah', () {
     test('akun yang baru mendaftar bisa dipakai masuk', () async {
       final repo = FakeAuthRepository();
       addTearDown(repo.dispose);
 
-      await repo.daftar(nama: 'Sari Utami', noHp: '081200000001');
-      await repo.mintaKode(noHp: '081200000001');
+      await repo.daftar(
+        nama: 'Sari Utami',
+        noHp: '081200000001',
+        password: passwordUji,
+      );
+      final tantangan = await repo.masukPassword(
+        noHp: '081200000001',
+        password: passwordUji,
+      );
       final masuk = await repo.masuk(
         noHp: '081200000001',
         kode: repo.kodeUntuk('081200000001')!,
+        tantangan: tantangan,
       );
 
       expect(masuk.nama, 'Sari Utami');
@@ -116,7 +148,11 @@ void main() {
       addTearDown(repo.dispose);
 
       await expectLater(
-        repo.masuk(noHp: SeedData.klien.noHp, kode: '123456'),
+        repo.masuk(
+          noHp: SeedData.klien.noHp,
+          kode: '123456',
+          tantangan: 'tidak-ada',
+        ),
         throwsStateError,
       );
     });
@@ -125,12 +161,19 @@ void main() {
       final repo = FakeAuthRepository();
       addTearDown(repo.dispose);
 
-      await repo.mintaKode(noHp: SeedData.klien.noHp);
+      final tantangan = await repo.masukPassword(
+        noHp: SeedData.klien.noHp,
+        password: passwordUji,
+      );
       final benar = repo.kodeUntuk(SeedData.klien.noHp)!;
       final salah = benar == '000000' ? '111111' : '000000';
 
       await expectLater(
-        repo.masuk(noHp: SeedData.klien.noHp, kode: salah),
+        repo.masuk(
+          noHp: SeedData.klien.noHp,
+          kode: salah,
+          tantangan: tantangan,
+        ),
         throwsStateError,
       );
     });
@@ -139,13 +182,20 @@ void main() {
       final repo = FakeAuthRepository();
       addTearDown(repo.dispose);
 
-      await repo.mintaKode(noHp: SeedData.klien.noHp);
+      final tantangan = await repo.masukPassword(
+        noHp: SeedData.klien.noHp,
+        password: passwordUji,
+      );
       final kode = repo.kodeUntuk(SeedData.klien.noHp)!;
 
-      await repo.masuk(noHp: SeedData.klien.noHp, kode: kode);
+      await repo.masuk(
+        noHp: SeedData.klien.noHp,
+        kode: kode,
+        tantangan: tantangan,
+      );
 
       await expectLater(
-        repo.masuk(noHp: SeedData.klien.noHp, kode: kode),
+        repo.masuk(noHp: SeedData.klien.noHp, kode: kode, tantangan: tantangan),
         throwsStateError,
       );
     });
@@ -156,7 +206,7 @@ void main() {
       final repo = FakeAuthRepository();
       addTearDown(repo.dispose);
 
-      await repo.mintaKode(noHp: '089999999999');
+      await repo.masukPassword(noHp: '089999999999', password: passwordUji);
 
       expect(repo.kodeUntuk('089999999999'), isNull);
     });

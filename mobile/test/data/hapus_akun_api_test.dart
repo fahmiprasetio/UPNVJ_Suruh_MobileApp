@@ -26,9 +26,8 @@ void main() {
   /// Repository yang sudah masuk lewat `masuk`, dengan jawaban server yang diatur per
   /// jalur. Jalur yang tidak diatur dijawab 500, supaya permintaan yang tidak diharapkan
   /// terlihat sebagai kegagalan, bukan lolos diam-diam.
-  Future<({ApiAuthRepository repo, SesiToken sesi, List<http.Request> dikirim})> buat(
-    Map<String, ({int status, Object? badan})> jawaban,
-  ) async {
+  Future<({ApiAuthRepository repo, SesiToken sesi, List<http.Request> dikirim})>
+  buat(Map<String, ({int status, Object? badan})> jawaban) async {
     final dikirim = <http.Request>[];
     final sesi = SesiToken();
 
@@ -60,7 +59,11 @@ void main() {
 
     final repo = ApiAuthRepository(klien: klien, sesi: sesi);
     addTearDown(repo.dispose);
-    await repo.masuk(noHp: '081234567890', kode: '123456');
+    await repo.masuk(
+      noHp: '081234567890',
+      kode: '123456',
+      tantangan: 'tantangan-uji',
+    );
     dikirim.clear();
     return (repo: repo, sesi: sesi, dikirim: dikirim);
   }
@@ -102,23 +105,29 @@ void main() {
   });
 
   group('hapusAkun', () {
-    test('mengirim nomor akun yang sedang masuk dan kode, lalu mengakhiri sesi', () async {
-      final uji = await buat({'/api/akun/hapus': (status: 204, badan: null)});
-      expect(uji.sesi.nilai, 'token-uji');
+    test(
+      'mengirim nomor akun yang sedang masuk dan kode, lalu mengakhiri sesi',
+      () async {
+        final uji = await buat({'/api/akun/hapus': (status: 204, badan: null)});
+        expect(uji.sesi.nilai, 'token-uji');
 
-      await uji.repo.hapusAkun(kode: ' 123456 ');
+        await uji.repo.hapusAkun(kode: ' 123456 ');
 
-      final permintaan = uji.dikirim.single;
-      expect(permintaan.method, 'POST');
-      expect(permintaan.url.path, '/api/akun/hapus');
-      // Nomornya diambil dari akun yang masuk, tidak pernah diketik ulang, dan kodenya
-      // dirapikan.
-      expect(jsonDecode(permintaan.body), {'noHp': '081234567890', 'kode': '123456'});
+        final permintaan = uji.dikirim.single;
+        expect(permintaan.method, 'POST');
+        expect(permintaan.url.path, '/api/akun/hapus');
+        // Nomornya diambil dari akun yang masuk, tidak pernah diketik ulang, dan kodenya
+        // dirapikan.
+        expect(jsonDecode(permintaan.body), {
+          'noHp': '081234567890',
+          'kode': '123456',
+        });
 
-      // Sesinya berakhir: token dibuang dan tidak ada pengguna aktif.
-      expect(uji.sesi.nilai, isNull);
-      expect(uji.repo.userAktif, isNull);
-    });
+        // Sesinya berakhir: token dibuang dan tidak ada pengguna aktif.
+        expect(uji.sesi.nilai, isNull);
+        expect(uji.repo.userAktif, isNull);
+      },
+    );
 
     test('kode salah (400) tidak menyentuh sesi sama sekali', () async {
       final uji = await buat({
@@ -141,31 +150,35 @@ void main() {
       expect(uji.repo.userAktif, isNotNull);
     });
 
-    test('penghalang (409) dilaporkan dengan kalimat server dan sesi tetap', () async {
-      final uji = await buat({
-        '/api/akun/hapus': (
-          status: 409,
-          badan: {
-            'title': 'Akun belum bisa dihapus',
-            'detail': 'Masih ada 1 pesanan yang sedang berjalan.\nAda bayaran runner yang belum dicairkan.',
-            'penghalang': ['Masih ada 1 pesanan yang sedang berjalan.'],
-          },
-        ),
-      });
-
-      await expectLater(
-        uji.repo.hapusAkun(kode: '123456'),
-        throwsA(
-          isA<GalatBentrok>().having(
-            (g) => g.pesan,
-            'pesan',
-            contains('Masih ada 1 pesanan yang sedang berjalan.'),
+    test(
+      'penghalang (409) dilaporkan dengan kalimat server dan sesi tetap',
+      () async {
+        final uji = await buat({
+          '/api/akun/hapus': (
+            status: 409,
+            badan: {
+              'title': 'Akun belum bisa dihapus',
+              'detail':
+                  'Masih ada 1 pesanan yang sedang berjalan.\nAda bayaran runner yang belum dicairkan.',
+              'penghalang': ['Masih ada 1 pesanan yang sedang berjalan.'],
+            },
           ),
-        ),
-      );
+        });
 
-      expect(uji.sesi.nilai, 'token-uji');
-      expect(uji.repo.userAktif, isNotNull);
-    });
+        await expectLater(
+          uji.repo.hapusAkun(kode: '123456'),
+          throwsA(
+            isA<GalatBentrok>().having(
+              (g) => g.pesan,
+              'pesan',
+              contains('Masih ada 1 pesanan yang sedang berjalan.'),
+            ),
+          ),
+        );
+
+        expect(uji.sesi.nilai, 'token-uji');
+        expect(uji.repo.userAktif, isNotNull);
+      },
+    );
   });
 }

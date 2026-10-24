@@ -10,12 +10,11 @@ import '../../core/providers/repository_providers.dart';
 import '../../core/router/app_router.dart';
 
 /// Langkah autentikasi yang sedang aktif.
-enum _Langkah { nomor, daftar, kode, password }
+enum _Langkah { nomor, daftar, kode }
 
 /// Layar Autentikasi Utama UPNVJ Suruh dengan Desain Modern Gojek Aloha.
 ///
-/// Menyediakan alur masuk via nomor HP + OTP, registrasi akun baru mahasiswa,
-/// verifikasi 6 digit OTP segmented box, dan login via password opsional.
+/// Menyediakan alur masuk dua langkah password + OTP dan registrasi akun baru.
 class MasukScreen extends ConsumerStatefulWidget {
   const MasukScreen({super.key});
 
@@ -30,9 +29,11 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
   final _noHpController = TextEditingController();
   final _kodeController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _konfirmasiPasswordController = TextEditingController();
 
   _Langkah _langkah = _Langkah.nomor;
   bool _sembunyikanPassword = true;
+  String? _tantanganMasuk;
 
   @override
   void dispose() {
@@ -40,6 +41,7 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
     _noHpController.dispose();
     _kodeController.dispose();
     _passwordController.dispose();
+    _konfirmasiPasswordController.dispose();
     super.dispose();
   }
 
@@ -52,45 +54,43 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
     return null;
   }
 
-  Future<void> _kirimKode() => jalankan(_formKey, () async {
-    await ref
-        .read(authRepositoryProvider)
-        .mintaKode(noHp: _noHpController.text.trim());
-    if (mounted) setState(() => _langkah = _Langkah.kode);
-  });
+  Future<void> _verifikasiPasswordDanKirimKode() =>
+      jalankan(_formKey, () async {
+        _tantanganMasuk = await ref
+            .read(authRepositoryProvider)
+            .masukPassword(
+              noHp: _noHpController.text.trim(),
+              password: _passwordController.text,
+            );
+        if (mounted) setState(() => _langkah = _Langkah.kode);
+      });
 
   Future<void> _daftarLaluKirimKode() => jalankan(_formKey, () async {
     final repo = ref.read(authRepositoryProvider);
     await repo.daftar(
       nama: _namaController.text.trim(),
       noHp: _noHpController.text.trim(),
+      password: _passwordController.text,
     );
-    await repo.mintaKode(noHp: _noHpController.text.trim());
+    _tantanganMasuk = await repo.masukPassword(
+      noHp: _noHpController.text.trim(),
+      password: _passwordController.text,
+    );
     if (mounted) setState(() => _langkah = _Langkah.kode);
   });
 
   Future<void> _masuk() => jalankan(_formKey, () async {
     FocusScope.of(context).unfocus();
+    final tantangan = _tantanganMasuk;
+    if (tantangan == null) {
+      throw StateError('Verifikasi password perlu diulang.');
+    }
     await ref
         .read(authRepositoryProvider)
         .masuk(
           noHp: _noHpController.text.trim(),
           kode: _kodeController.text.trim(),
-        );
-    ref.read(sesiDitolakProvider.notifier).padamkan();
-    ref.invalidate(userAktifProvider);
-    if (mounted) {
-      context.go(Rute.beranda);
-    }
-  });
-
-  Future<void> _masukPassword() => jalankan(_formKey, () async {
-    FocusScope.of(context).unfocus();
-    await ref
-        .read(authRepositoryProvider)
-        .masukPassword(
-          noHp: _noHpController.text.trim(),
-          password: _passwordController.text,
+          tantangan: tantangan,
         );
     ref.read(sesiDitolakProvider.notifier).padamkan();
     ref.invalidate(userAktifProvider);
@@ -102,6 +102,8 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
   void _kembaliKeNomor() {
     _kodeController.clear();
     _passwordController.clear();
+    _konfirmasiPasswordController.clear();
+    _tantanganMasuk = null;
     setState(() {
       _langkah = _Langkah.nomor;
       galatTindakan = null;
@@ -111,13 +113,6 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
   void _keDaftar() {
     setState(() {
       _langkah = _Langkah.daftar;
-      galatTindakan = null;
-    });
-  }
-
-  void _kePassword() {
-    setState(() {
-      _langkah = _Langkah.password;
       galatTindakan = null;
     });
   }
@@ -143,7 +138,10 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
+                    border: Border.all(
+                      color: const Color(0xFFE5E7EB),
+                      width: 1,
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.04),
@@ -236,7 +234,7 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
                     ),
                     SizedBox(height: 2),
                     Text(
-                      'Masukkan nomor HP untuk menerima kode OTP.',
+                      'Masukkan nomor HP dan password, lalu verifikasi OTP.',
                       style: TextStyle(
                         fontSize: 12.5,
                         color: Color(0xFF6B7280),
@@ -252,20 +250,25 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
           // Kolom Nomor HP
           _kolomNoHp(autofocus: true),
 
+          const SizedBox(height: 16),
+
+          _kolomPassword(),
+
           const SizedBox(height: 18),
 
           // Tombol Utama Kirim Kode Hijau Gojek
           _tombolUtamaAloha(
-            label: 'Kirim Kode OTP',
+            label: 'Lanjut & Kirim OTP',
             ikon: Icons.arrow_forward_rounded,
-            aksi: _kirimKode,
+            aksi: _verifikasiPasswordDanKirimKode,
           ),
 
           const SizedBox(height: 16),
 
           // Link Daftar Akun Baru
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               const Text(
                 'Belum punya akun? ',
@@ -287,23 +290,6 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
                 ),
               ),
             ],
-          ),
-
-          const SizedBox(height: 8),
-
-          // Link Masuk Password
-          Center(
-            child: TextButton.icon(
-              onPressed: sedangMengirim ? null : _kePassword,
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF6B7280),
-              ),
-              icon: const Icon(Icons.lock_outline_rounded, size: 15),
-              label: const Text(
-                'Sudah atur password? Masuk pakai itu',
-                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
-              ),
-            ),
           ),
         ];
 
@@ -363,12 +349,13 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
           TextFormField(
             controller: _namaController,
             maxLength: BatasMasukan.nama,
-            buildCounter: (
-              context, {
-              required currentLength,
-              required isFocused,
-              required maxLength,
-            }) => null,
+            buildCounter:
+                (
+                  context, {
+                  required currentLength,
+                  required isFocused,
+                  required maxLength,
+                }) => null,
             textCapitalization: TextCapitalization.words,
             style: const TextStyle(
               fontSize: 14.5,
@@ -399,7 +386,10 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Color(0xFF00AA13), width: 1.8),
+                borderSide: const BorderSide(
+                  color: Color(0xFF00AA13),
+                  width: 1.8,
+                ),
               ),
             ),
             validator: _validasiNama,
@@ -410,11 +400,30 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
           // Kolom Nomor HP
           _kolomNoHp(),
 
+          const SizedBox(height: 16),
+
+          _kolomPassword(label: 'Buat Password'),
+
+          const SizedBox(height: 16),
+
+          TextFormField(
+            controller: _konfirmasiPasswordController,
+            obscureText: _sembunyikanPassword,
+            decoration: _dekorasiPassword('Ulangi Password'),
+            validator: (nilai) {
+              if (nilai == null || nilai.isEmpty) return 'Ulangi passwordmu';
+              if (nilai != _passwordController.text) {
+                return 'Password belum sama';
+              }
+              return null;
+            },
+          ),
+
           const SizedBox(height: 18),
 
           // Tombol Daftar Hijau Gojek
           _tombolUtamaAloha(
-            label: 'Daftar & Minta Kode',
+            label: 'Daftar & Kirim OTP',
             ikon: Icons.check_circle_outline_rounded,
             aksi: _daftarLaluKirimKode,
           ),
@@ -422,8 +431,9 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
           const SizedBox(height: 16),
 
           // Link Kembali ke Masuk
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               const Text(
                 'Sudah punya akun? ',
@@ -488,7 +498,7 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Masukkan 6 angka yang dikirim ke nomor:',
+                      'Jika data cocok, masukkan 6 angka yang dikirim ke:',
                       style: const TextStyle(
                         fontSize: 12.5,
                         color: Color(0xFF6B7280),
@@ -512,7 +522,7 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
             child: Row(
               children: [
                 const Icon(
-                  Icons.sms_outlined,
+                  Icons.chat_outlined,
                   size: 16,
                   color: Color(0xFF00880C),
                 ),
@@ -573,15 +583,18 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
 
           // Aksi Kirim Ulang Kode OTP
           Center(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 const Text(
                   'Tidak menerima kode? ',
                   style: TextStyle(fontSize: 12.5, color: Color(0xFF6B7280)),
                 ),
                 InkWell(
-                  onTap: sedangMengirim ? null : _kirimKode,
+                  onTap: sedangMengirim
+                      ? null
+                      : _verifikasiPasswordDanKirimKode,
                   borderRadius: BorderRadius.circular(6),
                   child: const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
@@ -606,135 +619,6 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
             onDaftar: sedangMengirim ? null : _keDaftar,
           ),
         ];
-
-      case _Langkah.password:
-        return [
-          Row(
-            children: [
-              InkWell(
-                onTap: sedangMengirim ? null : _kembaliKeNomor,
-                borderRadius: BorderRadius.circular(100),
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF3F4F6),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.arrow_back_rounded,
-                      color: Color(0xFF374151),
-                      size: 18,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Masuk via Password',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF111827),
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Masuk langsung tanpa menunggu kode SMS.',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        color: Color(0xFF6B7280),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-
-          _kolomNoHp(),
-
-          const SizedBox(height: 16),
-
-          TextFormField(
-            controller: _passwordController,
-            obscureText: _sembunyikanPassword,
-            style: const TextStyle(
-              fontSize: 14.5,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF111827),
-            ),
-            decoration: InputDecoration(
-              labelText: 'Password',
-              prefixIcon: const Icon(
-                Icons.lock_outline_rounded,
-                color: Color(0xFF00AA13),
-                size: 20,
-              ),
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _sembunyikanPassword
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined,
-                  color: const Color(0xFF6B7280),
-                  size: 20,
-                ),
-                onPressed: () => setState(
-                  () => _sembunyikanPassword = !_sembunyikanPassword,
-                ),
-              ),
-              filled: true,
-              fillColor: const Color(0xFFF9FAFB),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Color(0xFF00AA13), width: 1.8),
-              ),
-            ),
-            validator: (nilai) =>
-                (nilai == null || nilai.isEmpty) ? 'Password belum diisi' : null,
-          ),
-
-          const SizedBox(height: 18),
-
-          _tombolUtamaAloha(
-            label: 'Masuk dengan Password',
-            ikon: Icons.lock_open_rounded,
-            aksi: _masukPassword,
-          ),
-
-          const SizedBox(height: 12),
-
-          Center(
-            child: TextButton(
-              onPressed: sedangMengirim ? null : _kembaliKeNomor,
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF00880C),
-              ),
-              child: const Text(
-                'Masuk pakai kode OTP saja',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ),
-          ),
-        ];
     }
   }
 
@@ -754,7 +638,6 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
     ),
     decoration: InputDecoration(
       labelText: 'Nomor WhatsApp / HP',
-      hintText: 'Contoh: 081234567890',
       prefixIcon: const Icon(
         Icons.phone_android_rounded,
         color: Color(0xFF00AA13),
@@ -779,6 +662,71 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
     validator: validasiNoHp,
   );
 
+  Widget _kolomPassword({String label = 'Password'}) => TextFormField(
+    controller: _passwordController,
+    obscureText: _sembunyikanPassword,
+    maxLength: BatasMasukan.password,
+    buildCounter:
+        (
+          context, {
+          required currentLength,
+          required isFocused,
+          required maxLength,
+        }) => null,
+    style: const TextStyle(
+      fontSize: 14.5,
+      fontWeight: FontWeight.w600,
+      color: Color(0xFF111827),
+    ),
+    decoration: _dekorasiPassword(label),
+    validator: (nilai) {
+      final isi = nilai ?? '';
+      if (isi.isEmpty) return 'Password belum diisi';
+      if (isi.length < BatasMasukan.passwordMinimal) {
+        return 'Minimal ${BatasMasukan.passwordMinimal} karakter';
+      }
+      return null;
+    },
+  );
+
+  InputDecoration _dekorasiPassword(String label) => InputDecoration(
+    labelText: label,
+    prefixIcon: const Icon(
+      Icons.lock_outline_rounded,
+      color: Color(0xFF00AA13),
+      size: 20,
+    ),
+    suffixIcon: IconButton(
+      tooltip: _sembunyikanPassword
+          ? 'Tampilkan password'
+          : 'Sembunyikan password',
+      icon: Icon(
+        _sembunyikanPassword
+            ? Icons.visibility_outlined
+            : Icons.visibility_off_outlined,
+        color: const Color(0xFF6B7280),
+        size: 20,
+      ),
+      onPressed: () =>
+          setState(() => _sembunyikanPassword = !_sembunyikanPassword),
+    ),
+    filled: true,
+    fillColor: const Color(0xFFF9FAFB),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: Color(0xFF00AA13), width: 1.8),
+    ),
+  );
+
   Widget _tombolUtamaAloha({
     required String label,
     required IconData ikon,
@@ -793,9 +741,7 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
         disabledBackgroundColor: const Color(0xFF86EFAC),
         disabledForegroundColor: Colors.white,
         elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
       child: sedangMengirim
           ? const SizedBox(
@@ -877,7 +823,8 @@ class _KotakInputOtpAlohaState extends State<_KotakInputOtpAloha> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: List.generate(6, (index) {
                       final hasChar = text.length > index;
-                      final isCurrent = _focusNode.hasFocus &&
+                      final isCurrent =
+                          _focusNode.hasFocus &&
                           (text.length == index ||
                               (text.length == 6 && index == 5));
 
@@ -893,15 +840,16 @@ class _KotakInputOtpAlohaState extends State<_KotakInputOtpAloha> {
                             color: isCurrent
                                 ? const Color(0xFF00AA13)
                                 : hasChar
-                                    ? const Color(0xFF10B981)
-                                    : const Color(0xFFD1D5DB),
+                                ? const Color(0xFF10B981)
+                                : const Color(0xFFD1D5DB),
                             width: isCurrent ? 2 : 1.2,
                           ),
                           boxShadow: isCurrent
                               ? [
                                   BoxShadow(
-                                    color: const Color(0xFF00AA13)
-                                        .withValues(alpha: 0.15),
+                                    color: const Color(
+                                      0xFF00AA13,
+                                    ).withValues(alpha: 0.15),
                                     blurRadius: 8,
                                     offset: const Offset(0, 2),
                                   ),
@@ -977,9 +925,7 @@ class _PanelMerekAloha extends StatelessWidget {
           end: Alignment.bottomCenter,
           colors: [Color(0xFF00AA13), Color(0xFF007E0F)],
         ),
-        borderRadius: BorderRadius.vertical(
-          bottom: Radius.circular(32),
-        ),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
       ),
       child: SafeArea(
         bottom: false,
@@ -1107,10 +1053,18 @@ class _KotakGalatAloha extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final latar = _salahPengguna ? const Color(0xFFFEF2F2) : const Color(0xFFEFF6FF);
-    final border = _salahPengguna ? const Color(0xFFFCA5A5) : const Color(0xFFBFDBFE);
-    final tinta = _salahPengguna ? const Color(0xFFDC2626) : const Color(0xFF1E40AF);
-    final ikon = _salahPengguna ? Icons.error_outline_rounded : Icons.info_outline_rounded;
+    final latar = _salahPengguna
+        ? const Color(0xFFFEF2F2)
+        : const Color(0xFFEFF6FF);
+    final border = _salahPengguna
+        ? const Color(0xFFFCA5A5)
+        : const Color(0xFFBFDBFE);
+    final tinta = _salahPengguna
+        ? const Color(0xFFDC2626)
+        : const Color(0xFF1E40AF);
+    final ikon = _salahPengguna
+        ? Icons.error_outline_rounded
+        : Icons.info_outline_rounded;
 
     return Container(
       padding: const EdgeInsets.all(14),

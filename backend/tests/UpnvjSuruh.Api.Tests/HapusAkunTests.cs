@@ -153,7 +153,9 @@ public class HapusAkunTests(DatabaseApiFactory pabrik) : IClassFixture<DatabaseA
         // Nomornya bebas lagi: orang yang sama bisa mendaftar baru, dan itu akun yang berbeda.
         // Akun lama tidak ikut hidup kembali, karena nomornya sudah diganti nomor pengganti.
         var tamu = pabrik.CreateClient();
-        (await tamu.PostAsJsonAsync("/api/auth/daftar", new { Nama = "Pendaftar Baru", NoHp = akun.Phone }))
+        (await tamu.PostAsJsonAsync(
+            "/api/auth/daftar",
+            new { Nama = "Pendaftar Baru", NoHp = akun.Phone, Password = "sandiAman123" }))
             .EnsureSuccessStatusCode();
 
         var baru = await DenganDbAsync(db => db.Users.AsNoTracking().SingleAsync(u => u.Phone == akun.Phone));

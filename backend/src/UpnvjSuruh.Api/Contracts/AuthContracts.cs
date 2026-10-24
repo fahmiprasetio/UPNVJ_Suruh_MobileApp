@@ -27,6 +27,11 @@ public record DaftarRequest
     [MaxLength(BatasMasukan.NomorHp)]
     [NomorHp]
     public string NoHp { get; init; } = string.Empty;
+
+    [Required(AllowEmptyStrings = false)]
+    [MinLength(8, ErrorMessage = "Password minimal 8 karakter.")]
+    [MaxLength(BatasMasukan.Password)]
+    public string Password { get; init; } = string.Empty;
 }
 
 public record MintaKodeRequest
@@ -47,13 +52,16 @@ public record MasukRequest
     [Required(AllowEmptyStrings = false)]
     [RegularExpression(@"^\d{6}$", ErrorMessage = "Kode OTP terdiri dari 6 angka.")]
     public string Kode { get; init; } = string.Empty;
+
+    [Required(AllowEmptyStrings = false)]
+    [MaxLength(128)]
+    public string Tantangan { get; init; } = string.Empty;
 }
 
-/// <summary>Masuk pakai nomor HP dan password, jalur kedua di samping OTP.</summary>
+/// <summary>Langkah pertama masuk: verifikasi password lalu kirim OTP.</summary>
 /// <remarks>
-/// Cuma berlaku untuk akun yang sudah pernah mengatur password lewat
-/// <see cref="AturPasswordRequest"/>. OTP tetap jalur utama dan selalu tersedia -- ini
-/// cuma alternatif bagi yang sudah mengaturnya dan tidak mau menunggu kode setiap kali.
+/// Akun lama yang belum mempunyai password memakai nilai ini sebagai password pertamanya.
+/// Password baru itu baru disimpan sesudah OTP pada <see cref="MasukRequest"/> terbukti.
 /// </remarks>
 public record MasukPasswordRequest
 {
@@ -63,9 +71,12 @@ public record MasukPasswordRequest
     public string NoHp { get; init; } = string.Empty;
 
     [Required(AllowEmptyStrings = false)]
+    [MinLength(8, ErrorMessage = "Password minimal 8 karakter.")]
     [MaxLength(BatasMasukan.Password)]
     public string Password { get; init; } = string.Empty;
 }
+
+public record TantanganMasukResponse(string Tantangan, DateTime KedaluwarsaPada);
 
 /// <summary>Mengatur atau mengganti password sendiri.</summary>
 /// <remarks>

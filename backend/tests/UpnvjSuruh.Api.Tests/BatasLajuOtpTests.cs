@@ -140,7 +140,9 @@ public class BatasLajuEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<D
     public async Task MintaKodeBeruntunUntukNomorYangSamaDitolak()
     {
         var noHp = NomorBaru();
-        await pabrik.CreateClient().PostAsJsonAsync("/api/auth/daftar", new { Nama = "Dina", NoHp = noHp });
+        await pabrik.CreateClient().PostAsJsonAsync(
+            "/api/auth/daftar",
+            new { Nama = "Dina", NoHp = noHp, Password = "sandiAman123" });
 
         var pertama = await MintaKodeAsync(noHp);
         var kedua = await MintaKodeAsync(noHp);
@@ -170,7 +172,8 @@ public class BatasLajuEndpointTests(DatabaseApiFactory pabrik) : IClassFixture<D
         // kali, dan jawaban keduanya menyebutkan jawabannya.
         var terdaftar = NomorBaru();
         await pabrik.CreateClient().PostAsJsonAsync(
-            "/api/auth/daftar", new { Nama = "Sari", NoHp = terdaftar });
+            "/api/auth/daftar",
+            new { Nama = "Sari", NoHp = terdaftar, Password = "sandiAman123" });
         var asing = NomorBaru();
 
         await MintaKodeAsync(terdaftar);

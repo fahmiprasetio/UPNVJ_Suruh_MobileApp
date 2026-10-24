@@ -17,6 +17,7 @@ public class AuthController(
     AppDbContext db,
     TokenService token,
     PenyimpanOtpMemori penyimpanOtp,
+    PenyimpanTantanganMasuk penyimpanTantanganMasuk,
     PembatasOtpMemori pembatasOtp,
     PembuatKodeOtp pembuatKode,
     IPengirimOtp pengirimOtp,
@@ -84,6 +85,12 @@ public class AuthController(
             // Ditulis di sini, tidak pernah diambil dari permintaan.
             Roles = [UserRole.Klien],
         };
+        // Password belum disimpan di tahap ini. Nomor yang baru diketik belum terbukti
+        // dimiliki pendaftar; menyimpannya sekarang memungkinkan orang lain mendaftarkan
+        // nomor korban lebih dulu lalu mengunci pemilik nomor dengan password penyerang.
+        // MasukPassword menahan hash-nya di tantangan sementara dan Masuk baru
+        // menyimpannya setelah OTP benar.
+        user.PasswordHash = null;
 
         db.Users.Add(user);
 
@@ -152,7 +159,7 @@ public class AuthController(
     }
 
     /// <summary>
-    /// Menukar kode yang benar dengan token.
+    /// Menukar OTP dan tantangan password yang benar dengan token.
     /// </summary>
     [EnableRateLimiting(BatasLaju.KebijakanTamu)]
     [HttpPost("masuk")]
@@ -162,26 +169,42 @@ public class AuthController(
     {
         var noHp = permintaan.NoHp.Trim();
 
-        // Kodenya diperiksa lebih dulu, dan galatnya satu macam untuk semua sebab. Membedakan
-        // "nomor tidak terdaftar" dari "kode salah" memberi tahu penyerang bahwa ia sudah
-        // menebak setengah jawabannya.
-        if (!penyimpanOtp.Pakai(noHp, permintaan.Kode))
+        var user = await db.Users.SingleOrDefaultAsync(u => u.Phone == noHp, batal);
+
+        // Tantangan membuktikan password sudah benar pada langkah sebelumnya. OTP yang
+        // diminta langsung lewat minta-kode tetap berguna untuk aksi sensitif akun, tetapi
+        // tidak dapat dipakai sendirian untuk melewati password saat masuk.
+        if (user is null
+            || !penyimpanTantanganMasuk.Cocok(noHp, permintaan.Tantangan)
+            || !penyimpanOtp.Pakai(noHp, permintaan.Kode)
+            || !penyimpanTantanganMasuk.Pakai(
+                noHp,
+                permintaan.Tantangan,
+                out var passwordHashBaru))
         {
             return Unauthorized(new ProblemDetails
             {
-                Title = "Nomor atau kode tidak cocok",
+                Title = "Nomor, password, atau kode tidak cocok",
                 Status = StatusCodes.Status401Unauthorized,
             });
         }
 
-        var user = await db.Users.SingleOrDefaultAsync(u => u.Phone == noHp, batal);
-        if (user is null)
+        // Akun sebelum perubahan dua langkah belum mempunyai password. Password yang
+        // dimasukkan pada langkah pertama baru disimpan setelah kepemilikan nomor terbukti,
+        // sehingga penebak nomor tidak dapat mengambil alih akun lama.
+        if (user.PasswordHash is null)
         {
-            return Unauthorized(new ProblemDetails
+            if (passwordHashBaru is null)
             {
-                Title = "Nomor atau kode tidak cocok",
-                Status = StatusCodes.Status401Unauthorized,
-            });
+                return Unauthorized(new ProblemDetails
+                {
+                    Title = "Nomor, password, atau kode tidak cocok",
+                    Status = StatusCodes.Status401Unauthorized,
+                });
+            }
+
+            user.PasswordHash = passwordHashBaru;
+            await db.SaveChangesAsync(batal);
         }
 
         // Akun yang ditangguhkan disebut apa adanya di sini, tidak disamarkan jadi "nomor
@@ -209,7 +232,7 @@ public class AuthController(
         return Ok(new MasukResponse(nilai, kedaluwarsa, UserResponse.Dari(user)));
     }
 
-    /// <summary>Masuk pakai nomor HP dan password, jalur kedua di samping OTP.</summary>
+    /// <summary>Memverifikasi password dan mengirim OTP untuk langkah kedua.</summary>
     /// <remarks>
     /// Dibatasi lajunya per nomor HP lewat anggaran <see cref="AnggaranPassword"/>, terpisah
     /// dari anggaran kode OTP -- ini jalur yang bisa dicoba berulang-ulang tanpa satu SMS
@@ -221,9 +244,8 @@ public class AuthController(
     [EnableRateLimiting(BatasLaju.KebijakanTamu)]
     [HttpPost("masuk-password")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
-    public async Task<ActionResult<MasukResponse>> MasukPassword(
+    public async Task<ActionResult<TantanganMasukResponse>> MasukPassword(
         MasukPasswordRequest permintaan,
         CancellationToken batal)
     {
@@ -234,57 +256,63 @@ public class AuthController(
         {
             return TerlaluSeringMintaKode(
                 izin.TungguLagi,
-                "Terlalu sering mencoba masuk pakai password. Tunggu sebentar, "
-                + "atau masuk pakai kode OTP seperti biasa.");
+                "Terlalu sering mencoba masuk. Tunggu sebentar sebelum mencoba lagi.");
         }
 
         var user = await db.Users.SingleOrDefaultAsync(u => u.Phone == noHp, batal);
 
-        var gagal = Unauthorized(new ProblemDetails
-        {
-            Title = "Nomor atau password tidak cocok",
-            Status = StatusCodes.Status401Unauthorized,
-        });
+        string? passwordHashBaru = null;
+        var passwordCocok = false;
 
-        // Akun yang tidak ada dan akun yang belum mengatur password dijawab sama: keduanya
-        // tidak punya sidik untuk dibandingkan, dan membedakannya memberi tahu penebak nomor
-        // mana saja yang sudah mengatur password. Tetap dibandingkan ke HashPalsu, bukan
-        // langsung dijawab, supaya waktu responsnya juga sama (lihat HashPalsu).
-        if (user is null || user.PasswordHash is null)
+        if (user is null)
         {
             passwordHasher.VerifyHashedPassword(new User { Name = "-", Phone = "-" }, HashPalsu, permintaan.Password);
-            return gagal;
         }
-
-        var hasil = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, permintaan.Password);
-        if (hasil == PasswordVerificationResult.Failed) return gagal;
-
-        // Sama seperti di Masuk: disebut apa adanya di sini karena passwordnya sudah benar,
-        // jadi yang bertanya sudah membuktikan diri sebagai pemiliknya.
-        if (user.Ditangguhkan)
+        else if (user.PasswordHash is null)
         {
-            return StatusCode(StatusCodes.Status403Forbidden, new ProblemDetails
+            passwordHashBaru = passwordHasher.HashPassword(user, permintaan.Password);
+            passwordCocok = true;
+        }
+        else
+        {
+            var hasil = passwordHasher.VerifyHashedPassword(
+                user,
+                user.PasswordHash,
+                permintaan.Password);
+            passwordCocok = hasil != PasswordVerificationResult.Failed;
+
+            if (hasil == PasswordVerificationResult.SuccessRehashNeeded)
             {
-                Title = "Akun ini sedang ditangguhkan",
-                Detail = user.SuspendedReason is { Length: > 0 } alasan
-                    ? $"Alasannya: {alasan}. Hubungi admin kalau menurutmu ini keliru."
-                    : "Hubungi admin kalau menurutmu ini keliru.",
-                Status = StatusCodes.Status403Forbidden,
-            });
+                user.PasswordHash = passwordHasher.HashPassword(user, permintaan.Password);
+                await db.SaveChangesAsync(batal);
+            }
         }
 
-        // ASP.NET Core menandai sidik lama yang masih sah tapi dibuat dengan parameter
-        // hashing yang sudah dianggap usang (mis. jumlah putaran yang lebih rendah).
-        // Menulis ulang sidiknya di sini membuat seluruh akun lama ikut naik ke parameter
-        // terbaru begitu pemiliknya masuk, tanpa perlu migrasi massal.
-        if (hasil == PasswordVerificationResult.SuccessRehashNeeded)
+        // Jawaban untuk nomor/password yang salah tetap berbentuk sukses dan tidak mengaku
+        // apakah akun ada. Hanya pemilik nomor yang dapat membedakannya dari OTP yang benar-
+        // benar tiba di WhatsApp-nya.
+        if (!passwordCocok || user is null)
         {
-            user.PasswordHash = passwordHasher.HashPassword(user, permintaan.Password);
-            await db.SaveChangesAsync(batal);
+            return Ok(new TantanganMasukResponse(
+                PenyimpanTantanganMasuk.TantanganPalsu(),
+                DateTime.UtcNow.Add(PenyimpanTantanganMasuk.MasaBerlaku)));
         }
 
-        var (nilai, kedaluwarsa) = token.Terbitkan(user);
-        return Ok(new MasukResponse(nilai, kedaluwarsa, UserResponse.Dari(user)));
+        var izinOtp = pembatasOtp.Catat(noHp);
+        if (!izinOtp.Boleh)
+        {
+            return TerlaluSeringMintaKode(
+                izinOtp.TungguLagi,
+                "Kode masuk sudah dikirim beberapa kali ke nomor ini. "
+                + "Tunggu sebentar sebelum meminta lagi.");
+        }
+
+        var kode = pembuatKode.Buat();
+        penyimpanOtp.Simpan(noHp, kode);
+        var (tantangan, kedaluwarsa) = penyimpanTantanganMasuk.Simpan(noHp, passwordHashBaru);
+        await pengirimOtp.KirimAsync(noHp, kode, batal);
+
+        return Ok(new TantanganMasukResponse(tantangan, kedaluwarsa));
     }
 
     /// <summary>Siapa pemilik token yang sedang dipakai.</summary>
