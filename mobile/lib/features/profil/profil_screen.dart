@@ -1,49 +1,21 @@
 import 'package:flutter/material.dart';
-import '../../core/api/galat_api.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/api/galat_api.dart';
 import '../../core/config/batas_masukan.dart';
-import '../../core/router/app_router.dart';
-import '../../core/theme/app_theme.dart';
-import '../../domain/models/app_user.dart';
 import '../../core/providers/repository_providers.dart';
+import '../../core/router/app_router.dart';
+import '../../domain/models/app_user.dart';
 import '../dev/pengalih_akun.dart';
 import 'ganti_nomor_hp_dialog.dart';
 
-/// Profil: siapa yang sedang masuk, dan satu-satunya jalan keluar dari akunnya.
+/// Profil: siapa yang sedang masuk, pengaturan akun, dan jalan keluar dari akunnya.
 ///
-/// ## Kenapa layar ini dibuat sekarang
-///
-/// `AuthRepository.keluar()` sudah ada sejak awal, lengkap dengan tesnya di
-/// lapisan data, dan **tidak pernah dipanggil dari satu pun layar**. Artinya
-/// sejak layar masuk dipasang, tidak ada cara keluar dari akun tanpa menghapus
-/// data aplikasi. Itu bukan soal tata letak yang belum rapi, melainkan lubang:
-/// satu HP yang dipinjamkan sebentar ke teman berarti pesanan teman itu tercatat
-/// atas nama pemiliknya, dan tidak ada yang bisa dilakukan pemiliknya soal itu.
-///
-/// Tombol profil di beranda klien sudah ada sejak lama dan cuma menjawab
-/// "Profil belum dibuat, menyusul".
-///
-/// ## Yang menyusul, dan yang tetap tidak
-///
-/// Nama sekarang bisa disunting. Nama yang salah ketik saat mendaftar bukan
-/// urusan pribadi yang bisa dibiarkan: ia yang dilihat runner saat menerima
-/// order, dan yang dilihat klien saat runner datang ke kosnya.
-///
-/// Alamat bawaan ikut, dan itu kolom yang sudah ada di model sejak awal tanpa
-/// pernah diisi satu kali pun. Gunanya satu: mengisi sendiri kolom yang paling
-/// sering diketik ulang di formulir order. Ia bukan alamat order — order
-/// membawa alamatnya sendiri, karena satu orang memesan dari tempat yang
-/// berbeda-beda.
-///
-/// Nomor HP tidak ikut kolom isian yang sama dengan nama dan alamat, dan itu
-/// bukan kelupaan. Nomor itu identitas masuk, ia yang menerima kode;
-/// menggantinya lewat satu kolom isian berarti siapa pun yang sempat memegang
-/// HP orang lain sebentar bisa memindahkan akunnya ke nomornya sendiri.
-/// Menggantinya menuntut verifikasi kode ke nomor barunya lewat
-/// [GantiNomorHpDialog], jalan sendiri yang terpisah dari tombol Simpan di
-/// kartu ini.
+/// Menggunakan desain Aloha Gojek yang konsisten dengan layar lainnya di aplikasi:
+/// header hijau Gojek yang tegas, kartu identitas bersih berbingkai halus,
+/// navigasi menu cepat dengan ikon badges pastel, formulir ubah data diri elegan,
+/// dan tombol keluar bergaya modern.
 class ProfilScreen extends ConsumerWidget {
   const ProfilScreen({super.key});
 
@@ -52,35 +24,46 @@ class ProfilScreen extends ConsumerWidget {
     final user = ref.watch(userAktifProvider).value;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Profil')),
+      backgroundColor: const Color(0xFFF7F9F7),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF00AA13),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
+        title: const Text(
+          'Profil',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.2,
+          ),
+        ),
+        leading: Navigator.of(context).canPop()
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                onPressed: () => Navigator.of(context).maybePop(),
+              )
+            : null,
+      ),
       body: user == null
-          // Bukan pesan galat. Satu-satunya cara sampai di sini tanpa user
-          // adalah sesinya baru saja berakhir, dan kalau begitu router sedang
-          // dalam perjalanan memindahkan layar ini ke layar masuk. Yang pantas
-          // ditampilkan selama sepersekian detik itu adalah tidak apa-apa.
           ? const SizedBox.shrink()
           : ListView(
-              padding: const EdgeInsets.all(AppTheme.spasiSedang),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
               children: [
                 _KartuIdentitas(user: user),
-                // Cuma untuk akun yang punya peran klien: riwayatnya milik
-                // permukaan klien, dan akun runner murni tidak punya order
-                // Jalur A/B atas namanya sendiri untuk ditengok di sini.
                 if (user.isKlien) ...[
-                  const SizedBox(height: AppTheme.spasiSedang),
+                  const SizedBox(height: 14),
                   const _KartuRiwayat(),
                 ],
-                const SizedBox(height: AppTheme.spasiSedang),
+                const SizedBox(height: 14),
                 const _KartuPengaturan(),
-                const SizedBox(height: AppTheme.spasiSedang),
+                const SizedBox(height: 14),
                 const KartuGantiAkun(),
-                const SizedBox(height: AppTheme.spasiSedang),
-                // `key` mengikat isian ke identitas akunnya, bukan sekadar ke
-                // posisinya di daftar: alat ganti akun bisa menukar pengguna
-                // tanpa layar ini dibongkar, dan tanpa key ini isian tetap
-                // berisi nama pemilik sebelumnya.
+                const SizedBox(height: 14),
                 _KartuSunting(key: ValueKey(user.id), user: user),
-                const SizedBox(height: AppTheme.spasiBesar),
+                const SizedBox(height: 24),
                 _TombolKeluar(nama: user.nama),
               ],
             ),
@@ -91,111 +74,173 @@ class ProfilScreen extends ConsumerWidget {
 class _KartuIdentitas extends StatelessWidget {
   const _KartuIdentitas({required this.user});
 
-  /// Dipakai tes untuk membedakan nama yang DITAMPILKAN di kartu ini dari nama
-  /// yang sedang DIKETIK di kolom sunting di bawahnya. Keduanya berisi teks yang
-  /// sama persis, jadi pencarian teks polos tidak bisa memisahkannya.
   static const kunci = ValueKey('kartu-identitas');
 
   final AppUser user;
 
   @override
   Widget build(BuildContext context) {
-    final skema = Theme.of(context).colorScheme;
-    final teks = Theme.of(context).textTheme;
-
     return Card(
       key: kunci,
+      margin: EdgeInsets.zero,
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: const BorderSide(color: Color(0xFFEDF2ED), width: 1.2),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spasiSedang),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                // Huruf pertama namanya, bukan ikon orang bertubuh abu-abu.
-                // Foto profil belum ada dan belum tentu akan ada, dan siluet
-                // yang sama untuk semua orang tidak memberi tahu apa pun; huruf
-                // ini setidaknya berbeda antar akun, yang berguna justru pada
-                // HP yang dipakai bergantian.
                 Container(
-                  height: 56,
-                  width: 56,
+                  height: 60,
+                  width: 60,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: skema.primaryContainer,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF00AA13), Color(0xFF00880C)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
                     shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF00AA13).withValues(alpha: 0.28),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
                   child: Text(
                     user.nama.characters.first.toUpperCase(),
-                    style: teks.headlineSmall?.copyWith(
-                      color: skema.onPrimaryContainer,
-                      fontWeight: FontWeight.w700,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
                 ),
-                const SizedBox(width: AppTheme.spasiSedang),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         user.nama,
-                        style: teks.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF1E2124),
+                          letterSpacing: -0.2,
                         ),
                       ),
-                      Text(
-                        user.noHp,
-                        style: teks.bodyMedium?.copyWith(
-                          color: skema.onSurfaceVariant,
-                        ),
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.phone_iphone_rounded,
+                            size: 14,
+                            color: Color(0xFF00AA13),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            user.noHp,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF6B7280),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: AppTheme.spasiSedang),
-            // Perannya disebut karena akun dua peran melihat dua permukaan yang
-            // sangat berbeda, dan "kenapa aplikasiku beda dengan punyamu" adalah
-            // pertanyaan yang lebih murah dijawab di sini daripada lewat chat.
+            const SizedBox(height: 14),
+            const Divider(height: 1, color: Color(0xFFF3F4F6)),
+            const SizedBox(height: 12),
             Wrap(
-              spacing: AppTheme.spasiKecil,
-              runSpacing: AppTheme.spasiKecil,
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 for (final peran in user.peranMobile)
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
-                      vertical: 4,
+                      vertical: 4.5,
                     ),
                     decoration: BoxDecoration(
-                      color: skema.primaryContainer,
-                      borderRadius: BorderRadius.circular(AppTheme.radiusPil),
-                    ),
-                    child: Text(
-                      peran.label,
-                      style: teks.labelSmall?.copyWith(
-                        color: skema.onPrimaryContainer,
-                        fontWeight: FontWeight.w600,
+                      color: const Color(0xFFE8F5E9),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: const Color(0xFFC8E6C9),
+                        width: 1,
                       ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          peran.label.toLowerCase().contains('runner')
+                              ? Icons.two_wheeler_rounded
+                              : Icons.person_rounded,
+                          size: 13,
+                          color: const Color(0xFF00880C),
+                        ),
+                        const SizedBox(width: 4.5),
+                        Text(
+                          peran.label,
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF00880C),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
               ],
             ),
-            if (user.alamat != null) ...[
-              const SizedBox(height: AppTheme.spasiSedang),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.home_outlined,
-                    size: 16,
-                    color: skema.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: AppTheme.spasiKecil),
-                  Expanded(child: Text(user.alamat!, style: teks.bodySmall)),
-                ],
+            if (user.alamat != null && user.alamat!.trim().isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 9,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9FAFB),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFEDF2ED), width: 1),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.location_on_rounded,
+                      size: 15,
+                      color: Color(0xFFFF7043),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        user.alamat!,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF4B5563),
+                          fontWeight: FontWeight.w500,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ],
@@ -205,53 +250,164 @@ class _KartuIdentitas extends StatelessWidget {
   }
 }
 
-/// Pintu kedua ke riwayat order, yang juga punya tab sendiri (Pesanan) di
-/// bilah navigasi. Dipertahankan untuk orang yang sedang ada di Profil dan
-/// mau menengok pesanannya tanpa berpindah tab dulu.
 class _KartuRiwayat extends StatelessWidget {
   const _KartuRiwayat();
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: ListTile(
-        leading: const Icon(Icons.receipt_long_outlined),
-        title: const Text('Riwayat Order'),
-        subtitle: const Text('Lihat semua pesanan yang pernah kamu buat'),
-        trailing: const Icon(Icons.chevron_right),
+      margin: EdgeInsets.zero,
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: Color(0xFFEDF2ED), width: 1.2),
+      ),
+      child: InkWell(
         onTap: () => context.push(Rute.riwayat),
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F5E9),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.receipt_long_rounded,
+                  color: Color(0xFF00AA13),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Riwayat Order',
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1E2124),
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Lihat semua pesanan yang pernah kamu buat',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF6B7280),
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 28,
+                height: 28,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF3F4F6),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.chevron_right_rounded,
+                  size: 18,
+                  color: Color(0xFF9CA3AF),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
 
-/// Pintu ke Pengaturan.
-///
-/// Sebelumnya ikon roda gigi tersendiri di bilah atas beranda. Dipindahkan ke
-/// sini supaya bilah atas beranda tetap dua ikon saja (notifikasi, profil),
-/// mengikuti rujukan Gojek/Grab: pengaturan bukan hal yang dibuka tiap hari,
-/// jadi tempatnya di balik profil, bukan di baris paling sering dilihat.
 class _KartuPengaturan extends StatelessWidget {
   const _KartuPengaturan();
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: ListTile(
-        leading: const Icon(Icons.settings_outlined),
-        title: const Text('Pengaturan'),
-        trailing: const Icon(Icons.chevron_right),
+      margin: EdgeInsets.zero,
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: Color(0xFFEDF2ED), width: 1.2),
+      ),
+      child: InkWell(
         onTap: () => context.push(Rute.pengaturan),
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF7ED),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.settings_rounded,
+                  color: Color(0xFFF97316),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Pengaturan',
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1E2124),
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Kelola keamanan, password, dan preferensi akun',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF6B7280),
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 28,
+                height: 28,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF3F4F6),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.chevron_right_rounded,
+                  size: 18,
+                  color: Color(0xFF9CA3AF),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
 
-/// Keluar, dengan satu pertanyaan sebelum benar-benar keluar.
-///
-/// Konfirmasinya bukan basa-basi. Masuk kembali menuntut verifikasi password dan OTP WhatsApp,
-/// jadi salah tekan di sini bukan gangguan sedetik melainkan beberapa menit, dan bisa jadi
-/// tidak mungkin sama sekali kalau sinyalnya sedang buruk. Tombol dengan biaya sebesar itu pantas bertanya.
 class _TombolKeluar extends ConsumerStatefulWidget {
   const _TombolKeluar({required this.nama});
 
@@ -266,16 +422,37 @@ class _TombolKeluarState extends ConsumerState<_TombolKeluar> {
 
   @override
   Widget build(BuildContext context) {
-    return FilledButton.icon(
-      onPressed: _sedangKeluar ? null : _tanyaLaluKeluar,
-      icon: _sedangKeluar
-          ? const SizedBox(
-              height: 18,
-              width: 18,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : const Icon(Icons.logout),
-      label: const Text('Keluar'),
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: FilledButton.icon(
+        onPressed: _sedangKeluar ? null : _tanyaLaluKeluar,
+        style: FilledButton.styleFrom(
+          backgroundColor: const Color(0xFFEF4444),
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(999),
+          ),
+          elevation: 0,
+        ),
+        icon: _sedangKeluar
+            ? const SizedBox(
+                height: 18,
+                width: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Icon(Icons.logout_rounded, size: 20),
+        label: const Text(
+          'Keluar',
+          style: TextStyle(
+            fontSize: 14.5,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
     );
   }
 
@@ -283,19 +460,27 @@ class _TombolKeluarState extends ConsumerState<_TombolKeluar> {
     final jadi = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Keluar dari akun?'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: const Text(
+          'Keluar dari akun?',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+        ),
         content: Text(
           'Kamu masuk sebagai ${widget.nama}. Untuk masuk lagi, kamu perlu '
           'menunggu kode yang dikirim ke nomor HP-mu.',
+          style: const TextStyle(fontSize: 13.5, color: Color(0xFF4B5563)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Batal'),
+            child: const Text('Batal', style: TextStyle(fontWeight: FontWeight.w600)),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Keluar'),
+            style: TextButton.styleFrom(foregroundColor: const Color(0xFFEF4444)),
+            child: const Text('Keluar', style: TextStyle(fontWeight: FontWeight.w800)),
           ),
         ],
       ),
@@ -322,21 +507,9 @@ class _TombolKeluarState extends ConsumerState<_TombolKeluar> {
         );
       return;
     }
-
-    // Tidak ada navigasi di sini, sama seperti di layar masuk. Yang
-    // memindahkan layar adalah berubahnya sesi, dan itu diurus router lewat
-    // `refreshListenable`. Mendorong sendiri dari sini akan bertabrakan dengan
-    // pengalihan router dan menyisakan layar profil di tumpukan belakang layar
-    // masuk.
   }
 }
 
-/// Menyunting nama dan alamat bawaan.
-///
-/// Selalu terbuka, bukan di balik tombol "Sunting" yang menukar tampilan jadi
-/// isian. Yang ada di sini cuma dua kolom, dan tombol simpannya sudah mati
-/// selama tidak ada yang berubah -- jadi mode sunting tersendiri cuma menambah
-/// satu ketukan sebelum orangnya bisa mulai mengetik, tanpa menjaga apa pun.
 class _KartuSunting extends ConsumerStatefulWidget {
   const _KartuSunting({super.key, required this.user});
 
@@ -372,38 +545,123 @@ class _KartuSuntingState extends ConsumerState<_KartuSunting> {
 
   @override
   Widget build(BuildContext context) {
-    final teks = Theme.of(context).textTheme;
-
     return Card(
+      margin: EdgeInsets.zero,
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: const BorderSide(color: Color(0xFFEDF2ED), width: 1.2),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spasiSedang),
+        padding: const EdgeInsets.all(18),
         child: Form(
           key: _formKey,
           onChanged: () => setState(() {}),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'Ubah data diri',
-                style: teks.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+              Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F5E9),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.badge_outlined,
+                      color: Color(0xFF00AA13),
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'DATA DIRI',
+                          style: TextStyle(
+                            color: Color(0xFF00AA13),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Ubah data diri',
+                          style: TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1E2124),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: AppTheme.spasiSedang),
+              const SizedBox(height: 18),
               TextFormField(
                 controller: _namaController,
                 maxLength: BatasMasukan.nama,
                 textCapitalization: TextCapitalization.words,
                 enabled: !_sedangSimpan,
-                decoration: const InputDecoration(
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1E2124),
+                ),
+                decoration: InputDecoration(
                   counterText: '',
                   labelText: 'Nama',
+                  labelStyle: const TextStyle(color: Color(0xFF6B7280)),
                   helperText: 'Ini yang dilihat runner saat menerima ordermu.',
-                  prefixIcon: Icon(Icons.person_outline),
+                  helperStyle: const TextStyle(
+                    color: Color(0xFF9CA3AF),
+                    fontSize: 11.5,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.person_outline_rounded,
+                    color: Color(0xFF00AA13),
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFFF9FAFB),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(
+                      color: Color(0xFF00AA13),
+                      width: 1.5,
+                    ),
+                  ),
+                  errorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: Color(0xFFEF4444)),
+                  ),
+                  focusedErrorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(
+                      color: Color(0xFFEF4444),
+                      width: 1.5,
+                    ),
+                  ),
                 ),
                 validator: (nilai) => (nilai ?? '').trim().isEmpty
                     ? 'Nama tidak boleh kosong'
                     : null,
               ),
-              const SizedBox(height: AppTheme.spasiSedang),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _alamatController,
                 maxLength: BatasMasukan.alamat,
@@ -411,49 +669,130 @@ class _KartuSuntingState extends ConsumerState<_KartuSunting> {
                 maxLines: 2,
                 minLines: 1,
                 enabled: !_sedangSimpan,
-                decoration: const InputDecoration(
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1E2124),
+                ),
+                decoration: InputDecoration(
                   counterText: '',
                   labelText: 'Alamat kosmu (boleh dikosongkan)',
+                  labelStyle: const TextStyle(color: Color(0xFF6B7280)),
                   hintText: 'Kos Melati kamar 7, Jl. Pondok Labu Raya',
+                  hintStyle: const TextStyle(
+                    color: Color(0xFF9CA3AF),
+                    fontSize: 13,
+                  ),
                   helperText:
                       'Dipakai mengisi sendiri formulir order. Tetap bisa '
                       'diganti per order.',
-                  prefixIcon: Icon(Icons.home_outlined),
-                ),
-              ),
-              const SizedBox(height: AppTheme.spasiSedang),
-              // Nomor HP tidak ikut kolom isian di atas, dan itu bukan lubang
-              // yang belum ditutup: nomor itu identitas masuk, jadi
-              // menggantinya menuntut pembuktian kepemilikan nomor barunya,
-              // bukan sekadar isian yang dipercaya begitu saja seperti nama
-              // dan alamat. Pembuktian itu perlu jeda menunggu OTP WhatsApp, dan
-              // karena itu jalannya sendiri lewat dialog, bukan lewat kolom
-              // yang sama dengan tombol Simpan di atas.
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Nomor HP: ${widget.user.noHp}',
-                      style: teks.bodyMedium,
+                  helperStyle: const TextStyle(
+                    color: Color(0xFF9CA3AF),
+                    fontSize: 11.5,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.home_outlined,
+                    color: Color(0xFF00AA13),
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFFF9FAFB),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(
+                      color: Color(0xFF00AA13),
+                      width: 1.5,
                     ),
                   ),
-                  TextButton(
-                    onPressed: _sedangSimpan ? null : _gantiNomor,
-                    child: const Text('Ganti nomor HP'),
-                  ),
-                ],
+                ),
               ),
-              const SizedBox(height: AppTheme.spasiSedang),
-              FilledButton.tonalIcon(
-                onPressed: _sedangSimpan || !_adaPerubahan ? null : _simpan,
-                icon: _sedangSimpan
-                    ? const SizedBox(
-                        height: 18,
-                        width: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.save_outlined),
-                label: const Text('Simpan'),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFDCFCE7), width: 1),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.phone_iphone_rounded,
+                      color: Color(0xFF00AA13),
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Nomor HP: ${widget.user.noHp}',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF166534),
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _sedangSimpan ? null : _gantiNomor,
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFF00880C),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text(
+                        'Ganti nomor HP',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 48,
+                child: FilledButton.icon(
+                  onPressed: _sedangSimpan || !_adaPerubahan ? null : _simpan,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF00AA13),
+                    disabledBackgroundColor: const Color(0xFFE2E8E2),
+                    disabledForegroundColor: const Color(0xFF8F9B91),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    elevation: 0,
+                  ),
+                  icon: _sedangSimpan
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.check_circle_outline_rounded, size: 20),
+                  label: const Text(
+                    'Simpan',
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -491,20 +830,10 @@ class _KartuSuntingState extends ConsumerState<_KartuSunting> {
           ),
         );
     } finally {
-      // Isian tidak diisi ulang dari jawaban server di sini. Kartu ini dibangun
-      // ulang dengan user yang baru, dan `_adaPerubahan` yang membandingkannya
-      // dengan isian akan mati sendiri begitu keduanya sama.
       if (mounted) setState(() => _sedangSimpan = false);
     }
   }
 
-  /// Membuka dialog dua langkah, lalu memberi tahu hasilnya.
-  ///
-  /// Kartu ini tidak perlu memasang user yang baru sendiri: dialog sudah
-  /// memperbaruinya lewat `authRepositoryProvider` begitu berhasil, dan
-  /// `ProfilScreen` di atasnya menonton provider yang sama, jadi
-  /// `_KartuIdentitas` ikut menampilkan nomor barunya tanpa apa pun dikerjakan
-  /// di sini selain menunjukkan kabar berhasilnya.
   Future<void> _gantiNomor() async {
     final hasil = await showDialog<AppUser>(
       context: context,
