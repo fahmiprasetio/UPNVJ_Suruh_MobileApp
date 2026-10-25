@@ -73,125 +73,72 @@
   </style>
 
   <script>
-    // Memastikan kanvas WebGL / CanvasKit selalu mengisi 100% dan kebal terhadap penyusutan akibat ekstensi peramban
+    // Optimasi performa tinggi untuk Mobile Simulator & browser mobile:
+    // Mencegah freeze/lag dengan penanganan shadow DOM satu kali tanpa infinite loop.
     (function() {
-      // 1. Kunci scrollWidth pada html agar spoofer.js ekstensi selalu menghitung rasio 1.0 (zoom 100%)
-      try {
-        Object.defineProperty(document.documentElement, 'scrollWidth', {
-          get: function() {
-            return window.innerWidth || document.documentElement.clientWidth || 393;
-          },
-          configurable: true
-        });
-      } catch (e) {}
-
-      // 2. Intersep insertAdjacentElement pada html agar tag auto-zoom ekstensi tidak pernah masuk ke DOM
-      try {
-        var origInsert = document.documentElement.insertAdjacentElement;
-        document.documentElement.insertAdjacentElement = function(position, element) {
-          if (element && (element.id === 'mobile-simulator' || (element.dataset && element.dataset.extensionId === 'auto-viewport-zoom') || (element.textContent && element.textContent.indexOf('zoom') !== -1))) {
-            return element;
-          }
-          return origInsert.apply(this, arguments);
-        };
-      } catch (e) {}
-
-      // 3. MutationObserver dan pembersih aktif tag auto-zoom ekstensi
-      function neutralizeBadZoom() {
-        var badStyles = document.querySelectorAll('style[data-extension-id="auto-viewport-zoom"], style#mobile-simulator');
-        var removed = false;
-        for (var i = 0; i < badStyles.length; i++) {
-          if (badStyles[i].textContent && badStyles[i].textContent.indexOf('zoom') !== -1) {
-            badStyles[i].remove();
-            removed = true;
-          }
-        }
-        if (document.documentElement.style.zoom && document.documentElement.style.zoom !== '1') {
-          document.documentElement.style.removeProperty('zoom');
-          document.documentElement.style.setProperty('zoom', '1', 'important');
-          removed = true;
-        }
-        if (removed) {
-          window.dispatchEvent(new Event('resize'));
-        }
+      function patchShadow(view) {
+        if (!view || !view.shadowRoot || view.shadowRoot.querySelector('#flt-mobile-sim-fix')) return;
+        var style = document.createElement('style');
+        style.id = 'flt-mobile-sim-fix';
+        style.textContent = [
+          'flt-scene-host, flt-glass-pane, flt-scene {',
+          '  width: 100% !important;',
+          '  height: 100% !important;',
+          '  min-width: 100% !important;',
+          '  min-height: 100% !important;',
+          '  max-width: 100% !important;',
+          '  max-height: 100% !important;',
+          '  position: absolute !important;',
+          '  inset: 0 !important;',
+          '}',
+          'canvas {',
+          '  width: 100% !important;',
+          '  height: 100% !important;',
+          '  position: absolute !important;',
+          '  inset: 0 !important;',
+          '}'
+        ].join('\n');
+        view.shadowRoot.appendChild(style);
       }
 
-      function applyShadowFix(view) {
-        if (!view || !view.shadowRoot) return;
-        var root = view.shadowRoot;
-        if (!root.querySelector('#flt-mobile-simulator-fix')) {
-          var style = document.createElement('style');
-          style.id = 'flt-mobile-simulator-fix';
-          style.textContent = [
-            'flt-scene-host, flt-glass-pane, flt-scene {',
-            '  width: 100% !important;',
-            '  height: 100% !important;',
-            '  min-width: 100% !important;',
-            '  min-height: 100% !important;',
-            '  max-width: 100% !important;',
-            '  max-height: 100% !important;',
-            '  position: absolute !important;',
-            '  inset: 0 !important;',
-            '}',
-            'canvas {',
-            '  width: 100% !important;',
-            '  height: 100% !important;',
-            '  position: absolute !important;',
-            '  inset: 0 !important;',
-            '}'
-          ].join('\n');
-          root.appendChild(style);
-        }
-      }
-
-      function checkViews() {
-        neutralizeBadZoom();
+      function setupAllViews() {
         var views = document.querySelectorAll('flutter-view');
         for (var i = 0; i < views.length; i++) {
-          applyShadowFix(views[i]);
+          patchShadow(views[i]);
         }
       }
 
-      var observer = new MutationObserver(function() {
-        checkViews();
-      });
-      observer.observe(document.documentElement, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['style', 'class']
-      });
-
-      var interval = setInterval(checkViews, 100);
-      setTimeout(function() { clearInterval(interval); }, 15000);
-
-      var resizeTimer = null;
-      function onResize() {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(checkViews, 30);
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupAllViews);
+      } else {
+        setupAllViews();
       }
-      window.addEventListener('resize', onResize);
-      window.addEventListener('orientationchange', onResize);
-      if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', onResize);
-      }
+
+      // Observer ringan hanya saat elemen flutter-view pertama kali dimasukkan ke DOM
+      var observer = new MutationObserver(function(mutations) {
+        for (var i = 0; i < mutations.length; i++) {
+          var added = mutations[i].addedNodes;
+          for (var j = 0; j < added.length; j++) {
+            var node = added[j];
+            if (node.nodeType === 1) {
+              if (node.tagName === 'FLUTTER-VIEW') {
+                patchShadow(node);
+              } else if (node.querySelector) {
+                var v = node.querySelector('flutter-view');
+                if (v) patchShadow(v);
+              }
+            }
+          }
+        }
+      });
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+
+      // Putus observer setelah 8 detik agar 0% CPU overhead setelah Flutter selesai bootstrap
+      setTimeout(function() {
+        setupAllViews();
+        observer.disconnect();
+      }, 8000);
     })();
-
-    // Bersihkan cache Service Worker lama agar rilis terbaru selalu aktif
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(registrations) {
-        for (var i = 0; i < registrations.length; i++) {
-          registrations[i].unregister();
-        }
-      });
-    }
-    if ('caches' in window) {
-      caches.keys().then(function(names) {
-        for (var i = 0; i < names.length; i++) {
-          caches.delete(names[i]);
-        }
-      });
-    }
   </script>
 </head>
 <body>
