@@ -242,8 +242,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: Rute.ajukanTawaranPola,
-        builder: (context, state) =>
-            AjukanTawaranScreen(orderId: state.pathParameters['orderId']!),
+        builder: (context, state) => AjukanTawaranScreen(
+          orderId: state.pathParameters['orderId']!,
+          orderAwal: state.extra as Order?,
+        ),
       ),
     ],
   );

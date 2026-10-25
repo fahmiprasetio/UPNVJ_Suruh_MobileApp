@@ -287,7 +287,7 @@ class KartuOrderSiaran extends StatelessWidget {
                   ),
                   const SizedBox(width: 12),
                   _menungguTawaran
-                      ? _TombolTawarAloha(orderId: order.id)
+                      ? _TombolTawarAloha(orderId: order.id, order: order)
                       : _TombolTerimaAloha(
                           sedangDiproses: sedangDiproses,
                           onTerima: onTerima,
@@ -555,16 +555,17 @@ class _TombolTerimaAloha extends StatelessWidget {
 
 /// Tombol Ajukan Tawaran untuk pesanan Jalur B
 class _TombolTawarAloha extends StatelessWidget {
-  const _TombolTawarAloha({required this.orderId});
+  const _TombolTawarAloha({required this.orderId, this.order});
 
   final String orderId;
+  final Order? order;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       height: 46,
       child: OutlinedButton.icon(
-        onPressed: () => context.push(Rute.ajukanTawaran(orderId)),
+        onPressed: () => context.push(Rute.ajukanTawaran(orderId), extra: order),
         style: OutlinedButton.styleFrom(
           foregroundColor: const Color(0xFF00880C),
           side: const BorderSide(color: Color(0xFF00AA13), width: 1.5),

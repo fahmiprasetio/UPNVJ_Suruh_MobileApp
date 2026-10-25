@@ -147,10 +147,14 @@ class ApiOrderRepository implements OrderRepository {
     // dua perjalanan bolak-balik berturut-turut terasa dua kali lebih lambat.
     final hasil = await Future.wait([
       _klien.get('/api/orders/$orderId'),
-      _klien.get(
-        '/api/orders/$orderId/pesan',
-        kueri: {'ukuran': '${ukuranPesan.clamp(1, BatasHalaman.maksimal)}'},
-      ),
+      _klien
+          .get(
+            '/api/orders/$orderId/pesan',
+            kueri: {'ukuran': '${ukuranPesan.clamp(1, BatasHalaman.maksimal)}'},
+          )
+          .catchError(
+            (_) => <String, dynamic>{'isi': <dynamic>[], 'total': 0},
+          ),
     ]);
 
     final isi = hasil[0];

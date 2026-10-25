@@ -11,6 +11,7 @@ import '../../../domain/models/order.dart';
 import '../../../domain/service_catalog.dart';
 import '../../../core/providers/order_providers.dart';
 import '../../../core/providers/repository_providers.dart';
+import '../../../core/providers/runner_providers.dart';
 import '../../../core/widgets/pesan_kosong.dart';
 
 /// Runner mengajukan penawaran untuk satu permintaan Jalur B.
@@ -21,9 +22,14 @@ import '../../../core/widgets/pesan_kosong.dart';
 /// penawaran untuk permintaan yang sama secara bersamaan; klien yang memilih
 /// satu di antaranya nanti.
 class AjukanTawaranScreen extends ConsumerStatefulWidget {
-  const AjukanTawaranScreen({super.key, required this.orderId});
+  const AjukanTawaranScreen({
+    super.key,
+    required this.orderId,
+    this.orderAwal,
+  });
 
   final String orderId;
+  final Order? orderAwal;
 
   @override
   ConsumerState<AjukanTawaranScreen> createState() =>
@@ -57,12 +63,51 @@ class _AjukanTawaranScreenState extends ConsumerState<AjukanTawaranScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final order = ref.watch(orderProvider(widget.orderId));
+    final orderAsync = ref.watch(orderProvider(widget.orderId));
+    final orderTersiar = ref
+        .watch(orderTersiarProvider)
+        .value
+        ?.isi
+        .where((o) => o.id == widget.orderId)
+        .firstOrNull;
+
+    final order = orderAsync.value ?? widget.orderAwal ?? orderTersiar;
+
+    if (order != null) {
+      // Diisi sekali dari harga usulan klien, bukan setiap build: runner
+      // boleh mengubahnya, dan build ulang tidak boleh menimpa
+      // ketikannya sendiri.
+      if (!_hargaDiisiOtomatis) {
+        _hargaDiisiOtomatis = true;
+        if (order.hargaUsulan != null) {
+          _hargaController.text = '${order.hargaUsulan}';
+        }
+        _jadwal = order.jadwalMulai;
+      }
+      return Scaffold(
+        appBar: AppBar(title: const Text('Ajukan Tawaran')),
+        body: SafeArea(
+          child: _Formulir(
+            order: order,
+            formKey: _formKey,
+            hargaController: _hargaController,
+            catatanController: _catatanController,
+            durasi: _durasi,
+            pilihanDurasi: _pilihanDurasi,
+            jadwal: _jadwal ?? DateTime.now(),
+            sedangMengirim: _sedangMengirim,
+            onDurasiUbah: (d) => setState(() => _durasi = d),
+            onJadwalUbah: (j) => setState(() => _jadwal = j),
+            onKirim: () => _kirim(order),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('Ajukan Tawaran')),
       body: SafeArea(
-        child: order.when(
+        child: orderAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (galat, _) => PesanKosong(
             ikon: Icons.wifi_off_outlined,
@@ -73,39 +118,12 @@ class _AjukanTawaranScreenState extends ConsumerState<AjukanTawaranScreen> {
             labelAksi: 'Coba lagi',
             onAksi: () => ref.invalidate(orderProvider(widget.orderId)),
           ),
-          data: (order) {
-            if (order == null) {
-              return const PesanKosong(
-                ikon: Icons.inbox_outlined,
-                judul: 'Order tidak ditemukan',
-                keterangan:
-                    'Permintaan ini mungkin sudah ditutup atau dibatalkan.',
-              );
-            }
-            // Diisi sekali dari harga usulan klien, bukan setiap build: runner
-            // boleh mengubahnya, dan build ulang tidak boleh menimpa
-            // ketikannya sendiri.
-            if (!_hargaDiisiOtomatis) {
-              _hargaDiisiOtomatis = true;
-              if (order.hargaUsulan != null) {
-                _hargaController.text = '${order.hargaUsulan}';
-              }
-              _jadwal = order.jadwalMulai;
-            }
-            return _Formulir(
-              order: order,
-              formKey: _formKey,
-              hargaController: _hargaController,
-              catatanController: _catatanController,
-              durasi: _durasi,
-              pilihanDurasi: _pilihanDurasi,
-              jadwal: _jadwal ?? DateTime.now(),
-              sedangMengirim: _sedangMengirim,
-              onDurasiUbah: (d) => setState(() => _durasi = d),
-              onJadwalUbah: (j) => setState(() => _jadwal = j),
-              onKirim: () => _kirim(order),
-            );
-          },
+          data: (_) => const PesanKosong(
+            ikon: Icons.inbox_outlined,
+            judul: 'Order tidak ditemukan',
+            keterangan:
+                'Permintaan ini mungkin sudah ditutup atau dibatalkan.',
+          ),
         ),
       ),
     );

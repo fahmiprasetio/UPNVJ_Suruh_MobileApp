@@ -276,9 +276,15 @@ public class OrdersController(
 
         if (order is null) return NotFound();
 
-        if (!AksesOrder.BolehLihat(order, User.Id(), User)) return NotFound();
+        var pemanggil = User.Id();
+        var bolehLihat = AksesOrder.BolehLihat(order, pemanggil, User)
+            || (User.Punya(Peran.Runner)
+                && order.ClientId != pemanggil
+                && (order.Status == OrderStatus.Permintaan || order.Status == OrderStatus.MencariRunner));
 
-        return Ok(await OrderResponse.DariAsync(db, order, User.Id(), User.Punya(Peran.Admin), batal));
+        if (!bolehLihat) return NotFound();
+
+        return Ok(await OrderResponse.DariAsync(db, order, pemanggil, User.Punya(Peran.Admin), batal));
     }
 
     /// <summary>Order milik klien yang sedang masuk, terbaru di atas.</summary>
