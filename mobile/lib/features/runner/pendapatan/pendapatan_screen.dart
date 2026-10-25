@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/galat_api.dart';
 import '../../../core/format/formatters.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../domain/enums.dart';
 import '../../../domain/models/pendapatan.dart';
 import '../../../domain/service_catalog.dart';
 import '../../../core/providers/repository_providers.dart';
@@ -11,20 +12,8 @@ import '../../peran/tombol_ganti_mode.dart';
 import '../../../core/widgets/pesan_kosong.dart';
 import '../../../core/widgets/tombol_profil.dart';
 
-/// Pendapatan runner: berapa yang belum dibayarkan organisasi.
-///
-/// Layar terakhir dari daftar runner di rencana capstone bagian 14.3, dan
-/// satu-satunya di daftar itu yang tidak menuntut runner melakukan apa pun.
-/// Gunanya menjawab satu pertanyaan yang selama ini cuma bisa ditanyakan lewat
-/// chat: berapa yang masih saya tunggu.
-///
-/// ## Runner tidak bisa menandai bayarannya sendiri lunas
-///
-/// Tidak ada tombol apa pun di sini selain menyegarkan. Yang mencatat bahwa uang
-/// sudah diserahkan adalah admin lewat dashboard, karena penyerahannya sendiri
-/// terjadi di luar sistem, tunai atau transfer antar orang. Tombol "sudah saya
-/// terima" di sisi runner akan membuat catatan itu bisa ditulis oleh pihak yang
-/// diuntungkan olehnya.
+/// Pendapatan runner dengan bahasa visual Aloha Gojek yang modern, bersih,
+/// dan hemat ruang.
 class PendapatanScreen extends ConsumerWidget {
   const PendapatanScreen({super.key});
 
@@ -33,14 +22,59 @@ class PendapatanScreen extends ConsumerWidget {
     final pendapatan = ref.watch(pendapatanProvider);
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
-        title: const Text('Pendapatan Saya'),
+        titleSpacing: 16,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8F8EA),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.account_balance_wallet_rounded,
+                color: Color(0xFF00AA13),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Pendapatan Saya',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                Text(
+                  'Dompet & Riwayat Pencairan',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF6B7280),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
         actions: const [TombolGantiMode(), TombolProfil()],
       ),
       body: SafeArea(
         child: pendapatan.when(
           skipLoadingOnReload: true,
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const Center(
+            child: CircularProgressIndicator(
+              color: Color(0xFF00AA13),
+              strokeWidth: 3,
+            ),
+          ),
           error: (galat, _) => PesanKosong(
             ikon: Icons.wifi_off_outlined,
             judul: 'Pendapatan gagal dimuat',
@@ -51,10 +85,7 @@ class PendapatanScreen extends ConsumerWidget {
             onAksi: () => ref.invalidate(pendapatanProvider),
           ),
           data: (isi) => RefreshIndicator(
-            // Satu-satunya cara menyegarkan layar ini, dan itu memang cukup:
-            // yang mengubah angkanya adalah admin yang menandai lunas, dan itu
-            // terjadi sekali seminggu, bukan sepanjang hari (lihat
-            // [pendapatanProvider]).
+            color: const Color(0xFF00AA13),
             onRefresh: () async => ref.refresh(pendapatanProvider.future),
             child: _Isi(pendapatan: isi),
           ),
@@ -72,10 +103,8 @@ class _Isi extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (pendapatan.kosong) {
-      // Tetap di dalam daftar yang bisa digulung, bukan dipasang begitu saja:
-      // RefreshIndicator hanya bisa ditarik di atas sesuatu yang menggulung,
-      // dan layar kosong justru yang paling mungkin ingin ditarik.
       return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(AppTheme.spasiSedang),
         children: const [
           SizedBox(height: AppTheme.spasiBesar),
@@ -94,10 +123,11 @@ class _Isi extends StatelessWidget {
     final sudah = pendapatan.rincian.isi.where((b) => b.sudahDibayar).toList();
 
     return ListView(
-      padding: const EdgeInsets.all(AppTheme.spasiSedang),
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       children: [
         _KartuRingkasan(pendapatan: pendapatan),
-        const SizedBox(height: AppTheme.spasiSedang),
+        const SizedBox(height: 20),
         if (belum.isNotEmpty) ..._bagian(context, 'Belum dibayarkan', belum),
         if (sudah.isNotEmpty) ..._bagian(context, 'Sudah dibayarkan', sudah),
       ],
@@ -109,31 +139,46 @@ class _Isi extends StatelessWidget {
     String judul,
     List<BarisPendapatan> baris,
   ) {
+    final warnaAksen = judul.contains('Belum')
+        ? const Color(0xFF00AA13)
+        : const Color(0xFF6B7280);
+
     return [
       Padding(
-        padding: const EdgeInsets.only(bottom: AppTheme.spasiKecil),
-        child: Text(
-          '$judul (${baris.length})',
-          style: Theme.of(
-            context,
-          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Row(
+          children: [
+            Container(
+              width: 4,
+              height: 16,
+              decoration: BoxDecoration(
+                color: warnaAksen,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '$judul (${baris.length})',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF111827),
+              ),
+            ),
+          ],
         ),
       ),
       for (final b in baris)
         Padding(
-          padding: const EdgeInsets.only(bottom: AppTheme.spasiKecil),
+          padding: const EdgeInsets.only(bottom: 10),
           child: _KartuBaris(baris: b),
         ),
-      const SizedBox(height: AppTheme.spasiSedang),
+      const SizedBox(height: 12),
     ];
   }
 }
 
-/// Dua angka besar di atas: yang masih ditunggu, dan yang sudah diterima.
-///
-/// Yang belum dibayar ditaruh lebih dulu dan lebih besar, karena itulah yang
-/// sedang ditanyakan orang yang membuka layar ini. Yang sudah diterima ada
-/// sebagai pembanding, bukan sebagai kabar baru.
+/// Hero card dompet runner bertema Aloha Gojek
 class _KartuRingkasan extends StatelessWidget {
   const _KartuRingkasan({required this.pendapatan});
 
@@ -141,40 +186,121 @@ class _KartuRingkasan extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final teks = Theme.of(context).textTheme;
-
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spasiSedang),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Belum dibayarkan', style: teks.labelMedium),
-            const SizedBox(height: 4),
-            Text(
-              formatRupiah(pendapatan.totalBelumDibayar),
-              style: teks.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: AppTheme.spasiSedang),
+            // Pill Header Dompet
             Row(
               children: [
-                Icon(
-                  Icons.check_circle_outline,
-                  size: 16,
-                  color: teks.bodySmall?.color,
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F8EA),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'DOMPET RUNNER',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF00AA13),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
                 ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    'Sudah diterima: '
-                    '${formatRupiah(pendapatan.totalSudahDibayar)}',
-                    style: teks.bodySmall,
+                const Spacer(),
+                const Icon(
+                  Icons.shield_outlined,
+                  size: 15,
+                  color: Color(0xFF9CA3AF),
+                ),
+                const SizedBox(width: 4),
+                const Text(
+                  'Terjamin Resmi',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF6B7280),
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 14),
+
+            // Metrik Utama: Belum dibayarkan
+            const Text(
+              'Belum dibayarkan',
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF6B7280),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              formatRupiah(pendapatan.totalBelumDibayar),
+              style: const TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF111827),
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(height: 14),
+            const Divider(height: 1, thickness: 1, color: Color(0xFFF3F4F6)),
+            const SizedBox(height: 12),
+
+            // Baris: Sudah diterima
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFE8F8EA),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_rounded,
+                    size: 13,
+                    color: Color(0xFF00AA13),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Sudah diterima: '
+                    '${formatRupiah(pendapatan.totalSudahDibayar)}',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF374151),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            // Catatan Menunggu Rumus (Jika Ada)
             if (pendapatan.menungguRumus > 0) ...[
-              const SizedBox(height: AppTheme.spasiSedang),
+              const SizedBox(height: 12),
               _CatatanMenungguRumus(jumlah: pendapatan.menungguRumus),
             ],
           ],
@@ -184,13 +310,7 @@ class _KartuRingkasan extends StatelessWidget {
   }
 }
 
-/// Kabar bahwa sebagian order belum punya angka bayaran sama sekali.
-///
-/// Ada karena tanpanya layar ini berbohong dengan diam: runner yang sudah
-/// menyelesaikan lima order lalu membaca "Belum dibayarkan: Rp 0" akan mengira
-/// pekerjaannya tidak dihitung, padahal yang belum ada cuma rumus bagi hasil
-/// yang harus diisi admin. Bedanya besar, dan cuma bisa diketahui kalau
-/// dikatakan.
+/// Catatan menunggu rumus yang proporsional dan tidak memakan banyak tempat
 class _CatatanMenungguRumus extends StatelessWidget {
   const _CatatanMenungguRumus({required this.jumlah});
 
@@ -198,24 +318,32 @@ class _CatatanMenungguRumus extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final warna = Theme.of(context).colorScheme;
-
     return Container(
-      padding: const EdgeInsets.all(AppTheme.spasiKecil),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
-        color: warna.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(AppTheme.spasiKecil),
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFFDE68A)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.hourglass_empty, size: 16, color: warna.onSurfaceVariant),
-          const SizedBox(width: AppTheme.spasiKecil),
+          const Icon(
+            Icons.hourglass_empty_rounded,
+            size: 15,
+            color: Color(0xFFD97706),
+          ),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               '$jumlah order sudah selesai tapi bayarannya belum dihitung. '
               'Admin belum menetapkan bagi hasilnya.',
-              style: Theme.of(context).textTheme.bodySmall,
+              style: const TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF92400E),
+                height: 1.3,
+              ),
             ),
           ),
         ],
@@ -224,6 +352,7 @@ class _CatatanMenungguRumus extends StatelessWidget {
   }
 }
 
+/// Kartu satu baris pencairan pendapatan
 class _KartuBaris extends StatelessWidget {
   const _KartuBaris({required this.baris});
 
@@ -231,59 +360,133 @@ class _KartuBaris extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final teks = Theme.of(context).textTheme;
     final layanan = serviceInfoOf(baris.layanan);
+    final warna = _warnaLayanan(baris.layanan);
 
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spasiSedang),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(
           children: [
-            Icon(layanan.icon, size: 22),
-            const SizedBox(width: AppTheme.spasiSedang),
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: warna.latar,
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Icon(layanan.icon, size: 18, color: warna.aksen),
+              ),
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     layanan.nama,
-                    style: teks.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF111827),
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Text(
                     baris.selesaiPada == null
                         ? baris.kodeOrder
                         : '${baris.kodeOrder} · '
-                              'selesai ${formatWaktuRelatif(baris.selesaiPada!)}',
-                    style: teks.bodySmall,
+                            'selesai ${formatWaktuRelatif(baris.selesaiPada!)}',
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      color: Color(0xFF6B7280),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   if (baris.sudahDibayar && baris.dibayarPada != null) ...[
                     const SizedBox(height: 2),
                     Text(
                       'Dibayarkan ${formatTanggalJam(baris.dibayarPada!)}',
-                      style: teks.bodySmall,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF00AA13),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ],
               ),
             ),
-            const SizedBox(width: AppTheme.spasiKecil),
-            // Bayaran yang belum dihitung ditulis dengan kata, bukan Rp 0.
-            // Angka nol di kolom ini terbaca sebagai "order ini memang tidak
-            // dibayar", dan itu bukan yang sedang terjadi.
-            baris.menungguRumus
-                ? Text('Menunggu', style: teks.bodySmall)
-                : Text(
-                    formatRupiah(baris.jumlah),
-                    style: teks.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+            const SizedBox(width: 10),
+            // Bayaran yang belum dihitung ditulis 'Menunggu', bukan Rp 0.
+            if (baris.menungguRumus)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 3,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  'Menunggu',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFD97706),
                   ),
+                ),
+              )
+            else
+              Text(
+                formatRupiah(baris.jumlah),
+                style: const TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF111827),
+                  letterSpacing: -0.2,
+                ),
+              ),
           ],
         ),
       ),
     );
+  }
+
+  static ({Color latar, Color aksen}) _warnaLayanan(ServiceType type) {
+    switch (type) {
+      case ServiceType.anterJemput:
+        return (latar: const Color(0xFFE8F8EA), aksen: const Color(0xFF00AA13));
+      case ServiceType.jastipMakanan:
+        return (latar: const Color(0xFFFFF7ED), aksen: const Color(0xFFEA580C));
+      case ServiceType.jastipBarang:
+        return (latar: const Color(0xFFEFF6FF), aksen: const Color(0xFF2563EB));
+      case ServiceType.bersihKamarMandi:
+      case ServiceType.bersihKos:
+        return (latar: const Color(0xFFF0FDF4), aksen: const Color(0xFF059669));
+      case ServiceType.bantuPindahKos:
+        return (latar: const Color(0xFFFAF5FF), aksen: const Color(0xFF9333EA));
+      case ServiceType.permintaanLain:
+        return (latar: const Color(0xFFFDF2F8), aksen: const Color(0xFFDB2777));
+    }
   }
 }

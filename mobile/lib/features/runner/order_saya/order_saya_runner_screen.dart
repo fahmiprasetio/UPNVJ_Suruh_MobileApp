@@ -22,20 +22,12 @@ import '../../../core/widgets/pesan_kosong.dart';
 import '../../../core/widgets/rangka_daftar_order.dart';
 import '../../../core/widgets/tombol_muat_lagi.dart';
 
-/// Order yang dipegang runner, yang sedang dikerjakan dan yang sudah kelar.
-///
-/// Sebelum layar ini ada, order yang sudah diterima runner tidak punya
-/// kelanjutan sama sekali: statusnya "Dikerjakan" selamanya karena tidak ada
-/// tempat untuk menutupnya.
+enum _FilterOrderRunner { semua, dikerjakan, tawaran, selesai }
+
+/// Order yang dipegang runner dengan desain modern Aloha Gojek.
 class OrderSayaRunnerScreen extends ConsumerStatefulWidget {
   const OrderSayaRunnerScreen({super.key, this.onMintaOrderMasuk});
 
-  /// Dipanggil saat runner yang belum memegang order memilih pergi mencarinya.
-  ///
-  /// Diminta dari luar, bukan diurus sendiri lewat navigasi, karena Order Masuk
-  /// bukan layar yang bisa didorong ke atas layar ini: ia tab sebelah di
-  /// cangkang yang sama, dan mendorongnya sebagai rute baru akan menumpuk dua
-  /// daftar order masuk di riwayat navigasi.
   final VoidCallback? onMintaOrderMasuk;
 
   @override
@@ -48,21 +40,59 @@ class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
   final Set<String> _sedangDitarik = {};
   final Map<String, String> _keyLepas = {};
   final Map<String, String> _keyCabut = {};
+  _FilterOrderRunner _filterAktif = _FilterOrderRunner.semua;
 
   @override
   Widget build(BuildContext context) {
     final orders = ref.watch(orderRunnerProvider);
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
-        title: const Text('Order Saya'),
+        titleSpacing: 16,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8F8EA),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.moped_rounded,
+                color: Color(0xFF00AA13),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Order Saya',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                Text(
+                  'Pekerjaan & Penawaran',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF6B7280),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
         actions: const [TombolGantiMode(), TombolProfil()],
       ),
       body: SafeArea(
         child: orders.when(
-          // Lihat alasannya di layar riwayat klien: jendela yang diperbesar menghitung
-          // ulang provider yang sama, dan daftar yang sudah tampil tidak boleh berkedip
-          // jadi pemuat karenanya.
           skipLoadingOnReload: true,
           loading: () => const RangkaDaftarOrder(jumlah: 2, denganTombol: true),
           error: (galat, _) => PesanKosong(
@@ -72,23 +102,16 @@ class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
                 ? galat.pesan
                 : 'Sambungan ke server terputus.',
             labelAksi: 'Coba lagi',
-            onAksi: () => ref.invalidate(orderRunnerProvider),
+            onAksi: () {
+              ref.invalidate(orderRunnerProvider);
+              ref.invalidate(tawaranSayaProvider);
+            },
           ),
           data: (halaman) {
             final semua = halaman.isi;
-            // Tawaran yang belum dijawab ditaruh di layar ini, bukan di Order Masuk,
-            // dan bukan pula di tab keempat. Order Masuk isinya pekerjaan yang bisa
-            // diambil siapa saja; tawaran yang sudah dikirim bukan itu lagi, ia
-            // komitmen yang sudah dibuat dan sedang menunggu jawaban — yaitu urusan
-            // runner ini sendiri, sama seperti isi layar ini yang lain. Menambah tab
-            // keempat akan memindahkan letak tiga tab yang sudah dihafal jempol.
             final tawaran =
                 ref.watch(tawaranSayaProvider).value?.isi ?? const <Order>[];
 
-            // Dibaca sebelum keadaan kosong diputuskan, bukan sesudah. Runner yang
-            // sudah menawar tapi belum memegang order apa pun tetap punya isi di
-            // layar ini, dan menampilkan "belum ada order yang kamu pegang" kepadanya
-            // justru mengulang persis lubang yang bagian ini ada untuk menutupnya.
             if (semua.isEmpty && tawaran.isEmpty) {
               return PesanKosong(
                 ikon: Icons.assignment_outlined,
@@ -96,10 +119,6 @@ class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
                 keterangan:
                     'Order yang kamu terima dari daftar Order Masuk akan '
                     'muncul di sini.',
-                // Jalan keluarnya tab sebelah, bukan menyegarkan layar ini.
-                // Daftar ini kosong bukan karena gagal dimuat, melainkan karena
-                // runner memang belum mengambil apa pun, dan yang ia butuhkan
-                // adalah tempat mengambilnya.
                 labelAksi: 'Lihat Order Masuk',
                 onAksi: widget.onMintaOrderMasuk,
               );
@@ -108,28 +127,92 @@ class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
             final dikerjakan = semua.where((o) => o.status.isAktif).toList();
             final selesai = semua.where((o) => !o.status.isAktif).toList();
 
-            return ListView(
-              padding: const EdgeInsets.all(AppTheme.spasiSedang),
-              children: [
-                if (tawaran.isNotEmpty)
-                  ..._bagianTawaran(context, ref, tawaran),
-                if (dikerjakan.isNotEmpty)
-                  ..._bagian(
-                    context,
-                    'Sedang dikerjakan',
-                    dikerjakan,
-                    onSelesaikan: (order) => _bukaLembarSelesai(context, order),
-                    onLepas: (order) => _lepas(context, ref, order),
-                    lepasSedangDiproses: (order) =>
-                        _sedangDilepas.contains(order.id),
+            return RefreshIndicator(
+              color: const Color(0xFF00AA13),
+              onRefresh: () async {
+                ref.invalidate(orderRunnerProvider);
+                ref.invalidate(tawaranSayaProvider);
+              },
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                children: [
+                  // Filter Chips Aloha Gojek
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _FilterChipAloha(
+                          label: 'Semua',
+                          total: semua.length + tawaran.length,
+                          aktif: _filterAktif == _FilterOrderRunner.semua,
+                          onTap: () => setState(() =>
+                              _filterAktif = _FilterOrderRunner.semua),
+                        ),
+                        const SizedBox(width: 8),
+                        _FilterChipAloha(
+                          label: 'Dikerjakan',
+                          total: dikerjakan.length,
+                          aktif: _filterAktif == _FilterOrderRunner.dikerjakan,
+                          onTap: () => setState(() =>
+                              _filterAktif = _FilterOrderRunner.dikerjakan),
+                        ),
+                        if (tawaran.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          _FilterChipAloha(
+                            label: 'Tawaran',
+                            total: tawaran.length,
+                            aktif: _filterAktif == _FilterOrderRunner.tawaran,
+                            onTap: () => setState(() =>
+                                _filterAktif = _FilterOrderRunner.tawaran),
+                          ),
+                        ],
+                        const SizedBox(width: 8),
+                        _FilterChipAloha(
+                          label: 'Selesai',
+                          total: selesai.length,
+                          aktif: _filterAktif == _FilterOrderRunner.selesai,
+                          onTap: () => setState(() =>
+                              _filterAktif = _FilterOrderRunner.selesai),
+                        ),
+                      ],
+                    ),
                   ),
-                if (selesai.isNotEmpty)
-                  ..._bagian(context, 'Sudah selesai', selesai),
-                TombolMuatLagi(
-                  halaman: halaman,
-                  ukuranProvider: ukuranOrderRunnerProvider,
-                ),
-              ],
+                  const SizedBox(height: 16),
+
+                  // Tawaran Aktif
+                  if ((_filterAktif == _FilterOrderRunner.semua ||
+                          _filterAktif == _FilterOrderRunner.tawaran) &&
+                      tawaran.isNotEmpty)
+                    ..._bagianTawaran(context, ref, tawaran),
+
+                  // Order Sedang Dikerjakan
+                  if ((_filterAktif == _FilterOrderRunner.semua ||
+                          _filterAktif == _FilterOrderRunner.dikerjakan) &&
+                      dikerjakan.isNotEmpty)
+                    ..._bagian(
+                      context,
+                      'Sedang dikerjakan',
+                      dikerjakan,
+                      onSelesaikan: (order) => _bukaLembarSelesai(context, order),
+                      onLepas: (order) => _lepas(context, ref, order),
+                      lepasSedangDiproses: (order) =>
+                          _sedangDilepas.contains(order.id),
+                    ),
+
+                  // Order Sudah Selesai
+                  if ((_filterAktif == _FilterOrderRunner.semua ||
+                          _filterAktif == _FilterOrderRunner.selesai) &&
+                      selesai.isNotEmpty)
+                    ..._bagian(context, 'Sudah selesai', selesai),
+
+                  TombolMuatLagi(
+                    halaman: halaman,
+                    ukuranProvider: ukuranOrderRunnerProvider,
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
             );
           },
         ),
@@ -137,11 +220,6 @@ class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
     );
   }
 
-  /// Tawaran yang sudah dikirim dan belum berakhir.
-  ///
-  /// Berdiri paling atas, di atas pekerjaan yang sedang dikerjakan, karena inilah
-  /// satu-satunya bagian di layar ini yang isinya sedang menunggu orang lain dan
-  /// bisa berubah tanpa runner melakukan apa-apa.
   List<Widget> _bagianTawaran(
     BuildContext context,
     WidgetRef ref,
@@ -151,24 +229,36 @@ class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
 
     return [
       Padding(
-        padding: const EdgeInsets.only(bottom: AppTheme.spasiKecil),
-        child: Text(
-          'Tawaranku (${orders.length})',
-          style: Theme.of(
-            context,
-          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Row(
+          children: [
+            Container(
+              width: 4,
+              height: 16,
+              decoration: BoxDecoration(
+                color: const Color(0xFFDB2777),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Tawaranku (${orders.length})',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF111827),
+              ),
+            ),
+          ],
         ),
       ),
       for (final order in orders)
         if (_tawaranHidup(order, runnerId) case final penawaran?)
           Padding(
-            padding: const EdgeInsets.only(bottom: AppTheme.spasiKecil),
+            padding: const EdgeInsets.only(bottom: 12),
             child: KartuTawaranRunner(
               order: order,
               penawaran: penawaran,
-              // Yang sudah disetujui tidak menawarkan tombol tarik sama sekali,
-              // bukan tombol yang ditekan lalu dijawab galat: server menolaknya
-              // karena harga ordernya sudah ditetapkan dari tawaran ini.
               onTarik: penawaran.status == OfferStatus.disetujui
                   ? null
                   : () => _tarikTawaran(context, ref, order, penawaran),
@@ -176,16 +266,10 @@ class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
               onChat: () => context.push(Rute.chatOrderRunner(order.id)),
             ),
           ),
-      const SizedBox(height: AppTheme.spasiSedang),
+      const SizedBox(height: 12),
     ];
   }
 
-  /// Tawaran runner ini yang masih hidup di sebuah order, atau `null` kalau
-  /// datanya tidak seperti yang diharapkan.
-  ///
-  /// Daftar dari server sudah menjamin ada satu, tapi menggambar kartu tanpa
-  /// tawarannya berarti menampilkan harga kosong; melewatinya lebih jujur daripada
-  /// menebak.
   static OrderOffer? _tawaranHidup(Order order, String? runnerId) => order
       .offers
       .where(
@@ -267,19 +351,38 @@ class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
     void Function(Order order)? onLepas,
     bool Function(Order order)? lepasSedangDiproses,
   }) {
+    final warnaAksen = judul.contains('dikerjakan')
+        ? const Color(0xFF00AA13)
+        : const Color(0xFF6B7280);
+
     return [
       Padding(
-        padding: const EdgeInsets.only(bottom: AppTheme.spasiKecil),
-        child: Text(
-          '$judul (${orders.length})',
-          style: Theme.of(
-            context,
-          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Row(
+          children: [
+            Container(
+              width: 4,
+              height: 16,
+              decoration: BoxDecoration(
+                color: warnaAksen,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '$judul (${orders.length})',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF111827),
+              ),
+            ),
+          ],
         ),
       ),
       for (final order in orders)
         Padding(
-          padding: const EdgeInsets.only(bottom: AppTheme.spasiKecil),
+          padding: const EdgeInsets.only(bottom: 12),
           child: KartuOrderRunner(
             order: order,
             onSelesaikan: onSelesaikan == null
@@ -290,16 +393,10 @@ class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
             onChat: () => context.push(Rute.chatOrderRunner(order.id)),
           ),
         ),
-      const SizedBox(height: AppTheme.spasiSedang),
+      const SizedBox(height: 12),
     ];
   }
 
-  /// Runner mundur dari satu order, dan order itu kembali dicari runner lain.
-  ///
-  /// Alasannya diminta, bukan opsional. Yang dilepas adalah pekerjaan yang sudah
-  /// dibayar dan sudah ditunggu orang, dan klien yang melihat ordernya mundur
-  /// sendiri dari "dikerjakan" jadi "mencari runner" tanpa satu kalimat pun akan
-  /// menyimpulkan sistemnya rusak.
   Future<void> _lepas(BuildContext context, WidgetRef ref, Order order) async {
     final alasan = await showDialog<String>(
       context: context,
@@ -360,10 +457,11 @@ class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
     final ditutup = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      // Pegangan seret bawaan Material, bukan gambar sendiri. Tanpa itu satu-
-      // satunya cara menutup lembar ini adalah menekan latar gelap di atasnya,
-      // dan itu hal yang harus ditebak, bukan hal yang terlihat.
       showDragHandle: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (context) => LembarSelesaikanOrder(order: order),
     );
 
@@ -376,13 +474,82 @@ class _OrderSayaRunnerScreenState extends ConsumerState<OrderSayaRunnerScreen> {
   }
 }
 
-/// Melepas order menuntut alasan, bukan cuma tombol.
-///
-/// Bentuknya sengaja sama dengan dialog nego di sisi klien: satu kalimat yang
-/// menjelaskan ke mana alasannya pergi, satu kolom teks, dan tombol kirim yang mati
-/// selama kolomnya kosong. Runner yang tidak bisa menjelaskan kenapa ia mundur
-/// meninggalkan klien menebak-nebak, dan menebak-nebak itulah yang membuat orang
-/// kembali menelepon lewat WhatsApp.
+/// Chip filter horisontal Aloha Gojek
+class _FilterChipAloha extends StatelessWidget {
+  const _FilterChipAloha({
+    required this.label,
+    required this.total,
+    required this.aktif,
+    required this.onTap,
+  });
+
+  final String label;
+  final int total;
+  final bool aktif;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: aktif ? const Color(0xFF00AA13) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: aktif ? const Color(0xFF00AA13) : const Color(0xFFE5E7EB),
+            width: 1,
+          ),
+          boxShadow: aktif
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF00AA13).withValues(alpha: 0.25),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: aktif ? FontWeight.w800 : FontWeight.w600,
+                color: aktif ? Colors.white : const Color(0xFF4B5563),
+              ),
+            ),
+            if (total > 0) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                decoration: BoxDecoration(
+                  color: aktif
+                      ? Colors.white.withValues(alpha: 0.25)
+                      : const Color(0xFFF3F4F6),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$total',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    color: aktif ? Colors.white : const Color(0xFF6B7280),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _DialogLepasOrder extends StatefulWidget {
   const _DialogLepasOrder();
 
@@ -402,7 +569,11 @@ class _DialogLepasOrderState extends State<_DialogLepasOrder> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Lepas order ini?'),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Text(
+        'Lepas order ini?',
+        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+      ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -410,6 +581,7 @@ class _DialogLepasOrderState extends State<_DialogLepasOrder> {
           const Text(
             'Ordernya kembali dicari runner lain, dan uang klien tetap aman. '
             'Tulis alasanmu; kalimat ini yang dibaca klien di chat ordernya.',
+            style: TextStyle(fontSize: 13, color: Color(0xFF4B5563)),
           ),
           const SizedBox(height: AppTheme.spasiSedang),
           TextField(
@@ -419,22 +591,37 @@ class _DialogLepasOrderState extends State<_DialogLepasOrder> {
             maxLines: 3,
             minLines: 2,
             textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               hintText: 'Maaf, motor saya mogok di jalan.',
+              filled: true,
+              fillColor: const Color(0xFFF9FAFB),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+              ),
             ),
             onChanged: (_) => setState(() {}),
           ),
         ],
       ),
+      actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Batal'),
+          child: const Text('Batal', style: TextStyle(color: Color(0xFF6B7280))),
         ),
-        TextButton(
+        FilledButton(
           onPressed: _controller.text.trim().isEmpty
               ? null
               : () => Navigator.of(context).pop(_controller.text.trim()),
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFFEF4444),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
           child: const Text('Lepas'),
         ),
       ],
@@ -442,22 +629,12 @@ class _DialogLepasOrderState extends State<_DialogLepasOrder> {
   }
 }
 
-/// Hasil dialog tarik tawaran: alasan yang diisi, atau kosong kalau tidak diisi.
-///
-/// Dibungkus, bukan dikembalikan sebagai `String?`, karena `null` sudah dipakai untuk
-/// arti yang berbeda: dialog yang ditutup tanpa menarik apa pun.
 class _HasilTarik {
   const _HasilTarik(this.alasan);
 
   final String? alasan;
 }
 
-/// Menarik tawaran boleh tanpa alasan.
-///
-/// Beda dari dialog lepas order dan minta pembatalan, yang keduanya menuntut alasan.
-/// Yang ditarik di sini tawaran yang belum diterima siapa pun, jadi belum ada
-/// komitmen yang dibatalkan, dan alasan yang paling sering sebenarnya cuma "salah
-/// ketik" — memaksanya diketik tidak menolong siapa pun.
 class _DialogTarikTawaran extends StatefulWidget {
   const _DialogTarikTawaran();
 
@@ -477,7 +654,11 @@ class _DialogTarikTawaranState extends State<_DialogTarikTawaran> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Tarik tawaran ini?'),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Text(
+        'Tarik tawaran ini?',
+        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+      ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -486,6 +667,7 @@ class _DialogTarikTawaranState extends State<_DialogTarikTawaran> {
             'Tawaranmu dicabut dan ordernya muncul lagi di Order Masuk, jadi kamu '
             'bisa menawar ulang dengan angka yang benar. Boleh menulis alasan buat '
             'klien, boleh juga tidak.',
+            style: TextStyle(fontSize: 13, color: Color(0xFF4B5563)),
           ),
           const SizedBox(height: AppTheme.spasiSedang),
           TextField(
@@ -495,24 +677,39 @@ class _DialogTarikTawaranState extends State<_DialogTarikTawaran> {
             maxLines: 2,
             minLines: 1,
             textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               hintText: 'Maaf, saya salah ketik harganya. (opsional)',
+              filled: true,
+              fillColor: const Color(0xFFF9FAFB),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+              ),
             ),
           ),
         ],
       ),
+      actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Jangan'),
+          child: const Text('Jangan', style: TextStyle(color: Color(0xFF6B7280))),
         ),
-        TextButton(
+        FilledButton(
           onPressed: () {
             final alasan = _controller.text.trim();
             Navigator.of(
               context,
             ).pop(_HasilTarik(alasan.isEmpty ? null : alasan));
           },
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFF00AA13),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
           child: const Text('Tarik tawaran'),
         ),
       ],
