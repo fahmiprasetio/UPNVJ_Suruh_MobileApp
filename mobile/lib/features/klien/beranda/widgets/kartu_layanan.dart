@@ -237,9 +237,9 @@ class KartuLayanan extends StatelessWidget {
 /// ditekan. Merah dipakai untuk yang perlu diwaspadai, bukan untuk pintu
 /// masuk fitur utama.
 ///
-/// Yang membedakan pintu ini dari petak di atasnya tetap utuh, karena
-/// pembedanya memang bukan warna melainkan bentuk: bilah selebar layar
-/// melawan petak.
+/// Pintu layanan kustom / Jalur B di beranda klien dengan desain Gojek Aloha:
+/// berlatar kartu bersih dengan badge squircle hijau Gojek, chip penanda Jalur B,
+/// tipografi kontras tinggi, dan indikator panah aksi melingkar.
 class KartuPermintaanLain extends StatelessWidget {
   const KartuPermintaanLain({
     super.key,
@@ -253,58 +253,125 @@ class KartuPermintaanLain extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final skema = Theme.of(context).colorScheme;
-    final teks = Theme.of(context).textTheme;
-    // Wadah hijau, dan sama di kedua tema. Peran wadah memang yang dibuat
-    // Material untuk bidang selebar ini: ia sudah punya pasangan warna teksnya
-    // sendiri yang terbaca di terang maupun gelap, jadi tidak perlu dua cabang
-    // warna yang harus dijaga bersamaan.
-    final warnaPintu = skema.primaryContainer;
-    final warnaTeksPintu = skema.onPrimaryContainer;
+    final gelap = Theme.of(context).brightness == Brightness.dark;
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      color: warnaPintu,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppTheme.radiusKartu),
-        // Tanpa garis rambut abu: kartu ini sudah punya isian sendiri yang
-        // memisahkannya dari latar, dan garis netral di atas bidang berwarna
-        // terbaca sebagai sisa yang lupa dibuang.
-        side: BorderSide.none,
+    final warnaLatar = gelap ? skema.surfaceContainerHigh : Colors.white;
+    final warnaBorder = gelap
+        ? skema.outlineVariant.withValues(alpha: 0.3)
+        : const Color(0xFFEDF2ED);
+    final warnaJudul = gelap ? skema.onSurface : const Color(0xFF1F2937);
+    final warnaSubjudul =
+        gelap ? skema.onSurfaceVariant : const Color(0xFF6B7280);
+    final warnaBadgeLatar =
+        gelap ? const Color(0xFF1B381E) : const Color(0xFFE8F5E9);
+    final warnaAksen = const Color(0xFF00AA13);
+    final warnaTrailingLatar =
+        gelap ? skema.surfaceContainerHighest : const Color(0xFFF3F4F6);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: warnaLatar,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: warnaBorder, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spasiSedang),
-          child: Row(
-            children: [
-              Icon(layanan.icon, size: 28, color: warnaTeksPintu),
-              const SizedBox(width: AppTheme.spasiSedang),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      layanan.nama,
-                      style: teks.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: warnaTeksPintu,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      layanan.deskripsi,
-                      style: teks.bodySmall?.copyWith(color: warnaTeksPintu),
-                    ),
-                  ],
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: warnaBadgeLatar,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    layanan.icon,
+                    size: 22,
+                    color: warnaAksen,
+                  ),
                 ),
-              ),
-              const SizedBox(width: AppTheme.spasiKecil),
-              Icon(
-                Icons.arrow_forward_rounded,
-                size: 20,
-                color: warnaTeksPintu,
-              ),
-            ],
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              layanan.nama,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: warnaJudul,
+                                letterSpacing: -0.2,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: warnaBadgeLatar,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: const Text(
+                              'Jalur B',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF00AA13),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        layanan.deskripsi,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w400,
+                          color: warnaSubjudul,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: warnaTrailingLatar,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 18,
+                    color: Color(0xFF00AA13),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

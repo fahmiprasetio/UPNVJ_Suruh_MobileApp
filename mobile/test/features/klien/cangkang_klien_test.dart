@@ -44,7 +44,7 @@ void main() {
   ) async {
     await buka(tester);
 
-    expect(find.text('Mau disuruh apa hari ini?'), findsOneWidget);
+    expect(find.text('Mau dibantu apa hari ini?'), findsOneWidget);
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.text('Beranda'), findsOneWidget);
     expect(find.text('Pesanan'), findsOneWidget);
@@ -79,7 +79,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.text('Mau disuruh apa hari ini?', skipOffstage: false),
+      find.text('Mau dibantu apa hari ini?', skipOffstage: false),
       findsOneWidget,
     );
   });

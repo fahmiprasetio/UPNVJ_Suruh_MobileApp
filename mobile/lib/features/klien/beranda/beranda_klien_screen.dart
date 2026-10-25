@@ -248,7 +248,7 @@ class _KepalaBeranda extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Mau disuruh apa hari ini?',
+            'Mau dibantu apa hari ini?',
             style: teks.bodyMedium?.copyWith(
               // Bukan abu-abu. Teks sekunder di atas bidang berwarna disemir
               // dari warna latar depannya sendiri, supaya ia terbaca sebagai

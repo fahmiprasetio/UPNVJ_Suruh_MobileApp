@@ -135,7 +135,7 @@ void main() {
     // 'Order Masuk' kini muncul dua kali: judul layar dan label tab.
     expect(find.widgetWithText(AppBar, 'Order Masuk'), findsOneWidget);
     expect(find.widgetWithText(NavigationBar, 'Order Masuk'), findsOneWidget);
-    expect(find.text('Mau disuruh apa hari ini?'), findsNothing);
+    expect(find.text('Mau dibantu apa hari ini?'), findsNothing);
   });
 
   testWidgets(

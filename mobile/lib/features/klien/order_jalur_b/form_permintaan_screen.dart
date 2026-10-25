@@ -335,33 +335,19 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
               ),
               const SizedBox(width: 12),
               const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'DETAIL KEBUTUHAN',
-                      style: TextStyle(
-                        color: Color(0xFF00AA13),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Ceritakan bantuan yang kamu butuhkan',
-                      style: TextStyle(
-                        color: Color(0xFF6B7A6E),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  'DETAIL KEBUTUHAN',
+                  style: TextStyle(
+                    color: Color(0xFF00AA13),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           TextFormField(
             controller: _kebutuhanController,
             maxLength: BatasMasukan.deskripsi,
@@ -376,7 +362,6 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
             decoration: const InputDecoration(
               counterText: '',
               labelText: 'Jelaskan bantuan yang kamu butuhkan...',
-              hintText: 'Jelaskan bantuan yang kamu butuhkan...',
             ),
             validator: _validasiKebutuhan,
           ),
@@ -598,33 +583,19 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
               ),
               const SizedBox(width: 12),
               const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'TAWARAN HARGA AWAL',
-                      style: TextStyle(
-                        color: Color(0xFF00AA13),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Harga penawaran yang kamu buka untuk runner',
-                      style: TextStyle(
-                        color: Color(0xFF6B7A6E),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  'TAWARAN HARGA AWAL',
+                  style: TextStyle(
+                    color: Color(0xFF00AA13),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           TextFormField(
             controller: _hargaController,
             keyboardType: TextInputType.number,
@@ -635,7 +606,6 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
             ),
             decoration: const InputDecoration(
               labelText: 'Harga tawaran kamu',
-              hintText: 'Misal: 25000',
               prefixText: 'Rp ',
             ),
             validator: _validasiHarga,
@@ -681,32 +651,19 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
               ),
               const SizedBox(width: 12),
               const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'LOKASI PENGERJAAN',
-                      style: TextStyle(
-                        color: Color(0xFFFF7043),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Alamat tempat pengerjaan layanan',
-                      style: TextStyle(
-                        color: Color(0xFF6B7A6E),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  'LOKASI PENGERJAAN',
+                  style: TextStyle(
+                    color: Color(0xFFFF7043),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                  ),
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 14),
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -725,7 +682,6 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
                   decoration: const InputDecoration(
                     counterText: '',
                     labelText: 'Alamat tempat pengerjaan',
-                    hintText: 'Alamat tempat pengerjaan',
                   ),
                   validator: _validasiAlamat,
                 ),
