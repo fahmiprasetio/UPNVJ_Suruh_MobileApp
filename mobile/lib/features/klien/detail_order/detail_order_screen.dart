@@ -261,7 +261,6 @@ class _LiveTrackingAlohaViewState
   LatLng? _posisiRunnerRuteTerakhir;
 
   List<LatLng> _titikRuteRunner = [];
-  List<LatLng> _titikRuteJemputTujuan = [];
   bool _sedangMemuatRute = false;
 
   double _ukuranSheet = 0.42;
@@ -299,10 +298,6 @@ class _LiveTrackingAlohaViewState
 
     _titikRuteRunner = [_posisiRunner!, _posisiJemput];
     _muatRuteRunner(_posisiRunner!);
-
-    // Jalur sekunder jemput -> tujuan (garis abu-abu netral putus-putus, BUKAN hijau)
-    _titikRuteJemputTujuan = [_posisiJemput, _posisiTujuan];
-    _muatRuteJemputTujuan();
   }
 
   void _onSheetBerubah() {
@@ -339,18 +334,6 @@ class _LiveTrackingAlohaViewState
         curve: Curves.easeOutCubic,
       );
     }
-  }
-
-  Future<void> _muatRuteJemputTujuan() async {
-    try {
-      final titik =
-          await JarakRuteOsrm.ambilTitikRute(_posisiJemput, _posisiTujuan);
-      if (mounted && titik.isNotEmpty) {
-        setState(() {
-          _titikRuteJemputTujuan = titik;
-        });
-      }
-    } catch (_) {}
   }
 
   Future<void> _muatRuteRunner(LatLng posRunner) async {
@@ -409,14 +392,13 @@ class _LiveTrackingAlohaViewState
   }
 
   void _tampilkanSemuaRute() {
+    final runner = _posisiRunner ?? _posisiJemput;
     _mapController.move(
       LatLng(
-        (_posisiJemput.latitude + (_posisiRunner ?? _posisiTujuan).latitude) /
-            2,
-        (_posisiJemput.longitude + (_posisiRunner ?? _posisiTujuan).longitude) /
-            2,
+        (_posisiJemput.latitude + runner.latitude) / 2,
+        (_posisiJemput.longitude + runner.longitude) / 2,
       ),
-      14.2,
+      14.8,
     );
   }
 
@@ -639,20 +621,9 @@ class _LiveTrackingAlohaViewState
               ),
 
               // JALUR TRACKING HIJAU GOJEK ALOHA:
-              // 1. JALUR UTAMA (HIJAU GOJEK): RUNNER MENUJU KLIEN (JEMPUT)
-              // 2. JALUR SEKUNDER (ABU-ABU NETRAL PUTUS-PUTUS): JEMPUT MENUJU TUJUAN
+              // Rute pelacakan langsung antara Runner dan Klien (Titik Jemput)
               PolylineLayer(
                 polylines: [
-                  // Jalur Sekunder: Jemput ke Tujuan (garis abu-abu netral putus-putus, BUKAN hijau)
-                  if (_titikRuteJemputTujuan.isNotEmpty)
-                    Polyline(
-                      points: _titikRuteJemputTujuan,
-                      color: const Color(0xFF94A3B8).withValues(alpha: 0.75),
-                      strokeWidth: 3.5,
-                      pattern: StrokePattern.dashed(segments: const [6, 6]),
-                      strokeCap: StrokeCap.round,
-                      strokeJoin: StrokeJoin.round,
-                    ),
 
                   // Jalur Utama Hijau Gojek Aloha: Runner menuju Klien (Jemput)
                   // Casing batas luar garis hijau tua pekat
