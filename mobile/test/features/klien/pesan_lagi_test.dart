@@ -161,6 +161,7 @@ void main() {
     final lama = seed('SRH-0409').copyWith(
       serviceType: ServiceType.permintaanLain,
       status: OrderStatus.selesai,
+      jadwalMulai: DateTime(2026, 1, 1, 9),
     );
     await bukaRiwayat(tester, [lama]);
 
