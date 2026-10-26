@@ -159,8 +159,8 @@ void main() {
 
     // Tombolnya hidup sejak awal, tidak menunggu kolomnya diisi. Alasan yang paling
     // sering sebenarnya cuma "salah ketik"; memaksanya diketik tidak menolong siapa pun.
-    final tombol = find.widgetWithText(TextButton, 'Tarik tawaran').last;
-    expect(tester.widget<TextButton>(tombol).onPressed, isNotNull);
+    final tombol = find.widgetWithText(FilledButton, 'Tarik tawaran');
+    expect(tester.widget<FilledButton>(tombol).onPressed, isNotNull);
 
     await tester.tap(tombol);
     await tester.pumpAndSettle();
@@ -173,7 +173,7 @@ void main() {
 
     await tester.tap(find.text('Tarik tawaran'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(TextButton, 'Tarik tawaran').last);
+    await tester.tap(find.widgetWithText(FilledButton, 'Tarik tawaran'));
     await tester.pump();
 
     expect(

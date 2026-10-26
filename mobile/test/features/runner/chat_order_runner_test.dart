@@ -9,6 +9,7 @@ import 'package:upnvj_suruh/data/fake/seed_data.dart';
 import 'package:upnvj_suruh/domain/enums.dart';
 import 'package:upnvj_suruh/domain/models/order_message.dart';
 import 'package:upnvj_suruh/core/providers/repository_providers.dart';
+import 'package:upnvj_suruh/features/runner/order_saya/widgets/kartu_order_runner.dart';
 import '../../support/tiruan.dart';
 
 void main() {
@@ -64,7 +65,7 @@ void main() {
 
     final kartu = find.ancestor(
       of: find.textContaining(kodeOrder),
-      matching: find.byType(Card),
+      matching: find.byType(KartuOrderRunner),
     );
     await tester.tap(
       find.descendant(of: kartu, matching: find.textContaining('Chat Klien')),

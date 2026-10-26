@@ -70,10 +70,17 @@ void main() {
   /// `hintText`, dan hint dibangun sebagai `Text` yang berbunyi sama walaupun
   /// kolomnya kosong. `find.text` tidak bisa membedakan keduanya, jadi ia bisa
   /// lulus untuk form yang sama sekali tidak terisi.
-  String isiKolom(WidgetTester tester, String label) => tester
-      .widget<TextField>(find.widgetWithText(TextField, label))
-      .controller!
-      .text;
+  String isiKolom(WidgetTester tester, String label) {
+    final textField = find.widgetWithText(TextField, label);
+    if (textField.evaluate().isNotEmpty) {
+      return tester.widget<TextField>(textField).controller!.text;
+    }
+
+    return tester
+        .widget<TextFormField>(find.widgetWithText(TextFormField, label))
+        .controller!
+        .text;
+  }
 
   testWidgets('cuma order yang sudah kelar yang bisa dipesan lagi', (
     tester,
@@ -151,7 +158,10 @@ void main() {
   testWidgets('pesan lagi Jalur B menyalin isian, tapi tidak jadwal lamanya', (
     tester,
   ) async {
-    final lama = seed('SRH-0409').copyWith(status: OrderStatus.selesai);
+    final lama = seed('SRH-0409').copyWith(
+      serviceType: ServiceType.permintaanLain,
+      status: OrderStatus.selesai,
+    );
     await bukaRiwayat(tester, [lama]);
 
     await tester.tap(find.text('Pesan lagi'));

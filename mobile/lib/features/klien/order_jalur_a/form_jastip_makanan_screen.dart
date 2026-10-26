@@ -19,7 +19,7 @@ import '../peta/pemilih_lokasi_screen.dart';
 ///
 /// Menyediakan pemilihan makanan/minuman dengan quick chips, pemilihan lokasi
 /// warung & lokasi pengantaran dengan peta interaktif terhubung (connected route),
-/// rincian ongkos jasa titip flat Rp 8.000, dan edukasi pembayaran harga fisik makanan.
+/// rincian ongkos jasa titip flat Rp 5.000, dan edukasi pembayaran harga fisik makanan.
 class FormJastipMakananScreen extends ConsumerStatefulWidget {
   const FormJastipMakananScreen({super.key, this.contoh});
 
@@ -248,7 +248,7 @@ class _FormJastipMakananScreenState
                 Icon(Icons.flash_on_rounded, size: 14, color: Colors.white),
                 SizedBox(width: 4),
                 Text(
-                  'Flat 8rb',
+                  'Flat 5rb',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 11.5,
@@ -535,7 +535,6 @@ class _FormJastipMakananScreenState
                         isDense: true,
                         contentPadding: EdgeInsets.symmetric(vertical: 4),
                         border: InputBorder.none,
-                        labelText: 'Tempat antar / kos / kampus',
                         hintText: 'Tempat antar / kos / kampus',
                         hintStyle: TextStyle(
                           color: Color(0xFF9EA8A0),

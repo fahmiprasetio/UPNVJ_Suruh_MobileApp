@@ -559,6 +559,27 @@ var asalDiizinkan = builder.Configuration
     .GetSection("Cors:AsalDiizinkan")
     .Get<string[]>() ?? [];
 
+static bool AsalLanPengembanganDiizinkan(string asal)
+{
+    if (!Uri.TryCreate(asal, UriKind.Absolute, out var uri)
+        || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+    {
+        return false;
+    }
+
+    if (uri.IsLoopback) return true;
+    if (!IPAddress.TryParse(uri.Host, out var alamat)
+        || alamat.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
+    {
+        return false;
+    }
+
+    var bagian = alamat.GetAddressBytes();
+    return bagian[0] == 10
+        || (bagian[0] == 172 && bagian[1] is >= 16 and <= 31)
+        || (bagian[0] == 192 && bagian[1] == 168);
+}
+
 builder.Services.AddCors(opsi => opsi.AddDefaultPolicy(kebijakan =>
 {
     kebijakan
@@ -567,7 +588,7 @@ builder.Services.AddCors(opsi => opsi.AddDefaultPolicy(kebijakan =>
             // Loopback diizinkan hanya saat mengembangkan. Di server sungguhan, "localhost"
             // adalah asal milik peramban orang yang membuka halaman di mesinnya sendiri,
             // bukan asal milik kita.
-            || (builder.Environment.IsDevelopment() && new Uri(asal).IsLoopback))
+            || (builder.Environment.IsDevelopment() && AsalLanPengembanganDiizinkan(asal)))
         .AllowAnyHeader()
         .AllowAnyMethod();
 }));

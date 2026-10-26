@@ -326,13 +326,13 @@ void main() {
       await tester.pumpAndSettle();
 
       // Tombol di dialognya, bukan tombol di kartu yang tadi ditekan.
-      final tombolLepas = find.widgetWithText(TextButton, 'Lepas');
-      expect(tester.widget<TextButton>(tombolLepas).onPressed, isNull);
+      final tombolLepas = find.widgetWithText(FilledButton, 'Lepas');
+      expect(tester.widget<FilledButton>(tombolLepas).onPressed, isNull);
 
       await tester.enterText(find.byType(TextField), 'Motor saya mogok.');
       await tester.pump();
 
-      expect(tester.widget<TextButton>(tombolLepas).onPressed, isNotNull);
+      expect(tester.widget<FilledButton>(tombolLepas).onPressed, isNotNull);
     });
 
     testWidgets('tombol lepas terkunci selama request berjalan', (
@@ -344,7 +344,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'Motor saya mogok.');
       await tester.pump();
-      await tester.tap(find.widgetWithText(TextButton, 'Lepas'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Lepas'));
       await tester.pump();
 
       expect(
@@ -369,7 +369,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'Motor saya mogok.');
       await tester.pump();
-      await tester.tap(find.widgetWithText(TextButton, 'Lepas'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Lepas'));
       await tester.pumpAndSettle();
 
       expect(find.text('Sedang dikerjakan (1)'), findsNothing);

@@ -14,7 +14,7 @@ public static class TarifConfig
     public const double AnjemJarakMinimalKm = 0.5;
     public const double AnjemJarakMaksimalKm = 15;
 
-    public const decimal JastipMakananFee = 8000m;
+    public const decimal JastipMakananFee = 5000m;
 
     public const decimal JastipBarangFee = 10000m;
     public const decimal JastipBarangTarifPerKm = 2000m;

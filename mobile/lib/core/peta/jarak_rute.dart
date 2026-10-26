@@ -42,4 +42,47 @@ class JarakRuteOsrm {
       return null;
     }
   }
+
+  /// Mengambil daftar koordinat [LatLng] jalan riil lewat OSRM (overview=full, geometries=geojson).
+  /// Mengembalikan list titik koordinat rute jalan raya, atau fallback langsung [[dari, ke]] jika offline/gagal.
+  static Future<List<LatLng>> ambilTitikRute(LatLng dari, LatLng ke) async {
+    final uri = Uri.https(
+      'router.project-osrm.org',
+      '/route/v1/driving/'
+          '${dari.longitude},${dari.latitude};'
+          '${ke.longitude},${ke.latitude}',
+      {
+        'overview': 'full',
+        'geometries': 'geojson',
+        'alternatives': 'false',
+        'steps': 'false',
+      },
+    );
+
+    try {
+      final jawaban = await http.get(uri).timeout(const Duration(seconds: 6));
+      if (jawaban.statusCode == 200) {
+        final isi = jsonDecode(jawaban.body) as Map<String, dynamic>;
+        if (isi['code'] == 'Ok') {
+          final rute =
+              (isi['routes'] as List<dynamic>).first as Map<String, dynamic>;
+          final geometry = rute['geometry'] as Map<String, dynamic>;
+          final coordinates = geometry['coordinates'] as List<dynamic>;
+
+          final hasil = coordinates.map((titik) {
+            final pair = titik as List<dynamic>;
+            final lon = (pair[0] as num).toDouble();
+            final lat = (pair[1] as num).toDouble();
+            return LatLng(lat, lon);
+          }).toList();
+
+          if (hasil.isNotEmpty) return hasil;
+        }
+      }
+    } catch (_) {
+      // Fallback diam-diam jika rute tidak terhubung atau server publik lambat
+    }
+
+    return [dari, ke];
+  }
 }

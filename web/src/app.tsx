@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { PerluAdmin } from './auth/penjaga_admin';
 import { PenyediaSesi } from './auth/sesi';
+import { PenyediaTema } from './inti/tema';
 import { Rangka } from './komponen/rangka';
 import { HalamanDetailOrder } from './halaman/detail_order';
 import { HalamanKelolaPeran } from './halaman/kelola_peran';
@@ -22,8 +23,9 @@ import { HalamanRekapPembayaran } from './halaman/rekap_pembayaran';
  */
 export function App() {
   return (
-    <PenyediaSesi>
-      <Routes>
+    <PenyediaTema>
+      <PenyediaSesi>
+        <Routes>
         <Route path="/masuk" element={<HalamanMasuk />} />
 
         <Route
@@ -46,5 +48,6 @@ export function App() {
         <Route path="*" element={<Navigate to="/order" replace />} />
       </Routes>
     </PenyediaSesi>
+  </PenyediaTema>
   );
 }

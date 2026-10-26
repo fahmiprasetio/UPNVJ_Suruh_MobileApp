@@ -173,7 +173,7 @@ public class AuthController(
 
         // Tantangan membuktikan password sudah benar pada langkah sebelumnya. OTP yang
         // diminta langsung lewat minta-kode tetap berguna untuk aksi sensitif akun, tetapi
-        // tidak dapat dipakai sendirian untuk melewati password saat masuk.
+        // tidak dapat dipakai sendirian untuk melewati password saat masuk, termasuk admin.
         if (user is null
             || !penyimpanTantanganMasuk.Cocok(noHp, permintaan.Tantangan)
             || !penyimpanOtp.Pakai(noHp, permintaan.Kode)

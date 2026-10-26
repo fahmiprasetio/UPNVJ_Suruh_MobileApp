@@ -21,7 +21,7 @@ class TarifConfig {
   static const double anjemJarakMaksimalKm = 15;
 
   // --- Jastip Makanan (placeholder: fee tetap, harga barang dibayar terpisah) ---
-  static const int jastipMakananFee = 8000;
+  static const int jastipMakananFee = 5000;
 
   // --- Jastip Barang (placeholder: fee tetap + ongkos jarak) ---
   static const int jastipBarangFee = 10000;

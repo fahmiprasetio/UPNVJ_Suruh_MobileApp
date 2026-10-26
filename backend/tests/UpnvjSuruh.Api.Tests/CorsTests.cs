@@ -59,6 +59,30 @@ public class CorsTests(ApiFactory pabrik) : IClassFixture<ApiFactory>
         Assert.True(Mengizinkan(jawaban));
     }
 
+    [Theory]
+    [InlineData("http://10.20.30.40:5174")]
+    [InlineData("http://172.16.0.1:5174")]
+    [InlineData("http://172.31.255.254:5174")]
+    [InlineData("http://192.168.100.22:5174")]
+    public async Task AlamatLanPrivatDiizinkanSaatMengembangkan(string asal)
+    {
+        var jawaban = await PreflightAsync(pabrik.CreateClient(), asal);
+
+        Assert.True(Mengizinkan(jawaban));
+    }
+
+    [Theory]
+    [InlineData("http://10.jahat.example:5174")]
+    [InlineData("http://192.168.jahat.example:5174")]
+    [InlineData("http://172.15.0.1:5174")]
+    [InlineData("http://172.32.0.1:5174")]
+    public async Task HostnameMiripDanAlamatPublikTidakDiizinkan(string asal)
+    {
+        var jawaban = await PreflightAsync(pabrik.CreateClient(), asal);
+
+        Assert.False(Mengizinkan(jawaban));
+    }
+
     /// <summary>
     /// Yang paling penting tidak ada.
     ///

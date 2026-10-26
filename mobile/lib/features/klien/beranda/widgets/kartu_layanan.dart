@@ -258,26 +258,42 @@ class KartuPermintaanLain extends StatelessWidget {
     final warnaLatar = gelap ? skema.surfaceContainerHigh : Colors.white;
     final warnaBorder = gelap
         ? skema.outlineVariant.withValues(alpha: 0.3)
-        : const Color(0xFFEDF2ED);
-    final warnaJudul = gelap ? skema.onSurface : const Color(0xFF1F2937);
+        : const Color(0xFFBCE3C4);
+    final warnaJudul = gelap ? skema.onSurface : const Color(0xFF13381B);
     final warnaSubjudul =
-        gelap ? skema.onSurfaceVariant : const Color(0xFF6B7280);
+        gelap ? skema.onSurfaceVariant : const Color(0xFF4B6350);
     final warnaBadgeLatar =
-        gelap ? const Color(0xFF1B381E) : const Color(0xFFE8F5E9);
+        gelap ? const Color(0xFF1B381E) : const Color(0xFFE8F8EA);
     final warnaAksen = const Color(0xFF00AA13);
     final warnaTrailingLatar =
-        gelap ? skema.surfaceContainerHighest : const Color(0xFFF3F4F6);
+        gelap ? skema.surfaceContainerHighest : const Color(0xFF00AA13);
+    final warnaTrailingIcon = gelap ? const Color(0xFF00AA13) : Colors.white;
 
     return Container(
       decoration: BoxDecoration(
-        color: warnaLatar,
+        color: gelap ? warnaLatar : null,
+        gradient: gelap
+            ? null
+            : const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFFFFFFFF),
+                  Color(0xFFF1F8F2),
+                ],
+              ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: warnaBorder, width: 1.2),
+        border: Border.all(color: warnaBorder, width: 1.5),
         boxShadow: [
           BoxShadow(
+            color: const Color(0xFF00AA13).withValues(alpha: 0.08),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -296,6 +312,12 @@ class KartuPermintaanLain extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: warnaBadgeLatar,
                     borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: gelap
+                          ? Colors.transparent
+                          : const Color(0xFFCEEBCE),
+                      width: 1,
+                    ),
                   ),
                   child: Icon(
                     layanan.icon,
@@ -309,40 +331,15 @@ class KartuPermintaanLain extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              layanan.nama,
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: warnaJudul,
-                                letterSpacing: -0.2,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 7,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: warnaBadgeLatar,
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: const Text(
-                              'Jalur B',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF00AA13),
-                              ),
-                            ),
-                          ),
-                        ],
+                      Text(
+                        layanan.nama,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: warnaJudul,
+                          letterSpacing: -0.2,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 3),
                       Text(
@@ -358,16 +355,26 @@ class KartuPermintaanLain extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 Container(
-                  width: 34,
-                  height: 34,
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
                     color: warnaTrailingLatar,
                     shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: (gelap
+                                ? Colors.transparent
+                                : const Color(0xFF00AA13))
+                            .withValues(alpha: 0.25),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.arrow_forward_rounded,
                     size: 18,
-                    color: Color(0xFF00AA13),
+                    color: warnaTrailingIcon,
                   ),
                 ),
               ],

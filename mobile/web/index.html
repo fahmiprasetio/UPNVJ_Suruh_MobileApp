@@ -40,104 +40,104 @@
     tanpa penguncian posisi tetap yang merusak kalkulasi visualViewport di mobile simulator/iframe.
   -->
   <style>
-    :root:not(#_never_match_),
-    html:root:not(#_never_match_),
     html, body {
       margin: 0 !important;
       padding: 0 !important;
       width: 100% !important;
       height: 100% !important;
-      height: 100dvh !important;
+      min-width: 100% !important;
+      min-height: 100% !important;
       overflow: hidden !important;
-      overflow-x: hidden !important;
-      background-color: #000000 !important;
+      background-color: #F8F9FA !important;
       -webkit-text-size-adjust: 100% !important;
-      touch-action: manipulation !important;
-      zoom: 1 !important;
-      transform: none !important;
-      contain: layout size !important;
+      touch-action: none !important;
+      overscroll-behavior: none !important;
+      user-select: none !important;
+      -webkit-user-select: none !important;
       box-sizing: border-box !important;
     }
 
-    flutter-view {
+    flutter-view,
+    flt-glass-pane,
+    flt-scene-host,
+    flt-scene,
+    canvas {
       display: block !important;
-      width: 100% !important;
-      height: 100% !important;
-      position: absolute !important;
+      position: fixed !important;
       top: 0 !important;
       left: 0 !important;
       right: 0 !important;
       bottom: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      min-width: 100% !important;
+      min-height: 100% !important;
       inset: 0 !important;
+      touch-action: none !important;
+      overscroll-behavior: none !important;
     }
   </style>
 
   <script>
-    // Optimasi performa tinggi untuk Mobile Simulator & browser mobile:
-    // Mencegah freeze/lag dengan penanganan shadow DOM satu kali tanpa infinite loop.
     (function() {
-      function patchShadow(view) {
-        if (!view || !view.shadowRoot || view.shadowRoot.querySelector('#flt-mobile-sim-fix')) return;
-        var style = document.createElement('style');
-        style.id = 'flt-mobile-sim-fix';
-        style.textContent = [
-          'flt-scene-host, flt-glass-pane, flt-scene {',
-          '  width: 100% !important;',
-          '  height: 100% !important;',
-          '  min-width: 100% !important;',
-          '  min-height: 100% !important;',
-          '  max-width: 100% !important;',
-          '  max-height: 100% !important;',
-          '  position: absolute !important;',
-          '  inset: 0 !important;',
-          '}',
-          'canvas {',
-          '  width: 100% !important;',
-          '  height: 100% !important;',
-          '  position: absolute !important;',
-          '  inset: 0 !important;',
-          '}'
-        ].join('\n');
-        view.shadowRoot.appendChild(style);
-      }
-
-      function setupAllViews() {
-        var views = document.querySelectorAll('flutter-view');
-        for (var i = 0; i < views.length; i++) {
-          patchShadow(views[i]);
-        }
-      }
-
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', setupAllViews);
-      } else {
-        setupAllViews();
-      }
-
-      // Observer ringan hanya saat elemen flutter-view pertama kali dimasukkan ke DOM
-      var observer = new MutationObserver(function(mutations) {
-        for (var i = 0; i < mutations.length; i++) {
-          var added = mutations[i].addedNodes;
-          for (var j = 0; j < added.length; j++) {
-            var node = added[j];
-            if (node.nodeType === 1) {
-              if (node.tagName === 'FLUTTER-VIEW') {
-                patchShadow(node);
-              } else if (node.querySelector) {
-                var v = node.querySelector('flutter-view');
-                if (v) patchShadow(v);
-              }
-            }
+      // Injeksi stylesheet ke shadowRoot flt-glass-pane agar canvas WebGL / CanvasKit selalu 100%
+      function injectGlassPaneFix() {
+        var glassPanes = document.querySelectorAll('flt-glass-pane');
+        for (var i = 0; i < glassPanes.length; i++) {
+          var gp = glassPanes[i];
+          if (gp && gp.shadowRoot && !gp.shadowRoot.querySelector('#flt-viewport-fix')) {
+            var st = document.createElement('style');
+            st.id = 'flt-viewport-fix';
+            st.textContent = [
+              'flt-scene-host, flt-scene {',
+              '  width: 100% !important;',
+              '  height: 100% !important;',
+              '  position: absolute !important;',
+              '  inset: 0 !important;',
+              '  touch-action: none !important;',
+              '}',
+              'canvas {',
+              '  width: 100% !important;',
+              '  height: 100% !important;',
+              '  position: absolute !important;',
+              '  inset: 0 !important;',
+              '  touch-action: none !important;',
+              '}'
+            ].join('\n');
+            gp.shadowRoot.appendChild(st);
           }
         }
+      }
+
+      function notifyResize() {
+        injectGlassPaneFix();
+        window.dispatchEvent(new Event('resize'));
+      }
+
+      // Sinkronisasi berkala di detik-detik awal bootstrap Flutter & ekstensi Mobile Simulator
+      var intervals = [50, 150, 300, 600, 1000, 1800, 3000];
+      intervals.forEach(function(delay) {
+        setTimeout(notifyResize, delay);
+      });
+
+      window.addEventListener('resize', injectGlassPaneFix);
+      window.addEventListener('orientationchange', function() {
+        setTimeout(notifyResize, 100);
+      });
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', notifyResize);
+      }
+
+      // Observer saat flt-glass-pane dimasukkan ke DOM
+      var observer = new MutationObserver(function() {
+        injectGlassPaneFix();
       });
       observer.observe(document.documentElement, { childList: true, subtree: true });
 
-      // Putus observer setelah 8 detik agar 0% CPU overhead setelah Flutter selesai bootstrap
       setTimeout(function() {
-        setupAllViews();
+        injectGlassPaneFix();
         observer.disconnect();
-      }, 8000);
+      }, 10000);
     })();
   </script>
 </head>

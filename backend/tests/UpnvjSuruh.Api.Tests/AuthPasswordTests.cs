@@ -184,6 +184,26 @@ public class AuthPasswordTests(DatabaseApiFactory pabrik) : IClassFixture<Databa
     }
 
     [Fact]
+    public async Task AdminTidakDapatMelewatiPasswordDenganOtpSaja()
+    {
+        var noHp = NomorBaru();
+        var admin = await BuatAkunAsync(noHp, PasswordUji);
+        using (var lingkup = pabrik.Services.CreateScope())
+        {
+            var db = lingkup.ServiceProvider.GetRequiredService<AppDbContext>();
+            var tersimpan = await db.Users.SingleAsync(u => u.Id == admin.Id);
+            tersimpan.Roles = [UserRole.Klien, UserRole.Admin];
+            await db.SaveChangesAsync();
+        }
+
+        var jawaban = await pabrik.CreateClient().PostAsJsonAsync(
+            "/api/auth/masuk",
+            new { NoHp = noHp, Kode = TanamKodeOtp(noHp) });
+
+        Assert.Equal(HttpStatusCode.BadRequest, jawaban.StatusCode);
+    }
+
+    [Fact]
     public async Task PasswordSalahTidakMengirimOtpDanTidakMembocorkanAkun()
     {
         var noHp = NomorBaru();

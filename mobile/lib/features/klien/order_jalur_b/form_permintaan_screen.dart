@@ -150,15 +150,15 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
             // 1. Header Gojek Aloha
             _buildGojekHeader(context, layanan.nama, namaPanggilan),
 
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
 
-            // 2. Info Sistem Penawaran Jalur B
+            // 2. Info Sistem Penawaran
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: _buildInfoPenawaranCard(),
             ),
 
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
 
             // 3. Kartu Alamat Pengerjaan (dengan Tombol Buka Peta)
             Padding(
@@ -166,7 +166,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
               child: _buildAlamatCard(),
             ),
 
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
 
             // 4. Kartu Detail Kebutuhan
             Padding(
@@ -174,7 +174,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
               child: _buildKebutuhanCard(),
             ),
 
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
 
             // 5. Kartu Foto Kondisi
             Padding(
@@ -182,7 +182,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
               child: _buildFotoKondisiCard(),
             ),
 
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
 
             // 6. Kartu Jadwal & Jumlah Orang
             Padding(
@@ -190,7 +190,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
               child: _buildJadwalDanRunnerCard(),
             ),
 
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
 
             // 7. Kartu Tawaran Harga Awal
             Padding(
@@ -198,7 +198,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
               child: _buildTawaranHargaCard(),
             ),
 
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
           ],
         ),
       ),
@@ -215,10 +215,10 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
     return Container(
       decoration: const BoxDecoration(color: Color(0xFF00AA13)),
       padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 8,
+        top: MediaQuery.of(context).padding.top + 4,
         left: 16,
         right: 16,
-        bottom: 14,
+        bottom: 8,
       ),
       child: Row(
         children: [
@@ -226,8 +226,8 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
             onTap: () => Navigator.of(context).maybePop(),
             borderRadius: BorderRadius.circular(999),
             child: Container(
-              width: 38,
-              height: 38,
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.18),
                 shape: BoxShape.circle,
@@ -235,29 +235,29 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
               child: const Icon(
                 Icons.arrow_back_ios_new_rounded,
                 color: Colors.white,
-                size: 18,
+                size: 16,
               ),
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   judul,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 18,
+                    fontSize: 17,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 1),
                 Text(
                   'Kirim kebutuhan & tawaran hargamu, $nama',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.9),
-                    fontSize: 12.5,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
@@ -274,23 +274,23 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFFE8F5E9),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFC8E6C9), width: 1),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: const Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.forum_outlined, size: 20, color: Color(0xFF00AA13)),
-          SizedBox(width: 10),
+          Icon(Icons.forum_outlined, size: 18, color: Color(0xFF00AA13)),
+          SizedBox(width: 8),
           Expanded(
             child: Text(
               'Layanan ini memakai sistem penawaran. Tulis kebutuhanmu dan buka tawaran awal, runner yang tersedia dapat langsung menyetujui atau menawar balik.',
               style: TextStyle(
                 color: Color(0xFF1B5E20),
-                fontSize: 12,
+                fontSize: 11.5,
                 fontWeight: FontWeight.w500,
-                height: 1.35,
+                height: 1.3,
               ),
             ),
           ),
@@ -314,26 +314,26 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
         ],
         border: Border.all(color: const Color(0xFFEDF2ED), width: 1.2),
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                width: 36,
-                height: 36,
+                width: 26,
+                height: 26,
                 decoration: BoxDecoration(
                   color: const Color(0xFFE8F5E9),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: const Icon(
                   Icons.edit_note_rounded,
                   color: Color(0xFF00AA13),
-                  size: 22,
+                  size: 16,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               const Expanded(
                 child: Text(
                   'DETAIL KEBUTUHAN',
@@ -341,13 +341,13 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
                     color: Color(0xFF00AA13),
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
+                    letterSpacing: 0.4,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
           TextFormField(
             controller: _kebutuhanController,
             maxLength: BatasMasukan.deskripsi,
@@ -396,26 +396,26 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
           width: 1.2,
         ),
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                width: 36,
-                height: 36,
+                width: 26,
+                height: 26,
                 decoration: BoxDecoration(
                   color: const Color(0xFFE8F5E9),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: const Icon(
                   Icons.camera_alt_outlined,
                   color: Color(0xFF00AA13),
-                  size: 20,
+                  size: 16,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -426,15 +426,15 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
                         color: Color(0xFF00AA13),
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
+                        letterSpacing: 0.4,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 1),
                     const Text(
                       'Foto kondisi agar runner dapat memperkirakan beban kerja & harga',
                       style: TextStyle(
                         color: Color(0xFF6B7A6E),
-                        fontSize: 12,
+                        fontSize: 11.5,
                         fontWeight: FontWeight.w400,
                       ),
                     ),
@@ -443,7 +443,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
           if (_foto != null) ...[
             ClipRRect(
               borderRadius: BorderRadius.circular(14),
@@ -562,26 +562,26 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
         ],
         border: Border.all(color: const Color(0xFFEDF2ED), width: 1.2),
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                width: 36,
-                height: 36,
+                width: 26,
+                height: 26,
                 decoration: BoxDecoration(
                   color: const Color(0xFFE8F5E9),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: const Icon(
                   Icons.payments_outlined,
                   color: Color(0xFF00AA13),
-                  size: 20,
+                  size: 16,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               const Expanded(
                 child: Text(
                   'TAWARAN HARGA AWAL',
@@ -589,13 +589,13 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
                     color: Color(0xFF00AA13),
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
+                    letterSpacing: 0.4,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
           TextFormField(
             controller: _hargaController,
             keyboardType: TextInputType.number,
@@ -630,26 +630,26 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
         ],
         border: Border.all(color: const Color(0xFFEDF2ED), width: 1.2),
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                width: 36,
-                height: 36,
+                width: 26,
+                height: 26,
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFF3E0),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: const Icon(
                   Icons.place_outlined,
                   color: Color(0xFFFF7043),
-                  size: 20,
+                  size: 16,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               const Expanded(
                 child: Text(
                   'LOKASI PENGERJAAN',
@@ -657,13 +657,13 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
                     color: Color(0xFFFF7043),
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
+                    letterSpacing: 0.4,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -742,26 +742,26 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
         ],
         border: Border.all(color: const Color(0xFFEDF2ED), width: 1.2),
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                width: 36,
-                height: 36,
+                width: 26,
+                height: 26,
                 decoration: BoxDecoration(
                   color: const Color(0xFFE8F5E9),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: const Icon(
                   Icons.event_outlined,
                   color: Color(0xFF00AA13),
-                  size: 20,
+                  size: 16,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -772,15 +772,15 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
                         color: Color(0xFF00AA13),
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
+                        letterSpacing: 0.4,
                       ),
                     ),
-                    SizedBox(height: 2),
+                    SizedBox(height: 1),
                     Text(
                       'Kapan dikerjakan dan butuh berapa orang',
                       style: TextStyle(
                         color: Color(0xFF6B7A6E),
-                        fontSize: 12,
+                        fontSize: 11.5,
                         fontWeight: FontWeight.w400,
                       ),
                     ),
@@ -789,7 +789,7 @@ class _FormPermintaanScreenState extends ConsumerState<FormPermintaanScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
           _PemilihJadwal(
             nilai: _jadwal,
             onUbah: _sedangMengirim ? null : _pilihJadwal,

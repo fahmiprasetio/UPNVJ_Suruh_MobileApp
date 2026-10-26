@@ -18,6 +18,7 @@ import type {
   RincianPayout,
   StatusOrder,
   Tarif,
+  TantanganMasuk,
 } from './tipe';
 
 /**
@@ -33,17 +34,26 @@ import type {
  * layar yang memanggil endpoint yang selalu dijawab 403.
  */
 
-export function mintaKode(api: KlienApi, noHp: string): Promise<void> {
-  return api.minta<void>('/api/auth/minta-kode', {
+export function mulaiMasuk(
+  api: KlienApi,
+  noHp: string,
+  password: string,
+): Promise<TantanganMasuk> {
+  return api.minta<TantanganMasuk>('/api/auth/masuk-password', {
     metode: 'POST',
-    badan: { noHp },
+    badan: { noHp, password },
   });
 }
 
-export function masuk(api: KlienApi, noHp: string, kode: string): Promise<HasilMasuk> {
+export function masuk(
+  api: KlienApi,
+  noHp: string,
+  kode: string,
+  tantangan: string,
+): Promise<HasilMasuk> {
   return api.minta<HasilMasuk>('/api/auth/masuk', {
     metode: 'POST',
-    badan: { noHp, kode },
+    badan: { noHp, kode, tantangan },
   });
 }
 

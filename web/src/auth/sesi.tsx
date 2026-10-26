@@ -46,7 +46,7 @@ interface IsiSesi {
   keadaan: KeadaanSesi;
   api: KlienApi;
   hub: KontrakOrderHub;
-  masuk(noHp: string, kode: string): Promise<Pengguna>;
+  masuk(noHp: string, kode: string, tantangan: string): Promise<Pengguna>;
   keluar(): void;
 }
 
@@ -158,8 +158,8 @@ export function PenyediaSesi({
   }, [api, keadaan.tahap, keluar]);
 
   const masuk = useCallback(
-    async (noHp: string, kode: string) => {
-      const hasil = await masukApi(api, noHp, kode);
+    async (noHp: string, kode: string, tantangan: string) => {
+      const hasil = await masukApi(api, noHp, kode, tantangan);
       simpanToken(hasil.token);
       tokenRef.current = hasil.token;
       setToken(hasil.token);

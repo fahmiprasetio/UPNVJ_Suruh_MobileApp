@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../config/sumber_data.dart';
 
 /// Alamat backend.
@@ -21,6 +22,27 @@ class KonfigurasiApi {
     defaultValue: 'http://10.0.2.2:5059',
   );
 
+  @visibleForTesting
+  static bool hostLanPrivat(String host) {
+    final bagian = host.split('.');
+    if (bagian.length != 4) return false;
+
+    final angka = bagian.map(int.tryParse).toList(growable: false);
+    if (angka.any((nilai) => nilai == null || nilai < 0 || nilai > 255)) {
+      return false;
+    }
+
+    return angka[0] == 10 ||
+        (angka[0] == 172 && angka[1]! >= 16 && angka[1]! <= 31) ||
+        (angka[0] == 192 && angka[1] == 168);
+  }
+
+  static String? _alamatWebLan() {
+    if (!kIsWeb || !hostLanPrivat(Uri.base.host)) return null;
+    if (Uri.base.scheme != 'http' && Uri.base.scheme != 'https') return null;
+    return Uri(scheme: Uri.base.scheme, host: Uri.base.host, port: 5059).origin;
+  }
+
   /// Alamat yang boleh dipakai, atau lemparan kalau alamatnya tidak pantas untuk
   /// build ini.
   ///
@@ -42,15 +64,18 @@ class KonfigurasiApi {
   /// mengujinya adalah menjalankan ulang seluruh tes dengan `--dart-define` berbeda,
   /// dan penolakan yang tidak pernah diuji baru ketahuan rusaknya saat dibutuhkan.
   static String baca({required bool modeDebug, String? nilai}) {
-    final alamat = nilai ?? baseUrl;
+    final alamatWebLan = nilai == null ? _alamatWebLan() : null;
+    final alamat = alamatWebLan ?? nilai ?? baseUrl;
     final host = Uri.tryParse(alamat)?.host.toLowerCase();
     final loopback =
         host == 'localhost' || host == '127.0.0.1' || host == '::1';
 
-    // Demo web lokal berjalan bersama API pada mesin yang sama. Loopback tidak
-    // mengirim token atau nomor HP ke jaringan, jadi aman sebagai pengecualian
-    // sempit untuk hasil build demo; HTTP menuju host lain tetap ditolak.
-    if (!modeDebug && !loopback && !alamat.startsWith('https://')) {
+    // Demo web lokal berjalan bersama API pada loopback atau alamat LAN privat yang
+    // sudah dibatasi di atas. Build publik tetap wajib memakai HTTPS eksplisit.
+    if (!modeDebug &&
+        !loopback &&
+        alamatWebLan == null &&
+        !alamat.startsWith('https://')) {
       throw StateError(
         'API_BASE_URL="$alamat" tidak boleh dipakai di build rilis: '
         'alamat non-https mengirim token sesi dan nomor HP tanpa sandi, dan '
@@ -93,6 +118,7 @@ class KonfigurasiApi {
   /// supaya layar tetap bisa membedakan tautan sungguhan dari tautan karangan.
   static String lengkapi(String alamat) {
     if (!alamat.startsWith('/')) return alamat;
-    return '$baseUrl$alamat';
+    final base = _alamatWebLan() ?? baseUrl;
+    return '$base$alamat';
   }
 }

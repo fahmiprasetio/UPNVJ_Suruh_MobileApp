@@ -43,7 +43,8 @@ class PelacakRunner {
   }
 
   bool _layak(Order order, String runnerId) =>
-      order.serviceType == ServiceType.anterJemput &&
+      (order.serviceType == ServiceType.anterJemput ||
+          order.serviceType == ServiceType.jastipMakanan) &&
       order.status == OrderStatus.dikerjakan &&
       order.runnerIds.contains(runnerId);
 

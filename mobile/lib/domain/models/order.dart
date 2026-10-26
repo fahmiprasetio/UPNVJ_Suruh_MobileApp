@@ -183,6 +183,7 @@ class Order {
   }
 
   Order copyWith({
+    ServiceType? serviceType,
     OrderStatus? status,
     String? deskripsi,
     String? alamatJemput,
@@ -215,7 +216,7 @@ class Order {
       kodeOrder: kodeOrder,
       klienId: klienId,
       namaKlien: namaKlien,
-      serviceType: serviceType,
+      serviceType: serviceType ?? this.serviceType,
       status: status ?? this.status,
       dibuatPada: dibuatPada,
       deskripsi: deskripsi ?? this.deskripsi,

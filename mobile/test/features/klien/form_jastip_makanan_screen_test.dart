@@ -87,7 +87,7 @@ void main() {
     await bukaForm(tester);
 
     expect(find.text('Ongkos Jasa Titip (Delivery)'), findsOneWidget);
-    expect(find.text('Rp 8.000'), findsWidgets);
+    expect(find.text('Rp 5.000'), findsWidgets);
   });
 
   testWidgets('layar mengaku harga makanan belum termasuk', (tester) async {

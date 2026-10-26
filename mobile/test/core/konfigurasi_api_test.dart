@@ -45,5 +45,16 @@ void main() {
         'http://10.0.2.2:5059',
       );
     });
+
+    test('hanya alamat IPv4 privat yang dikenali sebagai host LAN', () {
+      expect(KonfigurasiApi.hostLanPrivat('10.20.30.40'), isTrue);
+      expect(KonfigurasiApi.hostLanPrivat('172.16.0.1'), isTrue);
+      expect(KonfigurasiApi.hostLanPrivat('172.31.255.254'), isTrue);
+      expect(KonfigurasiApi.hostLanPrivat('192.168.100.22'), isTrue);
+      expect(KonfigurasiApi.hostLanPrivat('10.jahat.example'), isFalse);
+      expect(KonfigurasiApi.hostLanPrivat('192.168.jahat.example'), isFalse);
+      expect(KonfigurasiApi.hostLanPrivat('172.15.0.1'), isFalse);
+      expect(KonfigurasiApi.hostLanPrivat('172.32.0.1'), isFalse);
+    });
   });
 }

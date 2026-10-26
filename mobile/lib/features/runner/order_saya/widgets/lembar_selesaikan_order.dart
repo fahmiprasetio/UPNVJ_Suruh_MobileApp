@@ -63,8 +63,6 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
   @override
   Widget build(BuildContext context) {
     final layanan = serviceInfoOf(widget.order.serviceType);
-    final teks = Theme.of(context).textTheme;
-    final skema = Theme.of(context).colorScheme;
     final sibuk = _sedangAmbilFoto || _sedangMenutup;
 
     // Bisa digulung, karena papan ketik yang terbuka untuk kolom catatan
@@ -73,47 +71,124 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
     // tepat saat runner mulai mengetik.
     return SingleChildScrollView(
       padding: EdgeInsets.only(
-        left: AppTheme.spasiSedang,
-        right: AppTheme.spasiSedang,
-        top: AppTheme.spasiKecil,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + AppTheme.spasiBesar,
+        left: 20,
+        right: 20,
+        top: 8,
+        bottom: MediaQuery.viewInsetsOf(context).bottom + 24,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Selesaikan ${layanan.nama}',
-            style: teks.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE8F8EA),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Icon(
+                    layanan.icon,
+                    color: const Color(0xFF00AA13),
+                    size: 20,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Selesaikan ${layanan.nama}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF111827),
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 1.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        widget.order.kodeOrder,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF4B5563),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          Text(
-            widget.order.kodeOrder,
-            style: teks.bodySmall?.copyWith(color: skema.onSurfaceVariant),
-          ),
-          const SizedBox(height: AppTheme.spasiBesar),
-          Text(
+          const SizedBox(height: 18),
+          const Text(
             'Foto bukti',
-            style: teks.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF111827),
+              letterSpacing: -0.2,
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(
+          const SizedBox(height: 3),
+          const Text(
             'Wajib. Inilah yang membedakan pekerjaan selesai dari pengakuan '
             'selesai.',
-            style: teks.bodySmall?.copyWith(color: skema.onSurfaceVariant),
+            style: TextStyle(
+              fontSize: 12,
+              color: Color(0xFF6B7280),
+              height: 1.3,
+            ),
           ),
-          const SizedBox(height: AppTheme.spasiSedang),
+          const SizedBox(height: 12),
           if (_fotoBuktiUrl == null)
-            FilledButton.icon(
-              onPressed: sibuk ? null : _ambilFoto,
-              icon: _sedangAmbilFoto
-                  ? const SizedBox(
-                      height: 18,
-                      width: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.photo_camera_outlined),
-              label: Text(
-                _sedangAmbilFoto ? 'Mengunggah foto...' : 'Ambil Foto Bukti',
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: FilledButton.icon(
+                onPressed: sibuk ? null : _ambilFoto,
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF00AA13),
+                  disabledBackgroundColor: const Color(0xFFA7E5AF),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                icon: _sedangAmbilFoto
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.camera_alt_rounded, size: 20),
+                label: Text(
+                  _sedangAmbilFoto ? 'Mengunggah foto...' : 'Ambil Foto Bukti',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
+                ),
               ),
             )
           else
@@ -122,14 +197,18 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
             const SizedBox(height: 8),
             Text(
               _pesanGalatFoto!,
-              style: teks.bodySmall?.copyWith(color: skema.error),
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFFDC2626),
+              ),
             ),
           ],
           if (ref.watch(fotoBuktiTiruanProvider)) ...[
-            const SizedBox(height: AppTheme.spasiKecil),
+            const SizedBox(height: 10),
             const _CatatanAlatPenguji(),
           ],
-          const SizedBox(height: AppTheme.spasiBesar),
+          const SizedBox(height: 18),
           TextField(
             controller: _catatanController,
             maxLength: BatasMasukan.catatanSerahTerima,
@@ -137,28 +216,86 @@ class _LembarSelesaikanOrderState extends ConsumerState<LembarSelesaikanOrder> {
             maxLines: 3,
             minLines: 2,
             enabled: !sibuk,
-            decoration: const InputDecoration(
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF111827),
+            ),
+            decoration: InputDecoration(
               labelText: 'Catatan serah terima',
               hintText: 'Barang dititipkan ke penjaga kos',
               helperText: 'Wajib: tulis lokasi atau penerima hasil pekerjaan.',
+              helperStyle: const TextStyle(
+                fontSize: 11.5,
+                color: Color(0xFF6B7280),
+              ),
+              counterStyle: const TextStyle(
+                fontSize: 11.5,
+                color: Color(0xFF9CA3AF),
+              ),
+              filled: true,
+              fillColor: const Color(0xFFF9FAFB),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(
+                  color: Color(0xFF00AA13),
+                  width: 1.8,
+                ),
+              ),
             ),
             onChanged: (_) => setState(() {}),
           ),
-          const SizedBox(height: AppTheme.spasiBesar),
-          FilledButton(
-            onPressed:
-                _fotoBuktiUrl == null ||
-                    _catatanController.text.trim().isEmpty ||
-                    sibuk
-                ? null
-                : _tandaiSelesai,
-            child: _sedangMenutup
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Tandai Selesai'),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: FilledButton(
+              onPressed:
+                  _fotoBuktiUrl == null ||
+                      _catatanController.text.trim().isEmpty ||
+                      sibuk
+                  ? null
+                  : _tandaiSelesai,
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF00AA13),
+                disabledBackgroundColor: const Color(0xFFE5E7EB),
+                foregroundColor: Colors.white,
+                disabledForegroundColor: const Color(0xFF9CA3AF),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: _sedangMenutup
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(
+                      'Tandai Selesai',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+            ),
           ),
         ],
       ),
@@ -259,34 +396,46 @@ class _KartuFotoTerkirim extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final skema = Theme.of(context).colorScheme;
-    final teks = Theme.of(context).textTheme;
-
     return Container(
-      padding: const EdgeInsets.all(AppTheme.spasiKecil + 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: skema.primaryContainer,
-        borderRadius: BorderRadius.circular(AppTheme.radiusKartu),
+        color: const Color(0xFFE8F8EA),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFC7EBC9), width: 1),
       ),
       child: Row(
         children: [
-          Icon(Icons.check_circle_outline, color: skema.onPrimaryContainer),
-          const SizedBox(width: AppTheme.spasiKecil + 4),
-          Expanded(
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.check_circle_rounded,
+              color: Color(0xFF00AA13),
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Foto bukti terkirim',
-                  style: teks.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: skema.onPrimaryContainer,
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF111827),
                   ),
                 ),
+                SizedBox(height: 2),
                 Text(
                   'Tersimpan di server, ikut tercatat di order ini.',
-                  style: teks.bodySmall?.copyWith(
-                    color: skema.onPrimaryContainer.withValues(alpha: 0.82),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF4B5563),
                   ),
                 ),
               ],
@@ -295,9 +444,18 @@ class _KartuFotoTerkirim extends StatelessWidget {
           TextButton(
             onPressed: onGanti,
             style: TextButton.styleFrom(
-              foregroundColor: skema.onPrimaryContainer,
+              foregroundColor: const Color(0xFF00AA13),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-            child: const Text('Ganti'),
+            child: const Text(
+              'Ganti',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 13,
+              ),
+            ),
           ),
         ],
       ),

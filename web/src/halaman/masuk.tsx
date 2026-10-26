@@ -2,11 +2,11 @@ import { useState, type FormEvent } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 
 import { useSesi } from '../auth/sesi';
-import { mintaKode } from '../inti/api_admin';
+import { mulaiMasuk } from '../inti/api_admin';
 import { pesanGalat } from '../komponen/keadaan';
 
 /**
- * Masuk ke dashboard: nomor HP, lalu kode yang dikirim ke nomor itu.
+ * Masuk ke dashboard: nomor HP dan password, lalu kode yang dikirim ke nomor itu.
  *
  * Dua langkah, bukan satu formulir berisi dua kolom sekaligus. Kolom kode yang sudah
  * terlihat sebelum kodenya diminta membuat orang mengisinya dengan tebakan, lalu
@@ -22,7 +22,9 @@ export function HalamanMasuk() {
   const lokasi = useLocation();
 
   const [noHp, setNoHp] = useState('');
+  const [password, setPassword] = useState('');
   const [kode, setKode] = useState('');
+  const [tantangan, setTantangan] = useState('');
   const [tahap, setTahap] = useState<'nomor' | 'kode'>('nomor');
   const [sibuk, setSibuk] = useState(false);
   const [galat, setGalat] = useState<unknown>(null);
@@ -37,7 +39,8 @@ export function HalamanMasuk() {
     setSibuk(true);
     setGalat(null);
     try {
-      await mintaKode(api, noHp.trim());
+      const hasil = await mulaiMasuk(api, noHp.trim(), password);
+      setTantangan(hasil.tantangan);
       setTahap('kode');
     } catch (salah) {
       setGalat(salah);
@@ -51,7 +54,7 @@ export function HalamanMasuk() {
     setSibuk(true);
     setGalat(null);
     try {
-      await masuk(noHp.trim(), kode.trim());
+      await masuk(noHp.trim(), kode.trim(), tantangan);
     } catch (salah) {
       setGalat(salah);
     } finally {
@@ -89,7 +92,24 @@ export function HalamanMasuk() {
               onChange={(e) => setNoHp(e.target.value)}
               disabled={sibuk}
             />
-            <button type="submit" className="tombol" disabled={sibuk || noHp.trim().length === 0}>
+            <label htmlFor="password">Password</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              minLength={8}
+              maxLength={128}
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={sibuk}
+            />
+            <button
+              type="submit"
+              className="tombol"
+              disabled={sibuk || noHp.trim().length === 0 || password.length < 8}
+            >
               {sibuk ? 'Mengirim...' : 'Kirim kode'}
             </button>
           </form>
@@ -118,6 +138,7 @@ export function HalamanMasuk() {
               onClick={() => {
                 setTahap('nomor');
                 setKode('');
+                setTantangan('');
                 setGalat(null);
               }}
             >

@@ -8,6 +8,25 @@
          akun admin. -->
     <meta name="robots" content="noindex, nofollow" />
     <title>Dashboard Admin - UPNVJ Suruh</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      (function () {
+        try {
+          var m = localStorage.getItem('admin_mode_tema') || 'terang';
+          var a = localStorage.getItem('admin_aksen_tema') || 'hijau';
+          var dark = m === 'gelap' || (m === 'sistem' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var tema = dark ? 'gelap' : 'terang';
+          document.documentElement.setAttribute('data-tema', tema);
+          document.documentElement.setAttribute('data-aksen', a);
+          document.documentElement.style.colorScheme = tema;
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="akar"></div>

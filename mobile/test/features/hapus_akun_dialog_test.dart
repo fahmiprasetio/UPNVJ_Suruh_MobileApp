@@ -66,7 +66,7 @@ void main() {
 
     await tester.tap(find.byTooltip('Profil'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(ListTile, 'Pengaturan'));
+    await tester.tap(find.text('Pengaturan'));
     await tester.pumpAndSettle();
 
     // Butir paling bawah di daftar Pengaturan.

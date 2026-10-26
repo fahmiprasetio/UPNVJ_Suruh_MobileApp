@@ -946,7 +946,7 @@ namespace UpnvjSuruh.Api.Migrations
                             BersihKosFee = 30000m,
                             JastipBarangFee = 10000m,
                             JastipBarangTarifPerKm = 2000m,
-                            JastipMakananFee = 8000m,
+                            JastipMakananFee = 5000m,
                             PindahKosTambahanMobil = 25000m,
                             PindahKosTambahanPickup = 40000m,
                             PindahKosTambahanRunner = 20000m,

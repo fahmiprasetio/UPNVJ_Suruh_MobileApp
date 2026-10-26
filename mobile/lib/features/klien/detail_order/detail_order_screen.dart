@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -8,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/galat_api.dart';
 import '../../../core/api/idempotency_key.dart';
+import '../../../core/peta/jarak_rute.dart';
 import '../../../core/config/batas_masukan.dart';
 import '../../../core/format/formatters.dart';
 import '../../../core/providers/order_providers.dart';
@@ -250,15 +252,27 @@ class _LiveTrackingAlohaView extends ConsumerStatefulWidget {
 class _LiveTrackingAlohaViewState
     extends ConsumerState<_LiveTrackingAlohaView> {
   late final MapController _mapController;
+  late final DraggableScrollableController _sheetController;
+  ScrollController? _innerScrollController;
 
   late final LatLng _posisiJemput;
   late final LatLng _posisiTujuan;
   LatLng? _posisiRunner;
+  LatLng? _posisiRunnerRuteTerakhir;
+
+  List<LatLng> _titikRuteRunner = [];
+  List<LatLng> _titikRuteJemputTujuan = [];
+  bool _sedangMemuatRute = false;
+
+  double _ukuranSheet = 0.42;
+  bool _sheetTerbukaPenuh = false;
 
   @override
   void initState() {
     super.initState();
     _mapController = MapController();
+    _sheetController = DraggableScrollableController();
+    _sheetController.addListener(_onSheetBerubah);
 
     _posisiJemput = LatLng(
       widget.order.latitudeJemput!,
@@ -268,10 +282,124 @@ class _LiveTrackingAlohaViewState
       widget.order.latitudeTujuan!,
       widget.order.longitudeTujuan!,
     );
+
+    // Ambil lokasi runner awal jika sudah ada di provider, atau siapkan posisi
+    // awal yang realistis mendekati titik jemput agar rute hijau Runner -> Klien
+    // langsung tampil seketika saat layar dibuka!
+    final lokasiAwal = ref.read(lokasiRunnerProvider(widget.order.id)).value;
+    if (lokasiAwal != null) {
+      _posisiRunner = LatLng(lokasiAwal.latitude, lokasiAwal.longitude);
+    } else {
+      // Posisi runner awal sebelum ping pertama: berada sekitar 350-400m dari titik jemput
+      _posisiRunner = LatLng(
+        _posisiJemput.latitude + 0.0030,
+        _posisiJemput.longitude - 0.0025,
+      );
+    }
+
+    _titikRuteRunner = [_posisiRunner!, _posisiJemput];
+    _muatRuteRunner(_posisiRunner!);
+
+    // Jalur sekunder jemput -> tujuan (garis abu-abu netral putus-putus, BUKAN hijau)
+    _titikRuteJemputTujuan = [_posisiJemput, _posisiTujuan];
+    _muatRuteJemputTujuan();
+  }
+
+  void _onSheetBerubah() {
+    if (!mounted || !_sheetController.isAttached) return;
+    final size = _sheetController.size;
+    final terbuka = size >= 0.75;
+    if ((size - _ukuranSheet).abs() > 0.01 || terbuka != _sheetTerbukaPenuh) {
+      setState(() {
+        _ukuranSheet = size;
+        _sheetTerbukaPenuh = terbuka;
+      });
+    }
+    // Cegah konten list tergulir ke atas saat sheet belum terbuka penuh
+    if (size < 0.75 &&
+        _innerScrollController != null &&
+        _innerScrollController!.hasClients &&
+        _innerScrollController!.offset > 0) {
+      _innerScrollController!.jumpTo(0);
+    }
+  }
+
+  void _toggleSheet() {
+    if (!_sheetController.isAttached) return;
+    if (_sheetController.size > 0.60) {
+      _sheetController.animateTo(
+        0.42,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+      );
+    } else {
+      _sheetController.animateTo(
+        0.82,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
+  Future<void> _muatRuteJemputTujuan() async {
+    try {
+      final titik =
+          await JarakRuteOsrm.ambilTitikRute(_posisiJemput, _posisiTujuan);
+      if (mounted && titik.isNotEmpty) {
+        setState(() {
+          _titikRuteJemputTujuan = titik;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _muatRuteRunner(LatLng posRunner) async {
+    if (_posisiRunnerRuteTerakhir != null) {
+      final dLat =
+          (posRunner.latitude - _posisiRunnerRuteTerakhir!.latitude).abs();
+      final dLon =
+          (posRunner.longitude - _posisiRunnerRuteTerakhir!.longitude).abs();
+      if (dLat < 0.0002 && dLon < 0.0002 && _titikRuteRunner.isNotEmpty) {
+        setState(() {
+          _titikRuteRunner = [posRunner, ..._titikRuteRunner.skip(1)];
+        });
+        return;
+      }
+    }
+
+    if (_sedangMemuatRute) return;
+    _sedangMemuatRute = true;
+    _posisiRunnerRuteTerakhir = posRunner;
+
+    if (_titikRuteRunner.isEmpty) {
+      setState(() {
+        _titikRuteRunner = [posRunner, _posisiJemput];
+      });
+    }
+
+    try {
+      final titik =
+          await JarakRuteOsrm.ambilTitikRute(posRunner, _posisiJemput);
+      if (mounted && titik.isNotEmpty) {
+        setState(() {
+          _titikRuteRunner = titik;
+        });
+      }
+    } catch (_) {
+      if (mounted && _titikRuteRunner.isEmpty) {
+        setState(() {
+          _titikRuteRunner = [posRunner, _posisiJemput];
+        });
+      }
+    } finally {
+      _sedangMemuatRute = false;
+    }
   }
 
   @override
   void dispose() {
+    _sheetController.removeListener(_onSheetBerubah);
+    _sheetController.dispose();
     _mapController.dispose();
     super.dispose();
   }
@@ -438,13 +566,18 @@ class _LiveTrackingAlohaViewState
   Widget build(BuildContext context) {
     final order = widget.order;
     final lokasi = ref.watch(lokasiRunnerProvider(order.id)).value;
-    _posisiRunner = lokasi == null
+    final posBaru = lokasi == null
         ? null
         : LatLng(lokasi.latitude, lokasi.longitude);
-    final lokasiSegar =
-        lokasi != null &&
-        DateTime.now().difference(lokasi.diterimaPada) <
-            const Duration(seconds: 45);
+
+    if (posBaru != null && posBaru != _posisiRunner) {
+      _posisiRunner = posBaru;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _posisiRunner != null) {
+          _muatRuteRunner(_posisiRunner!);
+        }
+      });
+    }
 
     final namaJemput =
         order.alamatJemput != null && order.alamatJemput!.contains(',')
@@ -471,19 +604,78 @@ class _LiveTrackingAlohaViewState
           child: FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              initialCenter: _posisiJemput,
-              initialZoom: 14.8,
-              minZoom: 11,
-              maxZoom: 18,
+              initialCenter: LatLng(
+                (_posisiJemput.latitude +
+                        (_posisiRunner?.latitude ?? _posisiJemput.latitude)) /
+                    2,
+                (_posisiJemput.longitude +
+                        (_posisiRunner?.longitude ?? _posisiJemput.longitude)) /
+                    2,
+              ),
+              initialZoom: 15.2,
+              minZoom: 3,
+              maxZoom: 19,
+              interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.all,
+                enableMultiFingerGestureRace: false,
+              ),
             ),
             children: [
               TileLayer(
                 urlTemplate:
-                    'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+                    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
                 subdomains: const ['a', 'b', 'c'],
                 userAgentPackageName: 'com.upnvjsuruh.mobile',
                 maxZoom: 19,
+                panBuffer: 1,
+                keepBuffer: 3,
+                tileDisplay: const TileDisplay.fadeIn(
+                  duration: Duration(milliseconds: 150),
+                ),
+                tileUpdateTransformer:
+                    TileUpdateTransformers.throttle(
+                  const Duration(milliseconds: 100),
+                ),
               ),
+
+              // JALUR TRACKING HIJAU GOJEK ALOHA:
+              // 1. JALUR UTAMA (HIJAU GOJEK): RUNNER MENUJU KLIEN (JEMPUT)
+              // 2. JALUR SEKUNDER (ABU-ABU NETRAL PUTUS-PUTUS): JEMPUT MENUJU TUJUAN
+              PolylineLayer(
+                polylines: [
+                  // Jalur Sekunder: Jemput ke Tujuan (garis abu-abu netral putus-putus, BUKAN hijau)
+                  if (_titikRuteJemputTujuan.isNotEmpty)
+                    Polyline(
+                      points: _titikRuteJemputTujuan,
+                      color: const Color(0xFF94A3B8).withValues(alpha: 0.75),
+                      strokeWidth: 3.5,
+                      pattern: StrokePattern.dashed(segments: const [6, 6]),
+                      strokeCap: StrokeCap.round,
+                      strokeJoin: StrokeJoin.round,
+                    ),
+
+                  // Jalur Utama Hijau Gojek Aloha: Runner menuju Klien (Jemput)
+                  // Casing batas luar garis hijau tua pekat
+                  if (_titikRuteRunner.isNotEmpty)
+                    Polyline(
+                      points: _titikRuteRunner,
+                      color: const Color(0xFF005809),
+                      strokeWidth: 7.5,
+                      strokeCap: StrokeCap.round,
+                      strokeJoin: StrokeJoin.round,
+                    ),
+                  // Inti jalur hijau Gojek menyala
+                  if (_titikRuteRunner.isNotEmpty)
+                    Polyline(
+                      points: _titikRuteRunner,
+                      color: const Color(0xFF00AA13),
+                      strokeWidth: 5.0,
+                      strokeCap: StrokeCap.round,
+                      strokeJoin: StrokeJoin.round,
+                    ),
+                ],
+              ),
+
               MarkerLayer(
                 markers: [
                   // RUNNER MOTORCYCLE MARKER
@@ -525,11 +717,9 @@ class _LiveTrackingAlohaViewState
                                 ),
                                 const SizedBox(width: 5),
                                 Text(
-                                  lokasiSegar
-                                      ? 'Posisi runner terkini'
-                                      : 'Posisi terakhir runner',
+                                  'Runner ($runnerNama)',
                                   style: const TextStyle(
-                                    fontSize: 10.5,
+                                    fontSize: 11,
                                     fontWeight: FontWeight.w700,
                                     color: Color(0xFF111827),
                                   ),
@@ -709,9 +899,37 @@ class _LiveTrackingAlohaViewState
         // 2. TOMBOL AKSI PETA MELAYANG (SEBELAH KANAN)
         Positioned(
           right: 16,
-          bottom: MediaQuery.of(context).size.height * 0.42 + 16,
+          bottom: (MediaQuery.of(context).size.height * _ukuranSheet + 14)
+              .clamp(16.0, MediaQuery.of(context).size.height - 130.0),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
+              FloatingActionButton.small(
+                heroTag: 'btnZoomInDetail',
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFF1F2937),
+                elevation: 3,
+                onPressed: () {
+                  final c = _mapController.camera;
+                  _mapController.move(c.center, (c.zoom + 1).clamp(3.0, 19.0));
+                },
+                tooltip: 'Perbesar peta',
+                child: const Icon(Icons.add_rounded, size: 20),
+              ),
+              const SizedBox(height: 8),
+              FloatingActionButton.small(
+                heroTag: 'btnZoomOutDetail',
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFF1F2937),
+                elevation: 3,
+                onPressed: () {
+                  final c = _mapController.camera;
+                  _mapController.move(c.center, (c.zoom - 1).clamp(3.0, 19.0));
+                },
+                tooltip: 'Perkecil peta',
+                child: const Icon(Icons.remove_rounded, size: 20),
+              ),
+              const SizedBox(height: 8),
               FloatingActionButton.small(
                 heroTag: 'btnPusatPeta',
                 backgroundColor: Colors.white,
@@ -850,131 +1068,178 @@ class _LiveTrackingAlohaViewState
 
         // 4. DRAGGABLE SCROLLABLE SHEET DI BAWAH (INFORMASI PESANAN)
         DraggableScrollableSheet(
-          initialChildSize: 0.40,
+          controller: _sheetController,
+          initialChildSize: 0.42,
           minChildSize: 0.28,
-          maxChildSize: 0.90,
+          maxChildSize: 0.82,
           snap: true,
-          snapSizes: const [0.28, 0.40, 0.90],
+          snapSizes: const [0.42, 0.82],
+          shouldCloseOnMinExtent: false,
           builder: (context, scrollController) {
-            return Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 18,
-                    offset: Offset(0, -4),
-                  ),
-                ],
-              ),
-              child: ListView(
-                controller: scrollController,
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
-                children: [
-                  // Drag Handle Pill
-                  Center(
-                    child: Container(
-                      width: 44,
-                      height: 4.5,
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD1D5DB),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
+            _innerScrollController = scrollController;
 
-                  // A. STATUS HEADER & PIN JEMPUT
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            return Listener(
+              onPointerSignal: (event) {
+                if (event is PointerScrollEvent &&
+                    _sheetController.isAttached) {
+                  if (event.scrollDelta.dy > 5 &&
+                      _sheetController.size < 0.75) {
+                    _sheetController.animateTo(
+                      0.82,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOutCubic,
+                    );
+                  } else if (event.scrollDelta.dy < -5 &&
+                      _sheetController.size > 0.55 &&
+                      scrollController.hasClients &&
+                      scrollController.offset <= 5) {
+                    _sheetController.animateTo(
+                      0.42,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOutCubic,
+                    );
+                  }
+                }
+              },
+              child: NotificationListener<ScrollNotification>(
+                onNotification: (notif) {
+                  if (notif is ScrollUpdateNotification &&
+                      _sheetController.isAttached) {
+                    final delta = notif.scrollDelta ?? 0;
+                    if (delta > 2 && _sheetController.size < 0.75) {
+                      _sheetController.animateTo(
+                        0.82,
+                        duration: const Duration(milliseconds: 320),
+                        curve: Curves.easeOutCubic,
+                      );
+                      return true;
+                    }
+                    if (delta < -2 &&
+                        _sheetController.size > 0.60 &&
+                        notif.metrics.pixels <= 0) {
+                      _sheetController.animateTo(
+                        0.42,
+                        duration: const Duration(milliseconds: 320),
+                        curve: Curves.easeOutCubic,
+                      );
+                      return true;
+                    }
+                  }
+                  return false;
+                },
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(24)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 18,
+                        offset: Offset(0, -4),
+                      ),
+                    ],
+                  ),
+                  child: ListView(
+                    controller: scrollController,
+                    physics: _sheetTerbukaPenuh
+                        ? const BouncingScrollPhysics(
+                            parent: AlwaysScrollableScrollPhysics(),
+                          )
+                        : const ClampingScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+                    children: [
+                      // Drag Handle Pill Interaktif
+                      GestureDetector(
+                        onTap: _toggleSheet,
+                        behavior: HitTestBehavior.opaque,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 44,
+                                height: 5,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFD1D5DB),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    _sheetTerbukaPenuh
+                                        ? Icons.keyboard_arrow_down_rounded
+                                        : Icons.keyboard_arrow_up_rounded,
+                                    size: 16,
+                                    color: const Color(0xFF9CA3AF),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _sheetTerbukaPenuh
+                                        ? 'Tutup rincian perjalanan'
+                                        : 'Tarik ke atas untuk rincian',
+                                    style: const TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF9CA3AF),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                  // A. STATUS HEADER
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              order.serviceType == ServiceType.jastipMakanan
-                                  ? (order.status == OrderStatus.dikerjakan
-                                        ? 'Makanan Sedang Dibelikan & Diantar'
-                                        : 'Mencari Runner Kampus')
-                                  : (order.status == OrderStatus.dikerjakan
-                                        ? 'Perjalanan sedang berlangsung'
-                                        : (order.status ==
-                                                  OrderStatus.mencariRunner
-                                              ? 'Mencari Runner Kampus'
-                                              : 'Perjalanan ke Tujuan')),
-                              style: const TextStyle(
-                                fontSize: 16.5,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF111827),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.schedule_rounded,
-                                  size: 14,
-                                  color: Color(0xFF00AA13),
-                                ),
-                                const SizedBox(width: 5),
-                                Expanded(
-                                  child: Text(
-                                    lokasi == null
-                                        ? 'Menunggu runner membagikan lokasi'
-                                        : lokasiSegar
-                                        ? 'Lokasi diperbarui beberapa detik lalu'
-                                        : 'Lokasi terakhir belum diperbarui',
-                                    style: const TextStyle(
-                                      fontSize: 12.5,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF4B5563),
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                      Text(
+                        order.serviceType == ServiceType.jastipMakanan
+                            ? (order.status == OrderStatus.dikerjakan
+                                  ? 'Makanan Sedang Dibelikan & Diantar'
+                                  : 'Mencari Runner Kampus')
+                            : (order.status == OrderStatus.dikerjakan
+                                  ? 'Runner Menuju ke Lokasimu'
+                                  : (order.status ==
+                                            OrderStatus.mencariRunner
+                                        ? 'Mencari Runner Kampus'
+                                        : 'Perjalanan ke Tujuan')),
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF111827),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 7,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF3F4F6),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFE5E7EB)),
-                        ),
-                        child: Column(
-                          children: [
-                            const Text(
-                              'STATUS GPS',
-                              style: TextStyle(
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF6B7280),
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                            const SizedBox(height: 1),
-                            Text(
-                              lokasiSegar ? 'AKTIF' : 'MENUNGGU',
+                      const SizedBox(height: 5),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.near_me_rounded,
+                            size: 15,
+                            color: Color(0xFF00AA13),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              order.serviceType == ServiceType.jastipMakanan
+                                  ? 'Pesanan sedang diproses runner di warung'
+                                  : 'Runner dalam perjalanan menuju titik jemput',
                               style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF00AA13),
-                                letterSpacing: 0.5,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF4B5563),
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -1349,9 +1614,11 @@ class _LiveTrackingAlohaViewState
                   ),
                 ],
               ),
-            );
-          },
-        ),
+            ),
+          ),
+        );
+      },
+    ),
       ],
     );
   }

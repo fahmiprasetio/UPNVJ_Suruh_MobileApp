@@ -64,6 +64,11 @@ export interface HasilMasuk {
   user: Pengguna;
 }
 
+export interface TantanganMasuk {
+  tantangan: string;
+  kedaluwarsaPada: string;
+}
+
 export interface Penawaran {
   id: string;
   orderId: string;

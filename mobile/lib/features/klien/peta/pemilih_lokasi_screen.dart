@@ -204,15 +204,30 @@ class _PemilihLokasiScreenState extends State<PemilihLokasiScreen> {
                   options: MapOptions(
                     initialCenter: _posisi ?? _posisiUpnvj,
                     initialZoom: 15,
+                    minZoom: 3,
+                    maxZoom: 19,
                     onTap: (_, titik) => _pilihTitik(titik),
+                    interactionOptions: const InteractionOptions(
+                      flags: InteractiveFlag.all,
+                      enableMultiFingerGestureRace: false,
+                    ),
                   ),
                   children: [
                     TileLayer(
                       urlTemplate:
-                          'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+                          'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
                       subdomains: const ['a', 'b', 'c'],
                       userAgentPackageName: 'com.upnvjsuruh.mobile',
                       maxZoom: 19,
+                      panBuffer: 1,
+                      keepBuffer: 3,
+                      tileDisplay: const TileDisplay.fadeIn(
+                        duration: Duration(milliseconds: 150),
+                      ),
+                      tileUpdateTransformer:
+                          TileUpdateTransformers.throttle(
+                        const Duration(milliseconds: 100),
+                      ),
                     ),
                     if (_posisi != null)
                       MarkerLayer(
@@ -267,7 +282,7 @@ class _PemilihLokasiScreenState extends State<PemilihLokasiScreen> {
                           ),
                           SizedBox(width: 6),
                           Text(
-                            'Ketuk peta untuk menentukan titik',
+                            'Geser & ketuk peta untuk menentukan titik',
                             style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w600,
@@ -281,23 +296,54 @@ class _PemilihLokasiScreenState extends State<PemilihLokasiScreen> {
                 Positioned(
                   right: AppTheme.spasiSedang,
                   bottom: AppTheme.spasiSedang,
-                  child: FloatingActionButton.small(
-                    heroTag: 'lokasiSaatIni',
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF00AA13),
-                    elevation: 3,
-                    onPressed: _sedangCariLokasi ? null : _pakaiLokasiSaatIni,
-                    tooltip: 'Pakai lokasi saat ini',
-                    child: _sedangCariLokasi
-                        ? const SizedBox(
-                            height: 18,
-                            width: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Color(0xFF00AA13),
-                            ),
-                          )
-                        : const Icon(Icons.my_location_rounded),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      FloatingActionButton.small(
+                        heroTag: 'zoomInPemilih',
+                        backgroundColor: Colors.white,
+                        foregroundColor: const Color(0xFF1E2124),
+                        elevation: 3,
+                        onPressed: () {
+                          final c = _mapController.camera;
+                          _mapController.move(c.center, (c.zoom + 1).clamp(3.0, 19.0));
+                        },
+                        tooltip: 'Perbesar peta',
+                        child: const Icon(Icons.add_rounded),
+                      ),
+                      const SizedBox(height: 8),
+                      FloatingActionButton.small(
+                        heroTag: 'zoomOutPemilih',
+                        backgroundColor: Colors.white,
+                        foregroundColor: const Color(0xFF1E2124),
+                        elevation: 3,
+                        onPressed: () {
+                          final c = _mapController.camera;
+                          _mapController.move(c.center, (c.zoom - 1).clamp(3.0, 19.0));
+                        },
+                        tooltip: 'Perkecil peta',
+                        child: const Icon(Icons.remove_rounded),
+                      ),
+                      const SizedBox(height: 8),
+                      FloatingActionButton.small(
+                        heroTag: 'lokasiSaatIni',
+                        backgroundColor: Colors.white,
+                        foregroundColor: const Color(0xFF00AA13),
+                        elevation: 3,
+                        onPressed: _sedangCariLokasi ? null : _pakaiLokasiSaatIni,
+                        tooltip: 'Pakai lokasi saat ini',
+                        child: _sedangCariLokasi
+                            ? const SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Color(0xFF00AA13),
+                                ),
+                              )
+                            : const Icon(Icons.my_location_rounded),
+                      ),
+                    ],
                   ),
                 ),
               ],

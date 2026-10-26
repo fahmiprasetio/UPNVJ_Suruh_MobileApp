@@ -92,7 +92,7 @@ void main() {
     test('layanan kebersihan Jalur B tidak dihitung otomatis', () {
       expect(
         () => KalkulatorTarif.hitung(ServiceType.bersihKos, null, Tarif.bawaan),
-        throwsArgumentError,
+        throwsStateError,
       );
       expect(
         () => KalkulatorTarif.hitung(
@@ -100,7 +100,7 @@ void main() {
           null,
           Tarif.bawaan,
         ),
-        throwsArgumentError,
+        throwsStateError,
       );
     });
   });

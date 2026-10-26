@@ -117,6 +117,18 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
     });
   }
 
+  void _cobaKirimRegistrasi() {
+    if (!sedangMengirim) {
+      _daftarLaluKirimKode();
+    }
+  }
+
+  void _cobaKirimLogin() {
+    if (!sedangMengirim) {
+      _verifikasiPasswordDanKirimKode();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -150,42 +162,60 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
                       ),
                     ],
                   ),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // PEMBERITAHUAN SESI BERAKHIR
-                        if (ref.watch(sesiDitolakProvider)) ...[
-                          const _KotakGalatAloha.pemberitahuan(
-                            pesan:
-                                'Sesimu telah berakhir. Silakan masuk kembali, '
-                                'seluruh data dan riwayat pesananmu tetap aman.',
-                          ),
-                          const SizedBox(height: 16),
-                        ],
+                  child: CallbackShortcuts(
+                    bindings: {
+                      const SingleActivator(LogicalKeyboardKey.enter): () {
+                        if (_langkah == _Langkah.daftar) {
+                          _cobaKirimRegistrasi();
+                        } else if (_langkah == _Langkah.nomor) {
+                          _cobaKirimLogin();
+                        }
+                      },
+                      const SingleActivator(LogicalKeyboardKey.numpadEnter): () {
+                        if (_langkah == _Langkah.daftar) {
+                          _cobaKirimRegistrasi();
+                        } else if (_langkah == _Langkah.nomor) {
+                          _cobaKirimLogin();
+                        }
+                      },
+                    },
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // PEMBERITAHUAN SESI BERAKHIR
+                          if (ref.watch(sesiDitolakProvider)) ...[
+                            const _KotakGalatAloha.pemberitahuan(
+                              pesan:
+                                  'Sesimu telah berakhir. Silakan masuk kembali, '
+                                  'seluruh data dan riwayat pesananmu tetap aman.',
+                            ),
+                            const SizedBox(height: 16),
+                          ],
 
-                        // PEMBERITAHUAN PENYIMPANAN
-                        if (ref
-                            .watch(sesiTokenProvider)
-                            .penyimpananBermasalah) ...[
-                          const _KotakGalatAloha(
-                            pesan:
-                                'Penyimpanan aman perangkat bermasalah. '
-                                'Jangan gunakan perangkat publik/bersama.',
-                          ),
-                          const SizedBox(height: 16),
-                        ],
+                          // PEMBERITAHUAN PENYIMPANAN
+                          if (ref
+                              .watch(sesiTokenProvider)
+                              .penyimpananBermasalah) ...[
+                            const _KotakGalatAloha(
+                              pesan:
+                                  'Penyimpanan aman perangkat bermasalah. '
+                                  'Jangan gunakan perangkat publik/bersama.',
+                            ),
+                            const SizedBox(height: 16),
+                          ],
 
-                        // KONTEN SESUAI LANGKAH AKTIF
-                        ..._bangunIsiLangkah(),
+                          // KONTEN SESUAI LANGKAH AKTIF
+                          ..._bangunIsiLangkah(),
 
-                        // KOTAK GALAT VALIDASI / SERVER
-                        if (galatTindakan != null) ...[
-                          const SizedBox(height: 16),
-                          _KotakGalatAloha(pesan: galatTindakan!),
+                          // KOTAK GALAT VALIDASI / SERVER
+                          if (galatTindakan != null) ...[
+                            const SizedBox(height: 16),
+                            _KotakGalatAloha(pesan: galatTindakan!),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -248,11 +278,24 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
           const SizedBox(height: 20),
 
           // Kolom Nomor HP
-          _kolomNoHp(autofocus: true),
+          _kolomNoHp(
+            autofocus: true,
+            textInputAction: TextInputAction.next,
+            onFieldSubmitted: (_) {
+              if (_passwordController.text.isNotEmpty) {
+                _cobaKirimLogin();
+              } else {
+                FocusScope.of(context).nextFocus();
+              }
+            },
+          ),
 
           const SizedBox(height: 16),
 
-          _kolomPassword(),
+          _kolomPassword(
+            textInputAction: TextInputAction.done,
+            onFieldSubmitted: (_) => _cobaKirimLogin(),
+          ),
 
           const SizedBox(height: 18),
 
@@ -304,8 +347,8 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
                 child: Container(
                   width: 36,
                   height: 36,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF3F4F6),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF3F4F6),
                     shape: BoxShape.circle,
                   ),
                   child: const Center(
@@ -349,6 +392,16 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
           TextFormField(
             controller: _namaController,
             maxLength: BatasMasukan.nama,
+            textInputAction: TextInputAction.next,
+            onFieldSubmitted: (_) {
+              if (_konfirmasiPasswordController.text.isNotEmpty &&
+                  _passwordController.text.isNotEmpty &&
+                  _noHpController.text.isNotEmpty) {
+                _cobaKirimRegistrasi();
+              } else {
+                FocusScope.of(context).nextFocus();
+              }
+            },
             buildCounter:
                 (
                   context, {
@@ -398,17 +451,39 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
           const SizedBox(height: 16),
 
           // Kolom Nomor HP
-          _kolomNoHp(),
+          _kolomNoHp(
+            textInputAction: TextInputAction.next,
+            onFieldSubmitted: (_) {
+              if (_konfirmasiPasswordController.text.isNotEmpty &&
+                  _passwordController.text.isNotEmpty) {
+                _cobaKirimRegistrasi();
+              } else {
+                FocusScope.of(context).nextFocus();
+              }
+            },
+          ),
 
           const SizedBox(height: 16),
 
-          _kolomPassword(label: 'Buat Password'),
+          _kolomPassword(
+            label: 'Buat Password',
+            textInputAction: TextInputAction.next,
+            onFieldSubmitted: (_) {
+              if (_konfirmasiPasswordController.text.isNotEmpty) {
+                _cobaKirimRegistrasi();
+              } else {
+                FocusScope.of(context).nextFocus();
+              }
+            },
+          ),
 
           const SizedBox(height: 16),
 
           TextFormField(
             controller: _konfirmasiPasswordController,
             obscureText: _sembunyikanPassword,
+            textInputAction: TextInputAction.done,
+            onFieldSubmitted: (_) => _cobaKirimRegistrasi(),
             decoration: _dekorasiPassword('Ulangi Password'),
             validator: (nilai) {
               if (nilai == null || nilai.isEmpty) return 'Ulangi passwordmu';
@@ -622,10 +697,16 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
     }
   }
 
-  Widget _kolomNoHp({bool autofocus = false}) => TextFormField(
+  Widget _kolomNoHp({
+    bool autofocus = false,
+    TextInputAction textInputAction = TextInputAction.next,
+    ValueChanged<String>? onFieldSubmitted,
+  }) => TextFormField(
     controller: _noHpController,
     autofocus: autofocus,
     keyboardType: TextInputType.phone,
+    textInputAction: textInputAction,
+    onFieldSubmitted: onFieldSubmitted,
     inputFormatters: [
       FilteringTextInputFormatter.digitsOnly,
       LengthLimitingTextInputFormatter(BatasMasukan.nomorHp),
@@ -662,10 +743,16 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
     validator: validasiNoHp,
   );
 
-  Widget _kolomPassword({String label = 'Password'}) => TextFormField(
+  Widget _kolomPassword({
+    String label = 'Password',
+    TextInputAction textInputAction = TextInputAction.done,
+    ValueChanged<String>? onFieldSubmitted,
+  }) => TextFormField(
     controller: _passwordController,
     obscureText: _sembunyikanPassword,
     maxLength: BatasMasukan.password,
+    textInputAction: textInputAction,
+    onFieldSubmitted: onFieldSubmitted,
     buildCounter:
         (
           context, {
@@ -879,6 +966,11 @@ class _KotakInputOtpAlohaState extends State<_KotakInputOtpAloha> {
                         focusNode: _focusNode,
                         autofocus: true,
                         keyboardType: TextInputType.number,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (val) {
+                          state.didChange(val);
+                          widget.onChanged(val);
+                        },
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,
                           LengthLimitingTextInputFormatter(6),

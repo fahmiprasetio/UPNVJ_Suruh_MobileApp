@@ -30,7 +30,7 @@ public sealed class OrderTrackingController(
             .SingleOrDefaultAsync(o => o.Id == orderId, batal);
 
         if (order is null || !AksesOrder.BolehLihat(order, User.Id(), User)) return NotFound();
-        if (order.ServiceType != ServiceType.AnterJemput || order.Status != OrderStatus.Dikerjakan)
+        if ((order.ServiceType != ServiceType.AnterJemput && order.ServiceType != ServiceType.JastipMakanan) || order.Status != OrderStatus.Dikerjakan)
         {
             return Ok(null);
         }
@@ -66,13 +66,13 @@ public sealed class OrderTrackingController(
             .SingleOrDefaultAsync(a => a.OrderId == orderId && a.RunnerId == runnerId, batal);
 
         if (assignment?.Order is null) return NotFound();
-        if (assignment.Order.ServiceType != ServiceType.AnterJemput ||
+        if ((assignment.Order.ServiceType != ServiceType.AnterJemput && assignment.Order.ServiceType != ServiceType.JastipMakanan) ||
             assignment.Order.Status != OrderStatus.Dikerjakan)
         {
             return Conflict(new ProblemDetails
             {
                 Title = "Pelacakan tidak aktif",
-                Detail = "Lokasi hanya diterima selama order Anter Jemput sedang dikerjakan.",
+                Detail = "Lokasi hanya diterima selama order Anter Jemput atau Jastip Makanan sedang dikerjakan.",
                 Status = StatusCodes.Status409Conflict,
             });
         }
