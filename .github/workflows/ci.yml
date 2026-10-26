@@ -58,9 +58,10 @@ jobs:
       - name: Jalankan tes
         run: dotnet test backend/UpnvjSuruh.sln --no-build --configuration Release --verbosity normal
 
-  mobile:
-    name: Mobile (Flutter)
+  mobile-analyze:
+    name: Mobile (Flutter) / Analyze
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@v5
@@ -79,14 +80,43 @@ jobs:
         run: flutter pub get
         working-directory: mobile
 
-      # Sama seperti yang dituntut di setiap sesi pengembangan lokal: bersih tanpa satu pun
-      # galat atau peringatan, bukan cuma "berhasil dikompilasi".
+      # Bersih tanpa satu pun galat atau peringatan, bukan cuma berhasil dikompilasi.
       - name: Analisis statis
         run: flutter analyze
         working-directory: mobile
 
-      - name: Jalankan tes
-        run: flutter test
+  mobile-test:
+    name: Mobile (Flutter) / Test ${{ matrix.name }}/4
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - index: 0
+            name: 1
+          - index: 1
+            name: 2
+          - index: 2
+            name: 3
+          - index: 3
+            name: 4
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Pasang Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Pulihkan paket
+        run: flutter pub get
+        working-directory: mobile
+
+      - name: Jalankan tes shard ${{ matrix.name }}/4
+        run: flutter test --fail-fast --timeout 2m --total-shards 4 --shard-index ${{ matrix.index }}
         working-directory: mobile
 
   web:
