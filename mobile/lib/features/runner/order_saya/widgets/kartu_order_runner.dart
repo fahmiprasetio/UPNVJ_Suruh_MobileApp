@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/format/formatters.dart';
+import '../../../../core/providers/tracking_providers.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/widgets/foto_estimasi_order.dart';
 import '../../../../domain/enums.dart';
 import '../../../../domain/models/order.dart';
@@ -272,29 +276,198 @@ class KartuOrderRunner extends StatelessWidget {
               // 8. TOMBOL UTAMA & AKSI SAMPING (UNTUK ORDER SEDANG DIKERJAKAN)
               if (onSelesaikan != null) ...[
                 const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  height: 46,
-                  child: ElevatedButton.icon(
-                    onPressed: onSelesaikan,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF00AA13),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    icon: const Icon(Icons.task_alt_rounded, size: 18),
-                    label: const Text(
-                      'Selesaikan Order',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                  ),
+                Consumer(
+                  builder: (context, ref, _) {
+                    final isRuteService =
+                        order.serviceType == ServiceType.anterJemput ||
+                        order.serviceType == ServiceType.jastipMakanan;
+                    final tahap = isRuteService
+                        ? (ref.watch(tahapTrackingProvider)[order.id] ??
+                            TahapTrackingOrder.menujuJemput)
+                        : TahapTrackingOrder.sedangAntar;
+
+                    if (isRuteService &&
+                        tahap == TahapTrackingOrder.menujuJemput) {
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: double.infinity,
+                            height: 46,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                ref
+                                    .read(tahapTrackingProvider.notifier)
+                                    .mulaiAntar(order.id);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Perjalanan dimulai! Rute hijau live tracking kini mengarah ke tujuan.',
+                                    ),
+                                    backgroundColor: Color(0xFF00880C),
+                                    duration: Duration(seconds: 3),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF00AA13),
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              icon: const Icon(
+                                Icons.navigation_rounded,
+                                size: 18,
+                              ),
+                              label: const Text(
+                                'Mulai Antar ke Tujuan',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              TextButton.icon(
+                                onPressed: () =>
+                                    context.push(Rute.detailOrder(order.id)),
+                                icon: const Icon(
+                                  Icons.map_rounded,
+                                  size: 15,
+                                  color: Color(0xFF00880C),
+                                ),
+                                label: const Text(
+                                  'Buka Peta Live',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF00880C),
+                                  ),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: onSelesaikan,
+                                style: TextButton.styleFrom(
+                                  foregroundColor: const Color(0xFF6B7280),
+                                ),
+                                child: const Text(
+                                  'Selesaikan Order',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      );
+                    }
+
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isRuteService) ...[
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8F8EA),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.navigation_rounded,
+                                  size: 14,
+                                  color: Color(0xFF00AA13),
+                                ),
+                                const SizedBox(width: 6),
+                                const Expanded(
+                                  child: Text(
+                                    'Rute pengantaran ke tujuan aktif di live tracking',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF00880C),
+                                    ),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    ref
+                                        .read(tahapTrackingProvider.notifier)
+                                        .kembaliKeJemput(order.id);
+                                  },
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    minimumSize: const Size(0, 24),
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                  child: const Text(
+                                    'Batal',
+                                    style: TextStyle(fontSize: 11),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        SizedBox(
+                          width: double.infinity,
+                          height: 46,
+                          child: ElevatedButton.icon(
+                            onPressed: onSelesaikan,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF00AA13),
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            icon: const Icon(Icons.task_alt_rounded, size: 18),
+                            label: const Text(
+                              'Selesaikan Order',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (isRuteService)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: TextButton.icon(
+                              onPressed: () =>
+                                  context.push(Rute.detailOrder(order.id)),
+                              icon: const Icon(
+                                Icons.map_rounded,
+                                size: 15,
+                                color: Color(0xFF00880C),
+                              ),
+                              label: const Text(
+                                'Buka Peta Live Tracking',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF00880C),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
                 ),
                 if (onChat != null || onLepas != null) ...[
                   const SizedBox(height: 6),

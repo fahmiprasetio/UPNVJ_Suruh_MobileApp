@@ -259,6 +259,8 @@ class _LiveTrackingAlohaViewState
   late final LatLng _posisiTujuan;
   LatLng? _posisiRunner;
   LatLng? _posisiRunnerRuteTerakhir;
+  LatLng? _targetRuteTerakhir;
+  TahapTrackingOrder _tahapSebelumnya = TahapTrackingOrder.menujuJemput;
 
   List<LatLng> _titikRuteRunner = [];
   bool _sedangMemuatRute = false;
@@ -282,22 +284,12 @@ class _LiveTrackingAlohaViewState
       widget.order.longitudeTujuan!,
     );
 
-    // Ambil lokasi runner awal jika sudah ada di provider, atau siapkan posisi
-    // awal yang realistis mendekati titik jemput agar rute hijau Runner -> Klien
-    // langsung tampil seketika saat layar dibuka!
     final lokasiAwal = ref.read(lokasiRunnerProvider(widget.order.id)).value;
     if (lokasiAwal != null) {
       _posisiRunner = LatLng(lokasiAwal.latitude, lokasiAwal.longitude);
-    } else {
-      // Posisi runner awal sebelum ping pertama: berada sekitar 350-400m dari titik jemput
-      _posisiRunner = LatLng(
-        _posisiJemput.latitude + 0.0030,
-        _posisiJemput.longitude - 0.0025,
-      );
+      _titikRuteRunner = [_posisiRunner!, _posisiJemput];
+      _muatRuteRunner(_posisiRunner!);
     }
-
-    _titikRuteRunner = [_posisiRunner!, _posisiJemput];
-    _muatRuteRunner(_posisiRunner!);
   }
 
   void _onSheetBerubah() {
@@ -336,8 +328,21 @@ class _LiveTrackingAlohaViewState
     }
   }
 
-  Future<void> _muatRuteRunner(LatLng posRunner) async {
-    if (_posisiRunnerRuteTerakhir != null) {
+  Future<void> _muatRuteRunner(
+    LatLng posRunner, {
+    LatLng? target,
+    bool paksa = false,
+  }) async {
+    final tahap = ref.read(tahapTrackingProvider)[widget.order.id] ??
+        TahapTrackingOrder.menujuJemput;
+    final targetAktif = target ??
+        (tahap == TahapTrackingOrder.sedangAntar
+            ? _posisiTujuan
+            : _posisiJemput);
+
+    if (!paksa &&
+        _posisiRunnerRuteTerakhir != null &&
+        _targetRuteTerakhir == targetAktif) {
       final dLat =
           (posRunner.latitude - _posisiRunnerRuteTerakhir!.latitude).abs();
       final dLon =
@@ -353,16 +358,15 @@ class _LiveTrackingAlohaViewState
     if (_sedangMemuatRute) return;
     _sedangMemuatRute = true;
     _posisiRunnerRuteTerakhir = posRunner;
+    _targetRuteTerakhir = targetAktif;
 
-    if (_titikRuteRunner.isEmpty) {
-      setState(() {
-        _titikRuteRunner = [posRunner, _posisiJemput];
-      });
-    }
+    setState(() {
+      _titikRuteRunner = [posRunner, targetAktif];
+    });
 
     try {
       final titik =
-          await JarakRuteOsrm.ambilTitikRute(posRunner, _posisiJemput);
+          await JarakRuteOsrm.ambilTitikRute(posRunner, targetAktif);
       if (mounted && titik.isNotEmpty) {
         setState(() {
           _titikRuteRunner = titik;
@@ -371,12 +375,25 @@ class _LiveTrackingAlohaViewState
     } catch (_) {
       if (mounted && _titikRuteRunner.isEmpty) {
         setState(() {
-          _titikRuteRunner = [posRunner, _posisiJemput];
+          _titikRuteRunner = [posRunner, targetAktif];
         });
       }
     } finally {
       _sedangMemuatRute = false;
     }
+  }
+
+  void _pusatkanPetaUntukTahap(TahapTrackingOrder tahap) {
+    final runner = _posisiRunner ?? _posisiJemput;
+    final target =
+        tahap == TahapTrackingOrder.sedangAntar ? _posisiTujuan : _posisiJemput;
+    _mapController.move(
+      LatLng(
+        (target.latitude + runner.latitude) / 2,
+        (target.longitude + runner.longitude) / 2,
+      ),
+      15.0,
+    );
   }
 
   @override
@@ -393,10 +410,14 @@ class _LiveTrackingAlohaViewState
 
   void _tampilkanSemuaRute() {
     final runner = _posisiRunner ?? _posisiJemput;
+    final tahap = ref.read(tahapTrackingProvider)[widget.order.id] ??
+        TahapTrackingOrder.menujuJemput;
+    final target =
+        tahap == TahapTrackingOrder.sedangAntar ? _posisiTujuan : _posisiJemput;
     _mapController.move(
       LatLng(
-        (_posisiJemput.latitude + runner.latitude) / 2,
-        (_posisiJemput.longitude + runner.longitude) / 2,
+        (target.latitude + runner.latitude) / 2,
+        (target.longitude + runner.longitude) / 2,
       ),
       14.8,
     );
@@ -547,6 +568,28 @@ class _LiveTrackingAlohaViewState
   @override
   Widget build(BuildContext context) {
     final order = widget.order;
+    final tahapTracking = ref.watch(tahapTrackingProvider)[order.id] ??
+        TahapTrackingOrder.menujuJemput;
+    final isSedangAntar = tahapTracking == TahapTrackingOrder.sedangAntar;
+
+    if (tahapTracking != _tahapSebelumnya) {
+      _tahapSebelumnya = tahapTracking;
+      _posisiRunnerRuteTerakhir = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          final posisiRunner = _posisiRunner;
+          if (posisiRunner != null) {
+            _muatRuteRunner(
+              posisiRunner,
+              target: isSedangAntar ? _posisiTujuan : _posisiJemput,
+              paksa: true,
+            );
+          }
+          _pusatkanPetaUntukTahap(tahapTracking);
+        }
+      });
+    }
+
     final lokasi = ref.watch(lokasiRunnerProvider(order.id)).value;
     final posBaru = lokasi == null
         ? null
@@ -579,6 +622,8 @@ class _LiveTrackingAlohaViewState
         ? order.runners.first.noHp
         : null;
 
+    final targetInitial = isSedangAntar ? _posisiTujuan : _posisiJemput;
+
     return Stack(
       children: [
         // 1. PETA INTERAKTIF LIVE
@@ -587,10 +632,10 @@ class _LiveTrackingAlohaViewState
             mapController: _mapController,
             options: MapOptions(
               initialCenter: LatLng(
-                (_posisiJemput.latitude +
+                (targetInitial.latitude +
                         (_posisiRunner?.latitude ?? _posisiJemput.latitude)) /
                     2,
-                (_posisiJemput.longitude +
+                (targetInitial.longitude +
                         (_posisiRunner?.longitude ?? _posisiJemput.longitude)) /
                     2,
               ),
@@ -653,8 +698,8 @@ class _LiveTrackingAlohaViewState
                   if (_posisiRunner != null)
                     Marker(
                       point: _posisiRunner!,
-                      width: 200,
-                      height: 80,
+                      width: 220,
+                      height: 85,
                       alignment: Alignment.center,
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -688,7 +733,11 @@ class _LiveTrackingAlohaViewState
                                 ),
                                 const SizedBox(width: 5),
                                 Text(
-                                  'Runner ($runnerNama)',
+                                  isSedangAntar
+                                      ? (order.serviceType == ServiceType.jastipMakanan
+                                          ? 'Runner Antar Makanan'
+                                          : 'Runner & Kamu ($runnerNama)')
+                                      : 'Runner ($runnerNama)',
                                   style: const TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
@@ -727,20 +776,21 @@ class _LiveTrackingAlohaViewState
                   // TITIK JEMPUT (KAMU DI SINI / WARUNG MAKAN) MARKER
                   Marker(
                     point: _posisiJemput,
-                    width: 180,
+                    width: 190,
                     height: 80,
                     alignment: Alignment.bottomCenter,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
-                          width: 38,
-                          height: 38,
+                          width: isSedangAntar ? 32 : 38,
+                          height: isSedangAntar ? 32 : 38,
                           decoration: BoxDecoration(
-                            color:
-                                order.serviceType == ServiceType.jastipMakanan
-                                ? const Color(0xFFEA580C)
-                                : const Color(0xFF00AA13),
+                            color: isSedangAntar
+                                ? const Color(0xFF4B5563)
+                                : (order.serviceType == ServiceType.jastipMakanan
+                                    ? const Color(0xFFEA580C)
+                                    : const Color(0xFF00AA13)),
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 2.5),
                             boxShadow: const [
@@ -752,11 +802,13 @@ class _LiveTrackingAlohaViewState
                             ],
                           ),
                           child: Icon(
-                            order.serviceType == ServiceType.jastipMakanan
-                                ? Icons.storefront_rounded
-                                : Icons.location_on_rounded,
+                            isSedangAntar
+                                ? Icons.check_rounded
+                                : (order.serviceType == ServiceType.jastipMakanan
+                                    ? Icons.storefront_rounded
+                                    : Icons.location_on_rounded),
                             color: Colors.white,
-                            size: 22,
+                            size: isSedangAntar ? 18 : 22,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -766,7 +818,9 @@ class _LiveTrackingAlohaViewState
                             vertical: 3.5,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1F2937),
+                            color: isSedangAntar
+                                ? const Color(0xFF374151)
+                                : const Color(0xFF1F2937),
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: const [
                               BoxShadow(
@@ -777,11 +831,13 @@ class _LiveTrackingAlohaViewState
                             ],
                           ),
                           child: Text(
-                            order.serviceType == ServiceType.jastipMakanan
-                                ? 'Warung ($namaJemput)'
-                                : 'Kamu di sini ($namaJemput)',
-                            style: const TextStyle(
-                              color: Colors.white,
+                            isSedangAntar
+                                ? 'Selesai dijemput ($namaJemput)'
+                                : (order.serviceType == ServiceType.jastipMakanan
+                                    ? 'Warung ($namaJemput)'
+                                    : 'Kamu di sini ($namaJemput)'),
+                            style: TextStyle(
+                              color: isSedangAntar ? const Color(0xFFE5E7EB) : Colors.white,
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
                             ),
@@ -796,27 +852,30 @@ class _LiveTrackingAlohaViewState
                   // TITIK TUJUAN MARKER
                   Marker(
                     point: _posisiTujuan,
-                    width: 180,
+                    width: 190,
                     height: 80,
                     alignment: Alignment.bottomCenter,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
-                          width: 34,
-                          height: 34,
+                          width: isSedangAntar ? 40 : 34,
+                          height: isSedangAntar ? 40 : 34,
                           decoration: BoxDecoration(
-                            color:
-                                order.serviceType == ServiceType.jastipMakanan
+                            color: isSedangAntar
                                 ? const Color(0xFF00AA13)
-                                : const Color(0xFFEA580C),
+                                : (order.serviceType == ServiceType.jastipMakanan
+                                    ? const Color(0xFF00AA13)
+                                    : const Color(0xFFEA580C)),
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 2.5),
-                            boxShadow: const [
+                            boxShadow: [
                               BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 6,
-                                offset: Offset(0, 2),
+                                color: isSedangAntar
+                                    ? const Color(0xFF00AA13).withValues(alpha: 0.45)
+                                    : Colors.black26,
+                                blurRadius: isSedangAntar ? 10 : 6,
+                                offset: const Offset(0, 2),
                               ),
                             ],
                           ),
@@ -825,7 +884,7 @@ class _LiveTrackingAlohaViewState
                                 ? Icons.home_rounded
                                 : Icons.flag_rounded,
                             color: Colors.white,
-                            size: 18,
+                            size: isSedangAntar ? 22 : 18,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -835,7 +894,9 @@ class _LiveTrackingAlohaViewState
                             vertical: 3.5,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1F2937),
+                            color: isSedangAntar
+                                ? const Color(0xFF006C0E)
+                                : const Color(0xFF1F2937),
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: const [
                               BoxShadow(
@@ -846,13 +907,15 @@ class _LiveTrackingAlohaViewState
                             ],
                           ),
                           child: Text(
-                            order.serviceType == ServiceType.jastipMakanan
-                                ? 'Antar ke: $namaTujuan'
-                                : namaTujuan,
+                            isSedangAntar
+                                ? 'Tujuan Antar: $namaTujuan'
+                                : (order.serviceType == ServiceType.jastipMakanan
+                                    ? 'Antar ke: $namaTujuan'
+                                    : namaTujuan),
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 10,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w700,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -1171,16 +1234,13 @@ class _LiveTrackingAlohaViewState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        order.serviceType == ServiceType.jastipMakanan
-                            ? (order.status == OrderStatus.dikerjakan
-                                  ? 'Makanan Sedang Dibelikan & Diantar'
-                                  : 'Mencari Runner Kampus')
-                            : (order.status == OrderStatus.dikerjakan
-                                  ? 'Runner Menuju ke Lokasimu'
-                                  : (order.status ==
-                                            OrderStatus.mencariRunner
-                                        ? 'Mencari Runner Kampus'
-                                        : 'Perjalanan ke Tujuan')),
+                        isSedangAntar
+                            ? (order.serviceType == ServiceType.jastipMakanan
+                                ? 'Pesanan Sedang Diantar ke Lokasimu'
+                                : 'Sedang Mengantar ke Tujuan')
+                            : (order.serviceType == ServiceType.jastipMakanan
+                                ? 'Pesanan Sedang Diproses di Warung'
+                                : 'Runner Menuju ke Lokasimu'),
                         style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w800,
@@ -1190,17 +1250,23 @@ class _LiveTrackingAlohaViewState
                       const SizedBox(height: 5),
                       Row(
                         children: [
-                          const Icon(
-                            Icons.near_me_rounded,
+                          Icon(
+                            isSedangAntar
+                                ? Icons.navigation_rounded
+                                : Icons.near_me_rounded,
                             size: 15,
-                            color: Color(0xFF00AA13),
+                            color: const Color(0xFF00AA13),
                           ),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              order.serviceType == ServiceType.jastipMakanan
-                                  ? 'Pesanan sedang diproses runner di warung'
-                                  : 'Runner dalam perjalanan menuju titik jemput',
+                              isSedangAntar
+                                  ? (order.serviceType == ServiceType.jastipMakanan
+                                      ? 'Runner sedang meluncur mengantarkan pesanan ke lokasimu'
+                                      : 'Runner sedang mengantar kamu menuju: $namaTujuan')
+                                  : (order.serviceType == ServiceType.jastipMakanan
+                                      ? 'Runner sedang membelikan makanan di warung'
+                                      : 'Runner dalam perjalanan menuju lokasi jemput'),
                               style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
@@ -1374,6 +1440,175 @@ class _LiveTrackingAlohaViewState
                             ),
                           ),
                         ),
+                      ],
+                    ),
+                  ),
+
+                  // KARTU AKSI TAHAP PERJALANAN (MULAI ANTAR KE TUJUAN)
+                  Container(
+                    margin: const EdgeInsets.only(top: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isSedangAntar
+                          ? const Color(0xFFF0FDF4)
+                          : const Color(0xFFF9FAFB),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isSedangAntar
+                            ? const Color(0xFF86EFAC)
+                            : const Color(0xFFE5E7EB),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isSedangAntar
+                                    ? const Color(0xFF00AA13)
+                                    : const Color(0xFF2563EB),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                isSedangAntar
+                                    ? 'TAHAP 2: PENGANTARAN'
+                                    : 'TAHAP 1: PENJEMPUTAN',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              isSedangAntar
+                                  ? 'Rute: Runner ➔ $namaTujuan'
+                                  : 'Rute: Runner ➔ $namaJemput',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: isSedangAntar
+                                    ? const Color(0xFF00880C)
+                                    : const Color(0xFF4B5563),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          isSedangAntar
+                              ? 'Runner sudah tiba di titik jemput dan perjalanan pengantaran menuju tujuan sedang berlangsung. Rute hijau pada peta melacak posisi menuju tujuan.'
+                              : 'Runner sedang meluncur menuju lokasi penjemputan. Begitu runner tiba di lokasimu, tekan tombol di bawah untuk memulai rute pengantaran ke tujuan.',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF374151),
+                            height: 1.35,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        if (!isSedangAntar)
+                          SizedBox(
+                            width: double.infinity,
+                            height: 44,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                ref
+                                    .read(tahapTrackingProvider.notifier)
+                                    .mulaiAntar(widget.order.id);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Mulai antar! Rute hijau live tracking kini mengarah ke tujuan ($namaTujuan).',
+                                    ),
+                                    backgroundColor: const Color(0xFF00880C),
+                                    duration: const Duration(seconds: 3),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF00AA13),
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              icon: const Icon(
+                                Icons.navigation_rounded,
+                                size: 18,
+                              ),
+                              label: const Text(
+                                'Mulai Antar ke Tujuan',
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFDCFCE7),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Row(
+                                    children: [
+                                      Icon(
+                                        Icons.check_circle_rounded,
+                                        color: Color(0xFF00AA13),
+                                        size: 16,
+                                      ),
+                                      SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          'Rute pengantaran aktif',
+                                          style: TextStyle(
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: Color(0xFF00880C),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              TextButton(
+                                onPressed: () {
+                                  ref
+                                      .read(tahapTrackingProvider.notifier)
+                                      .kembaliKeJemput(widget.order.id);
+                                },
+                                style: TextButton.styleFrom(
+                                  foregroundColor: const Color(0xFF6B7280),
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                                child: const Text(
+                                  'Kembali ke Jemput',
+                                  style: TextStyle(fontSize: 11),
+                                ),
+                              ),
+                            ],
+                          ),
                       ],
                     ),
                   ),
