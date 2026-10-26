@@ -236,7 +236,6 @@ class PengaturanScreen extends ConsumerWidget {
 
     return Material(
       color: warnaKartu,
-      borderRadius: BorderRadius.circular(18),
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
