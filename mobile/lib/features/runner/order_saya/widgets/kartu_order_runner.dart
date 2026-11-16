@@ -6,6 +6,7 @@ import '../../../../core/format/formatters.dart';
 import '../../../../core/providers/tracking_providers.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/widgets/foto_estimasi_order.dart';
+import '../../../../core/widgets/status_lokasi_runner.dart';
 import '../../../../domain/enums.dart';
 import '../../../../domain/models/order.dart';
 import '../../../../domain/service_catalog.dart';
@@ -218,6 +219,11 @@ class KartuOrderRunner extends StatelessWidget {
                   ),
                 ),
               ],
+
+              if (order.status == OrderStatus.dikerjakan &&
+                  (order.serviceType == ServiceType.anterJemput ||
+                      order.serviceType == ServiceType.jastipMakanan))
+                StatusLokasiRunner(runnerIds: order.runnerIds),
 
               // 5. FOTO ESTIMASI
               if (order.fotoEstimasiUrl != null) ...[

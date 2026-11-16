@@ -20,6 +20,7 @@ import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/pesan_kosong.dart';
 import '../../../core/widgets/foto_estimasi_order.dart';
+import '../../../core/widgets/status_lokasi_runner.dart';
 import '../../../domain/enums.dart';
 import '../../../domain/models/order.dart';
 import '../../../domain/service_catalog.dart';
@@ -414,13 +415,14 @@ class _LiveTrackingAlohaViewState
         TahapTrackingOrder.menujuJemput;
     final target =
         tahap == TahapTrackingOrder.sedangAntar ? _posisiTujuan : _posisiJemput;
-    _mapController.move(
-      LatLng(
-        (target.latitude + runner.latitude) / 2,
-        (target.longitude + runner.longitude) / 2,
+    final tinggi = MediaQuery.sizeOf(context).height;
+    _mapController.fitCamera(CameraFit.bounds(
+      bounds: LatLngBounds.fromPoints([runner, target]),
+      padding: EdgeInsets.fromLTRB(
+        44, 90, 44, (tinggi * _ukuranSheet + 24).clamp(24.0, tinggi - 120),
       ),
-      14.8,
-    );
+      maxZoom: 16,
+    ));
   }
 
   void _bukaMenuAksi(BuildContext context) {
@@ -590,16 +592,23 @@ class _LiveTrackingAlohaViewState
       });
     }
 
-    final lokasi = ref.watch(lokasiRunnerProvider(order.id)).value;
+    final lokasiAsync = ref.watch(lokasiRunnerProvider(order.id));
+    final lokasi = lokasiAsync.value;
+    final menungguLokasi = lokasi == null;
+    final lokasiTertunda = lokasiAsync.hasError ||
+        (lokasi != null && DateTime.now().difference(lokasi.diterimaPada) >
+            const Duration(seconds: 45));
     final posBaru = lokasi == null
         ? null
         : LatLng(lokasi.latitude, lokasi.longitude);
 
     if (posBaru != null && posBaru != _posisiRunner) {
+      final posisiPertama = _posisiRunner == null;
       _posisiRunner = posBaru;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _posisiRunner != null) {
           _muatRuteRunner(_posisiRunner!);
+          if (posisiPertama) _tampilkanSemuaRute();
         }
       });
     }
@@ -622,6 +631,20 @@ class _LiveTrackingAlohaViewState
         ? order.runners.first.noHp
         : null;
 
+    final dekatJemput = _posisiRunner != null &&
+        const Distance().as(LengthUnit.Meter, _posisiRunner!, _posisiJemput) <= 20;
+    final pesanLokasi = lokasiAsync.hasError
+        ? 'Sambungan lokasi terputus; pembaruan akan dicoba lagi'
+        : menungguLokasi
+        ? 'Menunggu runner membagikan lokasi perangkatnya'
+        : lokasiTertunda
+            ? 'Pembaruan lokasi tertunda; menampilkan posisi terakhir'
+            : !isSedangAntar && dekatJemput
+                ? 'Posisi runner berada di dekat titik jemput'
+                : isSedangAntar
+                    ? 'Lokasi runner diperbarui selama pengantaran'
+                    : 'Lokasi runner diperbarui selama penjemputan';
+
     final targetInitial = isSedangAntar ? _posisiTujuan : _posisiJemput;
 
     return Stack(
@@ -639,6 +662,9 @@ class _LiveTrackingAlohaViewState
                         (_posisiRunner?.longitude ?? _posisiJemput.longitude)) /
                     2,
               ),
+              onMapReady: () {
+                if (_posisiRunner != null) _tampilkanSemuaRute();
+              },
               initialZoom: 15.2,
               minZoom: 3,
               maxZoom: 19,
@@ -924,7 +950,7 @@ class _LiveTrackingAlohaViewState
                       ],
                     ),
                   ),
-                ],
+                ].reversed.toList(),
               ),
             ],
           ),
@@ -1055,9 +1081,11 @@ class _LiveTrackingAlohaViewState
                         const SizedBox(width: 6),
                         Flexible(
                           child: Text(
-                            order.serviceType == ServiceType.jastipMakanan
-                                ? 'Pelacakan Pengantaran Makanan Aktif'
-                                : 'Lokasi dibagikan hanya selama perjalanan aktif',
+                            menungguLokasi
+                                ? 'Menunggu lokasi runner'
+                                : lokasiTertunda
+                                    ? 'Pembaruan lokasi tertunda'
+                                    : 'Lokasi runner tersambung',
                             style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -1234,13 +1262,15 @@ class _LiveTrackingAlohaViewState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        isSedangAntar
-                            ? (order.serviceType == ServiceType.jastipMakanan
-                                ? 'Pesanan Sedang Diantar ke Lokasimu'
-                                : 'Sedang Mengantar ke Tujuan')
-                            : (order.serviceType == ServiceType.jastipMakanan
-                                ? 'Pesanan Sedang Diproses di Warung'
-                                : 'Runner Menuju ke Lokasimu'),
+                        menungguLokasi
+                            ? 'Menunggu Lokasi Runner'
+                            : isSedangAntar
+                                ? (order.serviceType == ServiceType.jastipMakanan
+                                    ? 'Pesanan Sedang Diantar ke Lokasimu'
+                                    : 'Sedang Mengantar ke Tujuan')
+                                : (order.serviceType == ServiceType.jastipMakanan
+                                    ? 'Pesanan Sedang Diproses di Warung'
+                                    : 'Runner Menuju ke Lokasimu'),
                         style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w800,
@@ -1260,13 +1290,7 @@ class _LiveTrackingAlohaViewState
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              isSedangAntar
-                                  ? (order.serviceType == ServiceType.jastipMakanan
-                                      ? 'Runner sedang meluncur mengantarkan pesanan ke lokasimu'
-                                      : 'Runner sedang mengantar kamu menuju: $namaTujuan')
-                                  : (order.serviceType == ServiceType.jastipMakanan
-                                      ? 'Runner sedang membelikan makanan di warung'
-                                      : 'Runner dalam perjalanan menuju lokasi jemput'),
+                              pesanLokasi,
                               style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
@@ -1280,6 +1304,8 @@ class _LiveTrackingAlohaViewState
                       ),
                     ],
                   ),
+
+                  StatusLokasiRunner(runnerIds: order.runnerIds),
 
                   // B. KARTU RUNNER KAMPUS
                   Container(
