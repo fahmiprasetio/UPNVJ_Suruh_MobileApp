@@ -66,14 +66,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # Channel stable, mengikuti mobile/.metadata (channel "stable" di mesin pengembangan).
-      # Tidak dipatok ke satu revisi persis: tes yang cuma lolos pada satu titik waktu stable
-      # tertentu, bukan pada keluarga versi yang sebenarnya dipakai proyek ini, adalah tes yang
-      # rapuh terhadap pembaruan Flutter yang wajar.
+      # Patok versi stable terakhir yang telah lolos CI. Naikkan kembali setelah migrasi
+      # pustaka Material dan Cupertino diuji secara terpisah.
       - name: Pasang Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: "3.47.8"
           cache: true
 
       - name: Pulihkan paket
@@ -109,6 +108,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: "3.47.8"
           cache: true
 
       - name: Pulihkan paket
