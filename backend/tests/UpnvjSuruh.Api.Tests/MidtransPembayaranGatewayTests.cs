@@ -115,23 +115,30 @@ public class MidtransPembayaranGatewayTests
     }
 
     [Fact]
-    public async Task KeyProductionPadaModeSandboxDitolakSebelumMenghubungiGateway()
+    public async Task KeyTanpaAwalanSandboxTetapDiverifikasiOlehGatewaySandbox()
     {
         var dipanggil = false;
         var gateway = new MidtransPembayaranGateway(
             new HttpClient(new HandlerTiruan(_ =>
             {
                 dipanggil = true;
-                return new HttpResponseMessage(HttpStatusCode.OK);
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(new
+                    {
+                        token = "token-snap-uji",
+                        redirect_url = "https://app.sandbox.midtrans.com/snap/v2/vtweb/token-snap-uji",
+                    }),
+                };
             })) { BaseAddress = new Uri("https://app.sandbox.midtrans.com/") },
             Options.Create(new MidtransOptions
             {
                 ServerKey = "Mid-server-uji-bukan-rahasia", Production = false, NotificationUrl = NotificationUrlUji,
             }), NullLogger<MidtransPembayaranGateway>.Instance);
 
-        await Assert.ThrowsAsync<MidtransTidakTersediaException>(() =>
-            gateway.BuatTransaksiAsync(OrderUji(), Guid.NewGuid(), 15000m, CancellationToken.None));
-        Assert.False(dipanggil);
+        var hasil = await gateway.BuatTransaksiAsync(OrderUji(), Guid.NewGuid(), 15000m, CancellationToken.None);
+        Assert.True(dipanggil);
+        Assert.StartsWith("https://app.sandbox.midtrans.com/", hasil.CheckoutUrl);
     }
 
     [Fact]

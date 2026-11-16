@@ -39,9 +39,9 @@ public class MidtransPembayaranGateway(
         decimal jumlah,
         CancellationToken batal)
     {
-        if (!opsi.Value.ServerKeySesuaiLingkungan() || !opsi.Value.NotificationUrlSah())
+        if (!opsi.Value.ServerKeyTerisi() || !opsi.Value.NotificationUrlSah())
         {
-            log.LogError("Konfigurasi lingkungan atau URL notifikasi Midtrans tidak sesuai.");
+            log.LogError("Kredensial atau URL notifikasi Midtrans belum dikonfigurasi dengan benar.");
             throw new MidtransTidakTersediaException();
         }
 

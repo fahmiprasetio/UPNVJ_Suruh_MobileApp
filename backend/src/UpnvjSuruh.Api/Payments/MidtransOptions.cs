@@ -38,9 +38,9 @@ public class MidtransOptions
     /// </summary>
     public string NotificationUrl { get; set; } = string.Empty;
 
-    public bool ServerKeySesuaiLingkungan() =>
-        ServerKey == ServerKey.Trim() &&
-        ServerKey.StartsWith(Production ? "Mid-server-" : "SB-Mid-server-", StringComparison.Ordinal);
+    // Lingkungan kredensial ditentukan oleh jawaban API, bukan asumsi prefix key.
+    public bool ServerKeyTerisi() =>
+        !string.IsNullOrWhiteSpace(ServerKey) && ServerKey == ServerKey.Trim();
 
     public bool NotificationUrlSah() =>
         Uri.TryCreate(NotificationUrl, UriKind.Absolute, out var uri) &&

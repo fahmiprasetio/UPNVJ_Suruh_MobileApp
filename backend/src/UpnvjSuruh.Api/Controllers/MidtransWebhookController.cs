@@ -71,7 +71,7 @@ public class MidtransWebhookController(
         StatusTransaksiMidtrans terverifikasi;
         try
         {
-            if (!opsi.Value.ServerKeySesuaiLingkungan()) throw new MidtransTidakTersediaException();
+            if (!opsi.Value.ServerKeyTerisi()) throw new MidtransTidakTersediaException();
             terverifikasi = await statusMidtrans.AmbilAsync(paymentId, batal);
         }
         catch (MidtransTidakTersediaException)

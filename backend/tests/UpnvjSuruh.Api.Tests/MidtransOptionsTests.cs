@@ -71,16 +71,16 @@ public class MidtransOptionsTests
     [Theory]
     [InlineData("SB-Mid-server-uji", false, true)]
     [InlineData("Mid-server-uji", true, true)]
-    [InlineData("Mid-server-uji", false, false)]
-    [InlineData("SB-Mid-server-uji", true, false)]
-    [InlineData("SB-Mid-client-uji", false, false)]
+    [InlineData("Mid-server-uji", false, true)]
+    [InlineData("SB-Mid-server-uji", true, true)]
+    [InlineData("SB-Mid-client-uji", false, true)]
     [InlineData(" SB-Mid-server-uji", false, false)]
     [InlineData("SB-Mid-server-uji ", false, false)]
     [InlineData("", false, false)]
-    public void ServerKeyHarusSesuaiLingkungan(string key, bool production, bool sah)
+    public void PemeriksaanLokalHanyaMemastikanKeyTerisiTanpaSpasiTambahan(string key, bool production, bool sah)
     {
         var opsi = new MidtransOptions { ServerKey = key, Production = production };
-        Assert.Equal(sah, opsi.ServerKeySesuaiLingkungan());
+        Assert.Equal(sah, opsi.ServerKeyTerisi());
     }
 
     [Theory]
