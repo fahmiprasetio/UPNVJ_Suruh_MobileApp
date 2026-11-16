@@ -41,8 +41,11 @@ void main() {
     view.resetDevicePixelRatio();
   });
 
-  Future<FakeAuthRepository> bukaBelumMasuk(WidgetTester tester) async {
-    final authRepo = FakeAuthRepository.belumMasuk();
+  Future<FakeAuthRepository> bukaBelumMasuk(
+    WidgetTester tester, {
+    FakeAuthRepository? authRepository,
+  }) async {
+    final authRepo = authRepository ?? FakeAuthRepository.belumMasuk();
     addTearDown(authRepo.dispose);
     final orderRepo = FakeOrderRepository();
     addTearDown(orderRepo.dispose);
@@ -208,6 +211,41 @@ void main() {
 
     expect(find.text('Kode terdiri dari 6 angka'), findsOneWidget);
     expect(repo.userAktif, isNull);
+  });
+
+  testWidgets('runner dapat meminta OTP ulang saat kolom kode masih kosong', (
+    tester,
+  ) async {
+    final repo = AuthPenghitungKode();
+    await bukaBelumMasuk(tester, authRepository: repo);
+    await mulaiMasuk(tester, SeedData.runner.noHp);
+    expect(repo.jumlahPermintaan, 1);
+
+    await tekan(tester, 'Kirim Ulang');
+
+    expect(repo.jumlahPermintaan, 2);
+    expect(find.text('Kode belum diisi'), findsNothing);
+    expect(repo.userAktif, isNull);
+    await isiKode(tester, repo.kodeUntuk(SeedData.runner.noHp)!);
+    expect(repo.userAktif?.id, SeedData.runner.id);
+  });
+
+  testWidgets('kirim OTP ulang mengosongkan kode parsial yang sudah diketik', (
+    tester,
+  ) async {
+    final repo = AuthPenghitungKode();
+    await bukaBelumMasuk(tester, authRepository: repo);
+    await mulaiMasuk(tester, SeedData.klien.noHp);
+    await isiKode(tester, '123');
+
+    await tekan(tester, 'Kirim Ulang');
+
+    expect(repo.jumlahPermintaan, 2);
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      isEmpty,
+    );
+    expect(find.text('Kode terdiri dari 6 angka'), findsNothing);
   });
 
   testWidgets('ganti nomor mengembalikan ke langkah nomor', (tester) async {
@@ -448,4 +486,19 @@ void main() {
 class SesiDitolakYangSudahMenyala extends SesiDitolak {
   @override
   bool build() => true;
+}
+
+class AuthPenghitungKode extends FakeAuthRepository {
+  AuthPenghitungKode() : super.belumMasuk();
+
+  int jumlahPermintaan = 0;
+
+  @override
+  Future<String> masukPassword({
+    required String noHp,
+    required String password,
+  }) {
+    jumlahPermintaan++;
+    return super.masukPassword(noHp: noHp, password: password);
+  }
 }

@@ -54,7 +54,7 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
     return null;
   }
 
-  Future<void> _verifikasiPasswordDanKirimKode() =>
+  Future<void> _verifikasiPasswordDanKirimKode({bool kirimUlang = false}) =>
       jalankan(_formKey, () async {
         _tantanganMasuk = await ref
             .read(authRepositoryProvider)
@@ -62,8 +62,13 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
               noHp: _noHpController.text.trim(),
               password: _passwordController.text,
             );
-        if (mounted) setState(() => _langkah = _Langkah.kode);
-      });
+        if (mounted) {
+          setState(() {
+            _kodeController.clear();
+            _langkah = _Langkah.kode;
+          });
+        }
+      }, validasiForm: !kirimUlang);
 
   Future<void> _daftarLaluKirimKode() => jalankan(_formKey, () async {
     final repo = ref.read(authRepositoryProvider);
@@ -171,7 +176,9 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
                           _cobaKirimLogin();
                         }
                       },
-                      const SingleActivator(LogicalKeyboardKey.numpadEnter): () {
+                      const SingleActivator(
+                        LogicalKeyboardKey.numpadEnter,
+                      ): () {
                         if (_langkah == _Langkah.daftar) {
                           _cobaKirimRegistrasi();
                         } else if (_langkah == _Langkah.nomor) {
@@ -635,6 +642,7 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
 
           // Input OTP Segmented Display
           _KotakInputOtpAloha(
+            key: ValueKey(_tantanganMasuk),
             controller: _kodeController,
             validator: validasiKode,
             onChanged: (val) {
@@ -669,7 +677,7 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
                 InkWell(
                   onTap: sedangMengirim
                       ? null
-                      : _verifikasiPasswordDanKirimKode,
+                      : () => _verifikasiPasswordDanKirimKode(kirimUlang: true),
                   borderRadius: BorderRadius.circular(6),
                   child: const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
@@ -861,6 +869,7 @@ class _MasukScreenState extends ConsumerState<MasukScreen>
 /// Widget Input 6-Digit OTP Segmented Box Bergaya Gojek Aloha
 class _KotakInputOtpAloha extends StatefulWidget {
   const _KotakInputOtpAloha({
+    super.key,
     required this.controller,
     required this.validator,
     required this.onChanged,

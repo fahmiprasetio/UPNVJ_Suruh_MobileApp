@@ -13,16 +13,18 @@ mixin TindakanTerkelola<T extends StatefulWidget> on State<T> {
   String? galatTindakan;
 
   /// [formKey] divalidasi lebih dulu; kalau tidak lolos, [tindakan] tidak pernah
-  /// dijalankan sama sekali.
+  /// dijalankan sama sekali. Aksi yang memakai data dari langkah sebelumnya,
+  /// seperti kirim ulang OTP, dapat melewati validasi form langkah saat ini.
   ///
   /// Semua penanganan galat lewat sini supaya tidak ada satu pun jalur yang lupa
   /// mematikan keadaan memuat. Tombol yang tinggal berputar selamanya setelah
   /// permintaan gagal adalah kegagalan yang paling sering lolos ke pengguna.
   Future<void> jalankan(
     GlobalKey<FormState> formKey,
-    Future<void> Function() tindakan,
-  ) async {
-    if (!formKey.currentState!.validate()) return;
+    Future<void> Function() tindakan, {
+    bool validasiForm = true,
+  }) async {
+    if (validasiForm && !formKey.currentState!.validate()) return;
 
     setState(() {
       sedangMengirim = true;
