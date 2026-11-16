@@ -16,9 +16,8 @@ namespace UpnvjSuruh.Api.Controllers;
 ///
 /// Midtrans tidak mendukung header rahasia bersama kustom seperti
 /// <see cref="Auth.WebhookOptions"/> -- ia cuma mengirim <c>signature_key</c> di dalam badan
-/// JSON-nya sendiri, jadi endpoint ini butuh cara verifikasi sendiri
-/// (<see cref="MidtransOptions.SignatureValid"/>), bukan memakai kembali punya
-/// <see cref="WebhookPembayaranController"/>. Keduanya sama-sama berakhir memanggil
+/// JSON-nya sendiri, jadi endpoint ini memeriksa <see cref="MidtransOptions.SignatureValid"/>
+/// lalu mengambil status terkini langsung dari Midtrans. Keduanya sama-sama berakhir memanggil
 /// <see cref="PenyelesaiPembayaran"/> yang sama, satu-satunya tempat order berubah lunas.
 /// </summary>
 [ApiController]
@@ -30,6 +29,7 @@ namespace UpnvjSuruh.Api.Controllers;
 [DisableRateLimiting]
 public class MidtransWebhookController(
     IOptions<MidtransOptions> opsi,
+    IStatusPembayaranMidtrans statusMidtrans,
     PenyelesaiPembayaran penyelesai,
     AppDbContext db,
     ILogger<MidtransWebhookController> log) : ControllerBase
@@ -66,7 +66,31 @@ public class MidtransWebhookController(
 
         if (orderId is null) return NotFound();
 
-        var status = StatusDari(notifikasi.TransactionStatus);
+        // transaction_status dan fraud_status tidak tercakup signature Midtrans.
+        // Ambil keadaan sebenarnya langsung dari Midtrans, bukan dari badan webhook.
+        StatusTransaksiMidtrans terverifikasi;
+        try
+        {
+            if (!opsi.Value.ServerKeySesuaiLingkungan()) throw new MidtransTidakTersediaException();
+            terverifikasi = await statusMidtrans.AmbilAsync(paymentId, batal);
+        }
+        catch (MidtransTidakTersediaException)
+        {
+            // Jangan mengakui penerimaan sebagai sukses ketika verifikasi belum tersedia.
+            // Midtrans dapat mengirim ulang, tanpa mengubah status pembayaran lokal.
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new ProblemDetails
+            {
+                Title = "Status pembayaran belum dapat diverifikasi",
+                Status = StatusCodes.Status503ServiceUnavailable,
+            });
+        }
+
+        if (terverifikasi.OrderId != notifikasi.OrderId)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
+
+        var status = StatusDari(terverifikasi);
         if (status is null)
         {
             // "pending": QR baru diterbitkan, belum ada yang perlu dicatat -- Payment sudah
@@ -76,15 +100,16 @@ public class MidtransWebhookController(
         }
 
         if (!decimal.TryParse(
-                notifikasi.GrossAmount,
-                System.Globalization.NumberStyles.Number,
+                terverifikasi.GrossAmount,
+                System.Globalization.NumberStyles.AllowDecimalPoint,
                 System.Globalization.CultureInfo.InvariantCulture,
-                out var jumlah))
+                out var jumlah) || jumlah <= 0)
         {
-            return BadRequest();
+            return StatusCode(StatusCodes.Status503ServiceUnavailable);
         }
 
-        var hasil = await penyelesai.SelesaikanAsync(orderId.Value, notifikasi.OrderId, status.Value, jumlah, batal);
+        var hasil = await penyelesai.SelesaikanAsync(
+            orderId.Value, notifikasi.OrderId, status.Value, jumlah, batal, terverifikasiMidtrans: true);
 
         return hasil switch
         {
@@ -93,10 +118,11 @@ public class MidtransWebhookController(
         };
     }
 
-    private static PaymentStatus? StatusDari(string? transactionStatus) => transactionStatus switch
+    private static PaymentStatus? StatusDari(StatusTransaksiMidtrans transaksi) => transaksi.TransactionStatus switch
     {
-        // Snap dapat melaporkan settlement atau capture, bergantung metode pembayarannya.
-        "settlement" or "capture" => PaymentStatus.Berhasil,
+        "settlement" when transaksi.StatusCode == "200" &&
+            (transaksi.FraudStatus is null || transaksi.FraudStatus == "accept") => PaymentStatus.Berhasil,
+        "capture" when transaksi.StatusCode == "200" && transaksi.FraudStatus == "accept" => PaymentStatus.Berhasil,
         "expire" => PaymentStatus.Kedaluwarsa,
         "deny" or "cancel" or "failure" => PaymentStatus.Gagal,
         _ => null,

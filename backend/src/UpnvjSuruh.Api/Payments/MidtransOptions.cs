@@ -38,6 +38,15 @@ public class MidtransOptions
     /// </summary>
     public string NotificationUrl { get; set; } = string.Empty;
 
+    public bool ServerKeySesuaiLingkungan() =>
+        ServerKey == ServerKey.Trim() &&
+        ServerKey.StartsWith(Production ? "Mid-server-" : "SB-Mid-server-", StringComparison.Ordinal);
+
+    public bool NotificationUrlSah() =>
+        Uri.TryCreate(NotificationUrl, UriKind.Absolute, out var uri) &&
+        uri.Scheme == Uri.UriSchemeHttps && !uri.IsLoopback &&
+        string.IsNullOrEmpty(uri.UserInfo) && string.IsNullOrEmpty(uri.Fragment);
+
     /// <summary>
     /// Sah kalau <paramref name="signatureKey"/> yang dikirim Midtrans cocok dengan
     /// SHA512(order_id+status_code+gross_amount+ServerKey), persis rumus di dokumentasi

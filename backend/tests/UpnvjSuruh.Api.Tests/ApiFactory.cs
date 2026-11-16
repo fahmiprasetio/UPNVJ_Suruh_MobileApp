@@ -19,7 +19,7 @@ public class ApiFactory : WebApplicationFactory<Program>
     public const string Issuer = "UpnvjSuruh.Api";
     public const string Audience = "UpnvjSuruh.Mobile";
     public const string WebhookSecret = "rahasia-webhook-uji-yang-cukup-panjang-sekali";
-    public const string MidtransServerKey = "server-key-uji-bukan-rahasia";
+    public const string MidtransServerKey = "SB-Mid-server-uji-bukan-rahasia";
 
     /// <summary>
     /// Connection string yang dipakai. Tes yang benar-benar menyentuh basis data
@@ -75,6 +75,7 @@ public class ApiFactory : WebApplicationFactory<Program>
                 // Ini nilai uji, bukan kredensial merchant, dan gateway-nya diganti test double
                 // oleh DatabaseApiFactory sebelum ada transaksi yang dibuat.
                 ["Midtrans:ServerKey"] = MidtransServerKey,
+                ["Midtrans:Production"] = "false",
                 ["Midtrans:NotificationUrl"] = "https://uji.contoh/api/webhooks/midtrans",
             });
         });

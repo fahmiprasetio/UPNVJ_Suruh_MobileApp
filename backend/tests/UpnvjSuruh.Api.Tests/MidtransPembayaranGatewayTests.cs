@@ -28,7 +28,11 @@ public class MidtransPembayaranGatewayTests
     private static MidtransPembayaranGateway Gateway(
         Func<HttpRequestMessage, HttpResponseMessage> jawab) => new(
         new HttpClient(new HandlerTiruan(jawab)) { BaseAddress = new Uri("https://api.sandbox.midtrans.com/") },
-        Options.Create(new MidtransOptions { NotificationUrl = NotificationUrlUji }),
+        Options.Create(new MidtransOptions
+        {
+            ServerKey = ApiFactory.MidtransServerKey,
+            NotificationUrl = NotificationUrlUji,
+        }),
         NullLogger<MidtransPembayaranGateway>.Instance);
 
     [Fact]
@@ -90,7 +94,7 @@ public class MidtransPembayaranGatewayTests
             }),
         });
 
-        var galat = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        var galat = await Assert.ThrowsAsync<MidtransTidakTersediaException>(() =>
             gateway.BuatTransaksiAsync(OrderUji(), Guid.NewGuid(), 15000m, CancellationToken.None));
 
         Assert.DoesNotContain("Rahasia internal Midtrans", galat.Message, StringComparison.Ordinal);
@@ -106,8 +110,40 @@ public class MidtransPembayaranGatewayTests
             Content = JsonContent.Create(new { token = "token-snap-uji" }),
         });
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsAsync<MidtransTidakTersediaException>(() =>
             gateway.BuatTransaksiAsync(OrderUji(), Guid.NewGuid(), 15000m, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task KeyProductionPadaModeSandboxDitolakSebelumMenghubungiGateway()
+    {
+        var dipanggil = false;
+        var gateway = new MidtransPembayaranGateway(
+            new HttpClient(new HandlerTiruan(_ =>
+            {
+                dipanggil = true;
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            })) { BaseAddress = new Uri("https://app.sandbox.midtrans.com/") },
+            Options.Create(new MidtransOptions
+            {
+                ServerKey = "Mid-server-uji-bukan-rahasia", Production = false, NotificationUrl = NotificationUrlUji,
+            }), NullLogger<MidtransPembayaranGateway>.Instance);
+
+        await Assert.ThrowsAsync<MidtransTidakTersediaException>(() =>
+            gateway.BuatTransaksiAsync(OrderUji(), Guid.NewGuid(), 15000m, CancellationToken.None));
+        Assert.False(dipanggil);
+    }
+
+    [Fact]
+    public async Task ResponsHtmlDariGatewayDiterjemahkanMenjadiGalatAman()
+    {
+        var gateway = Gateway(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("<html>galat upstream</html>", System.Text.Encoding.UTF8, "application/json"),
+        });
+        var galat = await Assert.ThrowsAsync<MidtransTidakTersediaException>(() =>
+            gateway.BuatTransaksiAsync(OrderUji(), Guid.NewGuid(), 15000m, CancellationToken.None));
+        Assert.DoesNotContain("upstream", galat.Message);
     }
 
     private sealed class HandlerTiruan(Func<HttpRequestMessage, HttpResponseMessage> jawab)

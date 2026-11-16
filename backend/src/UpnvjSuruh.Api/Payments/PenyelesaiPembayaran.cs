@@ -47,11 +47,13 @@ public class PenyelesaiPembayaran(
         string referensiGateway,
         PaymentStatus status,
         decimal jumlah,
-        CancellationToken batal = default)
+        CancellationToken batal = default,
+        bool terverifikasiMidtrans = false)
     {
         var order = await db.Orders
             .Include(o => o.Payments)
             .Include(o => o.Offers)
+            .Include(o => o.RunnerAssignments)
             .SingleOrDefaultAsync(o => o.Id == orderId, batal);
 
         if (order is null) return HasilPenyelesaian.TidakDitemukan;
@@ -59,9 +61,12 @@ public class PenyelesaiPembayaran(
         // Dicari lewat referensi gateway kalau ada, karena itulah yang menghubungkan kabar ini
         // dengan transaksi yang dulu dibuat. Kalau tidak ketemu, dipakai transaksi yang masih
         // menunggu di order tersebut.
-        var pembayaran =
-            order.Payments.SingleOrDefault(p => p.GatewayReference == referensiGateway)
-            ?? order.Payments.SingleOrDefault(p => p.Menunggu);
+        var pembayaran = terverifikasiMidtrans
+            ? order.Payments.SingleOrDefault(p => p.Id.ToString("N") == referensiGateway)
+            : order.Payments.SingleOrDefault(p => p.GatewayReference == referensiGateway)
+                ?? order.Payments.SingleOrDefault(p => p.Menunggu);
+
+        if (terverifikasiMidtrans && pembayaran is null) return HasilPenyelesaian.TidakDitemukan;
 
         if (pembayaran is null)
         {
@@ -93,7 +98,11 @@ public class PenyelesaiPembayaran(
         // Status akhir tidak bisa dianulir. Gateway mengulang kabarnya kalau jawaban kita telat
         // sampai, jadi kiriman kedua untuk transaksi yang sudah selesai harus berakhir sama
         // dengan yang pertama, bukan menambah pembayaran kedua atau menyiarkan ulang ordernya.
-        if (!pembayaran.Menunggu) return HasilPenyelesaian.SudahDiproses;
+        // Hanya konfirmasi langsung dari Midtrans yang boleh memulihkan transaksi yang
+        // sudah kedaluwarsa/gagal lokal. Refund dan pembayaran sukses tetap final.
+        var lunasTerlambat = terverifikasiMidtrans && status == PaymentStatus.Berhasil &&
+            pembayaran.Status is PaymentStatus.Gagal or PaymentStatus.Kedaluwarsa;
+        if (!pembayaran.Menunggu && !lunasTerlambat) return HasilPenyelesaian.SudahDiproses;
 
         pembayaran.Status = status;
         pembayaran.GatewayReference = referensiGateway;
@@ -137,6 +146,25 @@ public class PenyelesaiPembayaran(
             log.LogWarning(
                 "Pembayaran order {OrderId} lebih: diterima {Diterima}, ditagihkan {Tagihan}.",
                 order.Id, jumlah, pembayaran.Amount);
+        }
+
+        pembayaran.SettledAt = DateTime.UtcNow;
+        if (terverifikasiMidtrans && order.Payments.Any(p => p.Id != pembayaran.Id &&
+                p.Status is PaymentStatus.Berhasil or PaymentStatus.Dikembalikan))
+        {
+            // Uang dari checkout lama tetap dicatat, tetapi jangan membuat dua pembayaran
+            // utama untuk satu order atau mengganggu pencatatan refund admin.
+            pembayaran.Status = PaymentStatus.JumlahTidakCocok;
+            log.LogError("Pembayaran tambahan order {OrderId} perlu diperiksa untuk pengembalian dana.", order.Id);
+            await db.SaveChangesAsync(batal);
+            await hub.BeriTahuKlienAsync(order.Id, batal);
+            return HasilPenyelesaian.Dicatat;
+        }
+
+        // Checkout pengganti tidak boleh terus ditawarkan setelah pembayaran lama lunas.
+        foreach (var lainnya in order.Payments.Where(p => p.Id != pembayaran.Id && p.Menunggu))
+        {
+            lainnya.Status = PaymentStatus.Gagal;
         }
 
         if (order.Status != OrderStatus.MenungguPembayaran)

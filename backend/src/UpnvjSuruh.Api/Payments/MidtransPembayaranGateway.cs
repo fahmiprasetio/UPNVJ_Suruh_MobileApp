@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
 using UpnvjSuruh.Api.Domain;
@@ -12,8 +13,8 @@ namespace UpnvjSuruh.Api.Payments;
 /// Sandbox ditampilkan oleh Midtrans sendiri.
 ///
 /// <c>HttpClient</c>-nya (Authorization Basic dengan Server Key, BaseAddress Sandbox/Production)
-/// dipasang sekali di <c>Program.cs</c>. <see cref="MidtransOptions"/> cuma disentuh untuk satu
-/// hal: <see cref="MidtransOptions.NotificationUrl"/>, lihat <see cref="XOverrideNotification"/>.
+/// dipasang sekali di <c>Program.cs</c>. Konfigurasi lingkungan dan URL notifikasi diperiksa
+/// sebelum checkout dibuat; lihat <see cref="XOverrideNotification"/>.
 /// </summary>
 public class MidtransPembayaranGateway(
     HttpClient http, IOptions<MidtransOptions> opsi, ILogger<MidtransPembayaranGateway> log)
@@ -38,6 +39,12 @@ public class MidtransPembayaranGateway(
         decimal jumlah,
         CancellationToken batal)
     {
+        if (!opsi.Value.ServerKeySesuaiLingkungan() || !opsi.Value.NotificationUrlSah())
+        {
+            log.LogError("Konfigurasi lingkungan atau URL notifikasi Midtrans tidak sesuai.");
+            throw new MidtransTidakTersediaException();
+        }
+
         // Id baris Payment sendiri, bukan Order.Id: satu order boleh punya beberapa transaksi
         // berurutan (tagihan yang kedaluwarsa lalu diterbitkan ulang, lihat 5.14 rencana
         // capstone), dan Midtrans menolak order_id yang dipakai ulang untuk transaksi baru.
@@ -66,26 +73,29 @@ public class MidtransPembayaranGateway(
         };
         permintaan.Headers.Add(XOverrideNotification, opsi.Value.NotificationUrl);
 
-        var jawaban = await http.SendAsync(permintaan, batal);
-
-        var isi = await jawaban.Content.ReadFromJsonAsync<MidtransSnapResponse>(
-            cancellationToken: batal);
-
-        if (!jawaban.IsSuccessStatusCode || string.IsNullOrWhiteSpace(isi?.Token) ||
-            !SnapUrlSah(isi.RedirectUrl))
+        try
         {
-            // Tidak meneruskan isi jawaban Midtrans ke pemanggil: itu bisa memuat detail
-            // internal yang tidak seharusnya sampai ke klien (lihat pola yang sama di
-            // PengirimOtpWhatsapp.Samarkan). Dicatat ke log server, bukan dibocorkan lewat
-            // pengecualian yang isinya ikut lolos ke ProblemDetails.
-            log.LogError(
-            "Midtrans Snap menolak transaksi order {OrderCode}: {StatusCode}",
-            order.OrderCode, (int)jawaban.StatusCode);
-            throw new InvalidOperationException(
-                "Gateway pembayaran sedang bermasalah, coba lagi sebentar lagi.");
-        }
+            using var jawaban = await http.SendAsync(permintaan, batal);
+            if (!jawaban.IsSuccessStatusCode)
+            {
+                log.LogError("Midtrans Snap menolak transaksi: HTTP {StatusCode}.", (int)jawaban.StatusCode);
+                throw new MidtransTidakTersediaException();
+            }
 
-        return new HasilPembuatanPembayaran(orderIdMidtrans, isi.RedirectUrl!);
+            var isi = await jawaban.Content.ReadFromJsonAsync<MidtransSnapResponse>(cancellationToken: batal);
+            if (string.IsNullOrWhiteSpace(isi?.Token) || !SnapUrlSah(isi.RedirectUrl))
+            {
+                throw new MidtransTidakTersediaException();
+            }
+
+            return new HasilPembuatanPembayaran(orderIdMidtrans, isi.RedirectUrl!);
+        }
+        catch (Exception galat) when (galat is HttpRequestException or JsonException or NotSupportedException ||
+            galat is OperationCanceledException && !batal.IsCancellationRequested)
+        {
+            log.LogWarning("Checkout Midtrans belum tersedia.");
+            throw new MidtransTidakTersediaException();
+        }
     }
 
     private static bool SnapUrlSah(string? nilai) =>

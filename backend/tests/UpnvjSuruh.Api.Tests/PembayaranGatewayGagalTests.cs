@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting;
@@ -38,7 +39,10 @@ public class PembayaranGatewayGagalTests(PembayaranGatewayGagalTests.GatewayGaga
         var order = (await buatOrder.Content.ReadFromJsonAsync<BuatOrderResponse>())!.Order;
 
         var pertama = await klien.PostAsync($"/api/orders/{order.Id}/pembayaran", null);
-        Assert.False(pertama.IsSuccessStatusCode);
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, pertama.StatusCode);
+        var galat = await pertama.Content.ReadFromJsonAsync<Microsoft.AspNetCore.Mvc.ProblemDetails>();
+        Assert.Equal("Layanan pembayaran belum tersedia", galat!.Title);
+        Assert.False(galat.Extensions.ContainsKey("exception"));
 
         using (var lingkup = pabrik.Services.CreateScope())
         {
@@ -95,7 +99,7 @@ public class PembayaranGatewayGagalTests(PembayaranGatewayGagalTests.GatewayGaga
         {
             if (LemparkanGalat)
             {
-                throw new InvalidOperationException("Gateway tiruan sengaja gagal untuk tes ini.");
+                throw new MidtransTidakTersediaException();
             }
 
             return Task.FromResult(new HasilPembuatanPembayaran(

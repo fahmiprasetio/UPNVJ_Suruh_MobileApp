@@ -3,8 +3,7 @@ using UpnvjSuruh.Api.Payments;
 namespace UpnvjSuruh.Api.Tests;
 
 /// <summary>
-/// Satu-satunya penjagaan pada <see cref="MidtransWebhookController"/>: tanpa ini, siapa pun
-/// yang tahu alamatnya bisa mengarang kabar lunas untuk order siapa saja.
+/// Penjagaan tanda tangan sebelum backend memverifikasi status langsung ke Midtrans.
 ///
 /// Nilai tanda tangan yang diharapkan di sini dihitung TERPISAH lewat Python
 /// (<c>hashlib.sha512</c>), bukan lewat kode yang sedang diuji -- kalau keduanya memakai
@@ -67,5 +66,33 @@ public class MidtransOptionsTests
         // Midtrans mengirim heksadesimal huruf kecil, tapi verifikasinya tidak boleh gagal
         // cuma karena ada yang mengirim huruf besar.
         Assert.True(Opsi().SignatureValid(OrderId, StatusCode, GrossAmount, TandaTanganSah.ToUpperInvariant()));
+    }
+
+    [Theory]
+    [InlineData("SB-Mid-server-uji", false, true)]
+    [InlineData("Mid-server-uji", true, true)]
+    [InlineData("Mid-server-uji", false, false)]
+    [InlineData("SB-Mid-server-uji", true, false)]
+    [InlineData("SB-Mid-client-uji", false, false)]
+    [InlineData(" SB-Mid-server-uji", false, false)]
+    [InlineData("SB-Mid-server-uji ", false, false)]
+    [InlineData("", false, false)]
+    public void ServerKeyHarusSesuaiLingkungan(string key, bool production, bool sah)
+    {
+        var opsi = new MidtransOptions { ServerKey = key, Production = production };
+        Assert.Equal(sah, opsi.ServerKeySesuaiLingkungan());
+    }
+
+    [Theory]
+    [InlineData("https://uji.contoh/api/webhooks/midtrans", true)]
+    [InlineData("http://uji.contoh/api/webhooks/midtrans", false)]
+    [InlineData("https://localhost/api/webhooks/midtrans", false)]
+    [InlineData("https://127.0.0.1/api/webhooks/midtrans", false)]
+    [InlineData("https://pengguna:sandi@uji.contoh/api/webhooks/midtrans", false)]
+    [InlineData("https://uji.contoh/api/webhooks/midtrans#fragmen", false)]
+    [InlineData("bukan-url", false)]
+    public void NotifikasiMemerlukanUrlHttpsPublik(string url, bool sah)
+    {
+        Assert.Equal(sah, new MidtransOptions { NotificationUrl = url }.NotificationUrlSah());
     }
 }

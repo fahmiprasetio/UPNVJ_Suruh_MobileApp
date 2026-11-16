@@ -158,6 +158,7 @@ if (string.IsNullOrWhiteSpace(builder.Configuration["Midtrans:NotificationUrl"])
 var midtransProduction = builder.Configuration.GetValue<bool>("Midtrans:Production");
 builder.Services.AddHttpClient<IPembayaranGateway, MidtransPembayaranGateway>(client =>
 {
+    client.Timeout = TimeSpan.FromSeconds(15);
     client.BaseAddress = new Uri(midtransProduction
         ? "https://app.midtrans.com/"
         : "https://app.sandbox.midtrans.com/");
@@ -165,6 +166,17 @@ builder.Services.AddHttpClient<IPembayaranGateway, MidtransPembayaranGateway>(cl
         "Basic",
         Convert.ToBase64String(Encoding.ASCII.GetBytes($"{midtransServerKey}:")));
 });
+
+builder.Services.AddHttpClient<IStatusPembayaranMidtrans, StatusPembayaranMidtrans>(client =>
+{
+    client.BaseAddress = new Uri(midtransProduction
+        ? "https://api.midtrans.com/"
+        : "https://api.sandbox.midtrans.com/");
+    client.Timeout = TimeSpan.FromSeconds(8);
+    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+        "Basic",
+        Convert.ToBase64String(Encoding.ASCII.GetBytes($"{midtransServerKey}:")));
+}).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
 
 // --- OTP ---
 

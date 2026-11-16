@@ -181,6 +181,17 @@ public class PembayaranController(AppDbContext db, IPembayaranGateway gateway) :
             pembayaran.GatewayReference = hasilGateway.ReferensiGateway;
             pembayaran.CheckoutUrl = hasilGateway.CheckoutUrl;
         }
+        catch (MidtransTidakTersediaException)
+        {
+            pembayaran.Status = PaymentStatus.Gagal;
+            await db.SaveChangesAsync(batal);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new ProblemDetails
+            {
+                Title = "Layanan pembayaran belum tersedia",
+                Detail = "Coba lagi sebentar lagi. Jika tetap gagal, hubungi pengelola.",
+                Status = StatusCodes.Status503ServiceUnavailable,
+            });
+        }
         catch
         {
             // Barisnya tetap ada (lihat alasan di atas), tapi ditandai gagal supaya
